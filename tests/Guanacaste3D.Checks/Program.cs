@@ -91,6 +91,25 @@ Check(session.Document.Openings.Count(o => o.WallId == copyId) == 2,
 session.Undo();
 Check(session.Document.Walls.Count == 1 && session.Document.Openings.Count == 2,
     "Undo duplication removes copied hosted elements");
+var rotatedWall = session.Document.Walls.Single(w => w.Id == hostedWallId);
+session.RotateWall(hostedWallId, 90);
+var afterRotation = session.Document.Walls.Single(w => w.Id == hostedWallId);
+Check(Math.Abs(afterRotation.Length - rotatedWall.Length) < 0.000001,
+    "Wall rotation preserves length");
+Check(session.Document.Openings.Count(o => o.WallId == hostedWallId) == 2,
+    "Wall rotation retains hosted openings");
+session.Undo();
+Check(session.Document.Walls.Single(w => w.Id == hostedWallId).End == rotatedWall.End,
+    "Undo restores pre-rotation coordinates");
+var firstOpening = session.Document.Openings.Single(o => o.Id == doorId);
+session.UpdateOpening(doorId, firstOpening.Offset, 1.0, 0, 2.1);
+Check(Math.Abs(session.Document.Openings.Single(o => o.Id == doorId).Width - 1) < 0.000001,
+    "Parametric opening dimensions can be edited");
+failed = false;
+try { session.UpdateOpening(doorId, 4.0, 1.0, 0, 2.1); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && session.Document.Openings.Single(o => o.Id == doorId).Offset == firstOpening.Offset,
+    "Overlapping opening edit is rejected atomically");
 for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
