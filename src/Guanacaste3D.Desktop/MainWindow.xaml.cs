@@ -415,8 +415,8 @@ public partial class MainWindow : Window
         }
         PropertiesText.Text = $"Elemento: muro\nLongitud: {wall.Length:0.00} m\n" +
             $"Espesor: {wall.Thickness:0.00} m\nAltura: {wall.Height:0.00} m\n" +
-            $"Aberturas: {_session.Document.Openings.Count(o => o.WallId == wall.Id)}\\n" +
-            $"Volumen neto: {WallGeometry.NetVolume(wall, _session.Document.Openings.Where(o => o.WallId == wall.Id)):0.00} m³\\n" +
+            $"Aberturas: {_session.Document.Openings.Count(o => o.WallId == wall.Id)}\n" +
+            $"Volumen neto: {WallGeometry.NetVolume(wall, _session.Document.Openings.Where(o => o.WallId == wall.Id)):0.00} m³\n" +
             $"Identificador: {wall.Id.ToString()[..8]}";
         ThicknessInput.Text = wall.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
         HeightInput.Text = wall.Height.ToString("0.00", CultureInfo.CurrentCulture);
