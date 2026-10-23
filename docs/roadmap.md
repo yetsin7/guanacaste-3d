@@ -20,7 +20,8 @@ Producto BIM de escritorio con un modelo paramétrico único que sincronice geom
 - [x] Aberturas paramétricas básicas anfitrionadas en muros rectos, con volumen neto y huecos 3D.
 - [ ] Objetos completos de puerta y ventana, familias, materiales, cotas y opciones de anfitrión.
 - [ ] Restricciones, cotas asociativas, referencias y transformaciones.
-- [ ] Tipos y familias con parámetros compartidos.
+- [x] Tipos básicos de muro con espesor compartido y actualización de instancias (sin capas ni materiales).
+- [ ] Sistema general de familias, tipos multicapa y parámetros compartidos en otras categorías.
 - [ ] Selección múltiple, copiado, alineación, matrices y herramientas de modificación.
 
 ## Etapa 2 — Documentación coherente
@@ -38,6 +39,11 @@ Producto BIM de escritorio con un modelo paramétrico único que sincronice geom
 - [ ] Fases, variantes, modelos vinculados y coordinación.
 - [ ] Versionado colaborativo con bloqueo/transacciones.
 - [ ] API y extensibilidad por complementos.
+
+## Investigación comparativa
+- [x] Estudiado REA y documentada metodología de pruebas de caja negra + API pública.
+- [ ] Probar en una instalación de Revit autorizada, con resultados capturados y atribuidos.
+- [ ] Matriz de paridad funcional completa, validada por pruebas independientes.
 
 ## Condiciones de calidad
 1. Modelo de datos independiente de WPF y renderizado.
