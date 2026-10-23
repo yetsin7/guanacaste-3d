@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private DocumentSession _session;
     private Guid _activeLevelId;
     private Guid? _selectedWallId;
+    private double? _selectedWallOffset;
     private Point2? _pendingWallStart;
     private string? _filePath;
     private bool _dirty;
@@ -107,6 +108,7 @@ public partial class MainWindow : Window
         _activeLevelId = document.Levels[0].Id;
         _pendingWallStart = null;
         _selectedWallId = null;
+        _selectedWallOffset = null;
         _filePath = filename;
         _dirty = false;
         _drawingWall = false;
@@ -149,10 +151,11 @@ public partial class MainWindow : Window
         try
         {
             if (kind == OpeningKind.Door)
-                _session.AddOpening(wallId, OpeningKind.Door, width: 0.90, height: 2.10);
+                _session.AddOpening(wallId, OpeningKind.Door,
+                    offset: _selectedWallOffset, width: 0.90, height: 2.10);
             else
                 _session.AddOpening(wallId, OpeningKind.Window,
-                    width: 1.00, sill: 0.90, height: 1.20);
+                    offset: _selectedWallOffset, width: 1.00, sill: 0.90, height: 1.20);
             StatusText.Text = kind == OpeningKind.Door ? "Hueco de puerta creado." : "Hueco de ventana creado.";
             RefreshAll();
         }
@@ -217,6 +220,17 @@ public partial class MainWindow : Window
         {
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
                 && _session.Document.Walls.Any(w => w.Id == id) ? id : null;
+            _selectedWallOffset = null;
+            if (_selectedWallId is Guid wallId)
+            {
+                var wall = _session.Document.Walls.First(w => w.Id == wallId);
+                var clicked = CanvasToWorld(e.GetPosition(PlanCanvas));
+                var vx = (wall.End.X - wall.Start.X) / wall.Length;
+                var vy = (wall.End.Y - wall.Start.Y) / wall.Length;
+                _selectedWallOffset = Math.Clamp(
+                    (clicked.X - wall.Start.X) * vx + (clicked.Y - wall.Start.Y) * vy,
+                    0, wall.Length);
+            }
             RefreshProperties();
             RenderPlan();
             return;
