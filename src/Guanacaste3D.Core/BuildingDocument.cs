@@ -5,7 +5,7 @@ namespace Guanacaste3D.Core;
 /// <summary>Represents a position in the model's XY ground plane, measured in meters.</summary>
 public readonly record struct Point2(double X, double Y)
 {
-    public double DistanceTo(Point2 other) => Math.Hypot(other.X - X, other.Y - Y);
+    public double DistanceTo(Point2 other) => double.Hypot(other.X - X, other.Y - Y);
 }
 
 /// <summary>A named vertical building datum, measured in meters from the project origin.</summary>
