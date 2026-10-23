@@ -127,6 +127,16 @@ Check(schedule.Contains("NetVolume_m3") && schedule.Contains("DoorCount") &&
     schedule.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2,
     "Quantity takeoff exports one row per wall");
 Check(schedule.Contains(",1,1"), "Quantity takeoff includes door and window counts");
+var wallBeforeInvalidMove = session.Document.Walls.Single(w => w.Id == hostedWallId);
+failed = false;
+try { session.MoveWall(hostedWallId, double.NaN, 0); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && session.Document.Walls.Single(w => w.Id == hostedWallId) == wallBeforeInvalidMove,
+    "Non-finite wall translation is rejected atomically");
+failed = false;
+try { session.RotateWall(hostedWallId, double.PositiveInfinity); }
+catch (InvalidDataException) { failed = true; }
+Check(failed, "Non-finite wall rotation is rejected");
 for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
