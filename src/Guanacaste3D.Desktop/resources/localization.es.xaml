@@ -166,6 +166,7 @@
   <sys:String x:Key="Render.High">Alta</sys:String>
   <sys:String x:Key="Render.SunHour">Hora solar</sys:String>
   <sys:String x:Key="Render.SavePng">Guardar PNG…</sys:String>
+  <sys:String x:Key="Render.Denoise">Eliminar ruido</sys:String>
   <sys:String x:Key="Render.Idle">Trazado de rayos progresivo: sol, cielo, sombras suaves e iluminación indirecta.</sys:String>
   <sys:String x:Key="Render.Preparing">Construyendo la jerarquía de aceleración…</sys:String>
   <sys:String x:Key="Render.Progress">Muestra {0} de {1} · {2}×{3} px · {4:0.0} s</sys:String>

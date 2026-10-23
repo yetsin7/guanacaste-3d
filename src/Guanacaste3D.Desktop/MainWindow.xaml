@@ -239,6 +239,8 @@
                             VerticalAlignment="Center" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
                     <TextBlock Text="{Binding Value, ElementName=SunHourSlider, StringFormat={}{0:0.0} h}" Foreground="#DDE4E8"
                                VerticalAlignment="Center" Margin="6,0,0,0" Width="40"/>
+                    <CheckBox x:Name="DenoiseCheck" Content="{DynamicResource Render.Denoise}" IsChecked="True" Foreground="#DDE4E8"
+                              VerticalAlignment="Center" Margin="12,0,0,0"/>
                     <Button Content="{DynamicResource Render.SavePng}" Click="SaveRender_Click" Padding="10,3" Margin="10,0,0,0"/>
                     <TextBlock x:Name="RenderStatusText" Text="{DynamicResource Render.Idle}" Foreground="#AEBBC3"
                                VerticalAlignment="Center" Margin="14,0,0,0"/>

@@ -86,7 +86,9 @@ public partial class MainWindow
             return;
         }
         ViewTabs.SelectedIndex = RenderTabIndex;
-        var quality = RenderQualityPicker.SelectedIndex switch { 0 => (0.5, 64), 2 => (1.0, 512), _ => (0.75, 192) };
+        // The denoiser reaches a clean image with far fewer samples, so the presets stay modest.
+        var quality = RenderQualityPicker.SelectedIndex switch { 0 => (0.5, 32), 2 => (1.0, 384), _ => (0.75, 128) };
+        var denoise = DenoiseCheck.IsChecked == true;
         var hostWidth = Math.Max(320, RenderHost.ActualWidth);
         var hostHeight = Math.Max(200, RenderHost.ActualHeight);
         var width = Math.Max(64, (int)(hostWidth * quality.Item1));
@@ -120,7 +122,7 @@ public partial class MainWindow
                 var pixels = await Task.Run(() =>
                 {
                     tracer.RenderPass(cancellation.Token);
-                    return tracer.ToBgra32();
+                    return tracer.ToBgra32(denoise);
                 }, cancellation.Token);
                 _renderBitmap.WritePixels(bounds, pixels, width * 4, 0);
                 RenderStatusText.Text = FormatText("Render.Progress", tracer.SampleCount, maximumSamples,

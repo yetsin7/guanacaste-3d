@@ -48,10 +48,12 @@ try {
     Write-Host 'Build and core regression checks passed.' -ForegroundColor Green
 
     if (-not $SkipPackage) {
-        $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
-        Invoke-Dotnet @('publish', 'src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj',
-            '-c', 'Release', '-r', 'win-x64', '--self-contained', $selfContained,
-            '-p:PublishSingleFile=true', '-o', $outputRoot)
+        # Single-file bundling resolves the win-x64 runtime packs even when framework-dependent,
+        # so the framework-dependent mode publishes a plain folder that needs no extra download.
+        $packaging = if ($FrameworkDependent) { @('--self-contained', 'false') }
+            else { @('--self-contained', 'true', '-p:PublishSingleFile=true') }
+        Invoke-Dotnet (@('publish', 'src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj',
+            '-c', 'Release', '-r', 'win-x64', '-o', $outputRoot) + $packaging)
         if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
             throw 'The published executable was not produced.'
         }

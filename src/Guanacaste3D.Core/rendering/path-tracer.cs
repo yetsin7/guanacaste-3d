@@ -40,6 +40,8 @@ public sealed record RenderSettings
     public float Exposure { get; init; } = 0.4f;
     /// <summary>Worker threads per pass; zero or less uses every core.</summary>
     public int MaxThreads { get; init; }
+    /// <summary>Random sequence selector; equal seeds reproduce identical images.</summary>
+    public uint Seed { get; init; }
 }
 
 /// <summary>
@@ -53,6 +55,7 @@ public sealed class PathTracer
     private readonly SurfaceKind[] _kinds;
     private readonly Vector3[] _normals;
     private readonly Vector3[] _accumulation;
+    private readonly Vector3[] _direct; // first-vertex sun light and directly seen sky: sharp, low noise
     private readonly RenderSettings _settings;
     private readonly Vector3 _sunDirection;
     private readonly float _sunCosine;
@@ -75,6 +78,7 @@ public sealed class PathTracer
         for (var triangle = 0; triangle < _kinds.Length; triangle++)
             _normals[triangle] = _bvh.Normal(triangle);
         _accumulation = new Vector3[width * height];
+        _direct = new Vector3[width * height];
         _settings = settings ?? new RenderSettings();
         _sunDirection = Vector3.Normalize(_settings.SunDirection);
         _sunCosine = MathF.Cos(_settings.SunAngularRadiusDegrees * MathF.PI / 180);
@@ -88,22 +92,66 @@ public sealed class PathTracer
         Reset();
     }
 
-    /// <summary>Discards accumulated samples.</summary>
+    /// <summary>Discards accumulated samples and the cached denoising features.</summary>
     public void Reset()
     {
         Array.Clear(_accumulation);
+        Array.Clear(_direct);
         SampleCount = 0;
+        _features = null;
     }
 
-    /// <summary>Adds one jittered sample to every pixel, using all available cores.</summary>
-    public void RenderPass(CancellationToken cancellationToken = default)
+    private FeatureBuffer? _features;
+
+    /// <summary>Returns the camera basis scaled so (x, y) in [-1, 1] spans the image plane.</summary>
+    private (Vector3 Forward, Vector3 Right, Vector3 Up) CameraBasis()
     {
         var forward = Vector3.Normalize(_camera.Target - _camera.Position);
         var worldUp = MathF.Abs(forward.Z) > 0.999f ? Vector3.UnitY : Vector3.UnitZ;
         var right = Vector3.Normalize(Vector3.Cross(forward, worldUp));
         var up = Vector3.Cross(right, forward);
         var halfHeight = MathF.Tan(_camera.VerticalFieldOfViewDegrees * MathF.PI / 360);
-        var halfWidth = halfHeight * Width / Height;
+        return (forward, right * (halfHeight * Width / Height), up * halfHeight);
+    }
+
+    /// <summary>Casts one pixel-centre ray per pixel to record first-hit normal, albedo and depth.</summary>
+    public FeatureBuffer CaptureFeatures()
+    {
+        if (_features is not null) return _features;
+        var features = new FeatureBuffer(Width, Height);
+        var (forward, right, up) = CameraBasis();
+        Parallel.For(0, Height, row =>
+        {
+            for (var column = 0; column < Width; column++)
+            {
+                var index = row * Width + column;
+                var x = 2 * (column + 0.5f) / Width - 1;
+                var y = 1 - 2 * (row + 0.5f) / Height;
+                var direction = Vector3.Normalize(forward + right * x + up * y);
+                var hit = new RayHit { Distance = float.MaxValue };
+                if (!_bvh.Intersect(_camera.Position, direction, 1e-4f, ref hit))
+                {
+                    features.Depth[index] = float.PositiveInfinity;
+                    continue;
+                }
+                var normal = _normals[hit.Triangle];
+                features.Normal[index] = Vector3.Dot(normal, direction) > 0 ? -normal : normal;
+                var kind = _kinds[hit.Triangle];
+                features.Albedo[index] = kind == SurfaceKind.Glass
+                    ? Vector3.One
+                    : Albedo(kind, _camera.Position + direction * hit.Distance);
+                features.Depth[index] = hit.Distance;
+            }
+        });
+        return _features = features;
+    }
+
+    /// <summary>Adds one jittered sample to every pixel, using all available cores.</summary>
+    public void RenderPass(CancellationToken cancellationToken = default)
+    {
+        var (forward, right, up) = CameraBasis();
+        const float halfWidth = 1;
+        const float halfHeight = 1;
         var frame = SampleCount;
 
         Parallel.For(0, Height, new ParallelOptions
@@ -112,26 +160,62 @@ public sealed class PathTracer
             MaxDegreeOfParallelism = _settings.MaxThreads > 0 ? _settings.MaxThreads : -1
         }, row =>
         {
-            var random = new FastRandom((uint)(row * 9781 + frame * 6271 + 1));
+            var random = new FastRandom((uint)(row * 9781 + frame * 6271 + 1) ^ (_settings.Seed * 2654435761u));
             for (var column = 0; column < Width; column++)
             {
                 var x = (2 * (column + random.NextFloat()) / Width - 1) * halfWidth;
                 var y = (1 - 2 * (row + random.NextFloat()) / Height) * halfHeight;
                 var direction = Vector3.Normalize(forward + right * x + up * y);
-                _accumulation[row * Width + column] += Trace(_camera.Position, direction, ref random);
+                var (direct, indirect) = Trace(_camera.Position, direction, ref random);
+                _accumulation[row * Width + column] += direct + indirect;
+                _direct[row * Width + column] += direct;
             }
         });
         SampleCount++;
     }
 
+    /// <summary>Returns the mean direct and indirect radiance separately (render passes / AOVs).</summary>
+    public (Vector3[] Direct, Vector3[] Indirect) LinearComponents()
+    {
+        var direct = new Vector3[_accumulation.Length];
+        var indirect = new Vector3[_accumulation.Length];
+        if (SampleCount == 0) return (direct, indirect);
+        for (var index = 0; index < direct.Length; index++)
+        {
+            direct[index] = _direct[index] / SampleCount;
+            indirect[index] = (_accumulation[index] - _direct[index]) / SampleCount;
+        }
+        return (direct, indirect);
+    }
+
+    /// <summary>
+    /// Returns the mean linear radiance of every pixel. When denoising, only the indirect
+    /// component is filtered, so sun shadows and directly seen sky stay sharp.
+    /// </summary>
+    public Vector3[] LinearImage(bool denoise)
+    {
+        var image = new Vector3[_accumulation.Length];
+        if (SampleCount == 0) return image;
+        if (!denoise)
+        {
+            for (var index = 0; index < image.Length; index++) image[index] = _accumulation[index] / SampleCount;
+            return image;
+        }
+        for (var index = 0; index < image.Length; index++)
+            image[index] = (_accumulation[index] - _direct[index]) / SampleCount;
+        var filtered = AtrousDenoiser.Apply(image, CaptureFeatures());
+        for (var index = 0; index < image.Length; index++) filtered[index] += _direct[index] / SampleCount;
+        return filtered;
+    }
+
     /// <summary>Returns tone-mapped, gamma-encoded pixels in BGRA32 order for display.</summary>
-    public byte[] ToBgra32()
+    public byte[] ToBgra32(bool denoise = false)
     {
         var pixels = new byte[Width * Height * 4];
-        var scale = SampleCount == 0 ? 0 : _settings.Exposure / SampleCount;
-        for (var index = 0; index < _accumulation.Length; index++)
+        var image = LinearImage(denoise);
+        for (var index = 0; index < image.Length; index++)
         {
-            var color = _accumulation[index] * scale;
+            var color = image[index] * _settings.Exposure;
             pixels[index * 4] = Encode(color.Z);
             pixels[index * 4 + 1] = Encode(color.Y);
             pixels[index * 4 + 2] = Encode(color.X);
@@ -144,18 +228,24 @@ public sealed class PathTracer
     public Vector3 LinearPixel(int column, int row) =>
         SampleCount == 0 ? Vector3.Zero : _accumulation[row * Width + column] / SampleCount;
 
-    /// <summary>Follows one camera path, adding direct sun light at every diffuse vertex.</summary>
-    private Vector3 Trace(Vector3 origin, Vector3 direction, ref FastRandom random)
+    /// <summary>
+    /// Follows one camera path, adding direct sun light at every diffuse vertex. Light gathered
+    /// before the first diffuse bounce is returned as Direct; everything after it as Indirect.
+    /// </summary>
+    private (Vector3 Direct, Vector3 Indirect) Trace(Vector3 origin, Vector3 direction, ref FastRandom random)
     {
-        var radiance = Vector3.Zero;
+        var direct = Vector3.Zero;
+        var indirect = Vector3.Zero;
         var throughput = Vector3.One;
         var specularOrigin = true;
+        var diffuseBounced = false;
         for (var bounce = 0; bounce <= _settings.MaxBounces; bounce++)
         {
             var hit = new RayHit { Distance = float.MaxValue };
             if (!_bvh.Intersect(origin, direction, 1e-4f, ref hit))
             {
-                radiance += throughput * Sky(direction, includeSun: specularOrigin);
+                var skyRadiance = throughput * Sky(direction, includeSun: specularOrigin);
+                if (diffuseBounced) indirect += skyRadiance; else direct += skyRadiance;
                 break;
             }
 
@@ -185,7 +275,8 @@ public sealed class PathTracer
             }
 
             var albedo = Albedo(kind, position);
-            radiance += throughput * albedo * DirectSun(offsetOrigin, normal, ref random);
+            var sunRadiance = throughput * albedo * DirectSun(offsetOrigin, normal, ref random);
+            if (diffuseBounced) indirect += sunRadiance; else direct += sunRadiance;
 
             // Russian roulette after the first bounces keeps cost bounded without bias.
             if (bounce >= 2)
@@ -198,8 +289,9 @@ public sealed class PathTracer
             direction = CosineSampleHemisphere(normal, ref random);
             origin = offsetOrigin;
             specularOrigin = false;
+            diffuseBounced = true;
         }
-        return radiance;
+        return (direct, indirect);
     }
 
     /// <summary>Samples the finite sun disk and returns its Lambertian contribution (divided by π).</summary>
