@@ -1,10 +1,11 @@
-# Verificación de Guanacaste 3D en Windows
+# Guanacaste 3D Windows Verification
 
-La interfaz requiere **Windows 10/11 y SDK .NET 10**. El proyecto no utiliza servicios externos para ejecutar las funciones del prototipo.
+The desktop application requires Windows 10 or 11 and .NET 10. Preview features
+run locally without external services.
 
-## 1. Compilación limpia
+## Build and executable checks
 
-En PowerShell, dentro del repositorio:
+Run from the repository root in PowerShell:
 
 ```powershell
 dotnet --info
@@ -12,34 +13,38 @@ git status --short
 dotnet restore Guanacaste3D.slnx
 dotnet build Guanacaste3D.slnx -c Release --no-restore
 dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build
-dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release --no-build
 ```
 
-**No interpretar ausencia de logs de GitHub Actions como pruebas aprobadas.** La compilación y los resultados de ejecución locales son la fuente de verificación.
+Do not interpret missing CI logs as passing evidence. Use completed local output
+or completed CI jobs with executed steps.
 
-## 2. Lista de comprobación manual
+## Manual interaction checklist
 
-- [ ] La ventana abre y muestra Guanacaste 3D.
-- [ ] Crear dos muros de cinco metros y cambiar de planta 2D a modelo 3D.
-- [ ] Seleccionar un muro; colocar una puerta y comprobar el hueco en 2D y 3D.
-- [ ] Seleccionar una zona distinta del mismo muro; colocar una ventana.
-- [ ] Intentar superponer puertas: debe mostrarse un error sin alterar el proyecto.
-- [ ] Editar espesor y altura de un muro. Una altura incompatible con una abertura debe rechazarse.
-- [ ] Deshacer y rehacer una inserción de ventana.
-- [ ] Guardar en un archivo `.g3d.json`; cerrar y reabrir sin perder niveles, muros ni aberturas.
-- [ ] Sobrescribir el proyecto y confirmar que exista una copia `.bak`.
-- [ ] Cancelar la creación de un proyecto nuevo cuando hay cambios sin guardar.
-- [ ] Borrar un muro anfitrión y confirmar que sus aberturas también desaparezcan.
-- [ ] Abrir un JSON malformado o incompatible: debe rechazarse sin reemplazar el documento abierto.
+- [ ] Launch the installed Guanacaste 3D application.
+- [ ] Place walls with two clicks and assign different reusable wall types.
+- [ ] Add a door and window to a selected wall and verify the openings in plan
+  and 3D.
+- [ ] Attempt overlapping openings and confirm that the model remains unchanged.
+- [ ] Create a room from two corners and verify its area in properties and the
+  project schedule.
+- [ ] Create a floor from an enclosed wall extent and verify plan and 3D parity.
+- [ ] Add a drawing sheet and verify its number, title block, and live plan view.
+- [ ] Save and reopen a `.g3` file without losing coordinated entities.
+- [ ] Double-click a `.g3` file and confirm that its project opens in the installed application.
+- [ ] Confirm that plan, 3D, north elevation, section, and schedule update from the same model.
+- [ ] Overwrite a project and confirm that the `.bak` copy exists.
+- [ ] Undo and redo representative wall, opening, room, floor, and sheet edits.
+- [ ] Reject malformed or unsupported JSON without replacing the open document.
 
-## 3. Diagnóstico
+## Diagnostics
 
-Si falla la compilación, conserva la salida completa de `dotnet build`: código de error, archivo y línea.
+When a build fails, retain the complete `dotnet build` output, including error
+code, file, and line. For editor failures, record the action, reproduction steps,
+non-sensitive screenshot, error message, and `dotnet --info` output.
 
-Si falla el editor, registra la acción, los pasos de reproducción, una captura de pantalla sin información sensible, el mensaje de error y la versión del SDK (`dotnet --info`).
+## Current technical boundaries
 
-La ausencia de un runner asignado en GitHub Actions es un problema de infraestructura/ejecución todavía por diagnosticar; no demuestra si el código compila o falla.
-
-## 4. Límites técnicos actuales
-
-Las aberturas son huecos paramétricos, no hojas, marcos o familias completas. No hay uniones complejas ni motor booleano general de sólidos, y esta etapa no valida cálculo estructural, estabilidad, normativas ni presupuestos. No utilizar como entregable constructivo profesional.
+Hosted openings do not yet contain complete leaves, frames, or family geometry.
+The application has no production boolean-solid kernel, complex joins,
+engineering certification, code-compliance validation, or complete cost model.
+Do not issue the current preview as a professional construction deliverable.

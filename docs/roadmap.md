@@ -1,43 +1,54 @@
-# Hoja de ruta — Guanacaste 3D
+# Guanacaste 3D Roadmap
 
-## Visión
-Producto BIM de escritorio con un modelo paramétrico único que sincronice geometría, plantas, alzados, secciones, láminas, tablas y presupuestos.
+## Vision
 
-## Etapa 0 — Base nativa (prototipo)
-- [x] Solución C# / .NET 10 con aplicación WPF.
-- [x] Modelo de documentos y niveles.
-- [x] Muros rectos con parámetros métricos.
-- [x] Planos 2D y geometría de muros en 3D.
-- [x] Archivos propios versionados, validación y copia de seguridad.
-- [x] Edición básica y deshacer/rehacer con historial acotado.
-- [x] Flujo de CI configurado (todavía sin ejecución validada).
-- [ ] CI compilado y pruebas ejecutadas exitosamente en Windows.
-- [ ] Validación de interfaz en una laptop Windows real.
+Build an original desktop BIM product with one parametric model that coordinates
+geometry, plans, elevations, sections, sheets, schedules, and cost information.
 
-## Etapa 1 — Núcleo CAD/BIM
-- [ ] Motor geométrico robusto (intersecciones, uniones y sólidos).
-- [ ] Muros con capas, materiales y prioridades de unión.
-- [x] Aberturas paramétricas básicas anfitrionadas en muros rectos, con volumen neto y huecos 3D.
-- [ ] Objetos completos de puerta y ventana, familias, materiales, cotas y opciones de anfitrión.
-- [ ] Restricciones, cotas asociativas, referencias y transformaciones.
-- [ ] Tipos y familias con parámetros compartidos.
-- [ ] Selección múltiple, copiado, alineación, matrices y herramientas de modificación.
+## Stage 0: Native foundation
 
-## Etapa 2 — Documentación coherente
-- [ ] Alzados, secciones, detalles, escalas y hojas.
-- [ ] Tablas de cantidades, etiquetas y planificación.
-- [ ] Cubiertas, forjados, cielos rasos, escaleras, terrenos y habitaciones.
-- [ ] Exportación PDF/DXF/IFC con pruebas de precisión.
+- [x] C# and .NET 10 solution with a WPF desktop application.
+- [x] Versioned project document, levels, straight walls, and hosted openings.
+- [x] Coordinated plan and 3D geometry.
+- [x] Generated north elevation and section views from the shared model.
+- [x] Native `.g3` project envelope and Windows file association.
+- [x] Validated persistence with backup-before-overwrite.
+- [x] Bounded undo and redo history.
+- [x] Local Release build and executable domain checks on Windows.
+- [x] Local application installation and launch verification.
+- [ ] Repeatable visual-interaction automation for native WPF controls.
 
-## Etapa 3 — Disciplinas y colaboración
-- [ ] Herramientas estructurales y MEP.
-- [ ] Fases, variantes, modelos vinculados y coordinación.
-- [ ] Versionado colaborativo con bloqueo/transacciones.
-- [ ] API y extensibilidad por complementos.
+## Stage 1: CAD and BIM authoring core
 
-## Condiciones de calidad
-1. Modelo de datos independiente de WPF y renderizado.
-2. Nunca confiar en documentos externos sin validar.
-3. No afirmar compatibilidad con formatos no implementados.
-4. No utilizar marca, código, iconografía o recursos propietarios de terceros.
-5. Medir rendimiento en modelos grandes antes de elegir motor 3D definitivo.
+- [ ] Production geometry abstraction for intersections, joins, and solids.
+- [x] Reusable wall types with coordinated instance thickness.
+- [x] Parametric hosted openings with net volume and coordinated 3D voids.
+- [x] Rooms and floor slabs with calculated areas.
+- [ ] Complete door and window objects, families, materials, and orientation.
+- [ ] Associative constraints, dimensions, references, and transformations.
+- [ ] Multi-selection, copy, align, mirror, arrays, and richer modification tools.
+
+## Stage 2: Coordinated documentation
+
+- [x] Live multi-category project schedule.
+- [x] Numbered ISO drawing sheets with a live plan preview.
+- [x] Initial generated elevations and sections.
+- [ ] Details, crop regions, multiple view directions, and scale-aware view placement.
+- [ ] Tags, associative dimensions, legends, title-block families, and PDF output.
+- [ ] IFC and DXF exchange validated with independent round-trip fixtures.
+
+## Stage 3: Disciplines and collaboration
+
+- [ ] Structural and MEP authoring tools with explicit engineering boundaries.
+- [ ] Phases, design options, linked models, and coordination workflows.
+- [ ] Transactional collaboration, locking, conflict handling, and recovery.
+- [ ] Stable plugin API and extension contracts.
+
+## Quality conditions
+
+1. Keep the domain model independent from WPF and rendering.
+2. Validate all external project documents before accepting state.
+3. Do not claim compatibility with formats that are not implemented and tested.
+4. Do not use third-party proprietary branding, source code, icons, or assets.
+5. Measure performance with representative large models before choosing the
+   final geometry and rendering engines.

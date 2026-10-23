@@ -1,62 +1,82 @@
 # Guanacaste 3D
 
-**Guanacaste 3D** es un proyecto independiente de software BIM y CAD arquitectónico de escritorio para Windows, desarrollado en **C#** sobre **.NET 10 LTS** y **WPF**.
+Guanacaste 3D is an independent Windows desktop BIM and architectural CAD
+application built in C# with .NET 10 and WPF.
 
-## Estado
+## Status
 
-**Versión 0.1.0 — prototipo técnico inicial.** No es todavía un sistema BIM completo ni es apto para cálculos estructurales, planos de construcción validados o entregables profesionales sin revisión independiente.
+Version 0.3.0 is a working technical preview, not a complete professional BIM
+system. It must not be used for certified structural calculations or issued
+construction documents without independent professional review.
 
-Implementado en esta primera base:
-- Aplicación de escritorio nativa WPF sin Electron ni navegador embebido.
-- Documento de proyecto con niveles, muros y aberturas paramétricas vinculadas a su muro anfitrión.
-- Puertas y ventanas como huecos geométricos básicos, posicionables mediante clic en el muro (sin hojas, marcos ni familias aún).
-- Volumen neto de muros con descuento de aberturas y rechazo de superposiciones.
-- Dibujo de muros mediante dos clics sobre la planta.
-- Vista de planta 2D y geometría volumétrica 3D del mismo documento.
-- Selección, inspección, eliminación y deshacer/rehacer.
-- Apertura y guardado JSON versionado con validación y respaldo previo al sobrescribir.
-- Comprobaciones automatizadas de dominio y persistencia.
+Implemented capabilities include:
 
-Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias), restricciones geométricas completas, uniones de muros, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, interoperabilidad IFC/DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
+- Native WPF desktop workspace with a ribbon, project browser, properties
+  palette, plan, coordinated 3D view, schedule, and drawing-sheet workspace.
+- Persistent plan, 3D, north-elevation, section, and schedule views generated
+  from the same model.
+- One versioned document containing levels, reusable wall types, straight walls,
+  hosted door and window openings, rooms, floor slabs, and numbered sheets.
+- Parametric wall-type propagation, plan placement, selection, editing,
+  transformation, deletion, and bounded undo and redo.
+- Net wall volume with opening subtraction and overlap rejection.
+- Live project schedule and CSV wall-quantity export.
+- Validated JSON persistence with schema migration and backup before overwrite.
+- Automated checks for domain rules, migrations, persistence, and coordinated
+  BIM elements.
 
-> **Validación pendiente:** GitHub Actions está terminando sus trabajos sin asignar runner ni ejecutar pasos; aún no hay evidencia de compilación. Comprueba manualmente con los comandos siguientes en Windows. No uses esta versión para documentación constructiva real.
+Still required for broad professional parity: robust geometry and wall joins,
+complete door and window objects, advanced families and constraints, elevations,
+sections, associative annotation, placed sheet views, IFC and DXF exchange,
+collaboration, structural and MEP authoring, physical rendering, and large-model
+performance engineering.
 
-## Requisitos
+## Requirements
 
-- Windows 10/11, x64.
-- SDK **.NET 10** actualizado (estable, LTS).
-- Visual Studio con carga de trabajo *Desarrollo de escritorio de .NET* es opcional: la CLI es suficiente.
+- Windows 10 or 11, x64.
+- Current .NET 10 SDK.
+- Visual Studio with the .NET desktop workload is optional; the CLI is enough.
 
-## Ejecutar
+## Build and run
 
 ```powershell
 git clone https://github.com/yetsin7/guanacaste-3d.git
 cd guanacaste-3d
-dotnet --version
 dotnet restore Guanacaste3D.slnx
-dotnet build Guanacaste3D.slnx -c Release
-dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release
+dotnet build Guanacaste3D.slnx -c Release --no-restore
+dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release --no-build
 ```
 
-## Comprobar
+## Run checks
 
 ```powershell
-dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release
+dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build
 ```
 
-## Publicar para Windows
+## Publish for Windows
 
 ```powershell
-dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/win-x64
+dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj `
+  -c Release -r win-x64 --self-contained false `
+  -o artifacts/win-x64
 ```
 
-Ejecutable: `dist/win-x64/Guanacaste3D.Desktop.exe`. Esta publicación genera un ejecutable de aplicación, **no** un instalador MSI/MSIX.
+The publish output is `artifacts/win-x64/Guanacaste3D.Desktop.exe`. Install it
+for the current user and register `.g3` by running:
 
-## Arquitectura
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
+```
 
-- `src/Guanacaste3D.Core/`: modelo de documentos, niveles, elementos, validaciones, operaciones e historial.
-- `src/Guanacaste3D.Desktop/`: aplicación WPF, vistas e interacción.
-- `tests/Guanacaste3D.Checks/`: comprobaciones independientes de UI.
-- `docs/roadmap.md`: etapas del desarrollo BIM.
+## Architecture
 
-Los archivos de usuario usan la extensión `.g3d.json` y no requieren ninguna aplicación de terceros. Las operaciones de guardado deben mantener versiones anteriores respaldadas; antes de usar software en proyectos reales, exporta copias independientes.
+- `src/Guanacaste3D.Core/`: document model, validation, commands, history,
+  schedules, and persistence.
+- `src/Guanacaste3D.Desktop/`: WPF presentation and interaction.
+- `tests/Guanacaste3D.Checks/`: UI-independent executable checks.
+- `docs/revit-functional-parity-roadmap.md`: lawful functional-parity plan.
+
+Native projects use the `.g3` extension and a versioned `G3-PROJECT/1` envelope.
+The application can import the earlier `.g3d.json` preview format and prompts the
+user to save it as `.g3`. Keep independent project backups before using preview
+software on important work.
