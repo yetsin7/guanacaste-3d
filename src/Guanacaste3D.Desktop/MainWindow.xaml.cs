@@ -411,31 +411,43 @@ public partial class MainWindow : Window
             var length = wall.Length;
             var offsetX = -(wall.End.Y - wall.Start.Y) * wall.Thickness / (2 * length);
             var offsetY = (wall.End.X - wall.Start.X) * wall.Thickness / (2 * length);
-            Point3D V(Point2 p, int side, double z) => new(p.X + side * offsetX, elevation + z, -(p.Y + side * offsetY));
-            var corners = new[]
+            Point2 Along(double position) => new(
+                wall.Start.X + position * (wall.End.X - wall.Start.X) / length,
+                wall.Start.Y + position * (wall.End.Y - wall.Start.Y) / length);
+            Point3D V(Point2 p, int side, double z) =>
+                new(p.X + side * offsetX, elevation + z, -(p.Y + side * offsetY));
+            var hosted = _session.Document.Openings.Where(o => o.WallId == wall.Id);
+            foreach (var solid in WallGeometry.Solids(wall, hosted))
             {
-                V(wall.Start, 1, 0), V(wall.End, 1, 0),
-                V(wall.End, -1, 0), V(wall.Start, -1, 0),
-                V(wall.Start, 1, wall.Height), V(wall.End, 1, wall.Height),
-                V(wall.End, -1, wall.Height), V(wall.Start, -1, wall.Height)
-            };
-            var mesh = new MeshGeometry3D();
-            int[][] faces =
-            [
-                [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5],
-                [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0]
-            ];
-            foreach (var face in faces)
-            {
-                var i = mesh.Positions.Count;
-                foreach (var vertex in face) mesh.Positions.Add(corners[vertex]);
-                foreach (var index in new[] { 0, 1, 2, 0, 2, 3 }) mesh.TriangleIndices.Add(i + index);
+                var start = Along(solid.From);
+                var end = Along(solid.To);
+                var corners = new[]
+                {
+                    V(start, 1, solid.Bottom), V(end, 1, solid.Bottom),
+                    V(end, -1, solid.Bottom), V(start, -1, solid.Bottom),
+                    V(start, 1, solid.Top), V(end, 1, solid.Top),
+                    V(end, -1, solid.Top), V(start, -1, solid.Top)
+                };
+                var mesh = new MeshGeometry3D();
+                int[][] faces =
+                [
+                    [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5],
+                    [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0]
+                ];
+                foreach (var face in faces)
+                {
+                    var i = mesh.Positions.Count;
+                    foreach (var vertex in face) mesh.Positions.Add(corners[vertex]);
+                    foreach (var index in new[] { 0, 1, 2, 0, 2, 3 })
+                        mesh.TriangleIndices.Add(i + index);
+                }
+                var material = new DiffuseMaterial(
+                    new SolidColorBrush(Color.FromRgb(185, 203, 192)));
+                ModelViewport.Children.Add(new ModelVisual3D
+                {
+                    Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
+                });
             }
-            var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(185, 203, 192)));
-            ModelViewport.Children.Add(new ModelVisual3D
-            {
-                Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
-            });
         }
         var allPoints = _session.Document.Walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
         var centerX = allPoints.Length == 0 ? 0 : (allPoints.Min(p => p.X) + allPoints.Max(p => p.X)) / 2;
