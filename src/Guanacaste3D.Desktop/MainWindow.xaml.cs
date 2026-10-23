@@ -375,6 +375,49 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
+    private void MovePrecise_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
+        if (!double.TryParse(MoveXInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var dx) ||
+            !double.TryParse(MoveYInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var dy) ||
+            !double.IsFinite(dx) || !double.IsFinite(dy))
+        {
+            MessageBox.Show(this, "Introduce desplazamientos válidos en metros.", "Mover muro");
+            return;
+        }
+        try
+        {
+            _session.MoveWall(id, dx, dy);
+            _selectedWallOffset = null;
+            StatusText.Text = $"Muro desplazado X={dx:0.###} m, Y={dy:0.###} m.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Mover muro");
+        }
+    }
+
+    private void RotatePrecise_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
+        if (!double.TryParse(RotationInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var angle) ||
+            !double.IsFinite(angle))
+        {
+            MessageBox.Show(this, "Introduce un ángulo válido.", "Rotar muro");
+            return;
+        }
+        try
+        {
+            _session.RotateWall(id, angle);
+            _selectedWallOffset = null;
+            StatusText.Text = $"Muro rotado {angle:0.###}°.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Rotar muro");
+        }
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is not Guid id) return;
