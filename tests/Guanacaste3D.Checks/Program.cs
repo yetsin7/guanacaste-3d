@@ -220,6 +220,18 @@ Check(Math.Abs(slabSession.Document.Slabs.Single().Thickness - 0.2) < 1e-9,
 slabSession.Redo();
 Check(Math.Abs(slabSession.Document.Slabs.Single().Thickness - 0.3) < 1e-9,
     "Redo restores edited slab thickness");
+slabSession.ResizeSlab(slabId, 6, 5);
+Check(Math.Abs(slabSession.Document.Slabs.Single().Area - 30) < 1e-9 &&
+      Math.Abs(slabSession.Document.Slabs.Single().Volume - 9) < 1e-9,
+    "Resizing a slab changes area and volume while preserving thickness");
+slabSession.Undo();
+Check(Math.Abs(slabSession.Document.Slabs.Single().Area - 20) < 1e-9,
+    "Undo restores the slab's previous footprint");
+failed = false;
+try { slabSession.ResizeSlab(slabId, 0.1, 5); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && slabSession.Document.Slabs.Single().Area == 20,
+    "Invalid resize cannot modify slab dimensions");
 var stableSlab = slabSession.Document.Slabs.Single();
 failed = false;
 try { slabSession.UpdateSlab(slabId, -1); }
