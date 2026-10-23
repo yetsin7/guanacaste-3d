@@ -365,6 +365,8 @@ ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
+ScheduleChecks.Run(Check);
+LocalizationChecks.Run(Check);
 IfcChecks.Run(Check);
 MeshExportChecks.Run(Check);
 DenoiserChecks.Run(Check);

@@ -109,6 +109,12 @@ public static class ProjectFile
             // Schema 7 adds optional wall top constraints; existing walls stay unconnected.
             document.SchemaVersion = 7;
         }
+        if (document.SchemaVersion == 7)
+        {
+            // Schema 8 adds saved schedule definitions; earlier projects have none.
+            document.SchemaVersion = 8;
+            document.Schedules ??= [];
+        }
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

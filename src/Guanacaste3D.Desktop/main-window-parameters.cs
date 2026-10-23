@@ -33,6 +33,14 @@ public partial class MainWindow
         RefreshAll();
     }
 
+    /// <summary>Shows the saved schedule designer.</summary>
+    private void Schedules_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new SchedulesWindow(_session) { Owner = this };
+        window.ShowDialog();
+        RefreshAll();
+    }
+
     /// <summary>
     /// Maps the explicit model selection to its parameter category. The sheet
     /// shown in the sheet workspace is display state, not a user selection, so

@@ -91,4 +91,9 @@
   <sys:String x:Key="Error.Level names must be unique.">Ya existe un nivel con ese nombre.</sys:String>
   <sys:String x:Key="Error.A project needs at least one level.">El proyecto necesita al menos un nivel.</sys:String>
   <sys:String x:Key="Error.The level still hosts or constrains elements.">El nivel todavía tiene elementos apoyados o restringidos; muévelos o libéralos antes de eliminarlo.</sys:String>
+  <sys:String x:Key="Error.The schedule collection is invalid.">Las tablas del proyecto no son válidas.</sys:String>
+  <sys:String x:Key="Error.A schedule definition is invalid.">La tabla no es válida: necesita un nombre y al menos un campo, sin campos repetidos.</sys:String>
+  <sys:String x:Key="Error.A schedule references a field that is not available.">La tabla usa un campo que no existe para esta categoría.</sys:String>
+  <sys:String x:Key="Error.Schedule identifiers and names must be unique.">Ya existe una tabla con ese nombre.</sys:String>
+  <sys:String x:Key="Error.The schedule does not exist.">La tabla no existe.</sys:String>
 </ResourceDictionary>

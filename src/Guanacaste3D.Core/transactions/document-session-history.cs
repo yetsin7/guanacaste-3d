@@ -61,6 +61,7 @@ public sealed partial class DocumentSession
         LevelConstraints.Apply(document);
         OpeningTypeRules.SynchronizeInstances(document);
         ParameterRules.RemoveOrphanedValues(document);
+        ScheduleDefinitionRules.RemoveMissingFields(document);
     }
 
     /// <summary>Adds a history entry, trimming the oldest only when no group depends on the stack depth.</summary>
