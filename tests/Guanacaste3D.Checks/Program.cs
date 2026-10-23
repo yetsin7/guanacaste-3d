@@ -127,6 +127,18 @@ Check(schedule.Contains("NetVolume_m3") && schedule.Contains("DoorCount") &&
     schedule.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2,
     "Quantity takeoff exports one row per wall");
 Check(schedule.Contains(",1,1"), "Quantity takeoff includes door and window counts");
+
+var elementDeletion = new DocumentSession(session.Document);
+elementDeletion.RemoveOpening(doorId);
+Check(elementDeletion.Document.Walls.Count == 1 &&
+      elementDeletion.Document.Openings.Count == 1 &&
+      elementDeletion.Document.Openings[0].Id == windowId,
+    "Deleting an opening does not delete its host or other openings");
+elementDeletion.Undo();
+Check(elementDeletion.Document.Openings.Count == 2 &&
+      elementDeletion.Document.Openings.Any(o => o.Id == doorId),
+    "Undo restores only the removed opening and keeps its host");
+
 var wallBeforeInvalidMove = session.Document.Walls.Single(w => w.Id == hostedWallId);
 failed = false;
 try { session.MoveWall(hostedWallId, double.NaN, 0); }
