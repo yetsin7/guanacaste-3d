@@ -9,13 +9,16 @@ Producto BIM de escritorio con un modelo paramétrico único que sincronice geom
 - [x] Muros rectos con parámetros métricos.
 - [x] Planos 2D y geometría de muros en 3D.
 - [x] Archivos propios versionados, validación y copia de seguridad.
-- [x] Edición básica, deshacer/rehacer, CI de compilación.
+- [x] Edición básica y deshacer/rehacer con historial acotado.
+- [x] Flujo de CI configurado (todavía sin ejecución validada).
+- [ ] CI compilado y pruebas ejecutadas exitosamente en Windows.
 - [ ] Validación de interfaz en una laptop Windows real.
 
 ## Etapa 1 — Núcleo CAD/BIM
 - [ ] Motor geométrico robusto (intersecciones, uniones y sólidos).
 - [ ] Muros con capas, materiales y prioridades de unión.
-- [ ] Aberturas paramétricas, puertas, ventanas y referencias anfitrión.
+- [x] Aberturas paramétricas básicas anfitrionadas en muros rectos, con volumen neto y huecos 3D.
+- [ ] Objetos completos de puerta y ventana, familias, materiales, cotas y opciones de anfitrión.
 - [ ] Restricciones, cotas asociativas, referencias y transformaciones.
 - [ ] Tipos y familias con parámetros compartidos.
 - [ ] Selección múltiple, copiado, alineación, matrices y herramientas de modificación.
