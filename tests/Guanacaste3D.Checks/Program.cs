@@ -110,6 +110,18 @@ try { session.UpdateOpening(doorId, 4.0, 1.0, 0, 2.1); }
 catch (InvalidDataException) { failed = true; }
 Check(failed && session.Document.Openings.Single(o => o.Id == doorId).Offset == firstOpening.Offset,
     "Overlapping opening edit is rejected atomically");
+var beforePreciseMove = session.Document.Walls.Single(w => w.Id == hostedWallId);
+session.MoveWall(hostedWallId, -0.25, 0.75);
+var movedPrecisely = session.Document.Walls.Single(w => w.Id == hostedWallId);
+Check(Math.Abs(movedPrecisely.Start.X - beforePreciseMove.Start.X + 0.25) < 0.000001 &&
+      Math.Abs(movedPrecisely.Start.Y - beforePreciseMove.Start.Y - 0.75) < 0.000001,
+      "Fractional metric translation");
+session.RotateWall(hostedWallId, 37.5);
+Check(Math.Abs(session.Document.Walls.Single(w => w.Id == hostedWallId).Length -
+    movedPrecisely.Length) < 0.000001, "Arbitrary angle preserves wall length");
+session.Undo();
+Check(session.Document.Walls.Single(w => w.Id == hostedWallId).End == movedPrecisely.End,
+    "Undo restores precise transformation");
 for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
