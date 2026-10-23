@@ -400,4 +400,38 @@ finally
     if (File.Exists(typedFilename + ".bak")) File.Delete(typedFilename + ".bak");
 }
 
+// Observable, vendor-neutral BIM snapshot: stable quantities without internal GUIDs.
+var auditJson = ModelAudit.ToJson(exampleDocument);
+using (var audit = System.Text.Json.JsonDocument.Parse(auditJson))
+{
+    var root = audit.RootElement;
+    Check(root.GetProperty("Schema").GetString() == "guanacaste-observation/1" &&
+          root.GetProperty("Units").GetString() == "meters" &&
+          root.GetProperty("WallCount").GetInt32() == 5 &&
+          root.GetProperty("SlabCount").GetInt32() == 2 &&
+          root.GetProperty("OpeningCount").GetInt32() == 3,
+        "BIM audit snapshot contains verified quantities and a declared metric schema");
+    Check(root.GetProperty("Walls").EnumerateArray()
+            .Count(w => w.GetProperty("WallType").GetString() == "Muro genérico de 20 cm") == 3,
+        "BIM snapshot exposes shared type names without proprietary identifiers");
+    Check(Math.Abs(root.GetProperty("Slabs").EnumerateArray()
+              .Sum(s => s.GetProperty("Volume").GetDouble()) - 20.16) < 1e-9,
+        "BIM audit reports exact slab volumes");
+}
+var auditReordered = exampleDocument.Clone();
+auditReordered.Walls.Reverse();
+auditReordered.Slabs.Reverse();
+auditReordered.Openings.Reverse();
+Check(auditJson == ModelAudit.ToJson(auditReordered),
+    "Audit output is independent of internal element insertion order");
+Check(!auditJson.Contains(exampleDocument.Id.ToString(), StringComparison.OrdinalIgnoreCase) &&
+      !auditJson.Contains(exampleDocument.Walls[0].Id.ToString(), StringComparison.OrdinalIgnoreCase),
+    "Audit snapshot omits project and element GUIDs");
+failed = false;
+var invalidAudit = exampleDocument.Clone();
+invalidAudit.Walls[0] = invalidAudit.Walls[0] with { Thickness = double.NaN };
+try { ModelAudit.ToJson(invalidAudit); }
+catch (InvalidDataException) { failed = true; }
+Check(failed, "Audit refuses non-finite invalid model geometry");
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
