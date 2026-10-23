@@ -13,13 +13,15 @@ Implementado en esta primera base:
 - Volumen neto de muros con descuento de aberturas y rechazo de superposiciones.
 - Dibujo de muros mediante dos clics sobre la planta.
 - Vista de planta 2D y geometría volumétrica 3D del mismo documento.
+- Navegación del visor 3D: orbitar arrastrando el ratón, zoom con la rueda y restauración de cámara.
 - Selección, inspección, eliminación y deshacer/rehacer.
 - Apertura y guardado JSON versionado con validación y respaldo previo al sobrescribir.
-- Comprobaciones automatizadas de dominio y persistencia.
+- Exportación de cantidades CSV y dibujo geométrico esquemático DXF ASCII R12 (no BIM, sin importación).
+- Comprobaciones automatizadas de dominio, persistencia y DXF.
 
-Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias), restricciones geométricas completas, uniones de muros, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, interoperabilidad IFC/DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
+Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias), restricciones geométricas completas, uniones de muros, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, IFC e importación DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
 
-> **Validación pendiente:** GitHub Actions está terminando sus trabajos sin asignar runner ni ejecutar pasos; aún no hay evidencia de compilación. Comprueba manualmente con los comandos siguientes en Windows. No uses esta versión para documentación constructiva real.
+> **Validación pendiente:** la ejecución [n.º 49](https://github.com/yetsin7/guanacaste-3d/actions/runs/39988219533) falló sin ejecutar ningún paso (y no generó logs de compilación). Se prepararon trabajos separados de núcleo Linux y escritorio Windows, pero la infraestructura de Actions sigue sin validar. No confundas un fallo previo al runner con errores de código. Comprueba manualmente con los comandos siguientes en Windows. No uses esta versión para documentación constructiva real.
 
 ## Requisitos
 
@@ -51,6 +53,20 @@ dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -
 ```
 
 Ejecutable: `dist/win-x64/Guanacaste3D.Desktop.exe`. Esta publicación genera un ejecutable de aplicación, **no** un instalador MSI/MSIX.
+
+## Exportar DXF y navegar en 3D
+
+En la aplicación, utiliza **Archivo → Exportar dibujo DXF R12** para generar
+contornos de muro y marcas de puertas/ventanas separados por capas y niveles.
+El resultado está en **metros** y representa geometría esquemática,
+**no** entidades BIM ni hojas de plano certificadas.
+
+En la pestaña **Modelo volumétrico 3D**, arrastra para orbitar la cámara,
+usa la rueda para acercar/alejar y elige **Vista → Restablecer cámara 3D**
+para volver a la perspectiva inicial.
+
+Consulta [alcance y pérdidas del DXF](docs/interoperabilidad-dxf.md) y
+[verificación manual de Windows](docs/qa-windows.md).
 
 ## Arquitectura
 
