@@ -50,6 +50,8 @@
           <Separator Margin="6,0"/>
           <Button Content="Seleccionar" Click="Select_Click"/>
           <Button Content="Muro (W)" Click="Wall_Click" Background="#D8EEE2"/>
+          <Button Content="Puerta" Click="Door_Click"/>
+          <Button Content="Ventana" Click="Window_Click"/>
           <Button Content="Eliminar" Click="Delete_Click"/>
           <Separator Margin="6,0"/>
           <Button Content="Deshacer" Click="Undo_Click"/>
@@ -80,7 +82,7 @@
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,7">
             <TextBlock Text="Nivel activo:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="LevelPicker" Width="170" SelectionChanged="LevelPicker_SelectionChanged"/>
-            <TextBlock Text="   Dibujar muros: W · cancelar: Esc · seleccionar: clic" FontSize="11"
+            <TextBlock Text="   W: muros · Esc: cancelar · seleccionar un muro para insertar puerta/ventana" FontSize="11"
                        Foreground="#74867C" VerticalAlignment="Center"/>
           </StackPanel>
           <TabControl x:Name="ViewTabs">
