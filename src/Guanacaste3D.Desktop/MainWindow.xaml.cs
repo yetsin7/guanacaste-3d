@@ -121,6 +121,40 @@ public partial class MainWindow : Window
             () => Guanacaste3D.Core.Interop.IfcExporter.ToStep(_session.Document, DateTimeOffset.Now),
             new System.Text.UTF8Encoding(false), "Status.IfcExported");
 
+    /// <summary>Exports the 3D model as glTF binary or Wavefront OBJ (with an MTL beside it).</summary>
+    private void ExportModel3D_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = GetText("Dialog.Model3DFilter"),
+            FileName = _session.Document.Name + ".glb",
+            AddExtension = true,
+            DefaultExt = ".glb"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(_session.Document);
+            if (string.Equals(System.IO.Path.GetExtension(dialog.FileName), ".obj", StringComparison.OrdinalIgnoreCase))
+            {
+                var mtlPath = System.IO.Path.ChangeExtension(dialog.FileName, ".mtl");
+                var (obj, mtl) = Guanacaste3D.Core.Interop.MeshExporter.ToObj(mesh, System.IO.Path.GetFileName(mtlPath));
+                System.IO.File.WriteAllText(dialog.FileName, obj, new System.Text.UTF8Encoding(false));
+                System.IO.File.WriteAllText(mtlPath, mtl, new System.Text.UTF8Encoding(false));
+            }
+            else
+            {
+                System.IO.File.WriteAllBytes(dialog.FileName,
+                    Guanacaste3D.Core.Interop.MeshExporter.ToGlb(mesh, _session.Document.Name));
+            }
+            StatusText.Text = GetText("Status.Model3DExported");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Asks for a destination and writes a generated text export with error reporting.</summary>
     private void ExportText(string filterKey, string fileNameKey, string extension,
         Func<string> generate, System.Text.Encoding encoding, string statusKey)
