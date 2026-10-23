@@ -34,6 +34,27 @@ public sealed class DocumentSession
         return id;
     }
 
+    public Guid AddLevel()
+    {
+        var id = Guid.NewGuid();
+        Commit(doc =>
+        {
+            var elevation = doc.Levels.Max(l => l.Elevation) + 3;
+            doc.Levels.Add(new Level(id, $"Nivel {doc.Levels.Count + 1}", elevation));
+        });
+        return id;
+    }
+
+    public void UpdateWall(Guid id, double thickness, double height)
+    {
+        if (!Document.Walls.Any(w => w.Id == id)) return;
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == id);
+            doc.Walls[index] = doc.Walls[index] with { Thickness = thickness, Height = height };
+        });
+    }
+
     public void RemoveWall(Guid id)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;

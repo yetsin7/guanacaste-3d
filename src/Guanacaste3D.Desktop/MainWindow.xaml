@@ -1,0 +1,121 @@
+<Window x:Class="Guanacaste3D.Desktop.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Guanacaste 3D" Width="1450" Height="930" MinWidth="1000" MinHeight="650"
+  Background="#F1F4F2" WindowStartupLocation="CenterScreen">
+  <DockPanel LastChildFill="True">
+    <Menu DockPanel.Dock="Top" Background="#FFFFFF" Padding="4,2">
+      <MenuItem Header="_Archivo">
+        <MenuItem Header="_Nuevo proyecto" Click="New_Click"/>
+        <MenuItem Header="_Abrir proyecto..." Click="Open_Click"/>
+        <Separator/>
+        <MenuItem Header="_Guardar" Click="Save_Click"/>
+        <MenuItem Header="Guardar _como..." Click="SaveAs_Click"/>
+        <Separator/>
+        <MenuItem Header="Salir" Click="Exit_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Editar">
+        <MenuItem Header="Deshacer" Click="Undo_Click"/>
+        <MenuItem Header="Rehacer" Click="Redo_Click"/>
+        <MenuItem Header="Eliminar seleccionado" Click="Delete_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Vista">
+        <MenuItem Header="Planta 2D" Click="ShowPlan_Click"/>
+        <MenuItem Header="Modelo 3D" Click="ShowModel_Click"/>
+      </MenuItem>
+      <MenuItem Header="A_yuda">
+        <MenuItem Header="Acerca de Guanacaste 3D" Click="About_Click"/>
+      </MenuItem>
+    </Menu>
+    <Border DockPanel.Dock="Top" Background="#FDFEFD" BorderBrush="#CCD8D0" BorderThickness="0,0,0,1" Padding="12,9">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+          <Viewbox Width="42" Height="42" Margin="0,0,10,0">
+            <Canvas Width="48" Height="48">
+              <Ellipse Canvas.Left="4" Canvas.Top="6" Width="40" Height="28" Fill="#21885C"/>
+              <Ellipse Canvas.Left="12" Canvas.Top="1" Width="22" Height="28" Fill="#36A36D"/>
+              <Path Data="M 23 42 L 23 22 M 23 32 L 12 20 M 23 29 L 35 17" Stroke="#6D4B32" StrokeThickness="5" StrokeStartLineCap="Round"/>
+              <Path Data="M 7 43 Q 24 37 41 43" Stroke="#31AA8E" StrokeThickness="3" Fill="Transparent"/>
+            </Canvas>
+          </Viewbox>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="GUANACASTE 3D" Foreground="#174F3D" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="Estudio de arquitectura y modelado BIM" Foreground="#6F8178" FontSize="11"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Content="Nuevo" Click="New_Click"/>
+          <Button Content="Abrir" Click="Open_Click"/>
+          <Button Content="Guardar" Click="Save_Click"/>
+          <Separator Margin="6,0"/>
+          <Button Content="Seleccionar" Click="Select_Click"/>
+          <Button Content="Muro (W)" Click="Wall_Click" Background="#D8EEE2"/>
+          <Button Content="Eliminar" Click="Delete_Click"/>
+          <Separator Margin="6,0"/>
+          <Button Content="Deshacer" Click="Undo_Click"/>
+          <Button Content="Rehacer" Click="Redo_Click"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <StatusBar DockPanel.Dock="Bottom" Background="#E4EEE8" BorderBrush="#CBD9D0" BorderThickness="1,1,1,0">
+      <TextBlock x:Name="StatusText" Text="Listo" Foreground="#355A49"/>
+    </StatusBar>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="285"/>
+      </Grid.ColumnDefinitions>
+      <Border Grid.Column="0" BorderBrush="#D2DDD6" BorderThickness="0,0,1,0" Background="White">
+        <DockPanel>
+          <TextBlock Text="NAVEGADOR DE PROYECTO" DockPanel.Dock="Top" FontWeight="Bold" FontSize="12"
+                     Foreground="#365B49" Margin="14,18,8,12"/>
+          <Button DockPanel.Dock="Bottom" Content="+ Añadir nivel" Click="AddLevel_Click" Margin="10,10,10,14"/>
+          <TreeView x:Name="ProjectTree" Margin="10,2,5,6"
+                    SelectedItemChanged="ProjectTree_SelectedItemChanged" />
+        </DockPanel>
+      </Border>
+      <Grid Grid.Column="1" Background="#FAFCFA">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,7">
+            <TextBlock Text="Nivel activo:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="LevelPicker" Width="170" SelectionChanged="LevelPicker_SelectionChanged"/>
+            <TextBlock Text="   Dibujar muros: W · cancelar: Esc · seleccionar: clic" FontSize="11"
+                       Foreground="#74867C" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TabControl x:Name="ViewTabs">
+            <TabItem Header="  Planta arquitectónica 2D  ">
+              <Canvas x:Name="PlanCanvas" Background="White" ClipToBounds="True"
+                      MouseLeftButtonDown="PlanCanvas_MouseLeftButtonDown"
+                      MouseRightButtonDown="PlanCanvas_MouseRightButtonDown"
+                      MouseWheel="PlanCanvas_MouseWheel"
+                      SizeChanged="PlanCanvas_SizeChanged"/>
+            </TabItem>
+            <TabItem Header="  Modelo volumétrico 3D  ">
+              <Viewport3D x:Name="ModelViewport" ClipToBounds="True"/>
+            </TabItem>
+          </TabControl>
+        </DockPanel>
+      </Grid>
+      <Border Grid.Column="2" BorderBrush="#D2DDD6" BorderThickness="1,0,0,0" Background="White">
+        <StackPanel Margin="15,18">
+          <TextBlock Text="PROPIEDADES" FontSize="12" FontWeight="Bold" Foreground="#365B49" Margin="0,0,0,17"/>
+          <TextBlock x:Name="PropertiesText" TextWrapping="Wrap" Foreground="#303D34"
+                     FontSize="12" LineHeight="22"/>
+          <Separator Margin="0,20,0,14"/>
+          <TextBlock Text="Parámetros del muro seleccionado" FontWeight="SemiBold" FontSize="12"
+                     Margin="0,0,0,10"/>
+          <TextBlock Text="Espesor (metros)" Foreground="#697B70" FontSize="11"/>
+          <TextBox x:Name="ThicknessInput" Text="0.20" Margin="0,4,0,12"/>
+          <TextBlock Text="Altura (metros)" Foreground="#697B70" FontSize="11"/>
+          <TextBox x:Name="HeightInput" Text="3.00" Margin="0,4,0,12"/>
+          <Button Content="Aplicar al muro" Click="ApplyProperties_Click"
+                  Background="#D8EEE2" HorizontalAlignment="Stretch"/>
+          <TextBlock TextWrapping="Wrap" Foreground="#829088" FontSize="11"
+                     Margin="0,24,0,0"
+                     Text="Prototipo BIM inicial: las herramientas de documentación avanzada y modelado de producción se incorporarán progresivamente."/>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>
