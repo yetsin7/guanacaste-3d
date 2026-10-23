@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Guanacaste3D.Core;
 
 /// <summary>
@@ -6,10 +8,10 @@ namespace Guanacaste3D.Core;
 /// </summary>
 public sealed record Slab(Guid Id, Guid LevelId, Point2 Min, Point2 Max, double Thickness)
 {
-    public double Width => Max.X - Min.X;
-    public double Depth => Max.Y - Min.Y;
-    public double Area => Width * Depth;
-    public double Volume => Area * Thickness;
+    [JsonIgnore] public double Width => Max.X - Min.X;
+    [JsonIgnore] public double Depth => Max.Y - Min.Y;
+    [JsonIgnore] public double Area => Width * Depth;
+    [JsonIgnore] public double Volume => Area * Thickness;
 
     /// <summary>Normalize two opposite corners to the rectangle's lower/upper bounds.</summary>
     public static Slab FromCorners(Guid id, Guid levelId, Point2 first, Point2 second,
