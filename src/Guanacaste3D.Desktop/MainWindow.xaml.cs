@@ -441,7 +441,8 @@ public partial class MainWindow : Window
     private void FitPlan_Click(object sender, RoutedEventArgs e)
     {
         var walls = _session.Document.Walls.Where(w => w.LevelId == _activeLevelId).ToArray();
-        if (walls.Length == 0)
+        var slabs = _session.Document.Slabs.Where(s => s.LevelId == _activeLevelId).ToArray();
+        if (walls.Length == 0 && slabs.Length == 0)
         {
             _scale = 36;
             _panOffset = new Point();
@@ -449,7 +450,8 @@ public partial class MainWindow : Window
             StatusText.Text = "Planta centrada en el origen.";
             return;
         }
-        var points = walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
+        var points = walls.SelectMany(w => new[] { w.Start, w.End })
+            .Concat(slabs.SelectMany(s => new[] { s.Min, s.Max })).ToArray();
         var minX = points.Min(p => p.X);
         var maxX = points.Max(p => p.X);
         var minY = points.Min(p => p.Y);
@@ -492,6 +494,22 @@ public partial class MainWindow : Window
         }
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
+        foreach (var slab in _session.Document.Slabs.Where(s => s.LevelId == _activeLevelId))
+        {
+            var topLeft = WorldToCanvas(new Point2(slab.Min.X, slab.Max.Y));
+            var rectangle = new Rectangle
+            {
+                Width = slab.Width * _scale,
+                Height = slab.Depth * _scale,
+                Fill = new SolidColorBrush(Color.FromArgb(75, 91, 167, 130)),
+                Stroke = slab.Id == _selectedSlabId ? Brushes.DarkOrange : Brushes.SeaGreen,
+                StrokeThickness = slab.Id == _selectedSlabId ? 3 : 1.5,
+                Tag = slab.Id
+            };
+            Canvas.SetLeft(rectangle, topLeft.X);
+            Canvas.SetTop(rectangle, topLeft.Y);
+            PlanCanvas.Children.Add(rectangle);
+        }
         foreach (var wall in _session.Document.Walls.Where(w => w.LevelId == _activeLevelId))
         {
             var color = wall.Id == _selectedWallId ? Brushes.DarkOrange : Brushes.DarkSlateGray;
@@ -652,6 +670,49 @@ public partial class MainWindow : Window
         StatusText.Text = "Abertura eliminada.";
     }
 
+    private void ApplySlab_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedSlabId is not Guid id)
+        {
+            StatusText.Text = "Selecciona una losa en planta o en el explorador.";
+            return;
+        }
+        if (!double.TryParse(SlabThicknessInput.Text, NumberStyles.Float,
+                CultureInfo.CurrentCulture, out var thickness) || !double.IsFinite(thickness))
+        {
+            MessageBox.Show(this, "Introduce un espesor numérico válido.", "Losa");
+            return;
+        }
+        try
+        {
+            _session.UpdateSlab(id, thickness);
+            StatusText.Text = "Espesor de losa actualizado.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Losa no válida",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void DuplicateSlab_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedSlabId is not Guid id)
+        {
+            StatusText.Text = "Selecciona una losa para duplicarla.";
+            return;
+        }
+        try
+        {
+            _selectedSlabId = _session.DuplicateSlab(id);
+            StatusText.Text = "Losa duplicada a 1 m en X/Y.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo duplicar la losa");
+        }
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         // Selecting an opening also selects its host for inspection. Delete must
@@ -661,6 +722,14 @@ public partial class MainWindow : Window
             _session.RemoveOpening(openingId);
             _selectedOpeningId = null;
             StatusText.Text = "Abertura seleccionada eliminada; muro conservado.";
+            RefreshAll();
+            return;
+        }
+        if (_selectedSlabId is Guid slabId)
+        {
+            _session.RemoveSlab(slabId);
+            _selectedSlabId = null;
+            StatusText.Text = "Losa eliminada.";
             RefreshAll();
             return;
         }
@@ -699,6 +768,7 @@ public partial class MainWindow : Window
             _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(w => w.Id == _selectedWallId)) _selectedWallId = null;
         if (!_session.Document.Openings.Any(o => o.Id == _selectedOpeningId)) _selectedOpeningId = null;
+        if (!_session.Document.Slabs.Any(s => s.Id == _selectedSlabId)) _selectedSlabId = null;
         RefreshLevelPicker();
         RefreshTree();
         RefreshProperties();
@@ -738,6 +808,12 @@ public partial class MainWindow : Window
                         });
                     branch.Items.Add(wallBranch);
                 }
+            foreach (var slab in _session.Document.Slabs.Where(s => s.LevelId == level.Id))
+                branch.Items.Add(new TreeViewItem
+                {
+                    Header = $"Losa · {slab.Area:0.00} m²",
+                    Tag = slab.Id
+                });
             levels.Items.Add(branch);
         }
         project.Items.Add(levels);
@@ -755,13 +831,26 @@ public partial class MainWindow : Window
             OpeningHeightInput.Text = selectedOpening.Height.ToString("0.###", CultureInfo.CurrentCulture);
         }
 
+        var slab = _session.Document.Slabs.FirstOrDefault(s => s.Id == _selectedSlabId);
+        if (slab is not null)
+        {
+            PropertiesText.Text = $"Elemento: losa rectangular\n" +
+                $"Ancho: {slab.Width:0.00} m\nLargo: {slab.Depth:0.00} m\n" +
+                $"Espesor: {slab.Thickness:0.00} m\n" +
+                $"Área: {slab.Area:0.00} m²\nVolumen: {slab.Volume:0.00} m³\n" +
+                $"Identificador: {slab.Id.ToString()[..8]}";
+            SlabThicknessInput.Text = slab.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
+            return;
+        }
+
         var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == _selectedWallId);
         if (wall is null)
         {
             PropertiesText.Text = $"Proyecto: {_session.Document.Name}\n" +
                 $"Niveles: {_session.Document.Levels.Count}\n" +
-                $"Muros: {_session.Document.Walls.Count}\n\n" +
-                "Selecciona un muro para ver sus propiedades.";
+                $"Muros: {_session.Document.Walls.Count}\n" +
+                $"Losas: {_session.Document.Slabs.Count}\n\n" +
+                "Selecciona un muro o losa para ver sus propiedades.";
             return;
         }
         PropertiesText.Text = $"Elemento: muro\nLongitud: {wall.Length:0.00} m\n" +
