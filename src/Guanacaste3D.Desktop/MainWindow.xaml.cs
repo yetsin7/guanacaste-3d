@@ -13,15 +13,17 @@ namespace Guanacaste3D.Desktop;
 
 public partial class MainWindow : Window
 {
+    private enum DrawingMode { Select, Wall, Slab }
     private DocumentSession _session;
     private Guid _activeLevelId;
     private Guid? _selectedWallId;
     private Guid? _selectedOpeningId;
+    private Guid? _selectedSlabId;
     private double? _selectedWallOffset;
-    private Point2? _pendingWallStart;
+    private Point2? _pendingDrawingStart;
     private string? _filePath;
     private bool _dirty;
-    private bool _drawingWall;
+    private DrawingMode _drawingMode = DrawingMode.Select;
     private double _scale = 36;
     private Point _panOffset;
     private bool _refreshingLevels;
@@ -98,6 +100,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportSlabs_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Cantidades de losas (*.csv)|*.csv",
+            FileName = "losas-guanacaste3d.csv",
+            AddExtension = true,
+            DefaultExt = ".csv"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dialog.FileName,
+                SlabSchedule.ToCsv(_session.Document),
+                new System.Text.UTF8Encoding(true));
+            StatusText.Text = "Cantidades de losas exportadas a CSV.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo exportar las losas",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Export a schematic floor plan as an ASCII DXF R12 drawing.</summary>
     private void ExportDxf_Click(object sender, RoutedEventArgs e)
     {
@@ -162,13 +188,14 @@ public partial class MainWindow : Window
         _session = new DocumentSession(document);
         _session.Changed += OnDocumentChanged;
         _activeLevelId = document.Levels[0].Id;
-        _pendingWallStart = null;
+        _pendingDrawingStart = null;
         _selectedWallId = null;
         _selectedOpeningId = null;
+        _selectedSlabId = null;
         _selectedWallOffset = null;
         _filePath = filename;
         _dirty = false;
-        _drawingWall = false;
+        _drawingMode = DrawingMode.Select;
         RefreshAll();
     }
 
@@ -205,10 +232,12 @@ public partial class MainWindow : Window
     {
         _selectedWallId = null;
         _selectedOpeningId = null;
+        _selectedSlabId = null;
         _selectedWallOffset = null;
     }
     private void Select_Click(object sender, RoutedEventArgs e) => SetWallTool(false);
     private void Wall_Click(object sender, RoutedEventArgs e) => SetWallTool(true);
+    private void Slab_Click(object sender, RoutedEventArgs e) => SetDrawingTool(DrawingMode.Slab);
     private void Door_Click(object sender, RoutedEventArgs e) =>
         CreateHostedOpening(OpeningKind.Door);
     private void Window_Click(object sender, RoutedEventArgs e) =>
@@ -246,12 +275,20 @@ public partial class MainWindow : Window
         MessageBox.Show(this, "Guanacaste 3D 0.1.0\nPrototipo BIM de escritorio en C# y .NET 10.",
             "Acerca de Guanacaste 3D", MessageBoxButton.OK, MessageBoxImage.Information);
 
-    private void SetWallTool(bool drawing)
+    private void SetWallTool(bool drawing) =>
+        SetDrawingTool(drawing ? DrawingMode.Wall : DrawingMode.Select);
+
+    private void SetDrawingTool(DrawingMode mode)
     {
-        _drawingWall = drawing;
-        _pendingWallStart = null;
-        if (drawing) ClearSelection();
-        StatusText.Text = drawing ? "Muro: haz clic en inicio y fin (Esc cancela)." : "Modo selección.";
+        _drawingMode = mode;
+        _pendingDrawingStart = null;
+        if (mode != DrawingMode.Select) ClearSelection();
+        StatusText.Text = mode switch
+        {
+            DrawingMode.Wall => "Muro: elige inicio y fin (Esc cancela).",
+            DrawingMode.Slab => "Losa: elige dos esquinas opuestas (Esc cancela).",
+            _ => "Modo selección."
+        };
         RenderPlan();
     }
 
@@ -268,7 +305,7 @@ public partial class MainWindow : Window
             return;
         _activeLevelId = id;
         ClearSelection();
-        _pendingWallStart = null;
+        _pendingDrawingStart = null;
         RefreshAll();
     }
 
@@ -278,13 +315,24 @@ public partial class MainWindow : Window
         if (_session.Document.Openings.FirstOrDefault(o => o.Id == id) is WallOpening opening)
         {
             _selectedOpeningId = id;
+            _selectedSlabId = null;
             _selectedWallId = opening.WallId;
+            RefreshProperties();
+            RenderPlan();
+        }
+        else if (_session.Document.Slabs.Any(s => s.Id == id))
+        {
+            ClearSelection();
+            _selectedSlabId = id;
+            _activeLevelId = _session.Document.Slabs.Single(s => s.Id == id).LevelId;
+            RefreshLevelPicker();
             RefreshProperties();
             RenderPlan();
         }
         else if (_session.Document.Walls.Any(w => w.Id == id))
         {
             _selectedOpeningId = null;
+            _selectedSlabId = null;
             _selectedWallId = id;
             RefreshProperties();
             RenderPlan();
@@ -292,8 +340,7 @@ public partial class MainWindow : Window
         else if (_session.Document.Levels.Any(l => l.Id == id))
         {
             _activeLevelId = id;
-            _selectedWallId = null;
-            _selectedOpeningId = null;
+            ClearSelection();
             RefreshLevelPicker();
             RenderPlan();
             RefreshProperties();
@@ -302,12 +349,17 @@ public partial class MainWindow : Window
 
     private void PlanCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!_drawingWall)
+        if (_drawingMode == DrawingMode.Select)
         {
-            _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
-                && _session.Document.Walls.Any(w => w.Id == id) ? id : null;
-            _selectedWallOffset = null;
-            _selectedOpeningId = null;
+            var tag = (e.OriginalSource as FrameworkElement)?.Tag;
+            ClearSelection();
+            if (tag is Guid id)
+            {
+                if (_session.Document.Slabs.Any(s => s.Id == id))
+                    _selectedSlabId = id;
+                else if (_session.Document.Walls.Any(w => w.Id == id))
+                    _selectedWallId = id;
+            }
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(w => w.Id == wallId);
@@ -326,31 +378,44 @@ public partial class MainWindow : Window
         if (SnapGridCheck.IsChecked == true)
             point = new Point2(Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
                                Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10);
-        if (_pendingWallStart is null)
+        if (_pendingDrawingStart is null)
         {
-            _pendingWallStart = point;
-            StatusText.Text = "Elige el segundo extremo del muro.";
+            _pendingDrawingStart = point;
+            StatusText.Text = _drawingMode == DrawingMode.Slab
+                ? "Selecciona la esquina opuesta de la losa."
+                : "Elige el segundo extremo del muro.";
             RenderPlan();
             return;
         }
         try
         {
-            _selectedWallId = _session.AddWall(_activeLevelId, _pendingWallStart.Value, point);
-            _selectedOpeningId = null;
-            _selectedWallOffset = null;
-            _pendingWallStart = null;
-            StatusText.Text = "Muro creado. Haz clic para iniciar otro.";
+            if (_drawingMode == DrawingMode.Slab)
+            {
+                var slabId = _session.AddSlab(_activeLevelId, _pendingDrawingStart.Value, point);
+                ClearSelection();
+                _selectedSlabId = slabId;
+                StatusText.Text = "Losa rectangular creada.";
+            }
+            else
+            {
+                var wallId = _session.AddWall(_activeLevelId, _pendingDrawingStart.Value, point);
+                ClearSelection();
+                _selectedWallId = wallId;
+                StatusText.Text = "Muro creado. Haz clic para iniciar otro.";
+            }
+            _pendingDrawingStart = null;
             RefreshAll();
         }
         catch (InvalidDataException ex)
         {
-            MessageBox.Show(this, ex.Message, "Geometría no válida", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, ex.Message, "Geometría no válida",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _pendingWallStart = null;
+        _pendingDrawingStart = null;
         RenderPlan();
         StatusText.Text = "Trazo cancelado.";
     }
@@ -445,7 +510,7 @@ public partial class MainWindow : Window
                     AddLine(from, to, 2, Brushes.SteelBlue, wall.Id);
             }
         }
-        if (_pendingWallStart is Point2 start)
+        if (_pendingDrawingStart is Point2 start)
         {
             var p = WorldToCanvas(start);
             var marker = new Ellipse { Width = 12, Height = 12, Fill = Brushes.ForestGreen };
@@ -864,6 +929,7 @@ public partial class MainWindow : Window
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { Undo_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y) { Redo_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
+        else if (e.Key == Key.L) { SetDrawingTool(DrawingMode.Slab); e.Handled = true; }
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }
