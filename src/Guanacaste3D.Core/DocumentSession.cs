@@ -41,6 +41,62 @@ public sealed class DocumentSession
         return id;
     }
 
+    /// <summary>Add a rectangular slab, sorting opposite corners and validating atomically.</summary>
+    public Guid AddSlab(Guid levelId, Point2 first, Point2 second, double thickness = 0.2)
+    {
+        var id = Guid.NewGuid();
+        Commit(doc => doc.Slabs.Add(Slab.FromCorners(id, levelId, first, second, thickness)));
+        return id;
+    }
+
+    public void UpdateSlab(Guid id, double thickness)
+    {
+        if (!Document.Slabs.Any(s => s.Id == id))
+            throw new InvalidDataException("La losa seleccionada no existe.");
+        Commit(doc =>
+        {
+            var index = doc.Slabs.FindIndex(s => s.Id == id);
+            doc.Slabs[index] = doc.Slabs[index] with { Thickness = thickness };
+        });
+    }
+
+    /// <summary>Move a slab without changing its dimensions.</summary>
+    public void MoveSlab(Guid id, double dx, double dy)
+    {
+        if (!Document.Slabs.Any(s => s.Id == id))
+            throw new InvalidDataException("La losa seleccionada no existe.");
+        Commit(doc =>
+        {
+            var index = doc.Slabs.FindIndex(s => s.Id == id);
+            var slab = doc.Slabs[index];
+            doc.Slabs[index] = slab with
+            {
+                Min = new Point2(slab.Min.X + dx, slab.Min.Y + dy),
+                Max = new Point2(slab.Max.X + dx, slab.Max.Y + dy)
+            };
+        });
+    }
+
+    public Guid DuplicateSlab(Guid id, double dx = 1, double dy = 1)
+    {
+        var original = Document.Slabs.FirstOrDefault(s => s.Id == id)
+            ?? throw new InvalidDataException("La losa seleccionada no existe.");
+        var newId = Guid.NewGuid();
+        Commit(doc => doc.Slabs.Add(original with
+        {
+            Id = newId,
+            Min = new Point2(original.Min.X + dx, original.Min.Y + dy),
+            Max = new Point2(original.Max.X + dx, original.Max.Y + dy)
+        }));
+        return newId;
+    }
+
+    public void RemoveSlab(Guid id)
+    {
+        if (!Document.Slabs.Any(s => s.Id == id)) return;
+        Commit(doc => doc.Slabs.RemoveAll(s => s.Id == id));
+    }
+
     public Guid AddLevel()
     {
         var id = Guid.NewGuid();
