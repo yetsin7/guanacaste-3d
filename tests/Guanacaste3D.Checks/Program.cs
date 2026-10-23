@@ -424,6 +424,15 @@ auditReordered.Slabs.Reverse();
 auditReordered.Openings.Reverse();
 Check(auditJson == ModelAudit.ToJson(auditReordered),
     "Audit output is independent of internal element insertion order");
+// Identical coincident geometry must not make audit ordering depend on insertion order.
+var auditCoincident = exampleDocument.Clone();
+var copied = exampleDocument.Walls[0] with { Id = Guid.NewGuid() };
+auditCoincident.Walls.Add(copied);
+var auditBeforeReverse = ModelAudit.ToJson(auditCoincident);
+auditCoincident.Walls.Reverse();
+Check(auditBeforeReverse == ModelAudit.ToJson(auditCoincident),
+    "Audit snapshots remain stable with coincident wall geometry");
+
 Check(!auditJson.Contains(exampleDocument.Id.ToString(), StringComparison.OrdinalIgnoreCase) &&
       !auditJson.Contains(exampleDocument.Walls[0].Id.ToString(), StringComparison.OrdinalIgnoreCase),
     "Audit snapshot omits project and element GUIDs");
