@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Guanacaste3D.Core;
 
 /// <summary>Types of wall-hosted openings.</summary>
@@ -7,8 +9,8 @@ public enum OpeningKind { Door, Window }
 public sealed record WallOpening(Guid Id, Guid WallId, OpeningKind Kind,
     double Offset, double Width, double Sill, double Height)
 {
-    public double Begin => Offset - Width / 2;
-    public double End => Offset + Width / 2;
+    [JsonIgnore] public double Begin => Offset - Width / 2;
+    [JsonIgnore] public double End => Offset + Width / 2;
 }
 
 /// <summary>A portion of solid wall excluding an opening.</summary>
