@@ -3,8 +3,9 @@ namespace Guanacaste3D.Core;
 /// <summary>Validated document editing and undo/redo history, independent of the UI.</summary>
 public sealed class DocumentSession
 {
-    private readonly Stack<BuildingDocument> _undo = new();
-    private readonly Stack<BuildingDocument> _redo = new();
+    private const int MaxHistory = 40;
+    private readonly List<BuildingDocument> _undo = [];
+    private readonly List<BuildingDocument> _redo = [];
     public BuildingDocument Document { get; private set; }
     public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
@@ -16,12 +17,18 @@ public sealed class DocumentSession
         Document = document.Clone();
     }
 
+    private static void PushSnapshot(List<BuildingDocument> list, BuildingDocument snapshot)
+    {
+        if (list.Count >= MaxHistory) list.RemoveAt(0);
+        list.Add(snapshot);
+    }
+
     private void Commit(Action<BuildingDocument> action)
     {
         var copy = Document.Clone();
         action(copy);
         copy.Validate();
-        _undo.Push(Document);
+        PushSnapshot(_undo, Document);
         _redo.Clear();
         Document = copy;
         Changed?.Invoke(this, EventArgs.Empty);
@@ -55,10 +62,32 @@ public sealed class DocumentSession
         });
     }
 
+    /// <summary>Adds a door or window opening to its existing host wall.</summary>
+    public Guid AddOpening(Guid wallId, OpeningKind kind, double? offset = null,
+        double width = 0.9, double sill = 0, double height = 2.1)
+    {
+        var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
+            ?? throw new InvalidDataException("El muro anfitrión no existe.");
+        var id = Guid.NewGuid();
+        Commit(doc => doc.Openings.Add(new WallOpening(id, wallId, kind,
+            offset ?? wall.Length / 2, width, sill, height)));
+        return id;
+    }
+
+    public void RemoveOpening(Guid id)
+    {
+        if (!Document.Openings.Any(o => o.Id == id)) return;
+        Commit(doc => doc.Openings.RemoveAll(o => o.Id == id));
+    }
+
     public void RemoveWall(Guid id)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
-        Commit(doc => doc.Walls.RemoveAll(w => w.Id == id));
+        Commit(doc =>
+        {
+            doc.Openings.RemoveAll(o => o.WallId == id);
+            doc.Walls.RemoveAll(w => w.Id == id);
+        });
     }
 
     public void Rename(string name) => Commit(doc => doc.Name = name.Trim());
@@ -66,16 +95,18 @@ public sealed class DocumentSession
     public void Undo()
     {
         if (!CanUndo) return;
-        _redo.Push(Document);
-        Document = _undo.Pop();
+        PushSnapshot(_redo, Document);
+        Document = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Redo()
     {
         if (!CanRedo) return;
-        _undo.Push(Document);
-        Document = _redo.Pop();
+        PushSnapshot(_undo, Document);
+        Document = _redo[^1];
+        _redo.RemoveAt(_redo.Count - 1);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }
