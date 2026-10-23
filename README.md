@@ -11,12 +11,12 @@ Implementado en esta primera base:
 - Documento de proyecto con niveles, muros y aberturas paramétricas vinculadas a su muro anfitrión.
 - Puertas y ventanas como huecos geométricos básicos, posicionables mediante clic en el muro (sin hojas, marcos ni familias aún).
 - Volumen neto de muros con descuento de aberturas y rechazo de superposiciones.
-- Dibujo de muros mediante dos clics sobre la planta.
+- Dibujo de muros y losas rectangulares mediante dos clics sobre la planta (W y L).
 - Vista de planta 2D y geometría volumétrica 3D del mismo documento.
 - Navegación del visor 3D: orbitar arrastrando el ratón, zoom con la rueda y restauración de cámara.
 - Selección, inspección, eliminación y deshacer/rehacer.
 - Apertura y guardado JSON versionado con validación y respaldo previo al sobrescribir.
-- Exportación de cantidades CSV y dibujo geométrico esquemático DXF ASCII R12 (no BIM, sin importación).
+- Exportación de cantidades de muros y losas a CSV y geometría esquemática a DXF ASCII R12 (no BIM, sin importación).
 - Comprobaciones automatizadas de dominio, persistencia y DXF.
 
 Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias), restricciones geométricas completas, uniones de muros, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, IFC e importación DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
@@ -71,9 +71,17 @@ Ejecutable: `dist/win-x64/Guanacaste3D.Desktop.exe`. Esta publicación genera un
 ## Exportar DXF y navegar en 3D
 
 En la aplicación, utiliza **Archivo → Exportar dibujo DXF R12** para generar
-contornos de muro y marcas de puertas/ventanas separados por capas y niveles.
+contornos de muros, losas y marcas de puertas/ventanas separados por capas y niveles.
 El resultado está en **metros** y representa geometría esquemática,
 **no** entidades BIM ni hojas de plano certificadas.
+
+Para crear una losa, pulsa **Losa (L)** y marca dos esquinas opuestas.
+La losa queda vinculada al nivel activo y tiene espesor, área y volumen;
+puedes seleccionarla, editar su espesor, duplicarla y eliminarla.
+Su cara superior coincide con la cota del nivel. Es **rectangular y
+alineada a los ejes**: aún no admite polígonos, recortes, pendientes,
+materiales multicapa ni uniones automáticas. Los proyectos antiguos
+sin el campo opcional `Slabs` se siguen abriendo.
 
 En la pestaña **Modelo volumétrico 3D**, arrastra para orbitar la cámara,
 usa la rueda para acercar/alejar y elige **Vista → Restablecer cámara 3D**
