@@ -11,18 +11,21 @@ public sealed class DocumentSession
     public bool CanRedo => _redo.Count > 0;
     public event EventHandler? Changed;
 
+    /// <summary>Starts an isolated edit session from a validated document snapshot.</summary>
     public DocumentSession(BuildingDocument document)
     {
         document.Validate();
         Document = document.Clone();
     }
 
+    /// <summary>Adds a history snapshot while enforcing the bounded-memory policy.</summary>
     private static void PushSnapshot(List<BuildingDocument> list, BuildingDocument snapshot)
     {
         if (list.Count >= MaxHistory) list.RemoveAt(0);
         list.Add(snapshot);
     }
 
+    /// <summary>Validates and atomically commits a mutation to the active document.</summary>
     private void Commit(Action<BuildingDocument> action)
     {
         var copy = Document.Clone();
@@ -34,24 +37,38 @@ public sealed class DocumentSession
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public Guid AddWall(Guid levelId, Point2 start, Point2 end, double thickness = 0.20, double height = 3)
+    /// <summary>Adds a straight wall instance using a valid project wall type.</summary>
+    public Guid AddWall(Guid levelId, Point2 start, Point2 end, double thickness = 0.20,
+        double height = 3, Guid? wallTypeId = null)
     {
+        var selectedTypeId = wallTypeId ?? BuiltInWallTypes.Basic200Id;
+        if (!Document.WallTypes.Any(type => type.Id == selectedTypeId))
+            throw new InvalidDataException("The selected wall type does not exist.");
+        if (wallTypeId is not null)
+            thickness = Document.WallTypes.Single(type => type.Id == selectedTypeId).Thickness;
         var id = Guid.NewGuid();
-        Commit(doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)));
+        Commit(doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
+        {
+            WallTypeId = selectedTypeId
+        }));
         return id;
     }
 
+    /// <summary>Adds a level three meters above the current highest level.</summary>
     public Guid AddLevel()
     {
         var id = Guid.NewGuid();
         Commit(doc =>
         {
             var elevation = doc.Levels.Max(l => l.Elevation) + 3;
-            doc.Levels.Add(new Level(id, $"Nivel {doc.Levels.Count + 1}", elevation));
+            var level = new Level(id, $"Level {doc.Levels.Count + 1}", elevation);
+            doc.Levels.Add(level);
+            doc.Views.Add(BuiltInProjectViews.CreatePlan(level));
         });
         return id;
     }
 
+    /// <summary>Updates instance dimensions for an existing wall.</summary>
     public void UpdateWall(Guid id, double thickness, double height)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
@@ -62,12 +79,112 @@ public sealed class DocumentSession
         });
     }
 
+    /// <summary>Assigns a reusable type and its thickness to an existing wall.</summary>
+    public void SetWallType(Guid wallId, Guid wallTypeId)
+    {
+        var type = Document.WallTypes.FirstOrDefault(candidate => candidate.Id == wallTypeId)
+            ?? throw new InvalidDataException("The selected wall type does not exist.");
+        if (!Document.Walls.Any(wall => wall.Id == wallId))
+            throw new InvalidDataException("The selected wall does not exist.");
+        Commit(document =>
+        {
+            var index = document.Walls.FindIndex(wall => wall.Id == wallId);
+            document.Walls[index] = document.Walls[index] with
+            {
+                WallTypeId = wallTypeId,
+                Thickness = type.Thickness
+            };
+        });
+    }
+
+    /// <summary>Adds a reusable wall type to the project catalog.</summary>
+    public Guid AddWallType(string name, WallFunction function, double thickness, string materialName)
+    {
+        var id = Guid.NewGuid();
+        Commit(document => document.WallTypes.Add(
+            new WallType(id, name.Trim(), function, thickness, materialName.Trim())));
+        return id;
+    }
+
+    /// <summary>Updates a wall type and propagates its thickness to every instance.</summary>
+    public void UpdateWallType(Guid id, string name, WallFunction function, double thickness, string materialName)
+    {
+        if (!Document.WallTypes.Any(type => type.Id == id))
+            throw new InvalidDataException("The wall type does not exist.");
+        Commit(document =>
+        {
+            var typeIndex = document.WallTypes.FindIndex(type => type.Id == id);
+            document.WallTypes[typeIndex] = new WallType(
+                id, name.Trim(), function, thickness, materialName.Trim());
+            for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
+            {
+                if (document.Walls[wallIndex].WallTypeId == id)
+                    document.Walls[wallIndex] = document.Walls[wallIndex] with { Thickness = thickness };
+            }
+        });
+    }
+
+    /// <summary>Adds a rectangular room annotation to a level.</summary>
+    public Guid AddRoom(Guid levelId, Point2 firstCorner, Point2 secondCorner, string? name = null)
+    {
+        var id = Guid.NewGuid();
+        Commit(document =>
+        {
+            var number = (document.Rooms.Count + 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
+            document.Rooms.Add(new Room(id, levelId, number, name ?? $"Room {number}", firstCorner, secondCorner));
+        });
+        return id;
+    }
+
+    /// <summary>Adds a floor slab using a caller-supplied closed plan boundary.</summary>
+    public Guid AddFloor(Guid levelId, IReadOnlyCollection<Point2> boundary, double thickness = 0.20,
+        string? name = null)
+    {
+        var id = Guid.NewGuid();
+        Commit(document => document.Floors.Add(new FloorSlab(
+            id, levelId, name ?? $"Floor {document.Floors.Count + 1}", [.. boundary], thickness)));
+        return id;
+    }
+
+    /// <summary>Adds a numbered drawing sheet to the project document set.</summary>
+    public Guid AddSheet(SheetPaperSize paperSize = SheetPaperSize.A1, string? name = null)
+    {
+        var id = Guid.NewGuid();
+        Commit(document =>
+        {
+            var index = document.Sheets.Count + 1;
+            document.Sheets.Add(new DrawingSheet(id, $"A{index:D3}", name ?? $"Sheet {index}", paperSize));
+        });
+        return id;
+    }
+
+    /// <summary>Removes a room annotation from the project.</summary>
+    public void RemoveRoom(Guid id)
+    {
+        if (Document.Rooms.Any(room => room.Id == id))
+            Commit(document => document.Rooms.RemoveAll(room => room.Id == id));
+    }
+
+    /// <summary>Removes a floor slab from the project.</summary>
+    public void RemoveFloor(Guid id)
+    {
+        if (Document.Floors.Any(floor => floor.Id == id))
+            Commit(document => document.Floors.RemoveAll(floor => floor.Id == id));
+    }
+
+    /// <summary>Removes a drawing sheet from the project.</summary>
+    public void RemoveSheet(Guid id)
+    {
+        if (Document.Sheets.Any(sheet => sheet.Id == id))
+            Commit(document => document.Sheets.RemoveAll(sheet => sheet.Id == id));
+    }
+
     /// <summary>Adds a door or window opening to its existing host wall.</summary>
     public Guid AddOpening(Guid wallId, OpeningKind kind, double? offset = null,
         double width = 0.9, double sill = 0, double height = 2.1)
     {
         var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
-            ?? throw new InvalidDataException("El muro anfitrión no existe.");
+            ?? throw new InvalidDataException("The host wall does not exist.");
         var id = Guid.NewGuid();
         Commit(doc => doc.Openings.Add(new WallOpening(id, wallId, kind,
             offset ?? wall.Length / 2, width, sill, height)));
@@ -94,7 +211,7 @@ public sealed class DocumentSession
     public Guid DuplicateWall(Guid id, double deltaX = 1, double deltaY = 1)
     {
         var original = Document.Walls.FirstOrDefault(w => w.Id == id)
-            ?? throw new InvalidDataException("No existe el muro que deseas duplicar.");
+            ?? throw new InvalidDataException("The wall to duplicate does not exist.");
         var newId = Guid.NewGuid();
         Commit(doc =>
         {
@@ -114,7 +231,7 @@ public sealed class DocumentSession
     public void UpdateOpening(Guid id, double offset, double width, double sill, double height)
     {
         if (!Document.Openings.Any(o => o.Id == id))
-            throw new InvalidDataException("La abertura no existe.");
+            throw new InvalidDataException("The opening does not exist.");
         Commit(doc =>
         {
             var index = doc.Openings.FindIndex(o => o.Id == id);
@@ -129,9 +246,9 @@ public sealed class DocumentSession
     public void RotateWall(Guid id, double degrees)
     {
         if (!double.IsFinite(degrees))
-            throw new InvalidDataException("Ángulo de rotación inválido.");
+            throw new InvalidDataException("The rotation angle is invalid.");
         if (!Document.Walls.Any(w => w.Id == id))
-            throw new InvalidDataException("El muro no existe.");
+            throw new InvalidDataException("The wall does not exist.");
         var radians = degrees * Math.PI / 180;
         Commit(doc =>
         {
@@ -148,12 +265,14 @@ public sealed class DocumentSession
         });
     }
 
+    /// <summary>Removes a hosted opening when it exists.</summary>
     public void RemoveOpening(Guid id)
     {
         if (!Document.Openings.Any(o => o.Id == id)) return;
         Commit(doc => doc.Openings.RemoveAll(o => o.Id == id));
     }
 
+    /// <summary>Removes a wall and cascades removal to its hosted openings.</summary>
     public void RemoveWall(Guid id)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
@@ -164,8 +283,10 @@ public sealed class DocumentSession
         });
     }
 
-    public void Rename(string name) => Commit(doc => doc.Name = name.Trim());
+    /// <summary>Renames the active project after trimming surrounding whitespace.</summary>
+    public void Rename(string name) => Commit(document => document.Name = name.Trim());
 
+    /// <summary>Restores the previous validated document snapshot when available.</summary>
     public void Undo()
     {
         if (!CanUndo) return;
@@ -175,6 +296,7 @@ public sealed class DocumentSession
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Reapplies the next validated document snapshot when available.</summary>
     public void Redo()
     {
         if (!CanRedo) return;
