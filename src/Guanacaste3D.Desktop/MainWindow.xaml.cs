@@ -68,6 +68,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportQuantities_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Tabla de cantidades (*.csv)|*.csv",
+            FileName = "cantidades-guanacaste3d.csv",
+            AddExtension = true,
+            DefaultExt = ".csv"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dialog.FileName,
+                QuantitySchedule.ToCsv(_session.Document),
+                new System.Text.UTF8Encoding(true));
+            StatusText.Text = "Cantidades BIM exportadas a CSV.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo exportar",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e) => SaveProject(false);
     private void SaveAs_Click(object sender, RoutedEventArgs e) => SaveProject(true);
 
