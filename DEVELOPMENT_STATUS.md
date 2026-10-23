@@ -13,6 +13,9 @@ until the parameters increment lands).
 | Photorealistic render | Progressive CPU path tracer renders the sample house: 192 samples at 727×356 in ≈9 s | screenshot from the running app |
 | 3D view | Orbit (drag) and zoom (wheel) on the shared mesher; concave slabs are correct | screenshot + mesh-volume check |
 | DXF export | R12 ASCII, one layer group per level, deterministic | structural checks (no external CAD validator run yet) |
+| IFC4 export | Storeys, walls, voids/fills (doors, windows), slabs, spaces, materials; deterministic GlobalIds | STEP structure, reference resolution and IFC4 attribute-count checks (IfcOpenShell not run yet) |
+| OBJ/GLB export | Shared mesh in Y-up meters with materials | OBJ index/material checks, GLB chunk/accessor checks |
+| Denoiser | Indirect light filtered with an edge-aware à-trous filter; at 4 spp: indirect error −47 %, total −31 % vs a 256-spp reference | `denoiser-checks.cs`, render screenshot after 2 s |
 
 ## Not verified / blocked
 
