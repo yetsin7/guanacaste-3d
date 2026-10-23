@@ -282,6 +282,19 @@ public partial class MainWindow : Window
         {
             var color = wall.Id == _selectedWallId ? Brushes.DarkOrange : Brushes.DarkSlateGray;
             AddLine(wall.Start, wall.End, Math.Max(3, wall.Thickness * _scale), color, wall.Id);
+            foreach (var opening in _session.Document.Openings.Where(o => o.WallId == wall.Id))
+            {
+                var dx = (wall.End.X - wall.Start.X) / wall.Length;
+                var dy = (wall.End.Y - wall.Start.Y) / wall.Length;
+                Point2 Along(double offset) => new(
+                    wall.Start.X + dx * offset, wall.Start.Y + dy * offset);
+                var from = Along(opening.Begin);
+                var to = Along(opening.End);
+                AddLine(from, to, Math.Max(4, wall.Thickness * _scale + 2),
+                    Brushes.White, wall.Id);
+                if (opening.Kind == OpeningKind.Window)
+                    AddLine(from, to, 2, Brushes.SteelBlue, wall.Id);
+            }
         }
         if (_pendingWallStart is Point2 start)
         {
@@ -373,7 +386,16 @@ public partial class MainWindow : Window
         {
             var branch = new TreeViewItem { Header = $"{level.Name}  ({level.Elevation:0.##} m)", Tag = level.Id, IsExpanded = true };
             foreach (var wall in _session.Document.Walls.Where(w => w.LevelId == level.Id))
-                branch.Items.Add(new TreeViewItem { Header = $"Muro · {wall.Length:0.00} m", Tag = wall.Id });
+                {
+                    var wallBranch = new TreeViewItem { Header = $"Muro · {wall.Length:0.00} m", Tag = wall.Id };
+                    foreach (var opening in _session.Document.Openings.Where(o => o.WallId == wall.Id))
+                        wallBranch.Items.Add(new TreeViewItem
+                        {
+                            Header = $"{(opening.Kind == OpeningKind.Door ? "Puerta" : "Ventana")} · {opening.Width:0.00} m",
+                            Tag = wall.Id
+                        });
+                    branch.Items.Add(wallBranch);
+                }
             levels.Items.Add(branch);
         }
         project.Items.Add(levels);
@@ -393,6 +415,8 @@ public partial class MainWindow : Window
         }
         PropertiesText.Text = $"Elemento: muro\nLongitud: {wall.Length:0.00} m\n" +
             $"Espesor: {wall.Thickness:0.00} m\nAltura: {wall.Height:0.00} m\n" +
+            $"Aberturas: {_session.Document.Openings.Count(o => o.WallId == wall.Id)}\\n" +
+            $"Volumen neto: {WallGeometry.NetVolume(wall, _session.Document.Openings.Where(o => o.WallId == wall.Id)):0.00} m³\\n" +
             $"Identificador: {wall.Id.ToString()[..8]}";
         ThicknessInput.Text = wall.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
         HeightInput.Text = wall.Height.ToString("0.00", CultureInfo.CurrentCulture);
