@@ -125,6 +125,29 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportAudit_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Instantánea de observación BIM (*.json)|*.json",
+            FileName = "observacion-guanacaste3d.json",
+            AddExtension = true,
+            DefaultExt = ".json"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dialog.FileName,
+                ModelAudit.ToJson(_session.Document), new System.Text.UTF8Encoding(false));
+            StatusText.Text = "Instantánea BIM de observación exportada.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo exportar la instantánea",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Export a schematic floor plan as an ASCII DXF R12 drawing.</summary>
     private void ExportDxf_Click(object sender, RoutedEventArgs e)
     {
