@@ -1,4 +1,5 @@
-name: Windows .NET build and package
+name: Guanacaste 3D core and Windows build
+
 on:
   push:
   pull_request:
@@ -7,11 +8,34 @@ on:
 permissions:
   contents: read
 
+# Avoid spending runner minutes on superseded commits in a rapidly updated branch.
+concurrency:
+  group: guanacaste-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Build and verify .NET 10
+  core:
+    name: Core checks (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore core test project
+        run: dotnet restore tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj
+      - name: Build core and checks
+        run: dotnet build tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-restore
+      - name: Run domain and DXF regressions
+        run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
+
+  desktop:
+    name: Windows WPF build and portable package
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,11 +52,18 @@ jobs:
         run: dotnet restore Guanacaste3D.slnx
       - name: Compile
         run: dotnet build Guanacaste3D.slnx -c Release --no-restore
-      - name: Core regression checks
-        run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build
-      - name: Publish portable Windows app
+      - name: Core regression checks on Windows
+        run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
+      - name: Publish self-contained portable Windows app
         run: dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/win-x64
-      - name: Upload Windows build
+      - name: Verify executable and write checksum
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-x64/Guanacaste3D.Desktop.exe'
+          if (-not (Test-Path $exe)) { throw 'Missing expected Windows executable.' }
+          $hash = (Get-FileHash -Path $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Guanacaste3D.Desktop.exe" | Set-Content -Path 'dist/win-x64/SHA256SUMS.txt' -Encoding ascii
+      - name: Upload Windows portable app
         uses: actions/upload-artifact@v4
         with:
           name: Guanacaste3D-win-x64
