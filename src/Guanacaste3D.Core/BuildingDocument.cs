@@ -52,6 +52,8 @@ public sealed class BuildingDocument
         if (Levels is null || Walls is null || Openings is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000)
             throw new InvalidDataException("El documento excede los límites de elementos.");
+        if (Levels.Any(l => l is null))
+            throw new InvalidDataException("Un nivel no puede ser nulo.");
         if (Levels.Any(l => l.Id == Guid.Empty || string.IsNullOrWhiteSpace(l.Name) ||
              l.Name.Length > 100 || !double.IsFinite(l.Elevation)) ||
             Levels.Select(l => l.Id).Distinct().Count() != Levels.Count)
