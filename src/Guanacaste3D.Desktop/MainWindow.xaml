@@ -158,6 +158,12 @@
           <TextBlock Text="Espesor de losa (metros)" Margin="0,10,0,4"/>
           <TextBox x:Name="SlabThicknessInput" Text="0.20"/>
           <Button Content="Aplicar espesor a losa" Click="ApplySlab_Click" Margin="0,8,0,2"/>
+          <TextBlock Text="Ancho / largo de losa (m)" Margin="0,10,0,4"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="SlabWidthInput" Width="105" Margin="0,0,8,0"/>
+            <TextBox x:Name="SlabDepthInput" Width="105"/>
+          </StackPanel>
+          <Button Content="Aplicar dimensiones" Click="ResizeSlab_Click" Margin="0,8,0,2"/>
           <Button Content="Duplicar losa (1 m X/Y)" Click="DuplicateSlab_Click" Margin="0,5,0,2"/>
           <Separator Margin="0,18,0,12"/>
           <TextBlock Text="ABERTURA SELECCIONADA" FontWeight="SemiBold" Foreground="#365B49"/>
