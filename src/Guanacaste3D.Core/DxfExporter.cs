@@ -21,15 +21,27 @@ public static class DxfExporter
         Pair(output, 2, "HEADER");
         Pair(output, 9, "$ACADVER");
         Pair(output, 1, "AC1009");
-        Pair(output, 9, "$MEASUREMENT");
-        Pair(output, 70, "1");
         Pair(output, 0, "ENDSEC");
 
         Pair(output, 0, "SECTION");
         Pair(output, 2, "TABLES");
+        // Some R12 readers expect the line type table to precede LAYER.
+        Pair(output, 0, "TABLE");
+        Pair(output, 2, "LTYPE");
+        Pair(output, 70, "1");
+        Pair(output, 0, "LTYPE");
+        Pair(output, 2, "CONTINUOUS");
+        Pair(output, 70, "0");
+        Pair(output, 3, "Solid line");
+        Pair(output, 72, "65");
+        Pair(output, 73, "0");
+        Pair(output, 40, "0");
+        Pair(output, 0, "ENDTAB");
+
         Pair(output, 0, "TABLE");
         Pair(output, 2, "LAYER");
-        Pair(output, 70, (document.Levels.Count * 3).ToString(Invariant));
+        Pair(output, 70, (document.Levels.Count * 3 + 1).ToString(Invariant));
+        WriteLayer(output, "0", 7);
         for (var i = 0; i < document.Levels.Count; i++)
         {
             WriteLayer(output, Layer(i, "WALL"), 7);
@@ -37,6 +49,10 @@ public static class DxfExporter
             WriteLayer(output, Layer(i, "WINDOW"), 5);
         }
         Pair(output, 0, "ENDTAB");
+        Pair(output, 0, "ENDSEC");
+
+        Pair(output, 0, "SECTION");
+        Pair(output, 2, "BLOCKS");
         Pair(output, 0, "ENDSEC");
 
         Pair(output, 0, "SECTION");
