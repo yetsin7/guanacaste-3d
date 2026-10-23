@@ -84,4 +84,11 @@
   <sys:String x:Key="Error.FormulaWord.The formula is nested too deeply">la fórmula tiene demasiados niveles de anidación</sys:String>
   <sys:String x:Key="Error.Calculated parameters must use instance binding.">Los parámetros calculados usan vinculación de instancia.</sys:String>
   <sys:String x:Key="Error.The parameter is calculated by a formula and cannot be edited.">Este parámetro se calcula con una fórmula y no se edita a mano.</sys:String>
+  <sys:String x:Key="Error.A wall top constraint is invalid.">La restricción superior del muro no es válida (no puede unirse a su propio nivel base).</sys:String>
+  <sys:String x:Key="Error.A wall top constraint is below its base level.">La restricción superior dejaría el muro por debajo de su nivel base.</sys:String>
+  <sys:String x:Key="Error.A wall height does not match its top constraint.">La altura de un muro no coincide con su restricción superior.</sys:String>
+  <sys:String x:Key="Error.The level does not exist.">El nivel no existe.</sys:String>
+  <sys:String x:Key="Error.Level names must be unique.">Ya existe un nivel con ese nombre.</sys:String>
+  <sys:String x:Key="Error.A project needs at least one level.">El proyecto necesita al menos un nivel.</sys:String>
+  <sys:String x:Key="Error.The level still hosts or constrains elements.">El nivel todavía tiene elementos apoyados o restringidos; muévelos o libéralos antes de eliminarlo.</sys:String>
 </ResourceDictionary>

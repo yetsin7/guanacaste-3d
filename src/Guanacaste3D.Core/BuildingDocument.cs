@@ -17,6 +17,12 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 {
     public Guid WallTypeId { get; init; } = BuiltInWallTypes.Basic200Id;
 
+    /// <summary>Level the wall top is tied to; null means the height is unconnected.</summary>
+    public Guid? TopLevelId { get; init; }
+
+    /// <summary>Distance in meters from the top level to the wall top (negative is below it).</summary>
+    public double TopOffset { get; init; }
+
     [JsonIgnore] public double Length => Start.DistanceTo(End);
 }
 
@@ -24,7 +30,7 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -132,6 +138,7 @@ public sealed class BuildingDocument
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
         OpeningTypeRules.Validate(this);
+        LevelConstraints.Validate(this);
         ParameterRules.Validate(this);
     }
 

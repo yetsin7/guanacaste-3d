@@ -39,6 +39,8 @@ static class FormulaChecks
             "Multiplication, division, square root, and powers combine units of length");
         check(TypeOf("Width + Area") is null && TypeOf("Width > 2") is null && TypeOf("sqrt(Width)") is null,
             "Inconsistent units are rejected (length + area, length vs number, sqrt of a length)");
+        check(TypeOf("Width > 0") == FormulaType.Boolean && TypeOf("0 - Area") == new FormulaType(FormulaKind.Number, 2),
+            "A bare zero adopts the unit of the other operand");
         check(TypeOf("Width > 2 * Height") == FormulaType.Boolean &&
               TypeOf("if(Exterior and Count >= 2, \"Ext\", Finish)") == FormulaType.Text &&
               TypeOf("if(Exterior, Width, Area)") is null,
@@ -135,8 +137,8 @@ static class FormulaChecks
         {
             ProjectFile.Save(path, session.Document);
             var reloaded = ProjectFile.Load(path);
-            check(reloaded.SchemaVersion == 6 && reloaded.ParameterDefinitions.Single().Formula == "4 * sqrt(Area)",
-                "Formulas survive a schema-6 round trip");
+            check(reloaded.SchemaVersion == BuildingDocument.CurrentSchemaVersion && reloaded.ParameterDefinitions.Single().Formula == "4 * sqrt(Area)",
+                "Formulas survive a .g3 round trip");
         }
         finally
         {

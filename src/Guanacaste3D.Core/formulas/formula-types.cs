@@ -69,6 +69,12 @@ public static class FormulaTypeChecker
     {
         var left = Check(binary.Left, resolve);
         var right = Check(binary.Right, resolve);
+        // A bare 0 has no unit, so "TopOffset > 0" or "Width - 0" stay valid.
+        if (binary.Operator is "+" or "-" or "=" or "<>" or "<" or "<=" or ">" or ">=")
+        {
+            if (IsUnitlessZero(binary.Left) && right.Kind == FormulaKind.Number) left = right;
+            if (IsUnitlessZero(binary.Right) && left.Kind == FormulaKind.Number) right = left;
+        }
         switch (binary.Operator)
         {
             case "and" or "or":
@@ -151,6 +157,9 @@ public static class FormulaTypeChecker
                 throw Fail($"Unknown function '{name}'");
         }
     }
+
+    /// <summary>Returns whether a node is the literal 0 without a unit suffix.</summary>
+    private static bool IsUnitlessZero(FormulaNode node) => node is NumberNode { Value: 0, LengthPower: 0 };
 
     /// <summary>Requires an exact argument count.</summary>
     private static void RequireCount(CallNode call, int count)

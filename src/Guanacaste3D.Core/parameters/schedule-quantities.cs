@@ -16,13 +16,16 @@ public static class ScheduleQuantities
     public const string Area = "Area";
     public const string Elevation = "Elevation";
     public const string PaperSize = "PaperSize";
+    public const string TopConstraint = "TopConstraint";
+    public const string TopOffset = "TopOffset";
 
     /// <summary>Returns the built-in quantity columns for a category, in display order.</summary>
     public static IReadOnlyList<CategoryScheduleColumn> ColumnsFor(ElementCategory category) => category switch
     {
         ElementCategory.Walls =>
         [
-            new(Length, null, "m"), new(Height, null, "m"), new(Thickness, null, "m"), new(NetVolume, null, "m³")
+            new(Length, null, "m"), new(Height, null, "m"), new(Thickness, null, "m"), new(NetVolume, null, "m³"),
+            new(TopConstraint, null), new(TopOffset, null, "m")
         ],
         ElementCategory.Doors or ElementCategory.Windows =>
         [
@@ -44,12 +47,21 @@ public static class ScheduleQuantities
         {
             case ElementCategory.Walls:
                 var hosted = document.Openings.ToLookup(opening => opening.WallId);
+                var levelNames = document.Levels.ToDictionary(level => level.Id, level => level.Name);
                 foreach (var wall in document.Walls)
-                    result[wall.Id] = new Dictionary<string, object>
+                {
+                    var values = new Dictionary<string, object>
                     {
                         [Length] = wall.Length, [Height] = wall.Height, [Thickness] = wall.Thickness,
                         [NetVolume] = WallGeometry.NetVolume(wall, hosted[wall.Id])
                     };
+                    if (wall.TopLevelId is Guid topId)
+                    {
+                        values[TopConstraint] = levelNames.GetValueOrDefault(topId, string.Empty);
+                        values[TopOffset] = wall.TopOffset;
+                    }
+                    result[wall.Id] = values;
+                }
                 break;
             case ElementCategory.Doors or ElementCategory.Windows:
                 var kind = category == ElementCategory.Doors ? OpeningKind.Door : OpeningKind.Window;

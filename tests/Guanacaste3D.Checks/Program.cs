@@ -364,6 +364,7 @@ Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel 
 ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
 FormulaChecks.Run(Check);
+LevelChecks.Run(Check);
 IfcChecks.Run(Check);
 MeshExportChecks.Run(Check);
 DenoiserChecks.Run(Check);

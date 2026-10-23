@@ -131,4 +131,30 @@
   <sys:String x:Key="Transaction.UpdateOpeningType">Modificar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.RemoveOpeningType">Eliminar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.PurgeOpeningTypes">Purgar tipos de abertura</sys:String>
+  <!-- Parametric levels and wall top constraints (schema 7). -->
+  <sys:String x:Key="Action.Levels">Niveles…</sys:String>
+  <sys:String x:Key="Levels.WindowTitle">Niveles y restricciones</sys:String>
+  <sys:String x:Key="Levels.Header">NIVELES</sys:String>
+  <sys:String x:Key="Levels.EditorHeader">NIVEL SELECCIONADO</sys:String>
+  <sys:String x:Key="Levels.Elevation">Elevación (m)</sys:String>
+  <sys:String x:Key="Levels.Add">Nuevo nivel</sys:String>
+  <sys:String x:Key="Levels.ListDetail">{0} muros apoyados · {1} muros restringidos a este nivel</sys:String>
+  <sys:String x:Key="Levels.Dependents">Elementos que dependen de este nivel: {0}. Nivel superior: {1}.</sys:String>
+  <sys:String x:Key="Levels.NoLevelAbove">ninguno</sys:String>
+  <sys:String x:Key="Levels.ConfirmDelete">¿Eliminar el nivel «{0}» y sus vistas de planta? Puedes deshacerlo.</sys:String>
+  <sys:String x:Key="Levels.ConstraintsHeader">RESTRICCIÓN SUPERIOR DE MUROS</sys:String>
+  <sys:String x:Key="Levels.TopOffset">Desfase superior (m, negativo = por debajo)</sys:String>
+  <sys:String x:Key="Levels.Attach">Unir los muros de este nivel al nivel superior</sys:String>
+  <sys:String x:Key="Levels.Detach">Liberar la restricción superior de estos muros</sys:String>
+  <sys:String x:Key="Levels.NothingToAttach">No hay muros en este nivel o no existe un nivel superior.</sys:String>
+  <sys:String x:Key="Levels.NothingToDetach">Ningún muro de este nivel tiene restricción superior.</sys:String>
+  <sys:String x:Key="Levels.Hint">Un muro unido a un nivel superior toma su altura de la diferencia de elevaciones más el desfase. Al mover un nivel se recalculan todos los muros restringidos; si una puerta o ventana deja de caber, el cambio completo se rechaza.</sys:String>
+  <sys:String x:Key="Parameters.Column.TopConstraint">Restricción superior</sys:String>
+  <sys:String x:Key="Parameters.Column.TopOffset">Desfase superior</sys:String>
+  <sys:String x:Key="Formula.Name.TopOffset">TopOffset</sys:String>
+  <sys:String x:Key="Transaction.UpdateLevel">Modificar nivel</sys:String>
+  <sys:String x:Key="Transaction.RemoveLevel">Eliminar nivel</sys:String>
+  <sys:String x:Key="Transaction.SetWallTopConstraint">Cambiar restricción superior del muro</sys:String>
+  <sys:String x:Key="Transaction.AttachWallsToLevelAbove">Unir muros al nivel superior</sys:String>
+  <sys:String x:Key="Transaction.DetachWalls">Liberar muros del nivel superior</sys:String>
 </ResourceDictionary>

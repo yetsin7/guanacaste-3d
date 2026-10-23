@@ -36,21 +36,32 @@ public sealed partial class DocumentSession
         Commit("Transaction.AddLevel", doc =>
         {
             var elevation = doc.Levels.Max(l => l.Elevation) + 3;
-            var level = new Level(id, $"Level {doc.Levels.Count + 1}", elevation);
+            var number = doc.Levels.Count + 1;
+            while (doc.Levels.Any(existing => existing.Name == $"Level {number}")) number++;
+            var level = new Level(id, $"Level {number}", elevation);
             doc.Levels.Add(level);
             doc.Views.Add(BuiltInProjectViews.CreatePlan(level));
         });
         return id;
     }
 
-    /// <summary>Updates instance dimensions for an existing wall.</summary>
+    /// <summary>
+    /// Updates instance dimensions for an existing wall. For a top-constrained
+    /// wall the requested height is kept by adjusting its top offset, so the
+    /// wall stays tied to its level instead of silently losing the constraint.
+    /// </summary>
     public void UpdateWall(Guid id, double thickness, double height)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
         Commit("Transaction.UpdateWall", doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
-            doc.Walls[index] = doc.Walls[index] with { Thickness = thickness, Height = height };
+            var wall = doc.Walls[index];
+            var levels = doc.Levels.ToDictionary(level => level.Id);
+            var offset = wall.TopLevelId is Guid topId
+                ? levels[wall.LevelId].Elevation + height - levels[topId].Elevation
+                : 0;
+            doc.Walls[index] = wall with { Thickness = thickness, Height = height, TopOffset = offset };
         });
     }
 

@@ -104,6 +104,11 @@ public static class ProjectFile
             // version bump stops older builds from silently dropping formulas.
             document.SchemaVersion = 6;
         }
+        if (document.SchemaVersion == 6)
+        {
+            // Schema 7 adds optional wall top constraints; existing walls stay unconnected.
+            document.SchemaVersion = 7;
+        }
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

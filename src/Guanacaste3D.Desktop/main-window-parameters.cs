@@ -23,6 +23,16 @@ public partial class MainWindow
         RefreshAll();
     }
 
+    /// <summary>Shows the level manager focused on the active level.</summary>
+    private void Levels_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new LevelsWindow(_session, _activeLevelId) { Owner = this };
+        window.ShowDialog();
+        if (_session.Document.Levels.All(level => level.Id != _activeLevelId))
+            _activeLevelId = _session.Document.Levels.OrderBy(level => level.Elevation).First().Id;
+        RefreshAll();
+    }
+
     /// <summary>
     /// Maps the explicit model selection to its parameter category. The sheet
     /// shown in the sheet workspace is display state, not a user selection, so
