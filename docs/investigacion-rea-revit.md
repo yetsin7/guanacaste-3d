@@ -86,6 +86,20 @@ Las comprobaciones automatizadas asociadas están en
 escribe RVT**, ni incluye aún familias generalizadas, muros multicapa, restricciones
 completas o tipos de cubierta, losa, puerta o ventana.
 
+## Instantáneas de comparación disponibles
+
+`ModelAudit.ToJson` genera un JSON de observación con esquema
+`guanacaste-observation/1`, unidades métricas, niveles, geometría de muros,
+tipos vinculados, aberturas y losas, con volúmenes derivados. Se puede
+exportar desde la interfaz y probar con el modelo de ejemplo. El registro es
+determinista respecto al orden de creación de elementos y evita incluir GUIDs
+internos, que no son directamente comparables entre programas.
+
+**Importante:** la instantánea contiene resultados **de Guanacaste**.
+Todavía no existe un capturador equivalente de Revit ni un conjunto de datos
+observados del programa comercial. Cualquier futura comparación deberá
+normalizar coordenadas, unidades, tipos y tolerancias de forma explícita.
+
 ## Registro de evidencias
 
 En cada futura comparación guardar:
