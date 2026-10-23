@@ -282,7 +282,11 @@ public partial class MainWindow : Window
     {
         _drawingMode = mode;
         _pendingDrawingStart = null;
-        if (mode != DrawingMode.Select) ClearSelection();
+        if (mode != DrawingMode.Select)
+        {
+            ClearSelection();
+            ViewTabs.SelectedIndex = 0;
+        }
         StatusText.Text = mode switch
         {
             DrawingMode.Wall => "Muro: elige inicio y fin (Esc cancela).",
@@ -317,6 +321,8 @@ public partial class MainWindow : Window
             _selectedOpeningId = id;
             _selectedSlabId = null;
             _selectedWallId = opening.WallId;
+            _activeLevelId = _session.Document.Walls.Single(w => w.Id == opening.WallId).LevelId;
+            RefreshLevelPicker();
             RefreshProperties();
             RenderPlan();
         }
@@ -334,6 +340,8 @@ public partial class MainWindow : Window
             _selectedOpeningId = null;
             _selectedSlabId = null;
             _selectedWallId = id;
+            _activeLevelId = _session.Document.Walls.Single(w => w.Id == id).LevelId;
+            RefreshLevelPicker();
             RefreshProperties();
             RenderPlan();
         }
@@ -556,6 +564,11 @@ public partial class MainWindow : Window
 
     private void Duplicate_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedSlabId is Guid)
+        {
+            DuplicateSlab_Click(sender, e);
+            return;
+        }
         if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
         _selectedWallId = _session.DuplicateWall(id, 1, 1);
         _selectedWallOffset = null;
@@ -586,16 +599,39 @@ public partial class MainWindow : Window
 
     private void Move_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
-        _session.MoveWall(id, 1, 0);
-        _selectedWallOffset = null;
-        StatusText.Text = "Muro desplazado 1 metro hacia X positivo.";
-        RefreshAll();
+        try
+        {
+            if (_selectedSlabId is Guid slabId)
+            {
+                _session.MoveSlab(slabId, 1, 0);
+                StatusText.Text = "Losa desplazada 1 m hacia X positivo.";
+            }
+            else if (_selectedWallId is Guid wallId)
+            {
+                _session.MoveWall(wallId, 1, 0);
+                _selectedWallOffset = null;
+                StatusText.Text = "Muro desplazado 1 metro hacia X positivo.";
+            }
+            else
+            {
+                StatusText.Text = "Selecciona un muro o una losa.";
+                return;
+            }
+            RefreshAll();
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Mover elemento");
+        }
     }
 
     private void MovePrecise_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
+        if (_selectedWallId is not Guid && _selectedSlabId is not Guid)
+        {
+            StatusText.Text = "Selecciona un muro o una losa.";
+            return;
+        }
         if (!double.TryParse(MoveXInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var dx) ||
             !double.TryParse(MoveYInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var dy) ||
             !double.IsFinite(dx) || !double.IsFinite(dy))
@@ -605,9 +641,17 @@ public partial class MainWindow : Window
         }
         try
         {
-            _session.MoveWall(id, dx, dy);
-            _selectedWallOffset = null;
-            StatusText.Text = $"Muro desplazado X={dx:0.###} m, Y={dy:0.###} m.";
+            if (_selectedSlabId is Guid slabId)
+            {
+                _session.MoveSlab(slabId, dx, dy);
+                StatusText.Text = $"Losa desplazada X={dx:0.###} m, Y={dy:0.###} m.";
+            }
+            else if (_selectedWallId is Guid wallId)
+            {
+                _session.MoveWall(wallId, dx, dy);
+                _selectedWallOffset = null;
+                StatusText.Text = $"Muro desplazado X={dx:0.###} m, Y={dy:0.###} m.";
+            }
         }
         catch (InvalidDataException ex)
         {
