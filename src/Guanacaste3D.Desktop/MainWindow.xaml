@@ -21,8 +21,8 @@
         <MenuItem Header="Deshacer" Click="Undo_Click"/>
         <MenuItem Header="Rehacer" Click="Redo_Click"/>
         <MenuItem Header="Eliminar seleccionado" Click="Delete_Click"/>
-        <MenuItem Header="Duplicar muro seleccionado" Click="Duplicate_Click"/>
-        <MenuItem Header="Mover muro seleccionado" Click="Move_Click"/>
+        <MenuItem Header="Duplicar muro o losa seleccionada" Click="Duplicate_Click"/>
+        <MenuItem Header="Mover muro o losa seleccionada" Click="Move_Click"/>
         <MenuItem Header="Rotar muro 90°" Click="Rotate_Click"/>
       </MenuItem>
       <MenuItem Header="_Vista">
@@ -58,13 +58,13 @@
           <Button Content="Guardar" Click="Save_Click"/>
           <Separator Margin="6,0"/>
           <Button Content="Seleccionar" Click="Select_Click"/>
-          <Button Content="Encuadrar" Click="FitPlan_Click" ToolTip="Ajustar la escala para mostrar todos los muros del nivel"/>
+          <Button Content="Encuadrar" Click="FitPlan_Click" ToolTip="Ajustar la escala para mostrar los muros y losas del nivel"/>
           <Button Content="Muro (W)" Click="Wall_Click" Background="#D8EEE2" ToolTip="Dibujar muro mediante dos puntos"/>
           <Button Content="Losa (L)" Click="Slab_Click" ToolTip="Dibujar losa rectangular mediante dos esquinas"/>
           <Button Content="Puerta" Click="Door_Click" ToolTip="Insertar abertura de puerta en el muro seleccionado"/>
           <Button Content="Ventana" Click="Window_Click" ToolTip="Insertar abertura de ventana en el muro seleccionado"/>
-          <Button Content="Duplicar" Click="Duplicate_Click" ToolTip="Copiar el muro y sus aberturas"/>
-          <Button Content="Mover" Click="Move_Click" ToolTip="Trasladar el muro seleccionado"/>
+          <Button Content="Duplicar" Click="Duplicate_Click" ToolTip="Duplicar muro con aberturas o losa seleccionada"/>
+          <Button Content="Mover" Click="Move_Click" ToolTip="Trasladar un muro o una losa seleccionada"/>
           <Button Content="Rotar 90°" Click="Rotate_Click" ToolTip="Rotar muro seleccionado alrededor de su punto inicial"/>
           <Button Content="Eliminar" Click="Delete_Click"/>
           <Separator Margin="6,0"/>
