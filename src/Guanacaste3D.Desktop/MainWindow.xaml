@@ -146,7 +146,7 @@
           <TextBlock Text="TIPOS DE MURO PARAMÉTRICOS" FontWeight="SemiBold"
                      FontSize="12" Foreground="#365B49"/>
           <TextBlock Text="Tipo reutilizable" Margin="0,10,0,4"/>
-          <ComboBox x:Name="WallTypePicker" HorizontalAlignment="Stretch"/>
+          <ComboBox x:Name="WallTypePicker" HorizontalAlignment="Stretch" SelectionChanged="WallTypePicker_SelectionChanged"/>
           <TextBlock Text="Nombre del tipo" Margin="0,10,0,4"/>
           <TextBox x:Name="WallTypeNameInput" Text="Muro tipo 20 cm"/>
           <Button Content="Crear tipo desde el muro" Click="CreateWallType_Click"
