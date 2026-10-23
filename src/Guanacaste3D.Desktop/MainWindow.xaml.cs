@@ -25,6 +25,11 @@ public partial class MainWindow : Window
     private double _scale = 36;
     private Point _panOffset;
     private bool _refreshingLevels;
+    private bool _orbitDragging;
+    private Point _orbitPrevious;
+    private double _orbitYaw = Math.PI / 4;
+    private double _orbitPitch = 0.5;
+    private double _orbitZoom = 1;
 
     public MainWindow()
     {
@@ -89,6 +94,30 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             MessageBox.Show(this, ex.Message, "No se pudo exportar",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Export a schematic floor plan as an ASCII DXF R12 drawing.</summary>
+    private void ExportDxf_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Dibujo AutoCAD R12 (*.dxf)|*.dxf",
+            FileName = "planta-guanacaste3d.dxf",
+            AddExtension = true,
+            DefaultExt = ".dxf"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dialog.FileName,
+                DxfExporter.ToAscii(_session.Document), System.Text.Encoding.ASCII);
+            StatusText.Text = "Plano DXF R12 exportado (geometría esquemática, sin datos BIM).";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo exportar DXF",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -697,16 +726,86 @@ public partial class MainWindow : Window
                 });
             }
         }
-        var allPoints = _session.Document.Walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
-        var centerX = allPoints.Length == 0 ? 0 : (allPoints.Min(p => p.X) + allPoints.Max(p => p.X)) / 2;
-        var centerY = allPoints.Length == 0 ? 0 : (allPoints.Min(p => p.Y) + allPoints.Max(p => p.Y)) / 2;
-        var range = allPoints.Length == 0 ? 10 :
+        Update3DCamera();
+    }
+
+    /// <summary>Keeps orbit and zoom settings stable across every BIM model refresh.</summary>
+    private void Update3DCamera()
+    {
+        if (ModelViewport is null || _session is null) return;
+        var walls = _session.Document.Walls;
+        var allPoints = walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
+        var centerX = allPoints.Length == 0 ? 0 :
+            (allPoints.Min(p => p.X) + allPoints.Max(p => p.X)) / 2;
+        var centerY = allPoints.Length == 0 ? 0 :
+            (allPoints.Min(p => p.Y) + allPoints.Max(p => p.Y)) / 2;
+        var elevations = _session.Document.Levels.ToDictionary(l => l.Id, l => l.Elevation);
+        var minHeight = walls.Count == 0 ? 0 : walls.Min(w => elevations[w.LevelId]);
+        var maxHeight = walls.Count == 0 ? 3 : walls.Max(w => elevations[w.LevelId] + w.Height);
+        var target = new Point3D(centerX, (minHeight + maxHeight) / 2, -centerY);
+        var horizontalRange = allPoints.Length == 0 ? 10 :
             Math.Max(allPoints.Max(p => p.X) - allPoints.Min(p => p.X),
                      allPoints.Max(p => p.Y) - allPoints.Min(p => p.Y));
-        var distance = Math.Max(12, range * 1.7);
-        var cameraPos = new Point3D(centerX + distance, distance * 0.8, -centerY + distance);
-        var target = new Point3D(centerX, 1, -centerY);
-        ModelViewport.Camera = new PerspectiveCamera(cameraPos, target - cameraPos, new Vector3D(0, 1, 0), 50);
+        var range = Math.Max(horizontalRange, maxHeight - minHeight);
+        var distance = Math.Max(12, range * 1.8) * _orbitZoom;
+        var radius = distance * Math.Cos(_orbitPitch);
+        var camera = new Point3D(
+            centerX + radius * Math.Cos(_orbitYaw),
+            target.Y + distance * Math.Sin(_orbitPitch),
+            -centerY + radius * Math.Sin(_orbitYaw));
+        ModelViewport.Camera = new PerspectiveCamera(
+            camera, target - camera, new Vector3D(0, 1, 0), 50);
+    }
+
+    private void ModelOrbit_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not UIElement surface) return;
+        _orbitDragging = true;
+        _orbitPrevious = e.GetPosition(surface);
+        surface.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void ModelOrbit_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _orbitDragging = false;
+        if (sender is UIElement surface) surface.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    private void ModelOrbit_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_orbitDragging || sender is not UIElement surface) return;
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            _orbitDragging = false;
+            surface.ReleaseMouseCapture();
+            return;
+        }
+        var position = e.GetPosition(surface);
+        _orbitYaw += (position.X - _orbitPrevious.X) * 0.009;
+        _orbitPitch = Math.Clamp(_orbitPitch - (position.Y - _orbitPrevious.Y) * 0.009,
+            0.05, Math.PI / 2 - 0.05);
+        _orbitPrevious = position;
+        Update3DCamera();
+        e.Handled = true;
+    }
+
+    private void ModelOrbit_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        _orbitZoom = Math.Clamp(_orbitZoom * (e.Delta > 0 ? 0.85 : 1.0 / 0.85),
+            0.15, 12);
+        Update3DCamera();
+        e.Handled = true;
+    }
+
+    private void Reset3DCamera_Click(object sender, RoutedEventArgs e)
+    {
+        _orbitYaw = Math.PI / 4;
+        _orbitPitch = 0.5;
+        _orbitZoom = 1;
+        Update3DCamera();
+        StatusText.Text = "Cámara 3D restablecida.";
     }
 
     private void AddGround()
