@@ -312,4 +312,89 @@ Check(exampleDocument.Slabs.All(s => Math.Abs(s.Area - 48) < 1e-9) &&
       Math.Abs(exampleDocument.Slabs.Sum(s => s.Volume) - 20.16) < 1e-9,
     "Bundled house sample contains correct slab takeoff quantities");
 
+// Type/instance parameter semantics (independent implementation; not Autodesk code).
+var typedDocument = BuildingDocument.Create();
+var typedSession = new DocumentSession(typedDocument);
+var typedWall1 = typedSession.AddWall(typedDocument.Levels[0].Id,
+    new Point2(0, 0), new Point2(6, 0));
+var typedWall2 = typedSession.AddWall(typedDocument.Levels[0].Id,
+    new Point2(0, 3), new Point2(6, 3));
+var reusableType = typedSession.CreateWallTypeForWall(typedWall1, "Muro genérico 25 cm", .25);
+typedSession.SetWallType(typedWall2, reusableType);
+Check(typedSession.Document.WallTypes.Count == 1 &&
+      typedSession.Document.Walls.All(w => w.TypeId == reusableType && w.Thickness == .25),
+    "Shared wall type synchronizes thickness across separate instances");
+typedSession.UpdateWallType(reusableType, "Muro genérico 30 cm", .30);
+Check(typedSession.Document.Walls.All(w => w.Thickness == .30) &&
+      typedSession.Document.WallTypes.Single().Name == "Muro genérico 30 cm",
+    "Updating a type propagates its shared thickness and name atomically");
+typedSession.Undo();
+Check(typedSession.Document.Walls.All(w => w.Thickness == .25),
+    "Undo restores all wall instances together");
+typedSession.Redo();
+Check(typedSession.Document.Walls.All(w => w.Thickness == .30),
+    "Redo reapplies the synchronized type change");
+failed = false;
+try { typedSession.UpdateWall(typedWall1, .40, 3); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && typedSession.Document.Walls.All(w => w.Thickness == .30),
+    "Type-bound wall cannot override a shared thickness locally");
+typedSession.UpdateWall(typedWall1, .30, 4);
+Check(typedSession.Document.Walls.Single(w => w.Id == typedWall1).Height == 4,
+    "Type-bound wall retains editable instance height");
+typedSession.DetachWallType(typedWall2);
+Check(typedSession.Document.Walls.Single(w => w.Id == typedWall2).TypeId is null &&
+      typedSession.Document.Walls.Single(w => w.Id == typedWall2).Thickness == .30,
+    "Detaching a wall keeps its last thickness");
+typedSession.UpdateWallType(reusableType, "Muro genérico 35 cm", .35);
+Check(typedSession.Document.Walls.Single(w => w.Id == typedWall1).Thickness == .35 &&
+      typedSession.Document.Walls.Single(w => w.Id == typedWall2).Thickness == .30,
+    "Detached wall does not change when its former type changes");
+var typedDuplicate = typedSession.DuplicateWall(typedWall1);
+Check(typedSession.Document.Walls.Single(w => w.Id == typedDuplicate).TypeId == reusableType,
+    "Duplicating a typed wall retains its type reference");
+failed = false;
+try { typedSession.RemoveWallType(reusableType); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && typedSession.Document.WallTypes.Count == 1,
+    "Cannot remove a wall type still referenced by its instances");
+var typedInvalid = typedSession.Document.Clone();
+var firstTypedIndex = typedInvalid.Walls.FindIndex(w => w.Id == typedWall1);
+typedInvalid.Walls[firstTypedIndex] = typedInvalid.Walls[firstTypedIndex] with { Thickness = .9 };
+failed = false;
+try { typedInvalid.Validate(); }
+catch (InvalidDataException) { failed = true; }
+Check(failed, "Project validation catches mismatched shared type thickness");
+var typeBeforeFailure = typedSession.Document.WallTypes.Single();
+failed = false;
+try { typedSession.CreateWallTypeForWall(typedWall2, "Muro genérico 35 cm", .2); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && typedSession.Document.WallTypes.Count == 1 &&
+      typedSession.Document.WallTypes.Single() == typeBeforeFailure,
+    "Duplicate type names are rejected without corrupting the document");
+var typedFilename = Path.Combine(Path.GetTempPath(), $"guanacaste-walltypes-{Guid.NewGuid():N}.g3d.json");
+try
+{
+    ProjectFile.Save(typedFilename, typedSession.Document);
+    var reloadedTypes = ProjectFile.Load(typedFilename);
+    Check(reloadedTypes.WallTypes.Count == 1 &&
+          reloadedTypes.Walls.Count(w => w.TypeId == reusableType) == 2,
+        "Wall type definitions and references survive project save/reopen");
+    var untypedLegacy = typedDocument.Clone();
+    untypedLegacy.Walls.Add(new Wall(Guid.NewGuid(), untypedLegacy.Levels[0].Id,
+        new Point2(0, 0), new Point2(2, 0), .2, 3));
+    var legacyJson = System.Text.Json.Nodes.JsonNode.Parse(
+        System.Text.Json.JsonSerializer.Serialize(untypedLegacy))!.AsObject();
+    legacyJson.Remove("WallTypes");
+    File.WriteAllText(typedFilename, legacyJson.ToJsonString());
+    Check(ProjectFile.Load(typedFilename).WallTypes.Count == 0 &&
+          ProjectFile.Load(typedFilename).Walls.Single().TypeId is null,
+        "Legacy projects without wall type catalog remain compatible");
+}
+finally
+{
+    if (File.Exists(typedFilename)) File.Delete(typedFilename);
+    if (File.Exists(typedFilename + ".bak")) File.Delete(typedFilename + ".bak");
+}
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
