@@ -18,6 +18,18 @@ public static class ProjectFile
         if (new FileInfo(path).Length > MaximumBytes)
             throw new InvalidDataException("El proyecto excede 20 MB.");
         var json = File.ReadAllText(path, Encoding.UTF8);
+        using (var parsed = JsonDocument.Parse(json))
+        {
+            if (parsed.RootElement.ValueKind != JsonValueKind.Object)
+                throw new InvalidDataException("El documento debe ser un objeto JSON.");
+            var fields = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var field in parsed.RootElement.EnumerateObject())
+                if (!fields.Add(field.Name))
+                    throw new InvalidDataException("El documento contiene campos duplicados.");
+            foreach (var required in new[] { "SchemaVersion", "Id", "Name", "Levels", "Walls" })
+                if (!fields.Contains(required))
+                    throw new InvalidDataException($"Falta el campo requerido: {required}.");
+        }
         var document = JsonSerializer.Deserialize<BuildingDocument>(json, Options)
             ?? throw new InvalidDataException("Documento vacío.");
         document.Validate();
@@ -33,6 +45,8 @@ public static class ProjectFile
         if (!Directory.Exists(directory))
             throw new DirectoryNotFoundException(directory);
         var content = JsonSerializer.Serialize(document, Options);
+        if (Encoding.UTF8.GetByteCount(content) > MaximumBytes)
+            throw new InvalidDataException("El proyecto supera el límite de 20 MB.");
         var temp = Path.Combine(directory, $".{Guid.NewGuid():N}.tmp");
         try
         {
