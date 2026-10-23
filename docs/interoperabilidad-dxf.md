@@ -7,10 +7,11 @@ formato AC1009, sin paquetes CAD externos ni dependencia de Autodesk.
 
 - Todas las coordenadas y elevaciones se expresan **en metros**.
 - Cada nivel tiene sus capas independientes: `G3D-L001-WALL`,
-  `G3D-L001-DOOR`, `G3D-L001-WINDOW`, y así sucesivamente.
+  `G3D-L001-DOOR`, `G3D-L001-WINDOW`, `G3D-L001-SLAB`, y así sucesivamente.
 - Los muros rectos se representan por segmentos de contorno 2D que
   respetan el **espesor** y omiten el espacio de las aberturas.
 - Las puertas y ventanas se señalan con una línea central en su abertura.
+- Las losas rectangulares se exportan con cuatro líneas perimetrales en su capa y nivel.
 - La elevación de cada nivel se conserva en la coordenada Z de las entidades.
 - El orden de exportación es estable para un mismo documento.
 
@@ -22,7 +23,7 @@ básicos. Se valida todo el documento antes de comenzar la exportación.
 Este DXF es un **dibujo geométrico esquemático**, no una exportación BIM completa:
 
 - No conserva GUID, propiedades, familias, materiales, ni relaciones paramétricas.
-- No incluye el alto del muro, el antepecho o la altura de las aberturas,
+- No incluye el espesor de la losa, el alto del muro, el antepecho o la altura de las aberturas,
   aunque estos parámetros se conservan en el archivo original `.g3d.json`.
 - No representa hojas, arcos de giro, marcos, acotaciones ni planos de impresión.
 - No permite todavía importar DXF a Guanacaste 3D.
