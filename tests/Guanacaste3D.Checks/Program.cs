@@ -199,4 +199,93 @@ try { DxfExporter.ToAscii(invalidForExport); }
 catch (InvalidDataException) { failed = true; }
 Check(failed, "DXF refuses invalid BIM geometry before export");
 
+
+// Slabs: transaction safety, geometry, backward-compatible persistence and CAD exchange.
+var slabDocument = BuildingDocument.Create();
+var slabSession = new DocumentSession(slabDocument);
+var slabId = slabSession.AddSlab(slabDocument.Levels[0].Id,
+    new Point2(4, 5), new Point2(0, 0), thickness: 0.2);
+var slab = slabSession.Document.Slabs.Single();
+Check(slab.Id == slabId && slab.Min == new Point2(0, 0) &&
+      slab.Max == new Point2(4, 5) &&
+      Math.Abs(slab.Area - 20) < 1e-9 &&
+      Math.Abs(slab.Volume - 4) < 1e-9,
+    "Slab corners normalize and exact metric area and volume are computed");
+slabSession.UpdateSlab(slabId, 0.3);
+Check(Math.Abs(slabSession.Document.Slabs.Single().Volume - 6) < 1e-9,
+    "Slab thickness edit recalculates volume");
+slabSession.Undo();
+Check(Math.Abs(slabSession.Document.Slabs.Single().Thickness - 0.2) < 1e-9,
+    "Undo restores slab thickness");
+slabSession.Redo();
+Check(Math.Abs(slabSession.Document.Slabs.Single().Thickness - 0.3) < 1e-9,
+    "Redo restores edited slab thickness");
+var stableSlab = slabSession.Document.Slabs.Single();
+failed = false;
+try { slabSession.UpdateSlab(slabId, -1); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && slabSession.Document.Slabs.Single() == stableSlab,
+    "Invalid slab thickness is rejected without mutation");
+failed = false;
+try { slabSession.AddSlab(slabDocument.Levels[0].Id,
+    new Point2(double.NaN, 0), new Point2(2, 2)); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && slabSession.Document.Slabs.Count == 1,
+    "Invalid slab coordinates are rejected without mutation");
+failed = false;
+try { slabSession.AddSlab(slabDocument.Levels[0].Id,
+    new Point2(0, 0), new Point2(0.1, 2)); }
+catch (InvalidDataException) { failed = true; }
+Check(failed && slabSession.Document.Slabs.Count == 1,
+    "Near-zero slab dimensions are rejected atomically");
+slabSession.MoveSlab(slabId, -2, 3);
+Check(slabSession.Document.Slabs.Single().Min == new Point2(-2, 3) &&
+      slabSession.Document.Slabs.Single().Area == 20,
+    "Moving a slab keeps its measured area");
+var slabCopy = slabSession.DuplicateSlab(slabId);
+Check(slabSession.Document.Slabs.Count == 2 &&
+      slabCopy != slabId &&
+      slabSession.Document.Slabs.Single(s => s.Id == slabCopy).Area == 20,
+    "Duplicating slabs creates a new stable ID and preserves dimensions");
+slabSession.RemoveSlab(slabCopy);
+Check(slabSession.Document.Slabs.Count == 1, "Delete removes just the selected slab");
+slabSession.Undo();
+Check(slabSession.Document.Slabs.Count == 2, "Undo restores the deleted slab");
+var crossTypeIds = slabSession.Document.Clone();
+crossTypeIds.Walls.Add(new Wall(slabId, slabDocument.Levels[0].Id,
+    new Point2(0, 0), new Point2(3, 0), 0.2, 3));
+failed = false;
+try { crossTypeIds.Validate(); }
+catch (InvalidDataException) { failed = true; }
+Check(failed, "Identifiers cannot be reused across slab and wall element types");
+var slabCsv = SlabSchedule.ToCsv(slabSession.Document);
+Check(slabCsv.Contains("Area_m2,Volume_m3") &&
+      slabCsv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 3 &&
+      slabCsv.Contains(",20,6"),
+    "Slab CSV exports validated metric area and volume for each slab");
+var slabDxf = DxfExporter.ToAscii(slabSession.Document);
+Check(slabDxf.Contains("G3D-L001-SLAB") &&
+      slabDxf.Split("0\r\nLINE\r\n", StringSplitOptions.None).Length - 1 == 8,
+    "Schematic DXF exports four perimeter lines per rectangular slab");
+var slabProjectPath = Path.Combine(Path.GetTempPath(), $"guanacaste-slab-{Guid.NewGuid():N}.g3d.json");
+try
+{
+    ProjectFile.Save(slabProjectPath, slabSession.Document);
+    var reloadedSlabProject = ProjectFile.Load(slabProjectPath);
+    Check(reloadedSlabProject.Slabs.Count == 2 &&
+          reloadedSlabProject.Slabs.Any(s => s.Id == slabId && s.Area == 20),
+        "Slabs survive project save and reload with persistent IDs");
+    var legacy = System.Text.Json.Nodes.JsonNode.Parse(
+        System.Text.Json.JsonSerializer.Serialize(slabSession.Document))!.AsObject();
+    legacy.Remove("Slabs");
+    File.WriteAllText(slabProjectPath, legacy.ToJsonString());
+    Check(ProjectFile.Load(slabProjectPath).Slabs.Count == 0,
+        "Legacy schema-1 projects without Slabs field remain loadable");
+}
+finally
+{
+    if (File.Exists(slabProjectPath)) File.Delete(slabProjectPath);
+    if (File.Exists(slabProjectPath + ".bak")) File.Delete(slabProjectPath + ".bak");
+}
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
