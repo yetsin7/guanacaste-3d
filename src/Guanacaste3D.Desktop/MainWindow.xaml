@@ -143,6 +143,20 @@
           <Button Content="Aplicar al muro" Click="ApplyProperties_Click"
                   Background="#D8EEE2" HorizontalAlignment="Stretch"/>
           <Separator Margin="0,18,0,12"/>
+          <TextBlock Text="TIPOS DE MURO PARAMÉTRICOS" FontWeight="SemiBold"
+                     FontSize="12" Foreground="#365B49"/>
+          <TextBlock Text="Tipo reutilizable" Margin="0,10,0,4"/>
+          <ComboBox x:Name="WallTypePicker" HorizontalAlignment="Stretch"/>
+          <TextBlock Text="Nombre del tipo" Margin="0,10,0,4"/>
+          <TextBox x:Name="WallTypeNameInput" Text="Muro tipo 20 cm"/>
+          <Button Content="Crear tipo desde el muro" Click="CreateWallType_Click"
+                  Margin="0,8,0,3" ToolTip="Usa el espesor indicado arriba y vincula el muro seleccionado"/>
+          <Button Content="Asignar tipo al muro" Click="AssignWallType_Click" Margin="0,3,0,3"/>
+          <Button Content="Actualizar tipo y sus instancias" Click="UpdateWallType_Click"
+                  Margin="0,3,0,3" Background="#D8EEE2"
+                  ToolTip="Cambia el nombre y espesor del tipo; actualiza los muros vinculados"/>
+          <Button Content="Desvincular tipo del muro" Click="DetachWallType_Click" Margin="0,3,0,0"/>
+          <Separator Margin="0,18,0,12"/>
           <TextBlock Text="TRANSFORMACIÓN PRECISA" FontWeight="SemiBold" Foreground="#365B49"/>
           <TextBlock Text="Desplazamiento X / Y (m)" Margin="0,10,0,4"/>
           <StackPanel Orientation="Horizontal">
