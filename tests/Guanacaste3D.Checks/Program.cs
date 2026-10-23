@@ -76,6 +76,21 @@ session.RemoveWall(hostedWallId);
 Check(session.Document.Openings.Count == 0, "Wall deletion cascades to its openings");
 session.Undo();
 Check(session.Document.Openings.Count == 2, "Undo restores hosted elements");
+var originalPosition = session.Document.Walls.Single(w => w.Id == hostedWallId).Start;
+session.MoveWall(hostedWallId, 2, -1);
+Check(session.Document.Walls.Single(w => w.Id == hostedWallId).Start ==
+    new Point2(originalPosition.X + 2, originalPosition.Y - 1),
+    "Moving wall updates its location");
+Check(session.Document.Openings.Count(o => o.WallId == hostedWallId) == 2,
+    "Moving wall preserves hosted apertures");
+var copyId = session.DuplicateWall(hostedWallId);
+Check(session.Document.Walls.Count == 2 && copyId != hostedWallId,
+    "Duplicating wall creates an independent BIM element");
+Check(session.Document.Openings.Count(o => o.WallId == copyId) == 2,
+    "Duplicating wall copies hosted openings");
+session.Undo();
+Check(session.Document.Walls.Count == 1 && session.Document.Openings.Count == 2,
+    "Undo duplication removes copied hosted elements");
 for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
