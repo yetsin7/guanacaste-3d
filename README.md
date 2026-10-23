@@ -40,6 +40,20 @@ dotnet build Guanacaste3D.slnx -c Release
 dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release
 ```
 
+## Verificar y generar un paquete portable en un paso (Windows)
+
+Con el SDK .NET 10 instalado, puedes ejecutar en PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-windows.ps1 -Launch
+```
+
+El script restaura paquetes, compila, ejecuta comprobaciones y publica
+`dist/win-x64/Guanacaste3D.Desktop.exe` junto a `SHA256SUMS.txt`.
+**Detiene el proceso** si un comando falla. `-Launch` abre la aplicación;
+`-SkipPackage` compila y verifica sin publicar. La aplicación publicada
+es **portable, no un instalador**.
+
 ## Comprobar
 
 ```powershell
