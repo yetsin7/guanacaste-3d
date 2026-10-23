@@ -119,6 +119,17 @@
           <TextBox x:Name="HeightInput" Text="3.00" Margin="0,4,0,12"/>
           <Button Content="Aplicar al muro" Click="ApplyProperties_Click"
                   Background="#D8EEE2" HorizontalAlignment="Stretch"/>
+          <Separator Margin="0,18,0,12"/>
+          <TextBlock Text="TRANSFORMACIÓN PRECISA" FontWeight="SemiBold" Foreground="#365B49"/>
+          <TextBlock Text="Desplazamiento X / Y (m)" Margin="0,10,0,4"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="MoveXInput" Width="105" Text="1.00" Margin="0,0,8,0"/>
+            <TextBox x:Name="MoveYInput" Width="105" Text="0.00"/>
+          </StackPanel>
+          <Button Content="Mover por coordenadas" Click="MovePrecise_Click" Margin="0,8,0,10"/>
+          <TextBlock Text="Rotación (grados)" Margin="0,0,0,4"/>
+          <TextBox x:Name="RotationInput" Text="90"/>
+          <Button Content="Aplicar rotación" Click="RotatePrecise_Click" Margin="0,8,0,0"/>
           <TextBlock TextWrapping="Wrap" Foreground="#829088" FontSize="11"
                      Margin="0,24,0,0"
                      Text="Prototipo BIM inicial: las herramientas de documentación avanzada y modelado de producción se incorporarán progresivamente."/>
