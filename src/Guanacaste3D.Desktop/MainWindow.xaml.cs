@@ -567,9 +567,20 @@ public partial class MainWindow : Window
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedWallId is not Guid id) return;
-        _session.RemoveWall(id);
+        // Selecting an opening also selects its host for inspection. Delete must
+        // honor the actual selected element, not remove the host wall by mistake.
+        if (_selectedOpeningId is Guid openingId)
+        {
+            _session.RemoveOpening(openingId);
+            _selectedOpeningId = null;
+            StatusText.Text = "Abertura seleccionada eliminada; muro conservado.";
+            RefreshAll();
+            return;
+        }
+        if (_selectedWallId is not Guid wallId) return;
+        _session.RemoveWall(wallId);
         _selectedWallId = null;
+        StatusText.Text = "Muro y sus aberturas eliminados.";
         RefreshAll();
     }
 
