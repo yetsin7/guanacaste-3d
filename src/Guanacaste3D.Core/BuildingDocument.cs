@@ -26,6 +26,8 @@ public sealed class BuildingDocument
     public List<Level> Levels { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
     public List<WallOpening> Openings { get; set; } = [];
+    // Optional in legacy schema-1 files: newly added elements default to an empty list.
+    public List<Slab> Slabs { get; set; } = [];
 
     public static BuildingDocument Create() => new()
     {
@@ -40,7 +42,8 @@ public sealed class BuildingDocument
         Name = Name,
         Levels = [.. Levels],
         Walls = [.. Walls],
-        Openings = [.. Openings]
+        Openings = [.. Openings],
+        Slabs = [.. Slabs]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -49,8 +52,9 @@ public sealed class BuildingDocument
         if (SchemaVersion != 1) throw new InvalidDataException("Versión de proyecto no compatible.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("Identidad o nombre de proyecto inválido.");
-        if (Levels is null || Walls is null || Openings is null ||
-            Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000)
+        if (Levels is null || Walls is null || Openings is null || Slabs is null ||
+            Levels.Count is < 1 or > 200 || Walls.Count > 100000 ||
+            Openings.Count > 200000 || Slabs.Count > 100000)
             throw new InvalidDataException("El documento excede los límites de elementos.");
         if (Levels.Any(l => l is null))
             throw new InvalidDataException("Un nivel no puede ser nulo.");
@@ -71,10 +75,27 @@ public sealed class BuildingDocument
                 wall.Thickness is < 0.05 or > 5 || wall.Height is < 0.1 or > 1000)
                 throw new InvalidDataException("Muro inválido o sin nivel asociado.");
         }
-        if (Openings.Any(o => o is null) ||
-            Levels.Select(l => l.Id).Intersect(Walls.Select(w => w.Id)).Any() ||
-            Levels.Select(l => l.Id).Intersect(Openings.Select(o => o.Id)).Any() ||
-            Walls.Select(w => w.Id).Intersect(Openings.Select(o => o.Id)).Any())
+        if (Slabs.Any(s => s is null) ||
+            Slabs.Select(s => s.Id).Distinct().Count() != Slabs.Count)
+            throw new InvalidDataException("Losas duplicadas o nulas.");
+        foreach (var slab in Slabs)
+        {
+            if (slab.Id == Guid.Empty || !levelIds.Contains(slab.LevelId) ||
+                !double.IsFinite(slab.Min.X) || !double.IsFinite(slab.Min.Y) ||
+                !double.IsFinite(slab.Max.X) || !double.IsFinite(slab.Max.Y) ||
+                !double.IsFinite(slab.Thickness) || !double.IsFinite(slab.Area) ||
+                !double.IsFinite(slab.Volume) ||
+                slab.Width is < 0.3 or > 10000 || slab.Depth is < 0.3 or > 10000 ||
+                slab.Thickness is < 0.05 or > 5)
+                throw new InvalidDataException("Losa inválida, fuera de límites o sin nivel.");
+        }
+        if (Openings.Any(o => o is null))
+            throw new InvalidDataException("Aberturas nulas.");
+        var allIds = Levels.Select(l => l.Id)
+            .Concat(Walls.Select(w => w.Id))
+            .Concat(Openings.Select(o => o.Id))
+            .Concat(Slabs.Select(s => s.Id)).ToArray();
+        if (allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Identificadores de elementos repetidos.");
         WallGeometry.Validate(Walls, Openings);
     }
