@@ -9,6 +9,9 @@ public enum OpeningKind { Door, Window }
 public sealed record WallOpening(Guid Id, Guid WallId, OpeningKind Kind,
     double Offset, double Width, double Sill, double Height)
 {
+    /// <summary>The door or window type whose width and height drive this instance.</summary>
+    public Guid OpeningTypeId { get; init; }
+
     [JsonIgnore] public double Begin => Offset - Width / 2;
     [JsonIgnore] public double End => Offset + Width / 2;
 }

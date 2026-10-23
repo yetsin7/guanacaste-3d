@@ -1,0 +1,55 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- Spanish text for Core validation messages, keyed by "Error." + the English message.
+       LocalizedErrors.Translate falls back to the English text for unknown messages. -->
+  <sys:String x:Key="Error.A level cannot be null.">Un nivel no puede estar vacío.</sys:String>
+  <sys:String x:Key="Error.A project parameter definition is invalid.">La definición del parámetro no es válida.</sys:String>
+  <sys:String x:Key="Error.A project parameter value is invalid or orphaned.">Un valor de parámetro no es válido o perdió su elemento.</sys:String>
+  <sys:String x:Key="Error.A wall is invalid or has no associated level.">Un muro no es válido o no tiene nivel asociado.</sys:String>
+  <sys:String x:Key="Error.An opening exceeds its host wall bounds.">Una abertura no cabe dentro de su muro anfitrión.</sys:String>
+  <sys:String x:Key="Error.An opening has no host wall.">Una abertura no tiene muro anfitrión.</sys:String>
+  <sys:String x:Key="Error.An opening references a missing or mismatched type.">Una abertura usa un tipo inexistente o de otra clase.</sys:String>
+  <sys:String x:Key="Error.Door and window type identifiers and names must be unique.">Los nombres de tipo deben ser únicos dentro de cada familia.</sys:String>
+  <sys:String x:Key="Error.Element identifiers must be unique.">Los identificadores de elementos deben ser únicos.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3 o la heredada .g3d.json.</sys:String>
+  <sys:String x:Key="Error.Hosted openings cannot overlap.">Las aberturas de un mismo muro no pueden solaparse.</sys:String>
+  <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
+  <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
+  <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
+  <sys:String x:Key="Error.Invalid project views.">Las vistas del proyecto no son válidas.</sys:String>
+  <sys:String x:Key="Error.Invalid room definitions.">Las habitaciones no son válidas.</sys:String>
+  <sys:String x:Key="Error.Invalid wall-type catalog.">El catálogo de tipos de muro no es válido.</sys:String>
+  <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3 extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3.</sys:String>
+  <sys:String x:Key="Error.Project parameter identifiers and names must be unique.">Ya existe un parámetro con ese nombre.</sys:String>
+  <sys:String x:Key="Error.The .g3 project header is missing or unsupported.">El encabezado del proyecto .g3 falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The document exceeds the supported element limits.">El documento supera los límites de elementos admitidos.</sys:String>
+  <sys:String x:Key="Error.The door or window type does not exist.">El tipo de puerta o ventana no existe.</sys:String>
+  <sys:String x:Key="Error.The door or window type is still used by placed openings.">El tipo está en uso por aberturas colocadas; cámbialas de tipo antes de eliminarlo.</sys:String>
+  <sys:String x:Key="Error.The file path is invalid.">La ruta del archivo no es válida.</sys:String>
+  <sys:String x:Key="Error.The formula is empty or too long.">La fórmula está vacía o es demasiado larga.</sys:String>
+  <sys:String x:Key="Error.The host wall does not exist.">El muro anfitrión no existe.</sys:String>
+  <sys:String x:Key="Error.The level collection is invalid.">Los niveles no son válidos.</sys:String>
+  <sys:String x:Key="Error.The opening count or identifiers are invalid.">Las aberturas no son válidas.</sys:String>
+  <sys:String x:Key="Error.The opening does not exist.">La abertura no existe.</sys:String>
+  <sys:String x:Key="Error.The parameter is not bound to the selected element.">El parámetro no está vinculado a la categoría de este elemento.</sys:String>
+  <sys:String x:Key="Error.The project document contains duplicate fields.">El documento del proyecto contiene campos duplicados.</sys:String>
+  <sys:String x:Key="Error.The project document is empty.">El documento del proyecto está vacío.</sys:String>
+  <sys:String x:Key="Error.The project document must be a JSON object.">El documento del proyecto no tiene un formato válido.</sys:String>
+  <sys:String x:Key="Error.The project exceeds the 20 MB limit.">El proyecto supera el límite de 20 MB.</sys:String>
+  <sys:String x:Key="Error.The project file exceeds 20 MB.">El archivo del proyecto supera los 20 MB.</sys:String>
+  <sys:String x:Key="Error.The project identity or name is invalid.">La identidad o el nombre del proyecto no son válidos.</sys:String>
+  <sys:String x:Key="Error.The project parameter collections are invalid.">Los parámetros del proyecto no son válidos.</sys:String>
+  <sys:String x:Key="Error.The project parameter does not exist.">El parámetro del proyecto no existe.</sys:String>
+  <sys:String x:Key="Error.The requested size conflicts with the selected type.">El tamaño indicado no coincide con el tipo seleccionado.</sys:String>
+  <sys:String x:Key="Error.The rotation angle is invalid.">El ángulo de rotación no es válido.</sys:String>
+  <sys:String x:Key="Error.The selected door or window type does not exist.">El tipo de puerta o ventana seleccionado no existe.</sys:String>
+  <sys:String x:Key="Error.The selected wall does not exist.">El muro seleccionado no existe.</sys:String>
+  <sys:String x:Key="Error.The selected wall type does not exist.">El tipo de muro seleccionado no existe.</sys:String>
+  <sys:String x:Key="Error.The wall collection contains duplicate identifiers.">Hay muros con identificadores duplicados.</sys:String>
+  <sys:String x:Key="Error.The wall does not exist.">El muro no existe.</sys:String>
+  <sys:String x:Key="Error.The wall to duplicate does not exist.">El muro que se quiere duplicar no existe.</sys:String>
+  <sys:String x:Key="Error.The wall type does not exist.">El tipo de muro no existe.</sys:String>
+  <sys:String x:Key="Error.Unsupported project schema version.">La versión del formato del proyecto no es compatible.</sys:String>
+</ResourceDictionary>

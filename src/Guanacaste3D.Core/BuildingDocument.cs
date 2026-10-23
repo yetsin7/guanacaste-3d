@@ -24,7 +24,7 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -33,6 +33,7 @@ public sealed class BuildingDocument
     public List<Wall> Walls { get; set; } = [];
     public List<WallOpening> Openings { get; set; } = [];
     public List<WallType> WallTypes { get; set; } = [];
+    public List<OpeningType> OpeningTypes { get; set; } = [];
     public List<Room> Rooms { get; set; } = [];
     public List<FloorSlab> Floors { get; set; } = [];
     public List<DrawingSheet> Sheets { get; set; } = [];
@@ -49,6 +50,7 @@ public sealed class BuildingDocument
             Name = name,
             Levels = levels,
             WallTypes = BuiltInWallTypes.CreateDefaults(),
+            OpeningTypes = BuiltInOpeningTypes.CreateDefaults(),
             Views = BuiltInProjectViews.CreateDefaults(levels)
         };
     }
@@ -63,6 +65,7 @@ public sealed class BuildingDocument
         Walls = [.. Walls],
         Openings = [.. Openings],
         WallTypes = [.. WallTypes],
+        OpeningTypes = [.. OpeningTypes],
         Rooms = [.. Rooms],
         Floors = Floors.Select(floor => floor with { Boundary = [.. floor.Boundary] }).ToList(),
         Sheets = [.. Sheets],
@@ -123,10 +126,12 @@ public sealed class BuildingDocument
             .Concat(Sheets.Select(sheet => sheet.Id))
             .Concat(Views.Select(view => view.Id))
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
+            .Concat((OpeningTypes ?? []).Select(type => type.Id))
             .ToArray();
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
+        OpeningTypeRules.Validate(this);
         ParameterRules.Validate(this);
     }
 

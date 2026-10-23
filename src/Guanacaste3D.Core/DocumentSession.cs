@@ -154,18 +154,6 @@ public sealed partial class DocumentSession
             Commit("Transaction.RemoveSheet", document => document.Sheets.RemoveAll(sheet => sheet.Id == id));
     }
 
-    /// <summary>Adds a door or window opening to its existing host wall.</summary>
-    public Guid AddOpening(Guid wallId, OpeningKind kind, double? offset = null,
-        double width = 0.9, double sill = 0, double height = 2.1)
-    {
-        var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
-            ?? throw new InvalidDataException("The host wall does not exist.");
-        var id = Guid.NewGuid();
-        Commit("Transaction.AddOpening", doc => doc.Openings.Add(new WallOpening(id, wallId, kind,
-            offset ?? wall.Length / 2, width, sill, height)));
-        return id;
-    }
-
     /// <summary>Moves a wall and its hosted openings without changing dimensions.</summary>
     public void MoveWall(Guid id, double deltaX, double deltaY)
     {
@@ -200,21 +188,6 @@ public sealed partial class DocumentSession
                 doc.Openings.Add(opening with { Id = Guid.NewGuid(), WallId = newId });
         });
         return newId;
-    }
-
-    /// <summary>Edits a hosted opening atomically; invalid geometry never enters the document.</summary>
-    public void UpdateOpening(Guid id, double offset, double width, double sill, double height)
-    {
-        if (!Document.Openings.Any(o => o.Id == id))
-            throw new InvalidDataException("The opening does not exist.");
-        Commit("Transaction.UpdateOpening", doc =>
-        {
-            var index = doc.Openings.FindIndex(o => o.Id == id);
-            doc.Openings[index] = doc.Openings[index] with
-            {
-                Offset = offset, Width = width, Sill = sill, Height = height
-            };
-        });
     }
 
     /// <summary>Rotates a straight wall around its starting point, retaining hosted openings.</summary>

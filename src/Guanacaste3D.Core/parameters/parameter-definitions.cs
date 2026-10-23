@@ -72,7 +72,7 @@ public static class ParameterCategoryRules
 {
     /// <summary>Categories whose elements reference a reusable type in this schema.</summary>
     public static readonly IReadOnlySet<ElementCategory> TypedCategories =
-        new HashSet<ElementCategory> { ElementCategory.Walls };
+        new HashSet<ElementCategory> { ElementCategory.Walls, ElementCategory.Doors, ElementCategory.Windows };
 
     /// <summary>Returns whether a binding is allowed for every category in the set.</summary>
     public static bool SupportsBinding(ParameterBinding binding, IEnumerable<ElementCategory> categories) =>

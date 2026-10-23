@@ -83,6 +83,21 @@ public static class ProjectFile
             document.ParameterDefinitions ??= [];
             document.ParameterValues ??= [];
         }
+        if (document.SchemaVersion == 4)
+        {
+            // Schema 5 moves door and window sizes onto reusable types. Each
+            // existing opening is matched to a built-in type of the same size,
+            // or receives a generated type, so geometry is preserved exactly.
+            document.SchemaVersion = 5;
+            document.OpeningTypes = BuiltInOpeningTypes.CreateDefaults();
+            for (var index = 0; index < document.Openings.Count; index++)
+            {
+                var opening = document.Openings[index];
+                var type = OpeningTypeRules.FindOrCreate(document.OpeningTypes, opening.Kind,
+                    opening.Width, opening.Height, opening.Sill);
+                document.Openings[index] = opening with { OpeningTypeId = type.Id };
+            }
+        }
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

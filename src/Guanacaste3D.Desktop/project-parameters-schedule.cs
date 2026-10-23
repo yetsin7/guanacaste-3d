@@ -54,24 +54,21 @@ public partial class ProjectParametersWindow
         }
         foreach (var row in _schedule.Rows)
         {
-            var values = new List<object> { row.Element.Id, row.Element.Mark, row.Element.Name, row.LevelName };
-            values.AddRange(_schedule.Columns.Where(column => column.IsEditable).Select(column =>
-                (object)ParameterValueText.Format(column.Definition!.Spec,
-                    row.Values.GetValueOrDefault(column.Definition.Id), CultureInfo.CurrentCulture,
-                    Text("Parameters.Yes"), Text("Parameters.No"))));
+            var values = new List<object> { row.Element.Id };
+            values.AddRange(_schedule.Columns.Select(column => (object)CategoryScheduleService.FormatCell(
+                row, column, CultureInfo.CurrentCulture, Text("Parameters.Yes"), Text("Parameters.No"))));
             table.Rows.Add([.. values]);
         }
         ScheduleGrid.ItemsSource = table.DefaultView;
         if (_schedule.Rows.Count == 0) StatusText.Text = Text("Parameters.EmptyCategory");
     }
 
-    /// <summary>Returns a localized header; parameter headers include the unit and binding marker.</summary>
+    /// <summary>Returns a localized header with its unit; type-bound parameters carry a type marker.</summary>
     private static string HeaderFor(CategoryScheduleColumn column)
     {
-        if (column.Definition is not { } definition) return Text($"Parameters.Column.{column.Key}");
-        var unit = ParameterValueText.UnitSuffix(definition.Spec);
-        var typeMarker = definition.Binding == ParameterBinding.Type ? Text("Parameters.TypeMarker") : string.Empty;
-        return unit.Length == 0 ? definition.Name + typeMarker : $"{definition.Name} ({unit}){typeMarker}";
+        var name = column.Definition?.Name ?? Text($"Parameters.Column.{column.Key}");
+        var typeMarker = column.Definition?.Binding == ParameterBinding.Type ? Text("Parameters.TypeMarker") : "";
+        return CategoryScheduleService.HeaderWithUnit(name, column.Unit) + typeMarker;
     }
 
     /// <summary>Commits one cell edit as a validated transaction, then rebuilds the grid.</summary>
@@ -171,7 +168,7 @@ public partial class ProjectParametersWindow
         }
         catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException)
         {
-            StatusText.Text = Format("Parameters.Rejected", exception.Message);
+            StatusText.Text = Format("Parameters.Rejected", LocalizedErrors.Translate(exception.Message));
         }
     }
 }

@@ -51,9 +51,16 @@ public sealed partial class DocumentSession
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Recomputes dependent data after a mutation; currently prunes orphaned parameter values.</summary>
-    private static void Regenerate(BuildingDocument document) =>
+    /// <summary>
+    /// Recomputes dependent data after a mutation: instances follow their
+    /// types first, then parameter values whose owners disappeared are pruned.
+    /// Validation afterwards rejects any consequence that no longer fits.
+    /// </summary>
+    private static void Regenerate(BuildingDocument document)
+    {
+        OpeningTypeRules.SynchronizeInstances(document);
         ParameterRules.RemoveOrphanedValues(document);
+    }
 
     /// <summary>Adds a history entry, trimming the oldest only when no group depends on the stack depth.</summary>
     private void PushSnapshot(List<HistoryEntry> list, HistoryEntry entry)

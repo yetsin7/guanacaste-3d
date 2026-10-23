@@ -69,6 +69,7 @@
           <Button Content="{DynamicResource Tool.Wall}" Click="Wall_Click" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Door}" Click="Door_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Window}" Click="Window_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.OpeningTypes}" Click="OpeningTypes_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Floor}" Click="Floor_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Separator Margin="8,3"/>

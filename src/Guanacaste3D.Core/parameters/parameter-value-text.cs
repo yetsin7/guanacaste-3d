@@ -67,8 +67,13 @@ public static class ParameterValueText
         // Thousands separators are rejected on purpose: in es-ES "2.5" would
         // otherwise parse as 25 instead of falling back to invariant 2.5.
         const NumberStyles styles = NumberStyles.Float;
+        // A lone comma is a decimal comma even when the OS culture uses a
+        // point: Spanish-speaking users type "3,5" regardless of locale.
+        var decimalComma = trimmed.Contains(',') && !trimmed.Contains('.') ? trimmed.Replace(',', '.') : null;
         if (!double.TryParse(trimmed, styles, culture, out var parsed) &&
-            !double.TryParse(trimmed, styles, CultureInfo.InvariantCulture, out parsed))
+            !double.TryParse(trimmed, styles, CultureInfo.InvariantCulture, out parsed) &&
+            !(decimalComma is not null &&
+              double.TryParse(decimalComma, styles, CultureInfo.InvariantCulture, out parsed)))
             return false;
         number = parsed;
         return ParameterRules.IsValueValid(spec, number, null);

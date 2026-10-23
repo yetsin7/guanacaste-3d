@@ -3,13 +3,22 @@ using Guanacaste3D.Core;
 
 namespace Guanacaste3D.Desktop;
 
-/// <summary>Opens the project parameter manager from the main workspace.</summary>
+/// <summary>Opens the project parameter and door/window type managers from the main workspace.</summary>
 public partial class MainWindow
 {
     /// <summary>Shows the parameter manager focused on the category of the current selection.</summary>
     private void ProjectParameters_Click(object sender, RoutedEventArgs e)
     {
         var window = new ProjectParametersWindow(_session, SelectedCategory()) { Owner = this };
+        window.ShowDialog();
+        RefreshAll();
+    }
+
+    /// <summary>Shows the door and window type manager, preselecting the type of the selected opening.</summary>
+    private void OpeningTypes_Click(object sender, RoutedEventArgs e)
+    {
+        var typeId = _session.Document.Openings.FirstOrDefault(opening => opening.Id == _selectedOpeningId)?.OpeningTypeId;
+        var window = new OpeningTypesWindow(_session, typeId) { Owner = this };
         window.ShowDialog();
         RefreshAll();
     }

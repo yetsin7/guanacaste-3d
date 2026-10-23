@@ -52,12 +52,12 @@ public static class ParameterRules
 
         var byId = definitions.ToDictionary(definition => definition.Id);
         var elements = ElementCatalog.Index(document);
-        var wallTypeIds = document.WallTypes.Select(type => type.Id).ToHashSet();
+        var types = TypeCategories(document);
         var keys = new HashSet<(Guid, Guid)>();
         foreach (var value in values)
         {
             if (!byId.TryGetValue(value.DefinitionId, out var definition) ||
-                !IsOwnerValid(definition, value.OwnerId, elements, wallTypeIds) ||
+                !IsOwnerValid(definition, value.OwnerId, elements, types) ||
                 !IsValueValid(definition.Spec, value.Number, value.Text) ||
                 !keys.Add((value.DefinitionId, value.OwnerId)))
                 throw new InvalidDataException("A project parameter value is invalid or orphaned.");
@@ -73,10 +73,10 @@ public static class ParameterRules
     {
         var byId = document.ParameterDefinitions.ToDictionary(definition => definition.Id);
         var elements = ElementCatalog.Index(document);
-        var wallTypeIds = document.WallTypes.Select(type => type.Id).ToHashSet();
+        var types = TypeCategories(document);
         return document.ParameterValues.RemoveAll(value =>
             !byId.TryGetValue(value.DefinitionId, out var definition) ||
-            !IsOwnerValid(definition, value.OwnerId, elements, wallTypeIds));
+            !IsOwnerValid(definition, value.OwnerId, elements, types));
     }
 
     /// <summary>Returns the identifier that stores a definition's value for an element.</summary>
@@ -103,12 +103,21 @@ public static class ParameterRules
             .ThenBy(definition => definition.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
 
+    /// <summary>Maps every element type identifier to the instance category it types.</summary>
+    private static Dictionary<Guid, ElementCategory> TypeCategories(BuildingDocument document)
+    {
+        var map = document.WallTypes.ToDictionary(type => type.Id, _ => ElementCategory.Walls);
+        foreach (var type in document.OpeningTypes)
+            map[type.Id] = type.Kind == OpeningKind.Door ? ElementCategory.Doors : ElementCategory.Windows;
+        return map;
+    }
+
     /// <summary>Checks that a value owner exists and matches the definition's binding and categories.</summary>
     private static bool IsOwnerValid(ParameterDefinition definition, Guid ownerId,
-        IReadOnlyDictionary<Guid, ElementEntry> elements, IReadOnlySet<Guid> wallTypeIds)
+        IReadOnlyDictionary<Guid, ElementEntry> elements, IReadOnlyDictionary<Guid, ElementCategory> types)
     {
         if (definition.Binding == ParameterBinding.Type)
-            return definition.Categories.Contains(ElementCategory.Walls) && wallTypeIds.Contains(ownerId);
+            return types.TryGetValue(ownerId, out var typeCategory) && definition.Categories.Contains(typeCategory);
         return elements.TryGetValue(ownerId, out var element) && definition.Categories.Contains(element.Category);
     }
 }

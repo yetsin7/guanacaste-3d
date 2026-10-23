@@ -1,0 +1,85 @@
+namespace Guanacaste3D.Core;
+
+/// <summary>
+/// Read-only model quantities shown as built-in schedule columns. Values are
+/// metric doubles (m, m², m³) or text, keyed by column key.
+/// </summary>
+public static class ScheduleQuantities
+{
+    public const string Length = "Length";
+    public const string Height = "Height";
+    public const string Thickness = "Thickness";
+    public const string NetVolume = "NetVolume";
+    public const string Width = "Width";
+    public const string Sill = "Sill";
+    public const string Host = "Host";
+    public const string Area = "Area";
+    public const string Elevation = "Elevation";
+    public const string PaperSize = "PaperSize";
+
+    /// <summary>Returns the built-in quantity columns for a category, in display order.</summary>
+    public static IReadOnlyList<CategoryScheduleColumn> ColumnsFor(ElementCategory category) => category switch
+    {
+        ElementCategory.Walls =>
+        [
+            new(Length, null, "m"), new(Height, null, "m"), new(Thickness, null, "m"), new(NetVolume, null, "m³")
+        ],
+        ElementCategory.Doors or ElementCategory.Windows =>
+        [
+            new(Width, null, "m"), new(Height, null, "m"), new(Sill, null, "m"), new(Host, null)
+        ],
+        ElementCategory.Rooms => [new(Area, null, "m²")],
+        ElementCategory.Floors => [new(Area, null, "m²"), new(Thickness, null, "m")],
+        ElementCategory.Levels => [new(Elevation, null, "m")],
+        ElementCategory.Sheets => [new(PaperSize, null)],
+        _ => []
+    };
+
+    /// <summary>Computes quantities for every element of a category, keyed by element identifier.</summary>
+    public static Dictionary<Guid, IReadOnlyDictionary<string, object>> Compute(BuildingDocument document,
+        ElementCategory category)
+    {
+        var result = new Dictionary<Guid, IReadOnlyDictionary<string, object>>();
+        switch (category)
+        {
+            case ElementCategory.Walls:
+                var hosted = document.Openings.ToLookup(opening => opening.WallId);
+                foreach (var wall in document.Walls)
+                    result[wall.Id] = new Dictionary<string, object>
+                    {
+                        [Length] = wall.Length, [Height] = wall.Height, [Thickness] = wall.Thickness,
+                        [NetVolume] = WallGeometry.NetVolume(wall, hosted[wall.Id])
+                    };
+                break;
+            case ElementCategory.Doors or ElementCategory.Windows:
+                var kind = category == ElementCategory.Doors ? OpeningKind.Door : OpeningKind.Window;
+                foreach (var opening in document.Openings.Where(opening => opening.Kind == kind))
+                    result[opening.Id] = new Dictionary<string, object>
+                    {
+                        [Width] = opening.Width, [Height] = opening.Height, [Sill] = opening.Sill,
+                        [Host] = ElementCatalog.ShortMark(opening.WallId)
+                    };
+                break;
+            case ElementCategory.Rooms:
+                foreach (var room in document.Rooms)
+                    result[room.Id] = new Dictionary<string, object> { [Area] = room.Area };
+                break;
+            case ElementCategory.Floors:
+                foreach (var floor in document.Floors)
+                    result[floor.Id] = new Dictionary<string, object>
+                    {
+                        [Area] = floor.CalculateArea(), [Thickness] = floor.Thickness
+                    };
+                break;
+            case ElementCategory.Levels:
+                foreach (var level in document.Levels)
+                    result[level.Id] = new Dictionary<string, object> { [Elevation] = level.Elevation };
+                break;
+            case ElementCategory.Sheets:
+                foreach (var sheet in document.Sheets)
+                    result[sheet.Id] = new Dictionary<string, object> { [PaperSize] = sheet.PaperSize.ToString() };
+                break;
+        }
+        return result;
+    }
+}

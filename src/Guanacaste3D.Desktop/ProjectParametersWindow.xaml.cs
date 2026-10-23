@@ -6,7 +6,11 @@ using Guanacaste3D.Core;
 namespace Guanacaste3D.Desktop;
 
 /// <summary>A localized label paired with the domain value it represents, for combo boxes.</summary>
-public sealed record LabeledValue<T>(string Label, T Value);
+public sealed record LabeledValue<T>(string Label, T Value)
+{
+    /// <summary>Returns the label so screen readers and UI Automation announce the visible text.</summary>
+    public override string ToString() => Label;
+}
 
 /// <summary>
 /// Manages project parameter definitions and edits their values in a live
@@ -174,7 +178,7 @@ public partial class ProjectParametersWindow : Window
         }
         catch (System.IO.InvalidDataException exception)
         {
-            StatusText.Text = Format("Parameters.Rejected", exception.Message);
+            StatusText.Text = Format("Parameters.Rejected", LocalizedErrors.Translate(exception.Message));
         }
     }
 

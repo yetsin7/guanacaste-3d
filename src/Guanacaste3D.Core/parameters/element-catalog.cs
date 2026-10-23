@@ -70,10 +70,10 @@ public static class ElementCatalog
     {
         var kind = category == ElementCategory.Doors ? OpeningKind.Door : OpeningKind.Window;
         var hostLevels = document.Walls.ToDictionary(wall => wall.Id, wall => wall.LevelId);
+        var typeNames = document.OpeningTypes.ToDictionary(type => type.Id, type => type.DisplayName);
         return document.Openings.Where(opening => opening.Kind == kind).Select(opening => new ElementEntry(
             opening.Id, category, ShortMark(opening.Id),
-            string.Create(System.Globalization.CultureInfo.InvariantCulture,
-                $"{opening.Width:0.00} × {opening.Height:0.00}"),
-            hostLevels.TryGetValue(opening.WallId, out var levelId) ? levelId : null, null));
+            typeNames.GetValueOrDefault(opening.OpeningTypeId, string.Empty),
+            hostLevels.TryGetValue(opening.WallId, out var levelId) ? levelId : null, opening.OpeningTypeId));
     }
 }

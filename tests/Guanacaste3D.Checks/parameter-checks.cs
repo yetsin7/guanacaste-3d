@@ -126,7 +126,8 @@ static class ParameterChecks
         check(session.Document.ParameterValues.All(value => value.DefinitionId != fireRating),
             "Removing a definition removes all of its values");
         var csv = CategoryScheduleService.ToCsv(CategoryScheduleService.Build(session.Document, ElementCategory.Walls));
-        check(csv.StartsWith("\"Mark\",\"Name\",\"Level\",\"Surface finish\"", StringComparison.Ordinal) &&
+        check(csv.StartsWith("\"Mark\",\"Name\",\"Level\",\"Length (m)\"", StringComparison.Ordinal) &&
+              csv.Split('\n')[0].TrimEnd().EndsWith("\"Surface finish\"", StringComparison.Ordinal) &&
               csv.Contains("\"Plaster\"", StringComparison.Ordinal), "Category schedules export parameter columns to CSV");
     }
 
@@ -137,6 +138,9 @@ static class ParameterChecks
         check(ParameterValueText.TryParse(ParameterSpec.Length, "2,5 m", spanish, out var comma, out _) && comma == 2.5 &&
               ParameterValueText.TryParse(ParameterSpec.Length, "2.5", spanish, out var dot, out _) && dot == 2.5,
             "Length input accepts local and invariant decimals with unit suffix");
+        var mexican = CultureInfo.GetCultureInfo("es-MX");
+        check(ParameterValueText.TryParse(ParameterSpec.Length, "3,5", mexican, out var lone, out _) && lone == 3.5,
+            "A lone decimal comma parses even when the culture uses a decimal point");
         check(ParameterValueText.TryParse(ParameterSpec.YesNo, "Sí", spanish, out var yes, out _) && yes == 1 &&
               !ParameterValueText.TryParse(ParameterSpec.Area, "-3", spanish, out _, out _) &&
               ParameterValueText.TryParse(ParameterSpec.Text, "   ", spanish, out var cleared, out var clearedText) &&
@@ -182,7 +186,7 @@ static class ParameterChecks
             var migrated = ProjectFile.Load(path);
             check(migrated.SchemaVersion == BuildingDocument.CurrentSchemaVersion &&
                   migrated.ParameterDefinitions.Count == 0 && migrated.ParameterValues.Count == 0,
-                "Schema-3 projects migrate to schema 4 with empty parameter catalogs");
+                "Schema-3 projects migrate to the current schema with empty parameter catalogs");
 
             var orphan = session.Document.Clone();
             orphan.ParameterValues.Add(new ParameterValue(drawnBy, Guid.NewGuid(), null, "Ghost"));
