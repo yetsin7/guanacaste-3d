@@ -29,6 +29,9 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 - [ ] Guardar en un archivo `.g3d.json`; cerrar y reabrir sin perder niveles, muros ni aberturas.
 - [ ] Sobrescribir el proyecto y confirmar que exista una copia `.bak`.
 - [ ] Cancelar la creación de un proyecto nuevo cuando hay cambios sin guardar.
+- [ ] En el árbol BIM, seleccionar una puerta/ventana y pulsar Supr (Eliminar): se elimina únicamente la abertura, nunca el muro anfitrión.
+- [ ] Deshacer la eliminación de la abertura: reaparece la puerta/ventana sin duplicar ni borrar el muro.
+- [ ] Cambiar de nivel y crear un muro nuevo después de seleccionar una abertura: Supr debe actuar sobre la selección actual, no sobre la anterior.
 - [ ] Borrar un muro anfitrión y confirmar que sus aberturas también desaparezcan.
 - [ ] Abrir un JSON malformado o incompatible: debe rechazarse sin reemplazar el documento abierto.
 - [ ] En el modelo 3D, arrastrar para orbitar y usar la rueda del ratón para zoom; al editar un muro, la orientación debe mantenerse.
