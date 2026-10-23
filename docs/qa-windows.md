@@ -22,6 +22,8 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 - [ ] Abrir `samples/casa-demostrativa.g3d.json` y comprobar 2 niveles, 5 muros, 3 aberturas y 2 losas.
 - [ ] Cambiar ancho y largo de una losa desde el inspector, verificar área/volumen y deshacer sin corrupción.
 - [ ] La ventana abre y muestra Guanacaste 3D.
+- [ ] En Archivo, exportar instantánea BIM JSON del proyecto demostrativo; revisar 5 muros, 3 aberturas, 2 losas y metros.
+- [ ] Modificar el espesor de un tipo de muro y exportar otra instantánea; confirmar las variaciones de geometría y volumen.
 - [ ] Crear dos muros de cinco metros y cambiar de planta 2D a modelo 3D.
 - [ ] Seleccionar un muro; crear un tipo de muro y asignarlo a otro.
 - [ ] Cambiar el espesor del tipo: ambos muros vinculados deben actualizarse sin modificar la altura individual.
