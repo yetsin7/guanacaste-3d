@@ -14,7 +14,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-windows.ps1 -SmokeLaun
 [CmdletBinding()]
 param(
     [switch]$SkipPackage,
-    [switch]$SmokeLaunch
+    [switch]$SmokeLaunch,
+    # Uses the installed .NET 10 Desktop Runtime instead of bundling it (no runtime-pack download).
+    [switch]$FrameworkDependent
 )
 
 Set-StrictMode -Version Latest
@@ -34,7 +36,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 }
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputRoot = Join-Path $projectRoot 'artifacts\portable-win-x64'
+$outputRoot = Join-Path $projectRoot $(if ($FrameworkDependent) { 'artifacts\framework-win-x64' } else { 'artifacts\portable-win-x64' })
 $executable = Join-Path $outputRoot 'Guanacaste3D.Desktop.exe'
 
 Push-Location -LiteralPath $projectRoot
@@ -46,8 +48,9 @@ try {
     Write-Host 'Build and core regression checks passed.' -ForegroundColor Green
 
     if (-not $SkipPackage) {
+        $selfContained = if ($FrameworkDependent) { 'false' } else { 'true' }
         Invoke-Dotnet @('publish', 'src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj',
-            '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true',
+            '-c', 'Release', '-r', 'win-x64', '--self-contained', $selfContained,
             '-p:PublishSingleFile=true', '-o', $outputRoot)
         if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
             throw 'The published executable was not produced.'
