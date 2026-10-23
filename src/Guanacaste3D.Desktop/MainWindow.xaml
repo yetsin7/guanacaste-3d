@@ -130,6 +130,20 @@
           <TextBlock Text="Rotación (grados)" Margin="0,0,0,4"/>
           <TextBox x:Name="RotationInput" Text="90"/>
           <Button Content="Aplicar rotación" Click="RotatePrecise_Click" Margin="0,8,0,0"/>
+          <Separator Margin="0,18,0,12"/>
+          <TextBlock Text="ABERTURA SELECCIONADA" FontWeight="SemiBold" Foreground="#365B49"/>
+          <TextBlock Text="Centro / ancho (m)" Margin="0,10,0,4"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="OpeningOffsetInput" Width="105" Margin="0,0,8,0"/>
+            <TextBox x:Name="OpeningWidthInput" Width="105"/>
+          </StackPanel>
+          <TextBlock Text="Antepecho / altura (m)" Margin="0,10,0,4"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="OpeningSillInput" Width="105" Margin="0,0,8,0"/>
+            <TextBox x:Name="OpeningHeightInput" Width="105"/>
+          </StackPanel>
+          <Button Content="Aplicar abertura" Click="ApplyOpening_Click" Margin="0,8,0,0"/>
+          <Button Content="Eliminar abertura" Click="RemoveOpening_Click" Margin="0,6,0,0"/>
           <TextBlock TextWrapping="Wrap" Foreground="#829088" FontSize="11"
                      Margin="0,24,0,0"
                      Text="Prototipo BIM inicial: las herramientas de documentación avanzada y modelado de producción se incorporarán progresivamente."/>
