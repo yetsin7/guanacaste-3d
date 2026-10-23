@@ -141,4 +141,42 @@ for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
 
+// CAD exchange: output is schematic DXF R12, with exact metric geometry and per-level layers.
+var exportedDxf = DxfExporter.ToAscii(session.Document);
+Check(exportedDxf.Contains("$ACADVER\r\n1\r\nAC1009\r\n") &&
+      exportedDxf.EndsWith("0\r\nEOF\r\n", StringComparison.Ordinal),
+    "DXF R12 has the required header and closing marker");
+Check(exportedDxf.Contains("G3D-L001-WALL") &&
+      exportedDxf.Contains("G3D-L001-DOOR") &&
+      exportedDxf.Contains("G3D-L001-WINDOW"),
+    "DXF separates wall outlines, door markers and window markers");
+Check(exportedDxf.Split("0\r\nLINE\r\n", StringSplitOptions.None).Length - 1 == 14,
+    "DXF emits three rectangular wall sections and two opening markers");
+var additionalLevel = Guid.NewGuid();
+var drawing = session.Document.Clone();
+drawing.Levels.Add(new Level(additionalLevel, "Mezzanine", 3.25));
+drawing.Walls.Add(new Wall(Guid.NewGuid(), additionalLevel,
+    new Point2(0, 0), new Point2(2.5, 0), 0.2, 3));
+var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+try
+{
+    System.Globalization.CultureInfo.CurrentCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+    var metricDxf = DxfExporter.ToAscii(drawing);
+    Check(metricDxf.Contains("G3D-L002-WALL") &&
+          metricDxf.Contains("30\r\n3.25\r\n") &&
+          metricDxf.Contains("11\r\n2.5\r\n"),
+        "DXF preserves multiple levels, elevations and invariant decimal points");
+}
+finally
+{
+    System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+}
+var invalidForExport = session.Document.Clone();
+invalidForExport.Walls[0] = invalidForExport.Walls[0] with { Thickness = double.NaN };
+failed = false;
+try { DxfExporter.ToAscii(invalidForExport); }
+catch (InvalidDataException) { failed = true; }
+Check(failed, "DXF refuses invalid BIM geometry before export");
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
