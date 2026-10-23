@@ -11,6 +11,7 @@
         <Separator/>
         <MenuItem Header="_Guardar" Click="Save_Click"/>
         <MenuItem Header="Guardar _como..." Click="SaveAs_Click"/>
+        <MenuItem Header="Exportar cantidades CSV..." Click="ExportQuantities_Click"/>
         <Separator/>
         <MenuItem Header="Salir" Click="Exit_Click"/>
       </MenuItem>
