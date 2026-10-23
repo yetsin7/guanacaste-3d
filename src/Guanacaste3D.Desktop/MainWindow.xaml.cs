@@ -274,6 +274,9 @@ public partial class MainWindow : Window
             return;
         }
         var point = CanvasToWorld(e.GetPosition(PlanCanvas));
+        if (SnapGridCheck.IsChecked == true)
+            point = new Point2(Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
+                               Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10);
         if (_pendingWallStart is null)
         {
             _pendingWallStart = point;
@@ -303,7 +306,11 @@ public partial class MainWindow : Window
 
     private void PlanCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
+        var cursor = e.GetPosition(PlanCanvas);
+        var anchor = CanvasToWorld(cursor);
         _scale = Math.Clamp(_scale * (e.Delta > 0 ? 1.15 : 1.0 / 1.15), 8, 200);
+        _panOffset = new Point(cursor.X - PlanCanvas.ActualWidth / 2 - anchor.X * _scale,
+                               cursor.Y - PlanCanvas.ActualHeight / 2 + anchor.Y * _scale);
         RenderPlan();
     }
 
@@ -341,6 +348,16 @@ public partial class MainWindow : Window
         StatusText.Text = "Planta encuadrada al nivel activo.";
     }
 
+    private void ToggleGrid_Click(object sender, RoutedEventArgs e)
+    {
+        ShowGridCheck.IsChecked = ShowGridCheck.IsChecked != true;
+    }
+
+    private void GridVisibility_Changed(object sender, RoutedEventArgs e)
+    {
+        if (PlanCanvas is not null) RenderPlan();
+    }
+
     private void RenderPlan()
     {
         if (PlanCanvas is null || _session is null) return;
@@ -350,10 +367,13 @@ public partial class MainWindow : Window
         var right = PlanCanvas.ActualWidth / 2 - _panOffset.X;
         var top = -PlanCanvas.ActualHeight / 2 - _panOffset.Y;
         var bottom = PlanCanvas.ActualHeight / 2 - _panOffset.Y;
+        if (ShowGridCheck.IsChecked == true)
+        {
         for (var gx = Math.Ceiling(left / _scale); gx <= right / _scale; gx++)
             AddLine(new Point2(gx, -bottom / _scale), new Point2(gx, -top / _scale), 0.5, Brushes.Gainsboro);
         for (var gy = Math.Ceiling(top / _scale); gy <= bottom / _scale; gy++)
             AddLine(new Point2(left / _scale, -gy), new Point2(right / _scale, -gy), 0.5, Brushes.Gainsboro);
+        }
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
         foreach (var wall in _session.Document.Walls.Where(w => w.LevelId == _activeLevelId))
