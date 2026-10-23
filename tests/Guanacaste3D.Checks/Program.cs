@@ -158,6 +158,14 @@ var exportedDxf = DxfExporter.ToAscii(session.Document);
 Check(exportedDxf.Contains("$ACADVER\r\n1\r\nAC1009\r\n") &&
       exportedDxf.EndsWith("0\r\nEOF\r\n", StringComparison.Ordinal),
     "DXF R12 has the required header and closing marker");
+
+Check(exportedDxf.IndexOf("2\r\nLTYPE\r\n", StringComparison.Ordinal) <
+      exportedDxf.IndexOf("2\r\nLAYER\r\n", StringComparison.Ordinal) &&
+      exportedDxf.Contains("2\r\nCONTINUOUS\r\n") &&
+      exportedDxf.Contains("2\r\nBLOCKS\r\n") &&
+      exportedDxf.Contains("0\r\nLAYER\r\n2\r\n0\r\n"),
+    "DXF R12 declares a base layer, a line type and a BLOCKS section");
+
 Check(exportedDxf.Contains("G3D-L001-WALL") &&
       exportedDxf.Contains("G3D-L001-DOOR") &&
       exportedDxf.Contains("G3D-L001-WINDOW"),
