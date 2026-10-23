@@ -23,6 +23,14 @@ Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias),
 
 > **Validación pendiente:** la ejecución [n.º 49](https://github.com/yetsin7/guanacaste-3d/actions/runs/39988219533) falló sin ejecutar ningún paso (y no generó logs de compilación). Se prepararon trabajos separados de núcleo Linux y escritorio Windows, pero la infraestructura de Actions sigue sin validar. No confundas un fallo previo al runner con errores de código. Comprueba manualmente con los comandos siguientes en Windows. No uses esta versión para documentación constructiva real.
 
+## Proyecto demostrativo listo para abrir
+
+El archivo [`samples/casa-demostrativa.g3d.json`](samples/casa-demostrativa.g3d.json)
+contiene una casa sencilla de dos niveles, cinco muros, tres aberturas
+y dos losas. Abre el archivo desde **Archivo → Abrir proyecto** para
+probar inmediatamente las vistas 2D/3D, la edición, las cantidades y el DXF.
+Puedes guardar una copia antes de experimentar con sus elementos.
+
 ## Requisitos
 
 - Windows 10/11, x64.
