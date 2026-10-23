@@ -74,6 +74,42 @@ public sealed class DocumentSession
         return id;
     }
 
+    /// <summary>Moves a wall and its hosted openings without changing dimensions.</summary>
+    public void MoveWall(Guid id, double deltaX, double deltaY)
+    {
+        if (!Document.Walls.Any(w => w.Id == id)) return;
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == id);
+            var wall = doc.Walls[index];
+            doc.Walls[index] = wall with
+            {
+                Start = new Point2(wall.Start.X + deltaX, wall.Start.Y + deltaY),
+                End = new Point2(wall.End.X + deltaX, wall.End.Y + deltaY)
+            };
+        });
+    }
+
+    /// <summary>Duplicates a wall and all of its openings with new stable identifiers.</summary>
+    public Guid DuplicateWall(Guid id, double deltaX = 1, double deltaY = 1)
+    {
+        var original = Document.Walls.FirstOrDefault(w => w.Id == id)
+            ?? throw new InvalidDataException("No existe el muro que deseas duplicar.");
+        var newId = Guid.NewGuid();
+        Commit(doc =>
+        {
+            doc.Walls.Add(original with
+            {
+                Id = newId,
+                Start = new Point2(original.Start.X + deltaX, original.Start.Y + deltaY),
+                End = new Point2(original.End.X + deltaX, original.End.Y + deltaY)
+            });
+            foreach (var opening in doc.Openings.Where(o => o.WallId == id).ToArray())
+                doc.Openings.Add(opening with { Id = Guid.NewGuid(), WallId = newId });
+        });
+        return newId;
+    }
+
     public void RemoveOpening(Guid id)
     {
         if (!Document.Openings.Any(o => o.Id == id)) return;
