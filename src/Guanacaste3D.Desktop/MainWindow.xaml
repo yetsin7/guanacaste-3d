@@ -12,6 +12,7 @@
         <MenuItem Header="_Guardar" Click="Save_Click"/>
         <MenuItem Header="Guardar _como..." Click="SaveAs_Click"/>
         <MenuItem Header="Exportar cantidades CSV..." Click="ExportQuantities_Click"/>
+        <MenuItem Header="Exportar cantidades de losas CSV..." Click="ExportSlabs_Click"/>
         <MenuItem Header="Exportar dibujo DXF R12..." Click="ExportDxf_Click"/>
         <Separator/>
         <MenuItem Header="Salir" Click="Exit_Click"/>
@@ -59,6 +60,7 @@
           <Button Content="Seleccionar" Click="Select_Click"/>
           <Button Content="Encuadrar" Click="FitPlan_Click" ToolTip="Ajustar la escala para mostrar todos los muros del nivel"/>
           <Button Content="Muro (W)" Click="Wall_Click" Background="#D8EEE2" ToolTip="Dibujar muro mediante dos puntos"/>
+          <Button Content="Losa (L)" Click="Slab_Click" ToolTip="Dibujar losa rectangular mediante dos esquinas"/>
           <Button Content="Puerta" Click="Door_Click" ToolTip="Insertar abertura de puerta en el muro seleccionado"/>
           <Button Content="Ventana" Click="Window_Click" ToolTip="Insertar abertura de ventana en el muro seleccionado"/>
           <Button Content="Duplicar" Click="Duplicate_Click" ToolTip="Copiar el muro y sus aberturas"/>
@@ -96,7 +98,7 @@
             <ComboBox x:Name="LevelPicker" Width="170" SelectionChanged="LevelPicker_SelectionChanged"/>
             <CheckBox x:Name="SnapGridCheck" Content="Ajustar a 10 cm" IsChecked="True" Margin="14,0,6,0" VerticalAlignment="Center"/>
             <CheckBox x:Name="ShowGridCheck" Content="Rejilla" IsChecked="True" Margin="6,0" VerticalAlignment="Center" Checked="GridVisibility_Changed" Unchecked="GridVisibility_Changed"/>
-            <TextBlock Text="   W: muros · F: encuadrar · Esc: cancelar" FontSize="11"
+            <TextBlock Text="   W: muro · L: losa · F: encuadrar · Esc: cancelar" FontSize="11"
                        Foreground="#74867C" VerticalAlignment="Center"/>
           </StackPanel>
           <TabControl x:Name="ViewTabs" Background="#F8FAF8">
@@ -151,6 +153,12 @@
           <TextBlock Text="Rotación (grados)" Margin="0,0,0,4"/>
           <TextBox x:Name="RotationInput" Text="90"/>
           <Button Content="Aplicar rotación" Click="RotatePrecise_Click" Margin="0,8,0,0"/>
+          <Separator Margin="0,18,0,12"/>
+          <TextBlock Text="LOSA SELECCIONADA" FontWeight="SemiBold" Foreground="#365B49"/>
+          <TextBlock Text="Espesor de losa (metros)" Margin="0,10,0,4"/>
+          <TextBox x:Name="SlabThicknessInput" Text="0.20"/>
+          <Button Content="Aplicar espesor a losa" Click="ApplySlab_Click" Margin="0,8,0,2"/>
+          <Button Content="Duplicar losa (1 m X/Y)" Click="DuplicateSlab_Click" Margin="0,5,0,2"/>
           <Separator Margin="0,18,0,12"/>
           <TextBlock Text="ABERTURA SELECCIONADA" FontWeight="SemiBold" Foreground="#365B49"/>
           <TextBlock Text="Centro / ancho (m)" Margin="0,10,0,4"/>
