@@ -812,6 +812,94 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
+    private bool TryWallTypeThickness(out double thickness)
+    {
+        if (double.TryParse(ThicknessInput.Text, NumberStyles.Float,
+                CultureInfo.CurrentCulture, out thickness) && double.IsFinite(thickness))
+            return true;
+        MessageBox.Show(this, "Introduce un espesor válido en metros.", "Tipo de muro",
+            MessageBoxButton.OK, MessageBoxImage.Warning);
+        return false;
+    }
+
+    private void CreateWallType_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid wallId)
+        {
+            StatusText.Text = "Selecciona primero un muro.";
+            return;
+        }
+        if (!TryWallTypeThickness(out var thickness)) return;
+        try
+        {
+            _session.CreateWallTypeForWall(wallId, WallTypeNameInput.Text, thickness);
+            StatusText.Text = "Tipo creado y asignado al muro.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Tipo de muro inválido",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void AssignWallType_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid wallId ||
+            WallTypePicker.SelectedItem is not ComboBoxItem { Tag: Guid typeId })
+        {
+            StatusText.Text = "Selecciona un muro y un tipo válido.";
+            return;
+        }
+        try
+        {
+            _session.SetWallType(wallId, typeId);
+            StatusText.Text = "Tipo aplicado al muro.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo aplicar el tipo",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void UpdateWallType_Click(object sender, RoutedEventArgs e)
+    {
+        if (WallTypePicker.SelectedItem is not ComboBoxItem { Tag: Guid typeId })
+        {
+            StatusText.Text = "Selecciona el tipo que deseas actualizar.";
+            return;
+        }
+        if (!TryWallTypeThickness(out var thickness)) return;
+        try
+        {
+            _session.UpdateWallType(typeId, WallTypeNameInput.Text, thickness);
+            StatusText.Text = "Tipo actualizado en todos los muros vinculados.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Tipo no válido",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void DetachWallType_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid wallId)
+        {
+            StatusText.Text = "Selecciona un muro para desvincularlo.";
+            return;
+        }
+        try
+        {
+            _session.DetachWallType(wallId);
+            StatusText.Text = "Muro desvinculado; conserva el espesor actual.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo desvincular el tipo");
+        }
+    }
+
     private void ApplyProperties_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is not Guid id)
@@ -889,11 +977,44 @@ public partial class MainWindow : Window
             levels.Items.Add(branch);
         }
         project.Items.Add(levels);
+        var types = new TreeViewItem { Header = $"Tipos de muro ({_session.Document.WallTypes.Count})" };
+        foreach (var type in _session.Document.WallTypes.OrderBy(t => t.Name))
+            types.Items.Add(new TreeViewItem
+            {
+                Header = $"{type.Name} · {type.Thickness:0.###} m"
+            });
+        project.Items.Add(types);
         ProjectTree.Items.Add(project);
+    }
+
+    private void RefreshWallTypePicker()
+    {
+        var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == _selectedWallId);
+        WallTypePicker.Items.Clear();
+        var independent = new ComboBoxItem { Content = "Sin tipo — espesor independiente" };
+        WallTypePicker.Items.Add(independent);
+        WallTypePicker.SelectedItem = independent;
+        foreach (var type in _session.Document.WallTypes.OrderBy(t => t.Name))
+        {
+            var item = new ComboBoxItem
+            {
+                Content = $"{type.Name} · {type.Thickness:0.###} m",
+                Tag = type.Id
+            };
+            WallTypePicker.Items.Add(item);
+            if (wall?.TypeId == type.Id)
+            {
+                WallTypePicker.SelectedItem = item;
+                WallTypeNameInput.Text = type.Name;
+            }
+        }
+        if (wall?.TypeId is null)
+            WallTypeNameInput.Text = "Muro tipo 20 cm";
     }
 
     private void RefreshProperties()
     {
+        RefreshWallTypePicker();
         var selectedOpening = _session.Document.Openings.FirstOrDefault(o => o.Id == _selectedOpeningId);
         if (selectedOpening is not null)
         {
@@ -927,7 +1048,8 @@ public partial class MainWindow : Window
                 "Selecciona un muro o losa para ver sus propiedades.";
             return;
         }
-        PropertiesText.Text = $"Elemento: muro\nLongitud: {wall.Length:0.00} m\n" +
+        var activeType = _session.Document.WallTypes.FirstOrDefault(t => t.Id == wall.TypeId);
+        PropertiesText.Text = $"Elemento: muro\nTipo: {activeType?.Name ?? "Independiente"}\nLongitud: {wall.Length:0.00} m\n" +
             $"Espesor: {wall.Thickness:0.00} m\nAltura: {wall.Height:0.00} m\n" +
             $"Aberturas: {_session.Document.Openings.Count(o => o.WallId == wall.Id)}\n" +
             $"Volumen neto: {WallGeometry.NetVolume(wall, _session.Document.Openings.Where(o => o.WallId == wall.Id)):0.00} m³\n" +
