@@ -345,6 +345,27 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
+    private void Rotate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid id)
+        {
+            StatusText.Text = "Selecciona un muro para rotarlo.";
+            return;
+        }
+        try
+        {
+            _session.RotateWall(id, 90);
+            _selectedWallOffset = null;
+            StatusText.Text = "Muro rotado 90° alrededor de su punto inicial.";
+            RefreshAll();
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Rotar muro",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void Move_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
