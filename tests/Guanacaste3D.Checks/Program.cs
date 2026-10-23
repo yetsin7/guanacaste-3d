@@ -56,10 +56,16 @@ try
     Check(ProjectFile.Load(filename).Openings.Count == 2, "Save/load hosted openings");
     ProjectFile.Save(filename, session.Document);
     Check(File.Exists(filename + ".bak"), "Preserve previous file backup");
-    File.WriteAllText(filename, "{\"SchemaVersion\":99}");
+    var unsupported = session.Document.Clone();
+    unsupported.SchemaVersion = 99;
+    File.WriteAllText(filename, System.Text.Json.JsonSerializer.Serialize(unsupported));
     failed = false;
     try { ProjectFile.Load(filename); } catch (InvalidDataException) { failed = true; }
     Check(failed, "Reject unsupported project version");
+    File.WriteAllText(filename, "{\\"SchemaVersion\\":1}");
+    failed = false;
+    try { ProjectFile.Load(filename); } catch (InvalidDataException) { failed = true; }
+    Check(failed, "Reject incomplete JSON project");
 }
 finally
 {
