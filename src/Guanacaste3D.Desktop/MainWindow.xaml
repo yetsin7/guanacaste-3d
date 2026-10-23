@@ -31,6 +31,7 @@
         <MenuItem Header="{DynamicResource Action.Save}" Click="Save_Click"/>
         <MenuItem Header="{DynamicResource Action.SaveAs}" Click="SaveAs_Click"/>
         <MenuItem Header="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click"/>
+        <MenuItem Header="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click"/>
         <Separator/>
         <MenuItem Header="{DynamicResource Action.Exit}" Click="Exit_Click"/>
       </MenuItem>
@@ -112,6 +113,7 @@
       <TabItem Header="{DynamicResource Ribbon.Manage}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
           <Button Content="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
     </TabControl>

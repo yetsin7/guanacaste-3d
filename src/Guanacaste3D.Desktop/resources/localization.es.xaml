@@ -152,6 +152,10 @@
   <sys:String x:Key="Dialog.ProjectFilter">Proyecto Guanacaste 3D (*.g3)|*.g3</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFilter">Tabla de cantidades (*.csv)|*.csv</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFileName">cantidades-guanacaste3d.csv</sys:String>
+  <sys:String x:Key="Action.ExportDxf">Exportar plantas DXF…</sys:String>
+  <sys:String x:Key="Status.DxfExported">Plantas exportadas a DXF R12 en metros.</sys:String>
+  <sys:String x:Key="Dialog.DxfFilter">Dibujo DXF R12 (*.dxf)|*.dxf</sys:String>
+  <sys:String x:Key="Dialog.DxfFileName">plantas-guanacaste3d.dxf</sys:String>
   <sys:String x:Key="Dialog.OpenFailed">No se pudo abrir</sys:String>
   <sys:String x:Key="Dialog.ExportFailed">No se pudo exportar</sys:String>
   <sys:String x:Key="Dialog.SaveFailed">No se pudo guardar</sys:String>

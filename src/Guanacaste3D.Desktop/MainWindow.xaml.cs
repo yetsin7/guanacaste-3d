@@ -96,22 +96,33 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Exports the coordinated wall quantity schedule as UTF-8 CSV.</summary>
-    private void ExportQuantities_Click(object sender, RoutedEventArgs e)
+    private void ExportQuantities_Click(object sender, RoutedEventArgs e) =>
+        ExportText("Dialog.QuantitiesFilter", "Dialog.QuantitiesFileName", ".csv",
+            () => QuantitySchedule.ToCsv(_session.Document), new System.Text.UTF8Encoding(true),
+            "Status.QuantitiesExported");
+
+    /// <summary>Exports the coordinated floor plans as metric DXF R12 drawing geometry.</summary>
+    private void ExportDxf_Click(object sender, RoutedEventArgs e) =>
+        ExportText("Dialog.DxfFilter", "Dialog.DxfFileName", ".dxf",
+            () => DxfExporter.ToAscii(_session.Document), System.Text.Encoding.ASCII,
+            "Status.DxfExported");
+
+    /// <summary>Asks for a destination and writes a generated text export with error reporting.</summary>
+    private void ExportText(string filterKey, string fileNameKey, string extension,
+        Func<string> generate, System.Text.Encoding encoding, string statusKey)
     {
         var dialog = new SaveFileDialog
         {
-            Filter = GetText("Dialog.QuantitiesFilter"),
-            FileName = GetText("Dialog.QuantitiesFileName"),
+            Filter = GetText(filterKey),
+            FileName = GetText(fileNameKey),
             AddExtension = true,
-            DefaultExt = ".csv"
+            DefaultExt = extension
         };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            System.IO.File.WriteAllText(dialog.FileName,
-                QuantitySchedule.ToCsv(_session.Document),
-                new System.Text.UTF8Encoding(true));
-            StatusText.Text = GetText("Status.QuantitiesExported");
+            System.IO.File.WriteAllText(dialog.FileName, generate(), encoding);
+            StatusText.Text = GetText(statusKey);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -151,7 +162,7 @@ public partial class MainWindow : Window
             StatusText.Text = FormatText("Status.ProjectSaved", System.IO.Path.GetFileName(path));
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             MessageBox.Show(this, ex.Message, GetText("Dialog.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
             return false;

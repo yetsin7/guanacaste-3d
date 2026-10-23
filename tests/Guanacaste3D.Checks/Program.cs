@@ -229,4 +229,28 @@ Check(viewSession.Document.Views.Any(view =>
         view.Kind == ProjectViewKind.Plan && view.LevelId == addedLevelId),
     "Adding a level creates its coordinated plan view");
 
+var dxfSession = new DocumentSession(BuildingDocument.Create("DXF Export"));
+var dxfLevelId = dxfSession.Document.Levels[0].Id;
+var dxfWallId = dxfSession.AddWall(dxfLevelId, new Point2(0, 0), new Point2(6, 0));
+dxfSession.AddOpening(dxfWallId, OpeningKind.Door, offset: 2);
+dxfSession.AddFloor(dxfLevelId, [new(0, 0), new(6, 0), new(6, 4), new(0, 4)]);
+dxfSession.AddRoom(dxfLevelId, new Point2(0, 0), new Point2(6, 4), "Sala\nComedor");
+var dxf = DxfExporter.ToAscii(dxfSession.Document);
+var dxfLines = dxf.Split("\r\n");
+Check(dxf.StartsWith("0\r\nSECTION\r\n2\r\nHEADER", StringComparison.Ordinal) &&
+      dxf.EndsWith("0\r\nEOF\r\n", StringComparison.Ordinal) && dxfLines.Contains("AC1009"),
+    "DXF export is a framed R12 document");
+Check(dxfLines.Length % 2 == 1 &&
+      dxfLines.Where((_, index) => index % 2 == 0 && index < dxfLines.Length - 1)
+          .All(code => int.TryParse(code, out _)),
+    "DXF export alternates integer group codes and values");
+var lineCount = dxfLines.Count(line => line == "LINE");
+// Door splits the wall into two 4-edge outlines, plus 1 door chord, 4 slab edges and 4 room edges.
+Check(lineCount == 8 + 1 + 4 + 4, "DXF export writes split walls, opening chord, slab and room edges");
+Check(dxf.Contains(DxfExporter.LayerName(0, "DOOR"), StringComparison.Ordinal) &&
+      dxf.Contains("001 Sala Comedor", StringComparison.Ordinal),
+    "DXF export layers openings and sanitizes room labels");
+Check(!dxf.Contains(','), "DXF numbers are culture invariant");
+Check(DxfExporter.ToAscii(dxfSession.Document) == dxf, "DXF export is deterministic");
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
