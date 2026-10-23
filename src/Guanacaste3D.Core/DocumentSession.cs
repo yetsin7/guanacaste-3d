@@ -60,6 +60,22 @@ public sealed class DocumentSession
         });
     }
 
+    /// <summary>Resize from the fixed lower-left corner; invalid dimensions roll back.</summary>
+    public void ResizeSlab(Guid id, double width, double depth)
+    {
+        if (!Document.Slabs.Any(s => s.Id == id))
+            throw new InvalidDataException("La losa seleccionada no existe.");
+        Commit(doc =>
+        {
+            var index = doc.Slabs.FindIndex(s => s.Id == id);
+            var slab = doc.Slabs[index];
+            doc.Slabs[index] = slab with
+            {
+                Max = new Point2(slab.Min.X + width, slab.Min.Y + depth)
+            };
+        });
+    }
+
     /// <summary>Move a slab without changing its dimensions.</summary>
     public void MoveSlab(Guid id, double dx, double dy)
     {
