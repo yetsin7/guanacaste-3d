@@ -1,4 +1,6 @@
 using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
 
 /// <summary>Fails the executable check suite when an expected invariant is not satisfied.</summary>
 static void Check(bool valid, string explanation)
@@ -252,5 +254,111 @@ Check(dxf.Contains(DxfExporter.LayerName(0, "DOOR"), StringComparison.Ordinal) &
     "DXF export layers openings and sanitizes room labels");
 Check(!dxf.Contains(','), "DXF numbers are culture invariant");
 Check(DxfExporter.ToAscii(dxfSession.Document) == dxf, "DXF export is deterministic");
+
+// Concave L-shaped slab: a fan triangulation would cover the notch; ear clipping must not.
+Point2[] lShape = [new(0, 0), new(6, 0), new(6, 2), new(2, 2), new(2, 5), new(0, 5)];
+var lTriangles = PolygonTriangulator.Triangulate(lShape);
+var lArea = lTriangles.Sum(t => Math.Abs(PolygonTriangulator.SignedDoubleArea([lShape[t.A], lShape[t.B], lShape[t.C]])) / 2);
+Check(lTriangles.Count == 4 && Math.Abs(lArea - 18) < 1e-9, "Concave slabs triangulate to their exact area");
+var clockwiseL = lShape.Reverse().ToArray();
+Check(Math.Abs(PolygonTriangulator.Triangulate(clockwiseL).Count - 4) == 0, "Clockwise outlines triangulate");
+failed = false;
+try { PolygonTriangulator.Triangulate([new(0, 0), new(1, 1), new(2, 2)]); }
+catch (ArgumentException) { failed = true; }
+Check(failed, "Degenerate outlines are rejected by the triangulator");
+
+var renderSession = new DocumentSession(BuildingDocument.Create("Render"));
+var renderLevel = renderSession.Document.Levels[0].Id;
+var renderWall = renderSession.AddWall(renderLevel, new Point2(0, 0), new Point2(8, 0));
+renderSession.AddOpening(renderWall, OpeningKind.Window, offset: 4, width: 1.2, sill: 0.9, height: 1.2);
+renderSession.AddFloor(renderLevel, lShape);
+var sceneMesh = BuildingMesher.Build(renderSession.Document, includeGround: true);
+Check(sceneMesh.TriangleKinds.Contains(SurfaceKind.Glass) &&
+      sceneMesh.TriangleKinds.Contains(SurfaceKind.Ground) &&
+      sceneMesh.Indices.Count == sceneMesh.TriangleCount * 3,
+    "Building mesher emits walls, glazing, slabs and ground");
+
+var slabSession = new DocumentSession(BuildingDocument.Create("Slab"));
+slabSession.AddFloor(slabSession.Document.Levels[0].Id, lShape, 0.2);
+var floorOnly = BuildingMesher.Build(slabSession.Document);
+var meshVolume = 0d;
+for (var triangle = 0; triangle < floorOnly.TriangleCount; triangle++)
+{
+    var a = floorOnly.Positions[floorOnly.Indices[triangle * 3]];
+    var b = floorOnly.Positions[floorOnly.Indices[triangle * 3 + 1]];
+    var c = floorOnly.Positions[floorOnly.Indices[triangle * 3 + 2]];
+    meshVolume += System.Numerics.Vector3.Dot(a, System.Numerics.Vector3.Cross(b, c)) / 6;
+}
+Check(Math.Abs(meshVolume - 18 * 0.2) < 1e-4, "Slab mesh is closed and outward-facing (divergence volume)");
+
+var bvh = new Bvh(sceneMesh);
+var bruteMisses = 0;
+var rayRandom = new Random(7);
+for (var sample = 0; sample < 2000; sample++)
+{
+    var origin = new System.Numerics.Vector3(rayRandom.NextSingle() * 20 - 6, rayRandom.NextSingle() * 20 - 10, rayRandom.NextSingle() * 6);
+    var direction = System.Numerics.Vector3.Normalize(new(rayRandom.NextSingle() - 0.5f, rayRandom.NextSingle() - 0.5f, rayRandom.NextSingle() - 0.5f));
+    var hit = new RayHit { Distance = float.MaxValue };
+    bvh.Intersect(origin, direction, 1e-4f, ref hit);
+    var best = float.MaxValue;
+    for (var triangle = 0; triangle < sceneMesh.TriangleCount; triangle++)
+    {
+        var a = sceneMesh.Positions[sceneMesh.Indices[triangle * 3]];
+        var e1 = sceneMesh.Positions[sceneMesh.Indices[triangle * 3 + 1]] - a;
+        var e2 = sceneMesh.Positions[sceneMesh.Indices[triangle * 3 + 2]] - a;
+        var p = System.Numerics.Vector3.Cross(direction, e2);
+        var det = System.Numerics.Vector3.Dot(e1, p);
+        if (MathF.Abs(det) < 1e-9f) continue;
+        var tv = origin - a;
+        var u = System.Numerics.Vector3.Dot(tv, p) / det;
+        var q = System.Numerics.Vector3.Cross(tv, e1);
+        var v = System.Numerics.Vector3.Dot(direction, q) / det;
+        var t = System.Numerics.Vector3.Dot(e2, q) / det;
+        if (u >= 0 && v >= 0 && u + v <= 1 && t > 1e-4f && t < best) best = t;
+    }
+    if (MathF.Abs(best - hit.Distance) > 1e-3f && !(best == float.MaxValue && hit.Distance == float.MaxValue)) bruteMisses++;
+}
+Check(bruteMisses == 0, "BVH closest hits match brute-force ray casting on 2000 rays");
+
+var (sceneMin, sceneMax) = BuildingMesher.Build(renderSession.Document).Bounds();
+var tracer = new PathTracer(sceneMesh, 64, 40, RenderCamera.FrameBounds(sceneMin, sceneMax));
+for (var pass = 0; pass < 4; pass++) tracer.RenderPass();
+var image = tracer.ToBgra32();
+var distinctColors = Enumerable.Range(0, image.Length / 4).Select(i => (image[i * 4], image[i * 4 + 1], image[i * 4 + 2])).Distinct().Count();
+Check(tracer.SampleCount == 4 && image.Length == 64 * 40 * 4 && distinctColors > 50 &&
+      Enumerable.Range(0, 64 * 40).All(i => image[i * 4 + 3] == 255),
+    "Path tracer accumulates progressive samples into an opaque image");
+var skyTracer = new PathTracer(sceneMesh, 8, 8,
+    new RenderCamera(new(4, -20, 2), new(4, -20, 50), 30));
+skyTracer.RenderPass();
+var skyPixel = skyTracer.LinearPixel(4, 4);
+Check(skyPixel.Z > skyPixel.X, "Path tracer sky is blue-dominant above the model");
+
+var house = SampleProjects.CreateDemonstrationHouse();
+house.Validate();
+Check(house.Walls.Count == 6 && house.Openings.Count == 11 && house.Rooms.Count == 4 && house.Floors.Count == 1,
+    "Demonstration house is complete and valid");
+Check(Math.Abs(house.Floors[0].CalculateArea() - (12.3 * 8.3 + 6.15 * 2.35)) < 1e-6,
+    "Demonstration terrace slab area is exact");
+var sampleFile = Path.Combine(Path.GetTempPath(), $"guanacaste-sample-{Guid.NewGuid():N}.g3");
+try
+{
+    ProjectFile.Save(sampleFile, house);
+    var reopened = ProjectFile.Load(sampleFile);
+    Check(reopened.Openings.Count == house.Openings.Count &&
+          DxfExporter.ToAscii(reopened) == DxfExporter.ToAscii(house),
+        "Demonstration house survives save, reopen and identical DXF export");
+}
+finally
+{
+    if (File.Exists(sampleFile)) File.Delete(sampleFile);
+}
+var houseScene = BuildingMesher.Build(house, includeGround: true);
+var renderTimer = System.Diagnostics.Stopwatch.StartNew();
+var houseTracer = new PathTracer(houseScene, 320, 200, RenderCamera.FrameBounds(BuildingMesher.Build(house).Bounds().Min, BuildingMesher.Build(house).Bounds().Max));
+houseTracer.RenderPass();
+renderTimer.Stop();
+Console.WriteLine($"INFO: {houseScene.TriangleCount} triangles, 320x200 sample pass in {renderTimer.ElapsedMilliseconds} ms");
+Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel pass of the sample house in under 10 s");
 
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
