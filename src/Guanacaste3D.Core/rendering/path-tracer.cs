@@ -20,7 +20,8 @@ public readonly record struct RenderCamera(Vector3 Position, Vector3 Target, flo
             MathF.Cos(elevation) * MathF.Sin(azimuth),
             MathF.Sin(elevation));
         const float fieldOfView = 45;
-        var distance = radius / MathF.Sin(fieldOfView * MathF.PI / 360) * 1.05f * Math.Clamp(distanceScale, 0.05f, 20);
+        // Bounding-sphere fit is conservative for box-like buildings; 0.8 frames them more tightly.
+        var distance = radius / MathF.Sin(fieldOfView * MathF.PI / 360) * 0.8f * Math.Clamp(distanceScale, 0.05f, 20);
         return new RenderCamera(center + direction * distance, center, fieldOfView);
     }
 }
@@ -30,12 +31,13 @@ public sealed record RenderSettings
 {
     /// <summary>Direction pointing from the scene toward the sun (normalized internally).</summary>
     public Vector3 SunDirection { get; init; } = new(-0.45f, -0.55f, 0.70f);
-    public float SunIntensity { get; init; } = 3.2f;
+    public float SunIntensity { get; init; } = 2.0f;
     /// <summary>Angular radius of the sun disk in degrees; larger values give softer shadows.</summary>
     public float SunAngularRadiusDegrees { get; init; } = 0.8f;
-    public float SkyIntensity { get; init; } = 1.0f;
+    public float SkyIntensity { get; init; } = 1.2f;
     public int MaxBounces { get; init; } = 3;
-    public float Exposure { get; init; } = 1.0f;
+    /// <summary>Calibrated so a 0.3-albedo sunlit ground lands near middle grey after tone mapping.</summary>
+    public float Exposure { get; init; } = 0.4f;
     /// <summary>Worker threads per pass; zero or less uses every core.</summary>
     public int MaxThreads { get; init; }
 }

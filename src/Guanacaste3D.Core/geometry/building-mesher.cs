@@ -83,7 +83,8 @@ public static class BuildingMesher
         {
             var (min, max) = mesh.Bounds();
             var center = (min + max) / 2;
-            var extent = MathF.Max(50, (max - min).Length() * 4);
+            // Large enough that the ground meets the sky at the horizon from typical orbit distances.
+            var extent = MathF.Max(500, (max - min).Length() * 20);
             var z = MathF.Min(0, min.Z) - 0.01f;
             mesh.AddQuad(
                 new(center.X - extent, center.Y - extent, z), new(center.X + extent, center.Y - extent, z),
