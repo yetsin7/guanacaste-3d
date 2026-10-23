@@ -39,6 +39,8 @@ public static class ModelAudit
                 .ThenBy(w => w.Start.X).ThenBy(w => w.Start.Y)
                 .ThenBy(w => w.End.X).ThenBy(w => w.End.Y)
                 .ThenBy(w => w.Thickness).ThenBy(w => w.Height)
+                // Stable tie-breaker for coincident walls with different openings.
+                .ThenBy(w => w.Id)
                 .Select(w => new
                 {
                     Level = levels[w.LevelId].Name,
