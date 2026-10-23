@@ -21,6 +21,11 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 
 - [ ] La ventana abre y muestra Guanacaste 3D.
 - [ ] Crear dos muros de cinco metros y cambiar de planta 2D a modelo 3D.
+- [ ] Pulsar L y dibujar una losa de 4 × 5 m; debe aparecer en 2D y 3D con área 20 m².
+- [ ] Seleccionar la losa y establecer espesor de 0,30 m; debe calcular volumen 6 m³.
+- [ ] Duplicar y eliminar una losa; comprobar Deshacer y Rehacer sin afectar los muros.
+- [ ] Guardar, reabrir y comprobar que los IDs, la geometría y el espesor de losas se conservan.
+- [ ] Exportar CSV de losas y DXF; comprobar área, volumen y capa G3D-L001-SLAB.
 - [ ] Seleccionar un muro; colocar una puerta y comprobar el hueco en 2D y 3D.
 - [ ] Seleccionar una zona distinta del mismo muro; colocar una ventana.
 - [ ] Intentar superponer puertas: debe mostrarse un error sin alterar el proyecto.
