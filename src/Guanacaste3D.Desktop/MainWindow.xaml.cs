@@ -132,6 +132,36 @@ public partial class MainWindow : Window
     private void Redo_Click(object sender, RoutedEventArgs e) { _session.Redo(); _selectedWallId = null; RefreshAll(); }
     private void Select_Click(object sender, RoutedEventArgs e) => SetWallTool(false);
     private void Wall_Click(object sender, RoutedEventArgs e) => SetWallTool(true);
+    private void Door_Click(object sender, RoutedEventArgs e) =>
+        CreateHostedOpening(OpeningKind.Door);
+    private void Window_Click(object sender, RoutedEventArgs e) =>
+        CreateHostedOpening(OpeningKind.Window);
+
+    private void CreateHostedOpening(OpeningKind kind)
+    {
+        if (_selectedWallId is not Guid wallId)
+        {
+            StatusText.Text = "Selecciona primero un muro en planta.";
+            return;
+        }
+        var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == wallId);
+        if (wall is null) return;
+        try
+        {
+            if (kind == OpeningKind.Door)
+                _session.AddOpening(wallId, OpeningKind.Door, width: 0.90, height: 2.10);
+            else
+                _session.AddOpening(wallId, OpeningKind.Window,
+                    width: 1.00, sill: 0.90, height: 1.20);
+            StatusText.Text = kind == OpeningKind.Door ? "Hueco de puerta creado." : "Hueco de ventana creado.";
+            RefreshAll();
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Abertura no válida",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
     private void ShowPlan_Click(object sender, RoutedEventArgs e) => ViewTabs.SelectedIndex = 0;
     private void ShowModel_Click(object sender, RoutedEventArgs e) => ViewTabs.SelectedIndex = 1;
     private void About_Click(object sender, RoutedEventArgs e) =>
