@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+  <Project Path="src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj" />
+  <Project Path="tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj" />
+</Solution>

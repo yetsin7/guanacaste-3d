@@ -1,28 +1,58 @@
 # Guanacaste 3D
 
-Proyecto de unificación de **Mau Design** y **Mo Design 3D**.
+**Guanacaste 3D** es un proyecto independiente de software BIM y CAD arquitectónico de escritorio para Windows, desarrollado en **C#** sobre **.NET 10 LTS** y **WPF**.
 
-> **Estado: migración preparada, no terminada.** El código de ambas aplicaciones no ha sido publicado todavía aquí y la nueva aplicación no cuenta con una compilación validada.
+## Estado
 
-## Fuentes comprobadas
+**Versión 0.1.0 — prototipo técnico inicial.** No es todavía un sistema BIM completo ni es apto para cálculos estructurales, planos de construcción validados o entregables profesionales sin revisión independiente.
 
-- [Mau Design](https://github.com/yetsin7/mau-design) — versión 0.5.0, arquitectura BIM local.
-- [Mo Design 3D](https://github.com/yetsin7/mo-design-3d) — versión 1.0.2, arquitectura, materiales, objetos, documentos, intercambio de formatos y renderizado progresivo.
+Implementado en esta primera base:
+- Aplicación de escritorio nativa WPF sin Electron ni navegador embebido.
+- Documento de proyecto con niveles y muros paramétricos básicos.
+- Dibujo de muros mediante dos clics sobre la planta.
+- Vista de planta 2D y geometría volumétrica 3D del mismo documento.
+- Selección, inspección, eliminación y deshacer/rehacer.
+- Apertura y guardado JSON versionado con validación y respaldo previo al sobrescribir.
+- Comprobaciones automatizadas de dominio y persistencia.
 
-Mo Design 3D será la base. Se compararon árboles de archivos de las ramas `main`: 194 archivos en Mau Design, 388 en Mo Design 3D y 80 idénticos. Cuatro archivos de render de Mau Design no existen en la misma ruta de Mo Design 3D, y deberán conservarse como referencia.
+Pendiente: anfitriones y huecos de puertas/ventanas, restricciones geométricas completas, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, interoperabilidad IFC/DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
 
-## Preparación local segura
+## Requisitos
 
-En un entorno de desarrollo con GitHub CLI autenticado, Git y Node.js 22.12+:
+- Windows 10/11, x64.
+- SDK **.NET 10** actualizado (estable, LTS).
+- Visual Studio con carga de trabajo *Desarrollo de escritorio de .NET* es opcional: la CLI es suficiente.
 
-```bash
-bash scripts/prepare-migration.sh /ruta/nueva/guanacaste-3d
+## Ejecutar
+
+```powershell
+git clone https://github.com/yetsin7/guanacaste-3d.git
+cd guanacaste-3d
+dotnet --version
+dotnet restore Guanacaste3D.slnx
+dotnet build Guanacaste3D.slnx -c Release
+dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release
 ```
 
-El script clona las dos fuentes a un directorio temporal, copia el código de Mo Design 3D al proyecto nuevo, guarda los cuatro archivos históricos de render en `legacy-reference/`, y prepara la nueva identidad. El script **no publica** los cambios, **no borra** las fuentes y **no migra automáticamente** los datos de usuario.
+## Comprobar
 
-**Antes de distribuir o publicar:** resolver los identificadores heredados de IPC, instalación, scripts y documentación, comprobar compatibilidad de proyectos `.mau.json` y `.maar`, ejecutar `npm ci`, `npm run typecheck`, `npm test`, `npm run build`, pruebas Electron y pruebas Windows.
+```powershell
+dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release
+```
 
-## Protección de datos
+## Publicar para Windows
 
-No borrar carpetas ni instalaciones antiguas hasta tener backups independientes y pruebas satisfactorias de apertura, edición, exportación y restauración de proyectos. Los repositorios anteriores permanecerán intactos.
+```powershell
+dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/win-x64
+```
+
+Ejecutable: `dist/win-x64/Guanacaste3D.Desktop.exe`. Esta publicación genera un ejecutable de aplicación, **no** un instalador MSI/MSIX.
+
+## Arquitectura
+
+- `src/Guanacaste3D.Core/`: modelo de documentos, niveles, elementos, validaciones, operaciones e historial.
+- `src/Guanacaste3D.Desktop/`: aplicación WPF, vistas e interacción.
+- `tests/Guanacaste3D.Checks/`: comprobaciones independientes de UI.
+- `docs/roadmap.md`: etapas del desarrollo BIM.
+
+Los archivos de usuario usan la extensión `.g3d.json` y no requieren ninguna aplicación de terceros. Las operaciones de guardado deben mantener versiones anteriores respaldadas; antes de usar software en proyectos reales, exporta copias independientes.
