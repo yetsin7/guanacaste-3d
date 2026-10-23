@@ -308,6 +308,9 @@ Check(exampleDocument.Levels.Count == 2 &&
       exampleDocument.Openings.Count == 3 &&
       exampleDocument.Slabs.Count == 2,
     "Bundled house sample opens as a validated multi-level BIM project");
+Check(exampleDocument.WallTypes.Count == 1 &&
+      exampleDocument.Walls.Count(w => w.TypeId == exampleDocument.WallTypes[0].Id) == 3,
+    "Bundled sample contains one shared type across three walls");
 Check(exampleDocument.Slabs.All(s => Math.Abs(s.Area - 48) < 1e-9) &&
       Math.Abs(exampleDocument.Slabs.Sum(s => s.Volume) - 20.16) < 1e-9,
     "Bundled house sample contains correct slab takeoff quantities");
