@@ -27,6 +27,12 @@ The current `0.3.0` preview provides:
 - A native `.g3` project envelope, Windows file association, generated north
   elevation, and generated section view.
 
+Version `0.4.0` adds named transactions, transaction groups with a
+regeneration step, project parameters (instance and type bindings, nine data
+types, seven categories) with editable per-category schedules and CSV export,
+and `.g3` schema 4 with migration. The per-capability record lives in
+[parity/capability-catalog.md](parity/capability-catalog.md).
+
 It does not yet provide production geometry, complete doors or windows,
 families, constraints, sections, elevations, view placement, collaboration,
 structural design, MEP systems, or professional exchange formats.

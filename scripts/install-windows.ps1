@@ -38,11 +38,25 @@ try {
         Where-Object { $_.ExecutablePath -eq $installedExecutable }
     foreach ($ownedProcess in $ownedProcesses) {
         Stop-Process -Id $ownedProcess.ProcessId -Force
+        # Stop-Process returns before the process releases its file locks;
+        # copying immediately left a half-updated install (Copy-Item IOException).
+        Wait-Process -Id $ownedProcess.ProcessId -Timeout 15 -ErrorAction SilentlyContinue
     }
 
     New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
-    Get-ChildItem -LiteralPath $publishRoot -Force |
-        Copy-Item -Destination $installRoot -Recurse -Force
+    # Loaded DLLs can stay locked briefly after the process exits (loader or
+    # antivirus handles), so retry a bounded number of times before failing.
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            Get-ChildItem -LiteralPath $publishRoot -Force |
+                Copy-Item -Destination $installRoot -Recurse -Force -ErrorAction Stop
+            break
+        }
+        catch [System.IO.IOException] {
+            if ($attempt -ge 20) { throw }
+            Start-Sleep -Milliseconds 500
+        }
+    }
 
     $shortcutPath = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Guanacaste 3D.lnk'
     $shell = New-Object -ComObject WScript.Shell

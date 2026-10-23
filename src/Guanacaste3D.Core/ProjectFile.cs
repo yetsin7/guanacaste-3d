@@ -76,6 +76,13 @@ public static class ProjectFile
             document.SchemaVersion = 3;
             document.Views = BuiltInProjectViews.CreateDefaults(document.Levels);
         }
+        if (document.SchemaVersion == 3)
+        {
+            // Schema 4 adds project parameters; earlier projects start with none.
+            document.SchemaVersion = 4;
+            document.ParameterDefinitions ??= [];
+            document.ParameterValues ??= [];
+        }
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

@@ -204,13 +204,13 @@ try
     File.WriteAllText(coordinatedFilename, "G3-PROJECT/1\n" +
         System.Text.Json.JsonSerializer.Serialize(legacyDocument));
     var upgradedDocument = ProjectFile.Load(coordinatedFilename);
-    Check(upgradedDocument.SchemaVersion == 3 && upgradedDocument.WallTypes.Count == 3 &&
+    Check(upgradedDocument.SchemaVersion == BuildingDocument.CurrentSchemaVersion && upgradedDocument.WallTypes.Count == 3 &&
           upgradedDocument.Views.Count >= 5 &&
           upgradedDocument.Walls.All(wall => upgradedDocument.WallTypes.Any(type => type.Id == wall.WallTypeId)),
         "Schema-one projects migrate to coordinated wall types and views");
 
     File.WriteAllText(legacyFilename, System.Text.Json.JsonSerializer.Serialize(legacyDocument));
-    Check(ProjectFile.Load(legacyFilename).SchemaVersion == 3,
+    Check(ProjectFile.Load(legacyFilename).SchemaVersion == BuildingDocument.CurrentSchemaVersion,
         "Legacy .g3d.json projects remain importable");
 }
 finally
@@ -360,5 +360,9 @@ houseTracer.RenderPass();
 renderTimer.Stop();
 Console.WriteLine($"INFO: {houseScene.TriangleCount} triangles, 320x200 sample pass in {renderTimer.ElapsedMilliseconds} ms");
 Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel pass of the sample house in under 10 s");
+
+ParameterChecks.Run(Check);
+IfcChecks.Run(Check);
+MeshExportChecks.Run(Check);
 
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

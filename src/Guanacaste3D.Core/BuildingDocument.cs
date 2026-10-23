@@ -23,7 +23,10 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 /// <summary>Owns the editable architectural source of truth for all 2D and 3D views.</summary>
 public sealed class BuildingDocument
 {
-    public int SchemaVersion { get; set; } = 3;
+    /// <summary>The schema written by this build; older files are migrated on load.</summary>
+    public const int CurrentSchemaVersion = 4;
+
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled Project";
     public List<Level> Levels { get; set; } = [];
@@ -34,6 +37,8 @@ public sealed class BuildingDocument
     public List<FloorSlab> Floors { get; set; } = [];
     public List<DrawingSheet> Sheets { get; set; } = [];
     public List<ProjectView> Views { get; set; } = [];
+    public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
+    public List<ParameterValue> ParameterValues { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -61,13 +66,16 @@ public sealed class BuildingDocument
         Rooms = [.. Rooms],
         Floors = Floors.Select(floor => floor with { Boundary = [.. floor.Boundary] }).ToList(),
         Sheets = [.. Sheets],
-        Views = [.. Views]
+        Views = [.. Views],
+        ParameterDefinitions = ParameterDefinitions
+            .Select(definition => definition with { Categories = [.. definition.Categories] }).ToList(),
+        ParameterValues = [.. ParameterValues]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
     public void Validate()
     {
-        if (SchemaVersion != 3) throw new InvalidDataException("Unsupported project schema version.");
+        if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
         if (Levels is null || Walls is null || Openings is null || WallTypes is null ||
@@ -114,10 +122,12 @@ public sealed class BuildingDocument
             .Concat(Floors.Select(floor => floor.Id))
             .Concat(Sheets.Select(sheet => sheet.Id))
             .Concat(Views.Select(view => view.Id))
+            .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
             .ToArray();
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
+        ParameterRules.Validate(this);
     }
 
     /// <summary>Validates room identity, level ownership, dimensions, and labels.</summary>

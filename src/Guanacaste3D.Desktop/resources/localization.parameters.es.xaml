@@ -1,0 +1,83 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- Project parameters, category schedules, and named transactions (schema 4). -->
+  <sys:String x:Key="Action.ProjectParameters">Parámetros del proyecto…</sys:String>
+  <sys:String x:Key="Parameters.WindowTitle">Parámetros del proyecto</sys:String>
+  <sys:String x:Key="Parameters.DefinitionsHeader">DEFINICIONES</sys:String>
+  <sys:String x:Key="Parameters.ScheduleHeader">TABLA POR CATEGORÍA</sys:String>
+  <sys:String x:Key="Parameters.Name">Nombre</sys:String>
+  <sys:String x:Key="Parameters.Spec">Tipo de dato</sys:String>
+  <sys:String x:Key="Parameters.Binding">Vinculación</sys:String>
+  <sys:String x:Key="Parameters.Group">Grupo</sys:String>
+  <sys:String x:Key="Parameters.Description">Descripción</sys:String>
+  <sys:String x:Key="Parameters.Categories">Categorías</sys:String>
+  <sys:String x:Key="Parameters.New">Nuevo</sys:String>
+  <sys:String x:Key="Parameters.Apply">Aplicar</sys:String>
+  <sys:String x:Key="Parameters.Delete">Eliminar</sys:String>
+  <sys:String x:Key="Parameters.Close">Cerrar</sys:String>
+  <sys:String x:Key="Parameters.ExportCsv">Exportar CSV…</sys:String>
+  <sys:String x:Key="Parameters.CsvFilter">Valores separados por comas (*.csv)|*.csv</sys:String>
+  <sys:String x:Key="Parameters.ScheduleHint">Edita las celdas para cambiar valores. Selecciona varias celdas y pulsa Ctrl+V para rellenarlas con un valor, o Supr para borrarlas; cada operación es un solo paso de deshacer. Las columnas marcadas como «tipo» comparten el valor en todas las instancias del mismo tipo.</sys:String>
+  <sys:String x:Key="Parameters.TypeMarker" xml:space="preserve"> · tipo</sys:String>
+  <sys:String x:Key="Parameters.Yes">Sí</sys:String>
+  <sys:String x:Key="Parameters.No">No</sys:String>
+  <sys:String x:Key="Parameters.Column.Mark">Marca</sys:String>
+  <sys:String x:Key="Parameters.Column.Name">Nombre</sys:String>
+  <sys:String x:Key="Parameters.Column.Level">Nivel</sys:String>
+  <sys:String x:Key="Parameters.NeedNameAndCategory">Indica un nombre y al menos una categoría.</sys:String>
+  <sys:String x:Key="Parameters.ConfirmDelete">¿Eliminar el parámetro «{0}» y todos sus valores? Puedes deshacerlo después.</sys:String>
+  <sys:String x:Key="Parameters.Committed">Aplicado: {0}</sys:String>
+  <sys:String x:Key="Parameters.Rejected">No se aplicó el cambio: {0}</sys:String>
+  <sys:String x:Key="Parameters.InvalidValue">«{0}» no es un valor válido de tipo {1}.</sys:String>
+  <sys:String x:Key="Parameters.EmptyCategory">Esta categoría todavía no tiene elementos en el proyecto.</sys:String>
+  <sys:String x:Key="Parameters.Exported">Tabla exportada a {0}</sys:String>
+  <sys:String x:Key="Parameters.UndoNamed">Deshacer: {0}</sys:String>
+  <sys:String x:Key="Parameters.RedoNamed">Rehacer: {0}</sys:String>
+
+  <sys:String x:Key="ParameterSpec.Text">Texto</sys:String>
+  <sys:String x:Key="ParameterSpec.Integer">Entero</sys:String>
+  <sys:String x:Key="ParameterSpec.Number">Número</sys:String>
+  <sys:String x:Key="ParameterSpec.Length">Longitud</sys:String>
+  <sys:String x:Key="ParameterSpec.Area">Área</sys:String>
+  <sys:String x:Key="ParameterSpec.Volume">Volumen</sys:String>
+  <sys:String x:Key="ParameterSpec.Angle">Ángulo</sys:String>
+  <sys:String x:Key="ParameterSpec.YesNo">Sí/No</sys:String>
+  <sys:String x:Key="ParameterSpec.Currency">Moneda</sys:String>
+  <sys:String x:Key="ParameterBinding.Instance">Instancia</sys:String>
+  <sys:String x:Key="ParameterBinding.Type">Tipo</sys:String>
+  <sys:String x:Key="ElementCategory.Walls">Muros</sys:String>
+  <sys:String x:Key="ElementCategory.Doors">Puertas</sys:String>
+  <sys:String x:Key="ElementCategory.Windows">Ventanas</sys:String>
+  <sys:String x:Key="ElementCategory.Rooms">Habitaciones</sys:String>
+  <sys:String x:Key="ElementCategory.Floors">Suelos</sys:String>
+  <sys:String x:Key="ElementCategory.Levels">Niveles</sys:String>
+  <sys:String x:Key="ElementCategory.Sheets">Láminas</sys:String>
+
+  <sys:String x:Key="Transaction.AddWall">Crear muro</sys:String>
+  <sys:String x:Key="Transaction.AddLevel">Crear nivel</sys:String>
+  <sys:String x:Key="Transaction.UpdateWall">Modificar muro</sys:String>
+  <sys:String x:Key="Transaction.SetWallType">Cambiar tipo de muro</sys:String>
+  <sys:String x:Key="Transaction.AddWallType">Crear tipo de muro</sys:String>
+  <sys:String x:Key="Transaction.UpdateWallType">Modificar tipo de muro</sys:String>
+  <sys:String x:Key="Transaction.AddRoom">Crear habitación</sys:String>
+  <sys:String x:Key="Transaction.AddFloor">Crear suelo</sys:String>
+  <sys:String x:Key="Transaction.AddSheet">Crear lámina</sys:String>
+  <sys:String x:Key="Transaction.RemoveRoom">Eliminar habitación</sys:String>
+  <sys:String x:Key="Transaction.RemoveFloor">Eliminar suelo</sys:String>
+  <sys:String x:Key="Transaction.RemoveSheet">Eliminar lámina</sys:String>
+  <sys:String x:Key="Transaction.AddOpening">Insertar abertura</sys:String>
+  <sys:String x:Key="Transaction.MoveWall">Mover muro</sys:String>
+  <sys:String x:Key="Transaction.DuplicateWall">Duplicar muro</sys:String>
+  <sys:String x:Key="Transaction.UpdateOpening">Modificar abertura</sys:String>
+  <sys:String x:Key="Transaction.RotateWall">Rotar muro</sys:String>
+  <sys:String x:Key="Transaction.RemoveOpening">Eliminar abertura</sys:String>
+  <sys:String x:Key="Transaction.RemoveWall">Eliminar muro</sys:String>
+  <sys:String x:Key="Transaction.Rename">Renombrar proyecto</sys:String>
+  <sys:String x:Key="Transaction.AddParameter">Crear parámetro</sys:String>
+  <sys:String x:Key="Transaction.UpdateParameter">Modificar parámetro</sys:String>
+  <sys:String x:Key="Transaction.RemoveParameter">Eliminar parámetro</sys:String>
+  <sys:String x:Key="Transaction.SetParameterValue">Cambiar valor de parámetro</sys:String>
+  <sys:String x:Key="Transaction.SetParameterValues">Cambiar valores de parámetro</sys:String>
+</ResourceDictionary>

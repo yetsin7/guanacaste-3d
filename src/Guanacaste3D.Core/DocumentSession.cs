@@ -1,40 +1,15 @@
 namespace Guanacaste3D.Core;
 
 /// <summary>Validated document editing and undo/redo history, independent of the UI.</summary>
-public sealed class DocumentSession
+public sealed partial class DocumentSession
 {
-    private const int MaxHistory = 40;
-    private readonly List<BuildingDocument> _undo = [];
-    private readonly List<BuildingDocument> _redo = [];
     public BuildingDocument Document { get; private set; }
-    public bool CanUndo => _undo.Count > 0;
-    public bool CanRedo => _redo.Count > 0;
-    public event EventHandler? Changed;
 
     /// <summary>Starts an isolated edit session from a validated document snapshot.</summary>
     public DocumentSession(BuildingDocument document)
     {
         document.Validate();
         Document = document.Clone();
-    }
-
-    /// <summary>Adds a history snapshot while enforcing the bounded-memory policy.</summary>
-    private static void PushSnapshot(List<BuildingDocument> list, BuildingDocument snapshot)
-    {
-        if (list.Count >= MaxHistory) list.RemoveAt(0);
-        list.Add(snapshot);
-    }
-
-    /// <summary>Validates and atomically commits a mutation to the active document.</summary>
-    private void Commit(Action<BuildingDocument> action)
-    {
-        var copy = Document.Clone();
-        action(copy);
-        copy.Validate();
-        PushSnapshot(_undo, Document);
-        _redo.Clear();
-        Document = copy;
-        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Adds a straight wall instance using a valid project wall type.</summary>
@@ -47,7 +22,7 @@ public sealed class DocumentSession
         if (wallTypeId is not null)
             thickness = Document.WallTypes.Single(type => type.Id == selectedTypeId).Thickness;
         var id = Guid.NewGuid();
-        Commit(doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
+        Commit("Transaction.AddWall", doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
         {
             WallTypeId = selectedTypeId
         }));
@@ -58,7 +33,7 @@ public sealed class DocumentSession
     public Guid AddLevel()
     {
         var id = Guid.NewGuid();
-        Commit(doc =>
+        Commit("Transaction.AddLevel", doc =>
         {
             var elevation = doc.Levels.Max(l => l.Elevation) + 3;
             var level = new Level(id, $"Level {doc.Levels.Count + 1}", elevation);
@@ -72,7 +47,7 @@ public sealed class DocumentSession
     public void UpdateWall(Guid id, double thickness, double height)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
-        Commit(doc =>
+        Commit("Transaction.UpdateWall", doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             doc.Walls[index] = doc.Walls[index] with { Thickness = thickness, Height = height };
@@ -86,7 +61,7 @@ public sealed class DocumentSession
             ?? throw new InvalidDataException("The selected wall type does not exist.");
         if (!Document.Walls.Any(wall => wall.Id == wallId))
             throw new InvalidDataException("The selected wall does not exist.");
-        Commit(document =>
+        Commit("Transaction.SetWallType", document =>
         {
             var index = document.Walls.FindIndex(wall => wall.Id == wallId);
             document.Walls[index] = document.Walls[index] with
@@ -101,7 +76,7 @@ public sealed class DocumentSession
     public Guid AddWallType(string name, WallFunction function, double thickness, string materialName)
     {
         var id = Guid.NewGuid();
-        Commit(document => document.WallTypes.Add(
+        Commit("Transaction.AddWallType", document => document.WallTypes.Add(
             new WallType(id, name.Trim(), function, thickness, materialName.Trim())));
         return id;
     }
@@ -111,7 +86,7 @@ public sealed class DocumentSession
     {
         if (!Document.WallTypes.Any(type => type.Id == id))
             throw new InvalidDataException("The wall type does not exist.");
-        Commit(document =>
+        Commit("Transaction.UpdateWallType", document =>
         {
             var typeIndex = document.WallTypes.FindIndex(type => type.Id == id);
             document.WallTypes[typeIndex] = new WallType(
@@ -128,7 +103,7 @@ public sealed class DocumentSession
     public Guid AddRoom(Guid levelId, Point2 firstCorner, Point2 secondCorner, string? name = null)
     {
         var id = Guid.NewGuid();
-        Commit(document =>
+        Commit("Transaction.AddRoom", document =>
         {
             var number = (document.Rooms.Count + 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
             document.Rooms.Add(new Room(id, levelId, number, name ?? $"Room {number}", firstCorner, secondCorner));
@@ -141,7 +116,7 @@ public sealed class DocumentSession
         string? name = null)
     {
         var id = Guid.NewGuid();
-        Commit(document => document.Floors.Add(new FloorSlab(
+        Commit("Transaction.AddFloor", document => document.Floors.Add(new FloorSlab(
             id, levelId, name ?? $"Floor {document.Floors.Count + 1}", [.. boundary], thickness)));
         return id;
     }
@@ -150,7 +125,7 @@ public sealed class DocumentSession
     public Guid AddSheet(SheetPaperSize paperSize = SheetPaperSize.A1, string? name = null)
     {
         var id = Guid.NewGuid();
-        Commit(document =>
+        Commit("Transaction.AddSheet", document =>
         {
             var index = document.Sheets.Count + 1;
             document.Sheets.Add(new DrawingSheet(id, $"A{index:D3}", name ?? $"Sheet {index}", paperSize));
@@ -162,21 +137,21 @@ public sealed class DocumentSession
     public void RemoveRoom(Guid id)
     {
         if (Document.Rooms.Any(room => room.Id == id))
-            Commit(document => document.Rooms.RemoveAll(room => room.Id == id));
+            Commit("Transaction.RemoveRoom", document => document.Rooms.RemoveAll(room => room.Id == id));
     }
 
     /// <summary>Removes a floor slab from the project.</summary>
     public void RemoveFloor(Guid id)
     {
         if (Document.Floors.Any(floor => floor.Id == id))
-            Commit(document => document.Floors.RemoveAll(floor => floor.Id == id));
+            Commit("Transaction.RemoveFloor", document => document.Floors.RemoveAll(floor => floor.Id == id));
     }
 
     /// <summary>Removes a drawing sheet from the project.</summary>
     public void RemoveSheet(Guid id)
     {
         if (Document.Sheets.Any(sheet => sheet.Id == id))
-            Commit(document => document.Sheets.RemoveAll(sheet => sheet.Id == id));
+            Commit("Transaction.RemoveSheet", document => document.Sheets.RemoveAll(sheet => sheet.Id == id));
     }
 
     /// <summary>Adds a door or window opening to its existing host wall.</summary>
@@ -186,7 +161,7 @@ public sealed class DocumentSession
         var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
             ?? throw new InvalidDataException("The host wall does not exist.");
         var id = Guid.NewGuid();
-        Commit(doc => doc.Openings.Add(new WallOpening(id, wallId, kind,
+        Commit("Transaction.AddOpening", doc => doc.Openings.Add(new WallOpening(id, wallId, kind,
             offset ?? wall.Length / 2, width, sill, height)));
         return id;
     }
@@ -195,7 +170,7 @@ public sealed class DocumentSession
     public void MoveWall(Guid id, double deltaX, double deltaY)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
-        Commit(doc =>
+        Commit("Transaction.MoveWall", doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
@@ -213,7 +188,7 @@ public sealed class DocumentSession
         var original = Document.Walls.FirstOrDefault(w => w.Id == id)
             ?? throw new InvalidDataException("The wall to duplicate does not exist.");
         var newId = Guid.NewGuid();
-        Commit(doc =>
+        Commit("Transaction.DuplicateWall", doc =>
         {
             doc.Walls.Add(original with
             {
@@ -232,7 +207,7 @@ public sealed class DocumentSession
     {
         if (!Document.Openings.Any(o => o.Id == id))
             throw new InvalidDataException("The opening does not exist.");
-        Commit(doc =>
+        Commit("Transaction.UpdateOpening", doc =>
         {
             var index = doc.Openings.FindIndex(o => o.Id == id);
             doc.Openings[index] = doc.Openings[index] with
@@ -250,7 +225,7 @@ public sealed class DocumentSession
         if (!Document.Walls.Any(w => w.Id == id))
             throw new InvalidDataException("The wall does not exist.");
         var radians = degrees * Math.PI / 180;
-        Commit(doc =>
+        Commit("Transaction.RotateWall", doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
@@ -269,14 +244,14 @@ public sealed class DocumentSession
     public void RemoveOpening(Guid id)
     {
         if (!Document.Openings.Any(o => o.Id == id)) return;
-        Commit(doc => doc.Openings.RemoveAll(o => o.Id == id));
+        Commit("Transaction.RemoveOpening", doc => doc.Openings.RemoveAll(o => o.Id == id));
     }
 
     /// <summary>Removes a wall and cascades removal to its hosted openings.</summary>
     public void RemoveWall(Guid id)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
-        Commit(doc =>
+        Commit("Transaction.RemoveWall", doc =>
         {
             doc.Openings.RemoveAll(o => o.WallId == id);
             doc.Walls.RemoveAll(w => w.Id == id);
@@ -284,25 +259,5 @@ public sealed class DocumentSession
     }
 
     /// <summary>Renames the active project after trimming surrounding whitespace.</summary>
-    public void Rename(string name) => Commit(document => document.Name = name.Trim());
-
-    /// <summary>Restores the previous validated document snapshot when available.</summary>
-    public void Undo()
-    {
-        if (!CanUndo) return;
-        PushSnapshot(_redo, Document);
-        Document = _undo[^1];
-        _undo.RemoveAt(_undo.Count - 1);
-        Changed?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>Reapplies the next validated document snapshot when available.</summary>
-    public void Redo()
-    {
-        if (!CanRedo) return;
-        PushSnapshot(_undo, Document);
-        Document = _redo[^1];
-        _redo.RemoveAt(_redo.Count - 1);
-        Changed?.Invoke(this, EventArgs.Empty);
-    }
+    public void Rename(string name) => Commit("Transaction.Rename", document => document.Name = name.Trim());
 }

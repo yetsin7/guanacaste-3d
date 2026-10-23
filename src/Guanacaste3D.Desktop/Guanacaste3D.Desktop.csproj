@@ -8,7 +8,7 @@
     <AssemblyName>Guanacaste3D.Desktop</AssemblyName>
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Guanacaste3D.Core/Guanacaste3D.Core.csproj" />

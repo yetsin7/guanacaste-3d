@@ -6,6 +6,7 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="resources/theme.xaml"/>
         <ResourceDictionary Source="resources/localization.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.parameters.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

@@ -33,6 +33,8 @@
         <MenuItem Header="{DynamicResource Action.SaveAs}" Click="SaveAs_Click"/>
         <MenuItem Header="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click"/>
         <MenuItem Header="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click"/>
+        <MenuItem Header="{DynamicResource Action.ExportIfc}" Click="ExportIfc_Click"/>
+        <MenuItem Header="{DynamicResource Action.ExportModel3D}" Click="ExportModel3D_Click"/>
         <Separator/>
         <MenuItem Header="{DynamicResource Action.Exit}" Click="Exit_Click"/>
       </MenuItem>
@@ -117,6 +119,9 @@
         <StackPanel Orientation="Horizontal" Margin="10,5">
           <Button Content="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportIfc}" Click="ExportIfc_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportModel3D}" Click="ExportModel3D_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ProjectParameters}" Click="ProjectParameters_Click" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
     </TabControl>
