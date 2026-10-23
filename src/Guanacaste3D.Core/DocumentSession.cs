@@ -124,13 +124,96 @@ public sealed class DocumentSession
         return id;
     }
 
+    /// <summary>
+    /// Create a type and attach it to one wall in a single undoable transaction.
+    /// </summary>
+    public Guid CreateWallTypeForWall(Guid wallId, string name, double thickness)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidDataException("Introduce un nombre para el tipo de muro.");
+        var id = Guid.NewGuid();
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == wallId);
+            if (index < 0) throw new InvalidDataException("El muro seleccionado no existe.");
+            doc.WallTypes.Add(new WallType(id, name.Trim(), thickness));
+            doc.Walls[index] = doc.Walls[index] with { TypeId = id, Thickness = thickness };
+        });
+        return id;
+    }
+
+    /// <summary>Assign a reusable wall type to an existing instance.</summary>
+    public void SetWallType(Guid wallId, Guid typeId)
+    {
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == wallId);
+            var type = doc.WallTypes.FirstOrDefault(t => t.Id == typeId)
+                ?? throw new InvalidDataException("El tipo de muro no existe.");
+            if (index < 0) throw new InvalidDataException("El muro seleccionado no existe.");
+            doc.Walls[index] = doc.Walls[index] with
+            {
+                TypeId = typeId,
+                Thickness = type.Thickness
+            };
+        });
+    }
+
+    /// <summary>Detach a wall from its type, preserving its current thickness.</summary>
+    public void DetachWallType(Guid wallId)
+    {
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == wallId);
+            if (index < 0) throw new InvalidDataException("El muro seleccionado no existe.");
+            doc.Walls[index] = doc.Walls[index] with { TypeId = null };
+        });
+    }
+
+    /// <summary>
+    /// Update a type and propagate shared thickness to all its instances atomically.
+    /// </summary>
+    public void UpdateWallType(Guid typeId, string name, double thickness)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidDataException("Introduce un nombre para el tipo de muro.");
+        Commit(doc =>
+        {
+            var index = doc.WallTypes.FindIndex(t => t.Id == typeId);
+            if (index < 0) throw new InvalidDataException("El tipo de muro no existe.");
+            doc.WallTypes[index] = doc.WallTypes[index] with
+            {
+                Name = name.Trim(),
+                Thickness = thickness
+            };
+            for (var i = 0; i < doc.Walls.Count; i++)
+                if (doc.Walls[i].TypeId == typeId)
+                    doc.Walls[i] = doc.Walls[i] with { Thickness = thickness };
+        });
+    }
+
+    /// <summary>Only unused wall types can be removed; attached walls are protected.</summary>
+    public void RemoveWallType(Guid typeId)
+    {
+        Commit(doc =>
+        {
+            if (doc.Walls.Any(w => w.TypeId == typeId))
+                throw new InvalidDataException("Desvincula los muros antes de eliminar el tipo.");
+            if (doc.WallTypes.RemoveAll(t => t.Id == typeId) == 0)
+                throw new InvalidDataException("El tipo de muro no existe.");
+        });
+    }
+
     public void UpdateWall(Guid id, double thickness, double height)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
         Commit(doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
-            doc.Walls[index] = doc.Walls[index] with { Thickness = thickness, Height = height };
+            var wall = doc.Walls[index];
+            if (wall.TypeId.HasValue && Math.Abs(thickness - wall.Thickness) > 1e-9)
+                throw new InvalidDataException("El espesor depende del tipo: edita el tipo o desvincula el muro.");
+            doc.Walls[index] = wall with { Thickness = thickness, Height = height };
         });
     }
 
