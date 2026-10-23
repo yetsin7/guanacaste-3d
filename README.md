@@ -8,14 +8,18 @@
 
 Implementado en esta primera base:
 - Aplicación de escritorio nativa WPF sin Electron ni navegador embebido.
-- Documento de proyecto con niveles y muros paramétricos básicos.
+- Documento de proyecto con niveles, muros y aberturas paramétricas vinculadas a su muro anfitrión.
+- Puertas y ventanas como huecos geométricos básicos, posicionables mediante clic en el muro (sin hojas, marcos ni familias aún).
+- Volumen neto de muros con descuento de aberturas y rechazo de superposiciones.
 - Dibujo de muros mediante dos clics sobre la planta.
 - Vista de planta 2D y geometría volumétrica 3D del mismo documento.
 - Selección, inspección, eliminación y deshacer/rehacer.
 - Apertura y guardado JSON versionado con validación y respaldo previo al sobrescribir.
 - Comprobaciones automatizadas de dominio y persistencia.
 
-Pendiente: anfitriones y huecos de puertas/ventanas, restricciones geométricas completas, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, interoperabilidad IFC/DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
+Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias), restricciones geométricas completas, uniones de muros, familias paramétricas avanzadas, vistas de alzado/sección, acotación asociativa, láminas, tablas, interoperabilidad IFC/DXF, colaboración multiusuario, MEP, estructura, render físico y motor geométrico de producción.
+
+> **Validación pendiente:** GitHub Actions está terminando sus trabajos sin asignar runner ni ejecutar pasos; aún no hay evidencia de compilación. Comprueba manualmente con los comandos siguientes en Windows. No uses esta versión para documentación constructiva real.
 
 ## Requisitos
 
