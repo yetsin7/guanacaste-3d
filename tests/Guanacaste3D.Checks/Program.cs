@@ -25,6 +25,7 @@ try { session.AddWall(document.Levels[0].Id, new Point2(1, 1), new Point2(1, 1))
 catch (InvalidDataException) { failed = true; }
 Check(failed && session.Document.Walls.Count == 0, "Reject zero-length wall atomically");
 
+session.AddWall(document.Levels[0].Id, new Point2(0, 0), new Point2(5, 0));
 var hostedWallId = session.Document.Walls.Single().Id;
 var doorId = session.AddOpening(hostedWallId, OpeningKind.Door, offset: 2.0);
 var windowId = session.AddOpening(hostedWallId, OpeningKind.Window,
