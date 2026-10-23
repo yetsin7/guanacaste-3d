@@ -19,7 +19,8 @@
         <MenuItem Header="Rehacer" Click="Redo_Click"/>
         <MenuItem Header="Eliminar seleccionado" Click="Delete_Click"/>
         <MenuItem Header="Duplicar muro seleccionado" Click="Duplicate_Click"/>
-        <MenuItem Header="Mover muro seleccionado..." Click="Move_Click"/>
+        <MenuItem Header="Mover muro seleccionado" Click="Move_Click"/>
+        <MenuItem Header="Rotar muro 90°" Click="Rotate_Click"/>
       </MenuItem>
       <MenuItem Header="_Vista">
         <MenuItem Header="Planta 2D" Click="ShowPlan_Click"/>
@@ -56,6 +57,7 @@
           <Button Content="Ventana" Click="Window_Click" ToolTip="Insertar abertura de ventana en el muro seleccionado"/>
           <Button Content="Duplicar" Click="Duplicate_Click" ToolTip="Copiar el muro y sus aberturas"/>
           <Button Content="Mover" Click="Move_Click" ToolTip="Trasladar el muro seleccionado"/>
+          <Button Content="Rotar 90°" Click="Rotate_Click" ToolTip="Rotar muro seleccionado alrededor de su punto inicial"/>
           <Button Content="Eliminar" Click="Delete_Click"/>
           <Separator Margin="6,0"/>
           <Button Content="Deshacer" Click="Undo_Click"/>
