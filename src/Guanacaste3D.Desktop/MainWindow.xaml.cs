@@ -913,7 +913,46 @@ public partial class MainWindow : Window
                 });
             }
         }
+        foreach (var slab in _session.Document.Slabs)
+            AddSlabMesh(slab);
         Update3DCamera();
+    }
+
+    /// <summary>Render a closed rectangular prism for a slab.</summary>
+    private void AddSlabMesh(Slab slab)
+    {
+        var levelElevation = _session.Document.Levels.First(l => l.Id == slab.LevelId).Elevation;
+        var bottom = levelElevation - slab.Thickness;
+        var top = levelElevation;
+        var x0 = slab.Min.X;
+        var x1 = slab.Max.X;
+        var z0 = -slab.Min.Y;
+        var z1 = -slab.Max.Y;
+        Point3D[] corners =
+        [
+            new(x0, bottom, z0), new(x1, bottom, z0),
+            new(x1, bottom, z1), new(x0, bottom, z1),
+            new(x0, top, z0), new(x1, top, z0),
+            new(x1, top, z1), new(x0, top, z1)
+        ];
+        var mesh = new MeshGeometry3D();
+        int[][] faces =
+        [
+            [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5],
+            [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0]
+        ];
+        foreach (var face in faces)
+        {
+            var index = mesh.Positions.Count;
+            foreach (var vertex in face) mesh.Positions.Add(corners[vertex]);
+            foreach (var offset in new[] { 0, 1, 2, 0, 2, 3 })
+                mesh.TriangleIndices.Add(index + offset);
+        }
+        var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(118, 174, 142)));
+        ModelViewport.Children.Add(new ModelVisual3D
+        {
+            Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
+        });
     }
 
     /// <summary>Keeps orbit and zoom settings stable across every BIM model refresh.</summary>
@@ -921,14 +960,20 @@ public partial class MainWindow : Window
     {
         if (ModelViewport is null || _session is null) return;
         var walls = _session.Document.Walls;
-        var allPoints = walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
+        var slabs = _session.Document.Slabs;
+        var allPoints = walls.SelectMany(w => new[] { w.Start, w.End })
+            .Concat(slabs.SelectMany(s => new[] { s.Min, s.Max })).ToArray();
         var centerX = allPoints.Length == 0 ? 0 :
             (allPoints.Min(p => p.X) + allPoints.Max(p => p.X)) / 2;
         var centerY = allPoints.Length == 0 ? 0 :
             (allPoints.Min(p => p.Y) + allPoints.Max(p => p.Y)) / 2;
         var elevations = _session.Document.Levels.ToDictionary(l => l.Id, l => l.Elevation);
-        var minHeight = walls.Count == 0 ? 0 : walls.Min(w => elevations[w.LevelId]);
-        var maxHeight = walls.Count == 0 ? 3 : walls.Max(w => elevations[w.LevelId] + w.Height);
+        var minHeight = walls.Count == 0 && slabs.Count == 0 ? 0 :
+            Math.Min(walls.Count == 0 ? double.PositiveInfinity : walls.Min(w => elevations[w.LevelId]),
+                     slabs.Count == 0 ? double.PositiveInfinity : slabs.Min(s => elevations[s.LevelId] - s.Thickness));
+        var maxHeight = walls.Count == 0 && slabs.Count == 0 ? 3 :
+            Math.Max(walls.Count == 0 ? double.NegativeInfinity : walls.Max(w => elevations[w.LevelId] + w.Height),
+                     slabs.Count == 0 ? double.NegativeInfinity : slabs.Max(s => elevations[s.LevelId]));
         var target = new Point3D(centerX, (minHeight + maxHeight) / 2, -centerY);
         var horizontalRange = allPoints.Length == 0 ? 10 :
             Math.Max(allPoints.Max(p => p.X) - allPoints.Min(p => p.X),
