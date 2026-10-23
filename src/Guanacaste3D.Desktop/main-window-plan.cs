@@ -116,7 +116,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.InvalidGeometry"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidGeometry"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

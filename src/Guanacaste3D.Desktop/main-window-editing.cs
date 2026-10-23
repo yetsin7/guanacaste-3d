@@ -34,7 +34,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.RotateWall"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.RotateWall"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -67,7 +67,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.MoveWall"));
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.MoveWall"));
         }
     }
 
@@ -89,7 +89,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.RotateWall"));
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.RotateWall"));
         }
     }
 
@@ -116,7 +116,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.InvalidOpeningParameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidOpeningParameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -159,7 +159,7 @@ public partial class MainWindow
         }
         catch (InvalidDataException exception)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.InvalidParameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidParameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

@@ -168,7 +168,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

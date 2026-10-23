@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
             System.Text.Json.JsonException or InvalidDataException)
         {
-            MessageBox.Show(this, exception.Message, GetText("Dialog.OpenFailed"),
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.OpenFailed"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -99,7 +99,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -151,7 +151,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -174,7 +174,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.ExportFailed"),
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.ExportFailed"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -212,7 +212,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
     }
@@ -303,7 +303,7 @@ public partial class MainWindow : Window
         }
         catch (InvalidDataException ex)
         {
-            MessageBox.Show(this, ex.Message, GetText("Dialog.InvalidOpening"),
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.InvalidOpening"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
