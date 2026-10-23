@@ -110,6 +110,44 @@ public sealed class DocumentSession
         return newId;
     }
 
+    /// <summary>Edits a hosted opening atomically; invalid geometry never enters the document.</summary>
+    public void UpdateOpening(Guid id, double offset, double width, double sill, double height)
+    {
+        if (!Document.Openings.Any(o => o.Id == id))
+            throw new InvalidDataException("La abertura no existe.");
+        Commit(doc =>
+        {
+            var index = doc.Openings.FindIndex(o => o.Id == id);
+            doc.Openings[index] = doc.Openings[index] with
+            {
+                Offset = offset, Width = width, Sill = sill, Height = height
+            };
+        });
+    }
+
+    /// <summary>Rotates a straight wall around its starting point, retaining hosted openings.</summary>
+    public void RotateWall(Guid id, double degrees)
+    {
+        if (!double.IsFinite(degrees))
+            throw new InvalidDataException("Ángulo de rotación inválido.");
+        if (!Document.Walls.Any(w => w.Id == id))
+            throw new InvalidDataException("El muro no existe.");
+        var radians = degrees * Math.PI / 180;
+        Commit(doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == id);
+            var wall = doc.Walls[index];
+            var dx = wall.End.X - wall.Start.X;
+            var dy = wall.End.Y - wall.Start.Y;
+            doc.Walls[index] = wall with
+            {
+                End = new Point2(
+                    wall.Start.X + dx * Math.Cos(radians) - dy * Math.Sin(radians),
+                    wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians))
+            };
+        });
+    }
+
     public void RemoveOpening(Guid id)
     {
         if (!Document.Openings.Any(o => o.Id == id)) return;
