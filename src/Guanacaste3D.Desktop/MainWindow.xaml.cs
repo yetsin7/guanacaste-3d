@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private DocumentSession _session;
     private Guid _activeLevelId;
     private Guid? _selectedWallId;
+    private Guid? _selectedOpeningId;
     private double? _selectedWallOffset;
     private Point2? _pendingWallStart;
     private string? _filePath;
@@ -108,6 +109,7 @@ public partial class MainWindow : Window
         _activeLevelId = document.Levels[0].Id;
         _pendingWallStart = null;
         _selectedWallId = null;
+        _selectedOpeningId = null;
         _selectedWallOffset = null;
         _filePath = filename;
         _dirty = false;
@@ -198,8 +200,16 @@ public partial class MainWindow : Window
     private void ProjectTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (e.NewValue is not TreeViewItem item || item.Tag is not Guid id) return;
-        if (_session.Document.Walls.Any(w => w.Id == id))
+        if (_session.Document.Openings.FirstOrDefault(o => o.Id == id) is WallOpening opening)
         {
+            _selectedOpeningId = id;
+            _selectedWallId = opening.WallId;
+            RefreshProperties();
+            RenderPlan();
+        }
+        else if (_session.Document.Walls.Any(w => w.Id == id))
+        {
+            _selectedOpeningId = null;
             _selectedWallId = id;
             RefreshProperties();
             RenderPlan();
@@ -208,6 +218,7 @@ public partial class MainWindow : Window
         {
             _activeLevelId = id;
             _selectedWallId = null;
+            _selectedOpeningId = null;
             RefreshLevelPicker();
             RenderPlan();
             RefreshProperties();
@@ -221,6 +232,7 @@ public partial class MainWindow : Window
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
                 && _session.Document.Walls.Any(w => w.Id == id) ? id : null;
             _selectedWallOffset = null;
+            _selectedOpeningId = null;
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(w => w.Id == wallId);
@@ -418,6 +430,40 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ApplyOpening_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedOpeningId is not Guid id)
+        {
+            StatusText.Text = "Selecciona una puerta o ventana en el explorador BIM.";
+            return;
+        }
+        if (!double.TryParse(OpeningOffsetInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var offset) ||
+            !double.TryParse(OpeningWidthInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var width) ||
+            !double.TryParse(OpeningSillInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var sill) ||
+            !double.TryParse(OpeningHeightInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var height))
+        {
+            MessageBox.Show(this, "Introduce cuatro dimensiones numéricas válidas.", "Abertura");
+            return;
+        }
+        try
+        {
+            _session.UpdateOpening(id, offset, width, sill, height);
+            StatusText.Text = "Abertura actualizada.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Abertura inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void RemoveOpening_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedOpeningId is not Guid id) return;
+        _session.RemoveOpening(id);
+        _selectedOpeningId = null;
+        StatusText.Text = "Abertura eliminada.";
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is not Guid id) return;
@@ -453,6 +499,7 @@ public partial class MainWindow : Window
         if (!_session.Document.Levels.Any(l => l.Id == _activeLevelId))
             _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(w => w.Id == _selectedWallId)) _selectedWallId = null;
+        if (!_session.Document.Openings.Any(o => o.Id == _selectedOpeningId)) _selectedOpeningId = null;
         RefreshLevelPicker();
         RefreshTree();
         RefreshProperties();
@@ -488,7 +535,7 @@ public partial class MainWindow : Window
                         wallBranch.Items.Add(new TreeViewItem
                         {
                             Header = $"{(opening.Kind == OpeningKind.Door ? "Puerta" : "Ventana")} · {opening.Width:0.00} m",
-                            Tag = wall.Id
+                            Tag = opening.Id
                         });
                     branch.Items.Add(wallBranch);
                 }
@@ -500,6 +547,15 @@ public partial class MainWindow : Window
 
     private void RefreshProperties()
     {
+        var selectedOpening = _session.Document.Openings.FirstOrDefault(o => o.Id == _selectedOpeningId);
+        if (selectedOpening is not null)
+        {
+            OpeningOffsetInput.Text = selectedOpening.Offset.ToString("0.###", CultureInfo.CurrentCulture);
+            OpeningWidthInput.Text = selectedOpening.Width.ToString("0.###", CultureInfo.CurrentCulture);
+            OpeningSillInput.Text = selectedOpening.Sill.ToString("0.###", CultureInfo.CurrentCulture);
+            OpeningHeightInput.Text = selectedOpening.Height.ToString("0.###", CultureInfo.CurrentCulture);
+        }
+
         var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == _selectedWallId);
         if (wall is null)
         {
