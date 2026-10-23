@@ -63,7 +63,7 @@ public partial class MainWindow : Window
             AttachDocument(document, dialog.FileName);
             StatusText.Text = "Proyecto abierto correctamente.";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
         {
             MessageBox.Show(this, ex.Message, "No se pudo abrir", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -116,6 +116,7 @@ public partial class MainWindow : Window
             ProjectFile.Save(path!, _session.Document);
             _filePath = path;
             _dirty = false;
+            Title = "Guanacaste 3D — " + _session.Document.Name;
             StatusText.Text = "Proyecto guardado: " + System.IO.Path.GetFileName(path);
             return true;
         }
@@ -546,7 +547,7 @@ public partial class MainWindow : Window
     private void RefreshAll()
     {
         if (_session is null) return;
-        Title = "Guanacaste 3D — " + _session.Document.Name;
+        Title = "Guanacaste 3D — " + _session.Document.Name + (_dirty ? " *" : "");
         if (!_session.Document.Levels.Any(l => l.Id == _activeLevelId))
             _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(w => w.Id == _selectedWallId)) _selectedWallId = null;
