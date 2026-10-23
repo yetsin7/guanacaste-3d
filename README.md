@@ -9,6 +9,7 @@
 Implementado en esta primera base:
 - Aplicación de escritorio nativa WPF sin Electron ni navegador embebido.
 - Documento de proyecto con niveles, muros y aberturas paramétricas vinculadas a su muro anfitrión.
+- Tipos de muro reutilizables: parámetros compartidos de espesor, asignación, propagación a instancias y deshacer/rehacer.
 - Puertas y ventanas como huecos geométricos básicos, posicionables mediante clic en el muro (sin hojas, marcos ni familias aún).
 - Volumen neto de muros con descuento de aberturas y rechazo de superposiciones.
 - Dibujo de muros y losas rectangulares mediante dos clics sobre la planta (W y L).
@@ -26,8 +27,8 @@ Pendiente: puertas y ventanas como objetos completos (hojas, marcos y familias),
 ## Proyecto demostrativo listo para abrir
 
 El archivo [`samples/casa-demostrativa.g3d.json`](samples/casa-demostrativa.g3d.json)
-contiene una casa sencilla de dos niveles, cinco muros, tres aberturas
-y dos losas. Abre el archivo desde **Archivo → Abrir proyecto** para
+contiene una casa sencilla de dos niveles, cinco muros, tres aberturas,
+dos losas y un tipo de muro compartido por tres instancias. Abre el archivo desde **Archivo → Abrir proyecto** para
 probar inmediatamente las vistas 2D/3D, la edición, las cantidades y el DXF.
 Puedes guardar una copia antes de experimentar con sus elementos.
 
@@ -97,6 +98,15 @@ para volver a la perspectiva inicial.
 
 Consulta [alcance y pérdidas del DXF](docs/interoperabilidad-dxf.md) y
 [verificación manual de Windows](docs/qa-windows.md).
+
+## Investigación REA y compatibilidad con Revit
+
+El documento [investigación REA + metodología de compatibilidad](docs/investigacion-rea-revit.md)
+identifica el repositorio REA, las APIs públicas de Revit, RevitLookup y las
+limitaciones de cualquier comparación. No se ha inspeccionado una instalación
+de Revit ni se han copiado componentes propietarios. El primer comportamiento
+que se implementa de forma independiente es la distinción entre tipos de muro
+y parámetros de instancia. **No se declara paridad funcional con Revit.**
 
 ## Arquitectura
 
