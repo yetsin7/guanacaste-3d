@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private double _scale = 36;
     private Point _panOffset;
     private bool _refreshingLevels;
+    private bool _refreshingWallTypePicker;
     private bool _orbitDragging;
     private Point _orbitPrevious;
     private double _orbitYaw = Math.PI / 4;
@@ -989,6 +990,7 @@ public partial class MainWindow : Window
 
     private void RefreshWallTypePicker()
     {
+        _refreshingWallTypePicker = true;
         var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == _selectedWallId);
         WallTypePicker.Items.Clear();
         var independent = new ComboBoxItem { Content = "Sin tipo — espesor independiente" };
@@ -1010,6 +1012,18 @@ public partial class MainWindow : Window
         }
         if (wall?.TypeId is null)
             WallTypeNameInput.Text = "Muro tipo 20 cm";
+        _refreshingWallTypePicker = false;
+    }
+
+    private void WallTypePicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_refreshingWallTypePicker ||
+            WallTypePicker.SelectedItem is not ComboBoxItem { Tag: Guid typeId })
+            return;
+        var type = _session?.Document.WallTypes.FirstOrDefault(t => t.Id == typeId);
+        if (type is null) return;
+        WallTypeNameInput.Text = type.Name;
+        ThicknessInput.Text = type.Thickness.ToString("0.###", CultureInfo.CurrentCulture);
     }
 
     private void RefreshProperties()
