@@ -25,9 +25,13 @@ Producto BIM de escritorio con un modelo paramétrico único que sincronice geom
 
 ## Etapa 2 — Documentación coherente
 - [ ] Alzados, secciones, detalles, escalas y hojas.
-- [ ] Tablas de cantidades, etiquetas y planificación.
-- [ ] Cubiertas, forjados, cielos rasos, escaleras, terrenos y habitaciones.
-- [ ] Exportación PDF/DXF/IFC con pruebas de precisión.
+- [x] Tablas CSV básicas de cantidades de muros y losas.
+- [ ] Tablas de planificación asociativas dentro de la interfaz y etiquetas.
+- [x] Losas rectangulares básicas: espesor editable, elevación de nivel, guardado, vistas 2D/3D y cómputo CSV.
+- [ ] Losas poligonales/multicapa, huecos, pendientes y uniones automáticas.
+- [ ] Cubiertas, forjados avanzados, cielos rasos, escaleras, terrenos y habitaciones.
+- [x] Exportador DXF R12 esquemático (sin propiedades BIM ni importación).
+- [ ] Exportación PDF/IFC e importación DXF con pruebas de interoperabilidad.
 
 ## Etapa 3 — Disciplinas y colaboración
 - [ ] Herramientas estructurales y MEP.
