@@ -40,13 +40,14 @@ public static class DxfExporter
 
         Pair(output, 0, "TABLE");
         Pair(output, 2, "LAYER");
-        Pair(output, 70, (document.Levels.Count * 3 + 1).ToString(Invariant));
+        Pair(output, 70, (document.Levels.Count * 4 + 1).ToString(Invariant));
         WriteLayer(output, "0", 7);
         for (var i = 0; i < document.Levels.Count; i++)
         {
             WriteLayer(output, Layer(i, "WALL"), 7);
             WriteLayer(output, Layer(i, "DOOR"), 1);
             WriteLayer(output, Layer(i, "WINDOW"), 5);
+            WriteLayer(output, Layer(i, "SLAB"), 3);
         }
         Pair(output, 0, "ENDTAB");
         Pair(output, 0, "ENDSEC");
@@ -60,6 +61,18 @@ public static class DxfExporter
         for (var i = 0; i < document.Levels.Count; i++)
         {
             var level = document.Levels[i];
+            foreach (var slab in document.Slabs.Where(s => s.LevelId == level.Id).OrderBy(s => s.Id))
+            {
+                var bottomLeft = slab.Min;
+                var bottomRight = new Point2(slab.Max.X, slab.Min.Y);
+                var topRight = slab.Max;
+                var topLeft = new Point2(slab.Min.X, slab.Max.Y);
+                var layer = Layer(i, "SLAB");
+                WriteEntityLine(output, bottomLeft, bottomRight, level.Elevation, layer);
+                WriteEntityLine(output, bottomRight, topRight, level.Elevation, layer);
+                WriteEntityLine(output, topRight, topLeft, level.Elevation, layer);
+                WriteEntityLine(output, topLeft, bottomLeft, level.Elevation, layer);
+            }
             foreach (var wall in document.Walls.Where(w => w.LevelId == level.Id).OrderBy(w => w.Id))
             {
                 var openings = document.Openings.Where(o => o.WallId == wall.Id)
