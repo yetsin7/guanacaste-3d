@@ -336,6 +336,24 @@ public partial class MainWindow : Window
         PlanCanvas.Children.Add(line);
     }
 
+    private void Duplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
+        _selectedWallId = _session.DuplicateWall(id, 1, 1);
+        _selectedWallOffset = null;
+        StatusText.Text = "Muro duplicado a 1 metro de distancia en X e Y.";
+        RefreshAll();
+    }
+
+    private void Move_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is not Guid id) { StatusText.Text = "Selecciona un muro."; return; }
+        _session.MoveWall(id, 1, 0);
+        _selectedWallOffset = null;
+        StatusText.Text = "Muro desplazado 1 metro hacia X positivo.";
+        RefreshAll();
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is not Guid id) return;
