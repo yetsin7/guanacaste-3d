@@ -27,6 +27,7 @@
         <MenuItem Header="Planta 2D" Click="ShowPlan_Click"/>
         <MenuItem Header="Modelo 3D" Click="ShowModel_Click"/>
         <MenuItem Header="Ajustar planta a proyecto" Click="FitPlan_Click"/>
+        <MenuItem Header="Mostrar u ocultar rejilla" Click="ToggleGrid_Click"/>
       </MenuItem>
       <MenuItem Header="A_yuda">
         <MenuItem Header="Acerca de Guanacaste 3D" Click="About_Click"/>
@@ -91,7 +92,9 @@
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,7">
             <TextBlock Text="Nivel activo:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="LevelPicker" Width="170" SelectionChanged="LevelPicker_SelectionChanged"/>
-            <TextBlock Text="   W: muros · Esc: cancelar · seleccionar un muro para insertar puerta/ventana" FontSize="11"
+            <CheckBox x:Name="SnapGridCheck" Content="Ajustar a 10 cm" IsChecked="True" Margin="14,0,6,0" VerticalAlignment="Center"/>
+            <CheckBox x:Name="ShowGridCheck" Content="Rejilla" IsChecked="True" Margin="6,0" VerticalAlignment="Center" Checked="GridVisibility_Changed" Unchecked="GridVisibility_Changed"/>
+            <TextBlock Text="   W: muros · F: encuadrar · Esc: cancelar" FontSize="11"
                        Foreground="#74867C" VerticalAlignment="Center"/>
           </StackPanel>
           <TabControl x:Name="ViewTabs" Background="#F8FAF8">
