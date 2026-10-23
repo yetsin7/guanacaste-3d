@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+    <None Include="../../samples/casa-demostrativa.g3d.json" Link="samples/casa-demostrativa.g3d.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
