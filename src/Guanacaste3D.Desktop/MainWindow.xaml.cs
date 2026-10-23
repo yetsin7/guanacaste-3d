@@ -187,8 +187,26 @@ public partial class MainWindow : Window
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
-    private void Undo_Click(object sender, RoutedEventArgs e) { _session.Undo(); _selectedWallId = null; RefreshAll(); }
-    private void Redo_Click(object sender, RoutedEventArgs e) { _session.Redo(); _selectedWallId = null; RefreshAll(); }
+    private void Undo_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Undo();
+        ClearSelection();
+        RefreshAll();
+    }
+
+    private void Redo_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Redo();
+        ClearSelection();
+        RefreshAll();
+    }
+
+    private void ClearSelection()
+    {
+        _selectedWallId = null;
+        _selectedOpeningId = null;
+        _selectedWallOffset = null;
+    }
     private void Select_Click(object sender, RoutedEventArgs e) => SetWallTool(false);
     private void Wall_Click(object sender, RoutedEventArgs e) => SetWallTool(true);
     private void Door_Click(object sender, RoutedEventArgs e) =>
@@ -232,6 +250,7 @@ public partial class MainWindow : Window
     {
         _drawingWall = drawing;
         _pendingWallStart = null;
+        if (drawing) ClearSelection();
         StatusText.Text = drawing ? "Muro: haz clic en inicio y fin (Esc cancela)." : "Modo selección.";
         RenderPlan();
     }
@@ -239,6 +258,7 @@ public partial class MainWindow : Window
     private void AddLevel_Click(object sender, RoutedEventArgs e)
     {
         _activeLevelId = _session.AddLevel();
+        ClearSelection();
         RefreshAll();
     }
 
@@ -247,7 +267,7 @@ public partial class MainWindow : Window
         if (_refreshingLevels || LevelPicker.SelectedItem is not ComboBoxItem item || item.Tag is not Guid id)
             return;
         _activeLevelId = id;
-        _selectedWallId = null;
+        ClearSelection();
         _pendingWallStart = null;
         RefreshAll();
     }
@@ -316,6 +336,8 @@ public partial class MainWindow : Window
         try
         {
             _selectedWallId = _session.AddWall(_activeLevelId, _pendingWallStart.Value, point);
+            _selectedOpeningId = null;
+            _selectedWallOffset = null;
             _pendingWallStart = null;
             StatusText.Text = "Muro creado. Haz clic para iniciar otro.";
             RefreshAll();
@@ -839,8 +861,8 @@ public partial class MainWindow : Window
     {
         if (Keyboard.FocusedElement is TextBox) { base.OnPreviewKeyDown(e); return; }
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S) { SaveProject(false); e.Handled = true; }
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { _session.Undo(); e.Handled = true; }
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y) { _session.Redo(); e.Handled = true; }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { Undo_Click(this, new RoutedEventArgs()); e.Handled = true; }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y) { Redo_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
