@@ -108,6 +108,14 @@ de Revit ni se han copiado componentes propietarios. El primer comportamiento
 que se implementa de forma independiente es la distinción entre tipos de muro
 y parámetros de instancia. **No se declara paridad funcional con Revit.**
 
+## Instantánea BIM para estudios comparativos
+
+En **Archivo → Exportar instantánea BIM JSON** puedes registrar geometría,
+alturas, niveles, tipos de muro y cómputos métricos como una observación
+determinista que no contiene identificadores de elemento. Este JSON es una
+**salida de análisis**, no un proyecto editable ni un archivo RVT.
+Sirve para futuras comparaciones con escenarios de referencia autorizados.
+
 ## Arquitectura
 
 - `src/Guanacaste3D.Core/`: modelo de documentos, niveles, elementos, validaciones, operaciones e historial.
