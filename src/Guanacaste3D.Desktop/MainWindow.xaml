@@ -12,6 +12,7 @@
         <MenuItem Header="_Guardar" Click="Save_Click"/>
         <MenuItem Header="Guardar _como..." Click="SaveAs_Click"/>
         <MenuItem Header="Exportar cantidades CSV..." Click="ExportQuantities_Click"/>
+        <MenuItem Header="Exportar dibujo DXF R12..." Click="ExportDxf_Click"/>
         <Separator/>
         <MenuItem Header="Salir" Click="Exit_Click"/>
       </MenuItem>
@@ -27,6 +28,7 @@
         <MenuItem Header="Planta 2D" Click="ShowPlan_Click"/>
         <MenuItem Header="Modelo 3D" Click="ShowModel_Click"/>
         <MenuItem Header="Ajustar planta a proyecto" Click="FitPlan_Click"/>
+        <MenuItem Header="Restablecer cámara 3D" Click="Reset3DCamera_Click"/>
         <MenuItem Header="Mostrar u ocultar rejilla" Click="ToggleGrid_Click"/>
       </MenuItem>
       <MenuItem Header="A_yuda">
@@ -106,7 +108,19 @@
                       SizeChanged="PlanCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="  Modelo volumétrico 3D  ">
-              <Viewport3D x:Name="ModelViewport" ClipToBounds="True"/>
+              <Grid Background="Transparent"
+                    MouseLeftButtonDown="ModelOrbit_MouseDown"
+                    MouseLeftButtonUp="ModelOrbit_MouseUp"
+                    MouseMove="ModelOrbit_MouseMove"
+                    MouseWheel="ModelOrbit_MouseWheel">
+                <Viewport3D x:Name="ModelViewport" ClipToBounds="True" IsHitTestVisible="False"/>
+                <Border VerticalAlignment="Top" HorizontalAlignment="Left"
+                        Margin="12" Padding="9,5" CornerRadius="5"
+                        Background="#DDF1EAE5" IsHitTestVisible="False">
+                  <TextBlock Text="Arrastrar: orbitar · Rueda: acercar / alejar"
+                             FontSize="11" Foreground="#355A49"/>
+                </Border>
+              </Grid>
             </TabItem>
           </TabControl>
         </DockPanel>
