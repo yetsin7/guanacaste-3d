@@ -739,6 +739,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ResizeSlab_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedSlabId is not Guid id)
+        {
+            StatusText.Text = "Selecciona una losa antes de modificar sus dimensiones.";
+            return;
+        }
+        if (!double.TryParse(SlabWidthInput.Text, NumberStyles.Float,
+                CultureInfo.CurrentCulture, out var width) ||
+            !double.TryParse(SlabDepthInput.Text, NumberStyles.Float,
+                CultureInfo.CurrentCulture, out var depth) ||
+            !double.IsFinite(width) || !double.IsFinite(depth))
+        {
+            MessageBox.Show(this, "Introduce ancho y largo numéricos válidos.", "Dimensiones de losa");
+            return;
+        }
+        try
+        {
+            _session.ResizeSlab(id, width, depth);
+            StatusText.Text = "Dimensiones de losa actualizadas.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Dimensiones no válidas",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void DuplicateSlab_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedSlabId is not Guid id)
@@ -884,6 +912,8 @@ public partial class MainWindow : Window
                 $"Área: {slab.Area:0.00} m²\nVolumen: {slab.Volume:0.00} m³\n" +
                 $"Identificador: {slab.Id.ToString()[..8]}";
             SlabThicknessInput.Text = slab.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
+            SlabWidthInput.Text = slab.Width.ToString("0.###", CultureInfo.CurrentCulture);
+            SlabDepthInput.Text = slab.Depth.ToString("0.###", CultureInfo.CurrentCulture);
             return;
         }
 
