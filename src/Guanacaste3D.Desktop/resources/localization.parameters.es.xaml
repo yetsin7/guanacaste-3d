@@ -21,6 +21,17 @@
   <sys:String x:Key="Parameters.CsvFilter">Valores separados por comas (*.csv)|*.csv</sys:String>
   <sys:String x:Key="Parameters.ScheduleHint">Edita las celdas para cambiar valores. Selecciona varias celdas y pulsa Ctrl+V para rellenarlas con un valor, o Supr para borrarlas; cada operación es un solo paso de deshacer. Las columnas marcadas como «tipo» comparten el valor en todas las instancias del mismo tipo.</sys:String>
   <sys:String x:Key="Parameters.TypeMarker" xml:space="preserve"> · tipo</sys:String>
+  <sys:String x:Key="Parameters.Formula">Fórmula (opcional: calcula el valor)</sys:String>
+  <sys:String x:Key="Parameters.FormulaHelp">Ejemplos: Ancho * Alto · if(Area &gt; 20 m², "Grande", "Pequeña") · round(Longitud, 5 cm). Nombres disponibles: {0}. Funciones: if, and, or, not, abs, round, roundup, rounddown, min, max, sqrt, sin, cos, tan, pi.</sys:String>
+  <sys:String x:Key="Parameters.FormulaMarker" xml:space="preserve"> · fórmula</sys:String>
+  <sys:String x:Key="Formula.Name.Length">Longitud</sys:String>
+  <sys:String x:Key="Formula.Name.Height">Alto</sys:String>
+  <sys:String x:Key="Formula.Name.Thickness">Espesor</sys:String>
+  <sys:String x:Key="Formula.Name.NetVolume">Volumen</sys:String>
+  <sys:String x:Key="Formula.Name.Width">Ancho</sys:String>
+  <sys:String x:Key="Formula.Name.Sill">Antepecho</sys:String>
+  <sys:String x:Key="Formula.Name.Area">Área</sys:String>
+  <sys:String x:Key="Formula.Name.Elevation">Elevación</sys:String>
   <sys:String x:Key="Parameters.Yes">Sí</sys:String>
   <sys:String x:Key="Parameters.No">No</sys:String>
   <sys:String x:Key="Parameters.Column.Mark">Marca</sys:String>

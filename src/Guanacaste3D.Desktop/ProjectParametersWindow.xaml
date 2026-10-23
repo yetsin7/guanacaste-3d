@@ -42,6 +42,9 @@
             <TextBlock Text="{DynamicResource Parameters.Description}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,2"/>
             <TextBox x:Name="DescriptionBox" MaxLength="1000" Height="44" TextWrapping="Wrap" AcceptsReturn="True"
                      VerticalScrollBarVisibility="Auto"/>
+            <TextBlock Text="{DynamicResource Parameters.Formula}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,2"/>
+            <TextBox x:Name="FormulaBox" MaxLength="2000" FontFamily="Consolas" TextChanged="FormulaBox_TextChanged"/>
+            <TextBlock x:Name="FormulaHelp" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,2,0,0"/>
             <TextBlock Text="{DynamicResource Parameters.Categories}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,2"/>
             <WrapPanel x:Name="CategoryPanel"/>
             <UniformGrid Columns="3" Margin="0,8,0,0">

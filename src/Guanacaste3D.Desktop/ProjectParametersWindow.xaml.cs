@@ -114,6 +114,7 @@ public partial class ProjectParametersWindow : Window
         BindingBox.SelectedValue = definition.Binding;
         GroupBox.Text = definition.Group;
         DescriptionBox.Text = definition.Description;
+        FormulaBox.Text = definition.Formula;
         SpecBox.IsEnabled = BindingBox.IsEnabled = false;
         foreach (var (category, box) in _categoryChecks) box.IsChecked = definition.Categories.Contains(category);
     }
@@ -123,12 +124,30 @@ public partial class ProjectParametersWindow : Window
     {
         _editingDefinitionId = null;
         DefinitionsList.SelectedItem = null;
-        NameBox.Text = GroupBox.Text = DescriptionBox.Text = string.Empty;
+        NameBox.Text = GroupBox.Text = DescriptionBox.Text = FormulaBox.Text = string.Empty;
         SpecBox.SelectedValue = ParameterSpec.Text;
         BindingBox.SelectedValue = ParameterBinding.Instance;
         SpecBox.IsEnabled = BindingBox.IsEnabled = true;
         var current = CategoryBox.SelectedValue as ElementCategory?;
         foreach (var (category, box) in _categoryChecks) box.IsChecked = category == current;
+    }
+
+    /// <summary>
+    /// Lists the names a formula can use for the checked categories and forces
+    /// instance binding, because calculated values are computed per element.
+    /// </summary>
+    private void FormulaBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var hasFormula = FormulaBox.Text.Trim().Length > 0;
+        if (hasFormula) BindingBox.SelectedValue = ParameterBinding.Instance;
+        BindingBox.IsEnabled = !hasFormula && _editingDefinitionId is null;
+        var category = _categoryChecks.FirstOrDefault(pair => pair.Value.IsChecked == true).Key;
+        var quantities = ScheduleQuantities.ColumnsFor(category)
+            .Where(column => column.Unit.StartsWith('m')).Select(column => Text($"Formula.Name.{column.Key}"));
+        var parameters = ParameterRules.ForCategory(_session.Document, category)
+            .Where(definition => definition.Id != _editingDefinitionId)
+            .Select(definition => definition.Name.Contains(' ') ? $"[{definition.Name}]" : definition.Name);
+        FormulaHelp.Text = Format("Parameters.FormulaHelp", string.Join(", ", quantities.Concat(parameters)));
     }
 
     /// <summary>Starts a new definition.</summary>
@@ -150,10 +169,12 @@ public partial class ProjectParametersWindow : Window
         RunTransaction(() =>
         {
             if (_editingDefinitionId is Guid id)
-                _session.UpdateParameter(id, NameBox.Text, categories, GroupBox.Text, DescriptionBox.Text);
+                _session.UpdateParameter(id, NameBox.Text, categories, GroupBox.Text, DescriptionBox.Text,
+                    FormulaBox.Text);
             else
                 _editingDefinitionId = _session.AddParameter(NameBox.Text, (ParameterSpec)SpecBox.SelectedValue,
-                    (ParameterBinding)BindingBox.SelectedValue, categories, GroupBox.Text, DescriptionBox.Text);
+                    FormulaBox.Text.Trim().Length > 0 ? ParameterBinding.Instance : (ParameterBinding)BindingBox.SelectedValue,
+                    categories, GroupBox.Text, DescriptionBox.Text, FormulaBox.Text);
         });
     }
 

@@ -68,7 +68,9 @@ public partial class ProjectParametersWindow
     {
         var name = column.Definition?.Name ?? Text($"Parameters.Column.{column.Key}");
         var typeMarker = column.Definition?.Binding == ParameterBinding.Type ? Text("Parameters.TypeMarker") : "";
-        return CategoryScheduleService.HeaderWithUnit(name, column.Unit) + typeMarker;
+        var formulaMarker = column.Definition is { } definition && FormulaEngine.IsCalculated(definition)
+            ? Text("Parameters.FormulaMarker") : "";
+        return CategoryScheduleService.HeaderWithUnit(name, column.Unit) + typeMarker + formulaMarker;
     }
 
     /// <summary>Commits one cell edit as a validated transaction, then rebuilds the grid.</summary>
@@ -95,7 +97,8 @@ public partial class ProjectParametersWindow
         var edits = new List<ParameterEdit>();
         foreach (var cell in ScheduleGrid.SelectedCells)
         {
-            if (cell.Item is not DataRowView row || DefinitionFor(cell.Column) is not { } definition) continue;
+            if (cell.Item is not DataRowView row || DefinitionFor(cell.Column) is not { } definition ||
+                FormulaEngine.IsCalculated(definition)) continue;
             var edit = TryBuildEdit((Guid)row[ElementIdColumn], definition, input);
             if (edit is null) return;
             edits.Add(edit);

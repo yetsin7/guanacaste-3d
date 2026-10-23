@@ -55,6 +55,12 @@ public sealed record ParameterDefinition(
     /// <summary>Optional tooltip-style guidance shown next to the value.</summary>
     public string Description { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Optional formula. When set, the parameter is calculated for each element
+    /// from other parameters and model quantities, and is never stored or edited.
+    /// </summary>
+    public string Formula { get; init; } = string.Empty;
+
     /// <summary>Returns whether values of this definition are stored as text.</summary>
     public bool StoresText => Spec == ParameterSpec.Text;
 }

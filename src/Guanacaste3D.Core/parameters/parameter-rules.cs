@@ -42,21 +42,26 @@ public static class ParameterRules
                 definition.Categories.Distinct().Count() != definition.Categories.Count ||
                 !ParameterCategoryRules.SupportsBinding(definition.Binding, definition.Categories) ||
                 definition.Group is null || definition.Group.Length > MaximumNameLength ||
-                definition.Description is null || definition.Description.Length > MaximumTextLength)
+                definition.Description is null || definition.Description.Length > MaximumTextLength ||
+                definition.Formula is null || definition.Formula.Length > 2000 ||
+                definition.Formula != definition.Formula.Trim())
                 throw new InvalidDataException("A project parameter definition is invalid.");
+            if (FormulaEngine.IsCalculated(definition) && definition.Binding != ParameterBinding.Instance)
+                throw new InvalidDataException("Calculated parameters must use instance binding.");
         }
         if (definitions.Select(definition => definition.Id).Distinct().Count() != definitions.Count ||
             definitions.Select(definition => definition.Name)
                 .Distinct(StringComparer.OrdinalIgnoreCase).Count() != definitions.Count)
             throw new InvalidDataException("Project parameter identifiers and names must be unique.");
 
+        FormulaEngine.ValidateDefinitions(document);
         var byId = definitions.ToDictionary(definition => definition.Id);
         var elements = ElementCatalog.Index(document);
         var types = TypeCategories(document);
         var keys = new HashSet<(Guid, Guid)>();
         foreach (var value in values)
         {
-            if (!byId.TryGetValue(value.DefinitionId, out var definition) ||
+            if (!byId.TryGetValue(value.DefinitionId, out var definition) || FormulaEngine.IsCalculated(definition) ||
                 !IsOwnerValid(definition, value.OwnerId, elements, types) ||
                 !IsValueValid(definition.Spec, value.Number, value.Text) ||
                 !keys.Add((value.DefinitionId, value.OwnerId)))
@@ -75,7 +80,7 @@ public static class ParameterRules
         var elements = ElementCatalog.Index(document);
         var types = TypeCategories(document);
         return document.ParameterValues.RemoveAll(value =>
-            !byId.TryGetValue(value.DefinitionId, out var definition) ||
+            !byId.TryGetValue(value.DefinitionId, out var definition) || FormulaEngine.IsCalculated(definition) ||
             !IsOwnerValid(definition, value.OwnerId, elements, types));
     }
 

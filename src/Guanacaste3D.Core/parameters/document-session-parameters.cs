@@ -8,22 +8,24 @@ public sealed partial class DocumentSession
 {
     /// <summary>Creates a project parameter bound to one or more categories.</summary>
     public Guid AddParameter(string name, ParameterSpec spec, ParameterBinding binding,
-        IEnumerable<ElementCategory> categories, string group = "", string description = "")
+        IEnumerable<ElementCategory> categories, string group = "", string description = "", string formula = "")
     {
         var id = Guid.NewGuid();
         var definition = new ParameterDefinition(id, name.Trim(), spec, binding,
-            categories.Distinct().ToList(), group.Trim()) { Description = description.Trim() };
+            categories.Distinct().ToList(), group.Trim()) { Description = description.Trim(), Formula = formula.Trim() };
         Commit("Transaction.AddParameter", document => document.ParameterDefinitions.Add(definition));
         return id;
     }
 
     /// <summary>
-    /// Renames, regroups, or rebinds a parameter's categories. Spec and binding
-    /// stay fixed so stored values never change meaning; values on categories
-    /// removed from the binding are dropped by regeneration in the same step.
+    /// Renames, regroups, rebinds categories, or changes the formula of a
+    /// parameter (null keeps the current formula). Spec and binding stay fixed
+    /// so stored values never change meaning; values that no longer apply are
+    /// dropped by regeneration in the same step. Renaming a parameter that other
+    /// formulas use fails validation, so formulas never point at a missing name.
     /// </summary>
     public void UpdateParameter(Guid id, string name, IEnumerable<ElementCategory> categories,
-        string group = "", string description = "")
+        string group = "", string description = "", string? formula = null)
     {
         if (!Document.ParameterDefinitions.Any(definition => definition.Id == id))
             throw new InvalidDataException("The project parameter does not exist.");
@@ -36,7 +38,8 @@ public sealed partial class DocumentSession
                 Name = name.Trim(),
                 Categories = categoryList,
                 Group = group.Trim(),
-                Description = description.Trim()
+                Description = description.Trim(),
+                Formula = formula?.Trim() ?? document.ParameterDefinitions[index].Formula
             };
         });
     }
@@ -71,6 +74,8 @@ public sealed partial class DocumentSession
                 : null;
             if (owner is not Guid ownerId)
                 throw new InvalidDataException("The parameter is not bound to the selected element.");
+            if (FormulaEngine.IsCalculated(definition))
+                throw new InvalidDataException("The parameter is calculated by a formula and cannot be edited.");
             return (Edit: edit, OwnerId: ownerId);
         }).ToArray();
         Commit(edits.Count == 1 ? "Transaction.SetParameterValue" : "Transaction.SetParameterValues", document =>

@@ -52,4 +52,36 @@
   <sys:String x:Key="Error.The wall to duplicate does not exist.">El muro que se quiere duplicar no existe.</sys:String>
   <sys:String x:Key="Error.The wall type does not exist.">El tipo de muro no existe.</sys:String>
   <sys:String x:Key="Error.Unsupported project schema version.">La versión del formato del proyecto no es compatible.</sys:String>
+  <!-- Formula errors: templates receive the captured parts of the English message. -->
+  <sys:String x:Key="Error.Formula.UnknownName">Error de fórmula: el nombre «{0}» no existe en esta categoría.</sys:String>
+  <sys:String x:Key="Error.Formula.UnknownFunction">Error de fórmula: la función «{0}» no existe.</sys:String>
+  <sys:String x:Key="Error.Formula.InconsistentUnits">Error de fórmula: unidades incompatibles en «{0}»: {1} y {2}.</sys:String>
+  <sys:String x:Key="Error.Formula.NeedsNumber">Error de fórmula: «{0}» necesita un número, no {1}.</sys:String>
+  <sys:String x:Key="Error.Formula.NeedsKind">Error de fórmula: «{0}» necesita {1}, no {2}.</sys:String>
+  <sys:String x:Key="Error.Formula.IfTypes">Error de fórmula: los dos resultados de if() deben ser del mismo tipo ({0} y {1}).</sys:String>
+  <sys:String x:Key="Error.Formula.Compare">Error de fórmula: no se puede comparar {0} con {1}.</sys:String>
+  <sys:String x:Key="Error.Formula.ResultType">Error de fórmula: «{0}» produce {1}, pero el parámetro es de tipo {2}.</sys:String>
+  <sys:String x:Key="Error.Formula.Cycle">Error de fórmula: «{0}» depende de sí mismo a través de otras fórmulas.</sys:String>
+  <sys:String x:Key="Error.Formula.ArgumentCount">Error de fórmula: {0}() necesita {1} argumento(s).</sys:String>
+  <sys:String x:Key="Error.Formula.Arguments">Error de fórmula: los argumentos de {0}() no son válidos.</sys:String>
+  <sys:String x:Key="Error.Formula.Exponent">Error de fórmula: el exponente debe ser un número sin unidades.</sys:String>
+  <sys:String x:Key="Error.Formula.LengthPower">Error de fórmula: una longitud solo puede elevarse a un número entero escrito directamente.</sys:String>
+  <sys:String x:Key="Error.Formula.Syntax">Error de fórmula: {0} (carácter {1}).</sys:String>
+  <sys:String x:Key="Error.FormulaWord.number">número</sys:String>
+  <sys:String x:Key="Error.FormulaWord.length">longitud</sys:String>
+  <sys:String x:Key="Error.FormulaWord.area">área</sys:String>
+  <sys:String x:Key="Error.FormulaWord.volume">volumen</sys:String>
+  <sys:String x:Key="Error.FormulaWord.yes/no">sí/no</sys:String>
+  <sys:String x:Key="Error.FormulaWord.text">texto</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Expected">se esperaba «{0}»</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Unexpected character">carácter inesperado «{0}»</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Unexpected text">texto inesperado</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Unexpected end of formula">la fórmula termina antes de tiempo</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Missing ']'">falta «]»</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Empty reference">referencia vacía</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Invalid number">número no válido</sys:String>
+  <sys:String x:Key="Error.FormulaWord.Missing closing quote">faltan las comillas de cierre</sys:String>
+  <sys:String x:Key="Error.FormulaWord.The formula is nested too deeply">la fórmula tiene demasiados niveles de anidación</sys:String>
+  <sys:String x:Key="Error.Calculated parameters must use instance binding.">Los parámetros calculados usan vinculación de instancia.</sys:String>
+  <sys:String x:Key="Error.The parameter is calculated by a formula and cannot be edited.">Este parámetro se calcula con una fórmula y no se edita a mano.</sys:String>
 </ResourceDictionary>

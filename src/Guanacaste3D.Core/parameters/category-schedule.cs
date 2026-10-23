@@ -9,8 +9,8 @@ namespace Guanacaste3D.Core;
 /// </summary>
 public sealed record CategoryScheduleColumn(string Key, ParameterDefinition? Definition, string Unit = "")
 {
-    /// <summary>Returns whether cells in this column edit a parameter value.</summary>
-    public bool IsEditable => Definition is not null;
+    /// <summary>Returns whether cells in this column edit a stored parameter value.</summary>
+    public bool IsEditable => Definition is not null && !FormulaEngine.IsCalculated(Definition);
 }
 
 /// <summary>
@@ -50,6 +50,7 @@ public static class CategoryScheduleService
         var stored = document.ParameterValues.ToDictionary(value => (value.DefinitionId, value.OwnerId));
         var levelNames = document.Levels.ToDictionary(level => level.Id, level => level.Name);
         var quantities = ScheduleQuantities.Compute(document, category);
+        var calculated = FormulaEngine.EvaluateCategory(document, category, quantities);
         var rows = ElementCatalog.List(document, category).Select(element =>
         {
             var values = new Dictionary<Guid, ParameterValue>();
@@ -59,6 +60,8 @@ public static class CategoryScheduleService
                     stored.TryGetValue((definition.Id, ownerId), out var value))
                     values[definition.Id] = value;
             }
+            if (calculated.TryGetValue(element.Id, out var computed))
+                foreach (var (definitionId, value) in computed) values[definitionId] = value;
             var levelName = element.LevelId is Guid levelId ? levelNames.GetValueOrDefault(levelId, "") : "";
             return new CategoryScheduleRow(element, levelName,
                 quantities.GetValueOrDefault(element.Id) ?? new Dictionary<string, object>(), values);

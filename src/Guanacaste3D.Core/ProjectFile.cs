@@ -98,6 +98,12 @@ public static class ProjectFile
                 document.Openings[index] = opening with { OpeningTypeId = type.Id };
             }
         }
+        if (document.SchemaVersion == 5)
+        {
+            // Schema 6 adds optional parameter formulas. No data changes, but the
+            // version bump stops older builds from silently dropping formulas.
+            document.SchemaVersion = 6;
+        }
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>
