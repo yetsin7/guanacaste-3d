@@ -15,6 +15,7 @@ public sealed record Level(Guid Id, string Name, double Elevation);
 public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, double Thickness, double Height)
 {
     [JsonIgnore] public double Length => Start.DistanceTo(End);
+    public Guid? TypeId { get; init; }
 }
 
 /// <summary>Owns the editable architectural source of truth for all 2D and 3D views.</summary>
@@ -28,6 +29,8 @@ public sealed class BuildingDocument
     public List<WallOpening> Openings { get; set; } = [];
     // Optional in legacy schema-1 files: newly added elements default to an empty list.
     public List<Slab> Slabs { get; set; } = [];
+    // Optional in older schema-1 files: legacy walls do not require a wall type.
+    public List<WallType> WallTypes { get; set; } = [];
 
     public static BuildingDocument Create() => new()
     {
@@ -43,7 +46,8 @@ public sealed class BuildingDocument
         Levels = [.. Levels],
         Walls = [.. Walls],
         Openings = [.. Openings],
-        Slabs = [.. Slabs]
+        Slabs = [.. Slabs],
+        WallTypes = [.. WallTypes]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -52,9 +56,9 @@ public sealed class BuildingDocument
         if (SchemaVersion != 1) throw new InvalidDataException("Versión de proyecto no compatible.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("Identidad o nombre de proyecto inválido.");
-        if (Levels is null || Walls is null || Openings is null || Slabs is null ||
+        if (Levels is null || Walls is null || Openings is null || Slabs is null || WallTypes is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 ||
-            Openings.Count > 200000 || Slabs.Count > 100000)
+            Openings.Count > 200000 || Slabs.Count > 100000 || WallTypes.Count > 2000)
             throw new InvalidDataException("El documento excede los límites de elementos.");
         if (Levels.Any(l => l is null))
             throw new InvalidDataException("Un nivel no puede ser nulo.");
@@ -63,6 +67,13 @@ public sealed class BuildingDocument
             Levels.Select(l => l.Id).Distinct().Count() != Levels.Count)
             throw new InvalidDataException("Niveles inválidos.");
         var levelIds = Levels.Select(l => l.Id).ToHashSet();
+        if (WallTypes.Any(t => t is null || t.Id == Guid.Empty ||
+                string.IsNullOrWhiteSpace(t.Name) || t.Name.Length > 100 ||
+                !double.IsFinite(t.Thickness) || t.Thickness is < 0.05 or > 5) ||
+            WallTypes.Select(t => t.Id).Distinct().Count() != WallTypes.Count ||
+            WallTypes.Select(t => t.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != WallTypes.Count)
+            throw new InvalidDataException("Catálogo de tipos de muro inválido.");
+        var typeMap = WallTypes.ToDictionary(t => t.Id);
         if (Walls.Any(w => w is null) || Walls.Select(w => w.Id).Distinct().Count() != Walls.Count)
             throw new InvalidDataException("Hay elementos duplicados.");
         foreach (var wall in Walls)
@@ -74,6 +85,10 @@ public sealed class BuildingDocument
                 wall.Length < 0.05 || wall.Length > 100000 ||
                 wall.Thickness is < 0.05 or > 5 || wall.Height is < 0.1 or > 1000)
                 throw new InvalidDataException("Muro inválido o sin nivel asociado.");
+            if (wall.TypeId is Guid typeId &&
+                (!typeMap.TryGetValue(typeId, out var wallType) ||
+                 Math.Abs(wall.Thickness - wallType.Thickness) > 1e-9))
+                throw new InvalidDataException("Muro con tipo inexistente o espesor incompatible.");
         }
         if (Slabs.Any(s => s is null) ||
             Slabs.Select(s => s.Id).Distinct().Count() != Slabs.Count)
@@ -94,7 +109,8 @@ public sealed class BuildingDocument
         var allIds = Levels.Select(l => l.Id)
             .Concat(Walls.Select(w => w.Id))
             .Concat(Openings.Select(o => o.Id))
-            .Concat(Slabs.Select(s => s.Id)).ToArray();
+            .Concat(Slabs.Select(s => s.Id))
+            .Concat(WallTypes.Select(t => t.Id)).ToArray();
         if (allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Identificadores de elementos repetidos.");
         WallGeometry.Validate(Walls, Openings);
