@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private bool _dirty;
     private bool _drawingWall;
     private double _scale = 36;
+    private Point _panOffset;
     private bool _refreshingLevels;
 
     public MainWindow()
@@ -307,21 +308,47 @@ public partial class MainWindow : Window
 
     private void PlanCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => RenderPlan();
     private Point WorldToCanvas(Point2 point) =>
-        new(PlanCanvas.ActualWidth / 2 + point.X * _scale,
-            PlanCanvas.ActualHeight / 2 - point.Y * _scale);
+        new(PlanCanvas.ActualWidth / 2 + _panOffset.X + point.X * _scale,
+            PlanCanvas.ActualHeight / 2 + _panOffset.Y - point.Y * _scale);
     private Point2 CanvasToWorld(Point point) =>
-        new((point.X - PlanCanvas.ActualWidth / 2) / _scale,
-            (PlanCanvas.ActualHeight / 2 - point.Y) / _scale);
+        new((point.X - PlanCanvas.ActualWidth / 2 - _panOffset.X) / _scale,
+            (PlanCanvas.ActualHeight / 2 + _panOffset.Y - point.Y) / _scale);
+
+    private void FitPlan_Click(object sender, RoutedEventArgs e)
+    {
+        var walls = _session.Document.Walls.Where(w => w.LevelId == _activeLevelId).ToArray();
+        if (walls.Length == 0)
+        {
+            _scale = 36;
+            _panOffset = new Point();
+            RenderPlan();
+            StatusText.Text = "Planta centrada en el origen.";
+            return;
+        }
+        var points = walls.SelectMany(w => new[] { w.Start, w.End }).ToArray();
+        var minX = points.Min(p => p.X);
+        var maxX = points.Max(p => p.X);
+        var minY = points.Min(p => p.Y);
+        var maxY = points.Max(p => p.Y);
+        var width = Math.Max(1, PlanCanvas.ActualWidth - 100);
+        var height = Math.Max(1, PlanCanvas.ActualHeight - 100);
+        _scale = Math.Clamp(Math.Min(width / Math.Max(1, maxX - minX),
+                                     height / Math.Max(1, maxY - minY)), 8, 200);
+        _panOffset = new Point(-(minX + maxX) / 2 * _scale,
+                                (minY + maxY) / 2 * _scale);
+        RenderPlan();
+        StatusText.Text = "Planta encuadrada al nivel activo.";
+    }
 
     private void RenderPlan()
     {
         if (PlanCanvas is null || _session is null) return;
         PlanCanvas.Children.Clear();
         if (PlanCanvas.ActualWidth < 1 || PlanCanvas.ActualHeight < 1) return;
-        var left = -PlanCanvas.ActualWidth / 2;
-        var right = PlanCanvas.ActualWidth / 2;
-        var top = -PlanCanvas.ActualHeight / 2;
-        var bottom = PlanCanvas.ActualHeight / 2;
+        var left = -PlanCanvas.ActualWidth / 2 - _panOffset.X;
+        var right = PlanCanvas.ActualWidth / 2 - _panOffset.X;
+        var top = -PlanCanvas.ActualHeight / 2 - _panOffset.Y;
+        var bottom = PlanCanvas.ActualHeight / 2 - _panOffset.Y;
         for (var gx = Math.Ceiling(left / _scale); gx <= right / _scale; gx++)
             AddLine(new Point2(gx, -bottom / _scale), new Point2(gx, -top / _scale), 0.5, Brushes.Gainsboro);
         for (var gy = Math.Ceiling(top / _scale); gy <= bottom / _scale; gy++)
@@ -684,6 +711,7 @@ public partial class MainWindow : Window
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { _session.Undo(); e.Handled = true; }
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y) { _session.Redo(); e.Handled = true; }
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
+        else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }
         base.OnPreviewKeyDown(e);
