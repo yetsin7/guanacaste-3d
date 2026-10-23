@@ -115,6 +115,12 @@ public partial class MainWindow : Window
             () => DxfExporter.ToAscii(_session.Document), System.Text.Encoding.ASCII,
             "Status.DxfExported");
 
+    /// <summary>Exports the BIM model as an IFC4 STEP file for exchange with other BIM tools.</summary>
+    private void ExportIfc_Click(object sender, RoutedEventArgs e) =>
+        ExportText("Dialog.IfcFilter", "Dialog.IfcFileName", ".ifc",
+            () => Guanacaste3D.Core.Interop.IfcExporter.ToStep(_session.Document, DateTimeOffset.Now),
+            new System.Text.UTF8Encoding(false), "Status.IfcExported");
+
     /// <summary>Asks for a destination and writes a generated text export with error reporting.</summary>
     private void ExportText(string filterKey, string fileNameKey, string extension,
         Func<string> generate, System.Text.Encoding encoding, string statusKey)
