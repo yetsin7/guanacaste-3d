@@ -311,6 +311,8 @@ public partial class MainWindow : Window
     {
         if (_session is null) return;
         Title = "Guanacaste 3D — " + _session.Document.Name;
+        if (!_session.Document.Levels.Any(l => l.Id == _activeLevelId))
+            _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(w => w.Id == _selectedWallId)) _selectedWallId = null;
         RefreshLevelPicker();
         RefreshTree();
