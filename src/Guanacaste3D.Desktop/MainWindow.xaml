@@ -27,6 +27,7 @@
       <MenuItem Header="{DynamicResource Menu.File}">
         <MenuItem Header="{DynamicResource Action.NewProject}" Click="New_Click"/>
         <MenuItem Header="{DynamicResource Action.OpenProject}" Click="Open_Click"/>
+        <MenuItem Header="{DynamicResource Action.OpenSample}" Click="OpenSample_Click"/>
         <Separator/>
         <MenuItem Header="{DynamicResource Action.Save}" Click="Save_Click"/>
         <MenuItem Header="{DynamicResource Action.SaveAs}" Click="SaveAs_Click"/>
@@ -50,6 +51,7 @@
         <MenuItem Header="{DynamicResource Tool.Section}" Click="ShowSection_Click"/>
         <MenuItem Header="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click"/>
         <MenuItem Header="{DynamicResource Tool.Sheets}" Click="ShowSheet_Click"/>
+        <MenuItem Header="{DynamicResource Tool.Render}" Click="ShowRender_Click"/>
         <Separator/>
         <MenuItem Header="{DynamicResource Action.Fit}" Click="FitPlan_Click"/>
       </MenuItem>
@@ -107,6 +109,7 @@
           <Button Content="{DynamicResource Tool.Section}" Click="ShowSection_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Sheets}" Click="ShowSheet_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Render}" Click="StartRender_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Action.Fit}" Click="FitPlan_Click" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
@@ -172,7 +175,19 @@
                       MouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="{DynamicResource View.Model3D}">
-              <Border Background="#D9E0E4"><Viewport3D x:Name="ModelViewport" ClipToBounds="True"/></Border>
+              <Grid>
+                <Border Background="#D9E0E4" MouseLeftButtonDown="ModelView_MouseLeftButtonDown"
+                        MouseMove="ModelView_MouseMove" MouseLeftButtonUp="ModelView_MouseLeftButtonUp"
+                        MouseWheel="ModelView_MouseWheel">
+                  <Viewport3D x:Name="ModelViewport" ClipToBounds="True" SizeChanged="ModelViewport_SizeChanged"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
+                  <TextBlock Text="{DynamicResource Model.OrbitHint}" Foreground="#31434E" FontSize="11"
+                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <Button Content="{DynamicResource Model.ResetCamera}" Click="ResetOrbit_Click" Padding="8,3"/>
+                  <Button Content="{DynamicResource Render.Start}" Click="StartRender_Click" Padding="8,3" Margin="6,0,0,0"/>
+                </StackPanel>
+              </Grid>
             </TabItem>
             <TabItem Header="{DynamicResource View.Schedule}">
               <DataGrid x:Name="ScheduleGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
@@ -201,6 +216,33 @@
             <TabItem Header="{DynamicResource View.Section}">
               <Canvas x:Name="SectionCanvas" Background="White" ClipToBounds="True"
                       SizeChanged="OrthographicCanvas_SizeChanged"/>
+            </TabItem>
+            <TabItem Header="{DynamicResource View.Render}">
+              <DockPanel Background="#1E2428">
+                <Border DockPanel.Dock="Top" Background="#263036" Padding="10,6">
+                  <StackPanel Orientation="Horizontal">
+                    <Button x:Name="StartRenderButton" Content="{DynamicResource Render.Start}" Click="StartRender_Click"
+                            Padding="12,3" MinWidth="120"/>
+                    <TextBlock Text="{DynamicResource Render.Quality}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="14,0,6,0"/>
+                    <ComboBox x:Name="RenderQualityPicker" Width="120" SelectedIndex="1">
+                      <ComboBoxItem Content="{DynamicResource Render.Draft}"/>
+                      <ComboBoxItem Content="{DynamicResource Render.Medium}"/>
+                      <ComboBoxItem Content="{DynamicResource Render.High}"/>
+                    </ComboBox>
+                    <TextBlock Text="{DynamicResource Render.SunHour}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="14,0,6,0"/>
+                    <Slider x:Name="SunHourSlider" Minimum="6.5" Maximum="17.5" Value="10" Width="140"
+                            VerticalAlignment="Center" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
+                    <TextBlock Text="{Binding Value, ElementName=SunHourSlider, StringFormat={}{0:0.0} h}" Foreground="#DDE4E8"
+                               VerticalAlignment="Center" Margin="6,0,0,0" Width="40"/>
+                    <Button Content="{DynamicResource Render.SavePng}" Click="SaveRender_Click" Padding="10,3" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="RenderStatusText" Text="{DynamicResource Render.Idle}" Foreground="#AEBBC3"
+                               VerticalAlignment="Center" Margin="14,0,0,0"/>
+                  </StackPanel>
+                </Border>
+                <Grid x:Name="RenderHost">
+                  <Image x:Name="RenderImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Grid>
+              </DockPanel>
             </TabItem>
           </TabControl>
         </DockPanel>

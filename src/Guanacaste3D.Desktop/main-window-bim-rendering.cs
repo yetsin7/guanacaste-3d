@@ -55,51 +55,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Renders floor slabs as extruded geometry in the coordinated 3D view.</summary>
-    private void RenderFloorSlabs3D()
-    {
-        foreach (var floor in _session.Document.Floors)
-        {
-            var elevation = _session.Document.Levels.Single(level => level.Id == floor.LevelId).Elevation;
-            AddFloorModel(floor, elevation);
-        }
-    }
-
-    /// <summary>Adds one convex floor prism to the model viewport.</summary>
-    private void AddFloorModel(FloorSlab floor, double elevation)
-    {
-        var mesh = new MeshGeometry3D();
-        var boundaryCount = floor.Boundary.Count;
-        foreach (var point in floor.Boundary)
-            mesh.Positions.Add(new Point3D(point.X, elevation, -point.Y));
-        foreach (var point in floor.Boundary)
-            mesh.Positions.Add(new Point3D(point.X, elevation - floor.Thickness, -point.Y));
-        for (var index = 1; index < boundaryCount - 1; index++)
-        {
-            mesh.TriangleIndices.Add(0);
-            mesh.TriangleIndices.Add(index);
-            mesh.TriangleIndices.Add(index + 1);
-            mesh.TriangleIndices.Add(boundaryCount);
-            mesh.TriangleIndices.Add(boundaryCount + index + 1);
-            mesh.TriangleIndices.Add(boundaryCount + index);
-        }
-        for (var index = 0; index < boundaryCount; index++)
-        {
-            var nextIndex = (index + 1) % boundaryCount;
-            mesh.TriangleIndices.Add(index);
-            mesh.TriangleIndices.Add(nextIndex);
-            mesh.TriangleIndices.Add(boundaryCount + nextIndex);
-            mesh.TriangleIndices.Add(index);
-            mesh.TriangleIndices.Add(boundaryCount + nextIndex);
-            mesh.TriangleIndices.Add(boundaryCount + index);
-        }
-        var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(154, 169, 160)));
-        ModelViewport.Children.Add(new ModelVisual3D
-        {
-            Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
-        });
-    }
-
     /// <summary>Renders the selected sheet with a live plan viewport and title block.</summary>
     private void RenderSheet()
     {

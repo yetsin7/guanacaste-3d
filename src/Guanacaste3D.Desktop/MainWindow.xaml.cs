@@ -72,6 +72,14 @@ public partial class MainWindow : Window
         StatusText.Text = GetText("Status.ProjectNew");
     }
 
+    /// <summary>Opens the bundled demonstration house as a new, unsaved project.</summary>
+    private void OpenSample_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDiscard()) return;
+        AttachDocument(SampleProjects.CreateDemonstrationHouse(), null);
+        StatusText.Text = GetText("Status.SampleOpened");
+    }
+
     /// <summary>Loads and validates a Guanacaste 3D project chosen by the user.</summary>
     private void Open_Click(object sender, RoutedEventArgs e)
     {
@@ -203,6 +211,7 @@ public partial class MainWindow : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         if (!ConfirmDiscard()) e.Cancel = true;
+        else CancelRender();
         base.OnClosing(e);
     }
 

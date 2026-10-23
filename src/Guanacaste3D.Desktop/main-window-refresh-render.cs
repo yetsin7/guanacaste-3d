@@ -5,6 +5,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
 
 namespace Guanacaste3D.Desktop;
 
@@ -120,116 +122,27 @@ public partial class MainWindow
             .FirstOrDefault(item => Equals(item.Tag, wall.WallTypeId));
     }
 
-    /// <summary>Renders coordinated walls, openings, floors, lighting, and camera state in 3D.</summary>
+    /// <summary>Renders the shared BIM scene mesh with daylight-style lighting in the 3D view.</summary>
     private void Render3D()
     {
         if (ModelViewport is null || _session is null) return;
         ModelViewport.Children.Clear();
         ModelViewport.Children.Add(new ModelVisual3D
         {
-            Content = new AmbientLight(Color.FromRgb(178, 193, 184))
+            Content = new AmbientLight(Color.FromRgb(150, 160, 156))
         });
         ModelViewport.Children.Add(new ModelVisual3D
         {
-            Content = new DirectionalLight(Colors.White, new Vector3D(-2, -6, -3))
+            Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
         });
-        AddGround();
-        RenderFloorSlabs3D();
-        foreach (var wall in _session.Document.Walls)
-        {
-            AddWallModel(wall);
-        }
-        var allPoints = _session.Document.Walls.SelectMany(wall => new[] { wall.Start, wall.End }).ToArray();
-        var centerX = allPoints.Length == 0 ? 0 : (allPoints.Min(point => point.X) + allPoints.Max(point => point.X)) / 2;
-        var centerY = allPoints.Length == 0 ? 0 : (allPoints.Min(point => point.Y) + allPoints.Max(point => point.Y)) / 2;
-        var range = allPoints.Length == 0 ? 10 : Math.Max(
-            allPoints.Max(point => point.X) - allPoints.Min(point => point.X),
-            allPoints.Max(point => point.Y) - allPoints.Min(point => point.Y));
-        var distance = Math.Max(12, range * 1.7);
-        var cameraPosition = new Point3D(centerX + distance, distance * 0.8, -centerY + distance);
-        var target = new Point3D(centerX, 1, -centerY);
-        ModelViewport.Camera = new PerspectiveCamera(
-            cameraPosition, target - cameraPosition, new Vector3D(0, 1, 0), 50);
-    }
-
-    /// <summary>Creates the wall solids segmented around hosted openings.</summary>
-    private void AddWallModel(Wall wall)
-    {
-        var elevation = _session.Document.Levels.First(level => level.Id == wall.LevelId).Elevation;
-        var length = wall.Length;
-        var offsetX = -(wall.End.Y - wall.Start.Y) * wall.Thickness / (2 * length);
-        var offsetY = (wall.End.X - wall.Start.X) * wall.Thickness / (2 * length);
-        var hostedOpenings = _session.Document.Openings.Where(opening => opening.WallId == wall.Id);
-        foreach (var solid in WallGeometry.Solids(wall, hostedOpenings))
-        {
-            var start = PointAlongWall(wall, solid.From);
-            var end = PointAlongWall(wall, solid.To);
-            var corners = new[]
-            {
-                WallVertex(start, 1, solid.Bottom, elevation, offsetX, offsetY),
-                WallVertex(end, 1, solid.Bottom, elevation, offsetX, offsetY),
-                WallVertex(end, -1, solid.Bottom, elevation, offsetX, offsetY),
-                WallVertex(start, -1, solid.Bottom, elevation, offsetX, offsetY),
-                WallVertex(start, 1, solid.Top, elevation, offsetX, offsetY),
-                WallVertex(end, 1, solid.Top, elevation, offsetX, offsetY),
-                WallVertex(end, -1, solid.Top, elevation, offsetX, offsetY),
-                WallVertex(start, -1, solid.Top, elevation, offsetX, offsetY)
-            };
-            var mesh = CreateBoxMesh(corners);
-            var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(185, 203, 192)));
-            ModelViewport.Children.Add(new ModelVisual3D
-            {
-                Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
-            });
-        }
-    }
-
-    /// <summary>Returns a point at a metric offset along a wall center line.</summary>
-    private static Point2 PointAlongWall(Wall wall, double position) => new(
-        wall.Start.X + position * (wall.End.X - wall.Start.X) / wall.Length,
-        wall.Start.Y + position * (wall.End.Y - wall.Start.Y) / wall.Length);
-
-    /// <summary>Converts a wall edge point into the 3D coordinate system.</summary>
-    private static Point3D WallVertex(
-        Point2 point, int side, double height, double elevation, double offsetX, double offsetY) =>
-        new(point.X + side * offsetX, elevation + height, -(point.Y + side * offsetY));
-
-    /// <summary>Builds a closed rectangular mesh from eight ordered corner points.</summary>
-    private static MeshGeometry3D CreateBoxMesh(IReadOnlyList<Point3D> corners)
-    {
-        int[][] faces =
-        [
-            [0, 1, 5, 4], [2, 3, 7, 6], [1, 2, 6, 5],
-            [3, 0, 4, 7], [4, 5, 6, 7], [3, 2, 1, 0]
-        ];
-        var mesh = new MeshGeometry3D();
-        foreach (var face in faces)
-        {
-            var positionOffset = mesh.Positions.Count;
-            foreach (var vertexIndex in face) mesh.Positions.Add(corners[vertexIndex]);
-            foreach (var triangleIndex in new[] { 0, 1, 2, 0, 2, 3 })
-                mesh.TriangleIndices.Add(positionOffset + triangleIndex);
-        }
-        return mesh;
-    }
-
-    /// <summary>Adds a large neutral ground plane beneath the project geometry.</summary>
-    private void AddGround()
-    {
-        var mesh = new MeshGeometry3D
-        {
-            Positions = new Point3DCollection
-            {
-                new(-150, -0.02, -150), new(150, -0.02, -150),
-                new(150, -0.02, 150), new(-150, -0.02, 150)
-            },
-            TriangleIndices = new Int32Collection { 0, 1, 2, 0, 2, 3 }
-        };
-        var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(238, 243, 240)));
-        ModelViewport.Children.Add(new ModelVisual3D
-        {
-            Content = new GeometryModel3D(mesh, material) { BackMaterial = material }
-        });
+        var scene = BuildingMesher.Build(_session.Document, includeGround: true);
+        foreach (var group in ScenePresentation.ToWpfModels(scene))
+            ModelViewport.Children.Add(new ModelVisual3D { Content = group });
+        var (min, max) = BuildingMesher.Build(_session.Document).Bounds();
+        if (_session.Document.Walls.Count == 0 && _session.Document.Floors.Count == 0)
+            (min, max) = (new System.Numerics.Vector3(-5, -5, 0), new System.Numerics.Vector3(5, 5, 3));
+        var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
+        ModelViewport.Camera = ScenePresentation.ToWpfCamera(CurrentRenderCamera(min, max), aspect);
     }
 
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
