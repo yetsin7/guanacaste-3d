@@ -122,6 +122,11 @@ Check(Math.Abs(session.Document.Walls.Single(w => w.Id == hostedWallId).Length -
 session.Undo();
 Check(session.Document.Walls.Single(w => w.Id == hostedWallId).End == movedPrecisely.End,
     "Undo restores precise transformation");
+var schedule = QuantitySchedule.ToCsv(session.Document);
+Check(schedule.Contains("NetVolume_m3") && schedule.Contains("DoorCount") &&
+    schedule.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2,
+    "Quantity takeoff exports one row per wall");
+Check(schedule.Contains(",1,1"), "Quantity takeoff includes door and window counts");
 for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
 for (int i = 0; i < 40; i++) session.Undo();
 Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
