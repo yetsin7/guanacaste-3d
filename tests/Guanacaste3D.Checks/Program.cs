@@ -300,4 +300,16 @@ finally
     if (File.Exists(slabProjectPath + ".bak")) File.Delete(slabProjectPath + ".bak");
 }
 
+var examplePath = Path.Combine(AppContext.BaseDirectory,
+    "samples", "casa-demostrativa.g3d.json");
+var exampleDocument = ProjectFile.Load(examplePath);
+Check(exampleDocument.Levels.Count == 2 &&
+      exampleDocument.Walls.Count == 5 &&
+      exampleDocument.Openings.Count == 3 &&
+      exampleDocument.Slabs.Count == 2,
+    "Bundled house sample opens as a validated multi-level BIM project");
+Check(exampleDocument.Slabs.All(s => Math.Abs(s.Area - 48) < 1e-9) &&
+      Math.Abs(exampleDocument.Slabs.Sum(s => s.Volume) - 20.16) < 1e-9,
+    "Bundled house sample contains correct slab takeoff quantities");
+
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
