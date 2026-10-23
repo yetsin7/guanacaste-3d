@@ -62,7 +62,7 @@ try
     failed = false;
     try { ProjectFile.Load(filename); } catch (InvalidDataException) { failed = true; }
     Check(failed, "Reject unsupported project version");
-    File.WriteAllText(filename, "{\\"SchemaVersion\\":1}");
+    File.WriteAllText(filename, "{\"SchemaVersion\":1}");
     failed = false;
     try { ProjectFile.Load(filename); } catch (InvalidDataException) { failed = true; }
     Check(failed, "Reject incomplete JSON project");
