@@ -3,7 +3,7 @@
 **Fecha:** 2026-10-23
 **Producto propio:** Guanacaste 3D (C# / .NET 10 / WPF)
 **Referente:** Autodesk Revit; no se usa su código o activos propietarios.
-**Estado de investigación:** documentación pública revisada; **sin sesión de análisis de binarios
+**Estado de investigación:** documentación pública y guías técnicas de REA revisadas; **sin sesión de análisis de binarios
 ni una ejecución real de Revit en este entorno**.
 
 ## Herramientas investigadas
