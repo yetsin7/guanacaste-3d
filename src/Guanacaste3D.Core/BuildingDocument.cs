@@ -25,6 +25,7 @@ public sealed class BuildingDocument
     public string Name { get; set; } = "Proyecto sin título";
     public List<Level> Levels { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
+    public List<WallOpening> Openings { get; set; } = [];
 
     public static BuildingDocument Create() => new()
     {
@@ -38,7 +39,8 @@ public sealed class BuildingDocument
         Id = Id,
         Name = Name,
         Levels = [.. Levels],
-        Walls = [.. Walls]
+        Walls = [.. Walls],
+        Openings = [.. Openings]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -47,14 +49,15 @@ public sealed class BuildingDocument
         if (SchemaVersion != 1) throw new InvalidDataException("Versión de proyecto no compatible.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("Identidad o nombre de proyecto inválido.");
-        if (Levels is null || Walls is null || Levels.Count is < 1 or > 200 || Walls.Count > 100000)
+        if (Levels is null || Walls is null || Openings is null ||
+            Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000)
             throw new InvalidDataException("El documento excede los límites de elementos.");
         if (Levels.Any(l => l.Id == Guid.Empty || string.IsNullOrWhiteSpace(l.Name) ||
              l.Name.Length > 100 || !double.IsFinite(l.Elevation)) ||
             Levels.Select(l => l.Id).Distinct().Count() != Levels.Count)
             throw new InvalidDataException("Niveles inválidos.");
         var levelIds = Levels.Select(l => l.Id).ToHashSet();
-        if (Walls.Select(w => w.Id).Distinct().Count() != Walls.Count)
+        if (Walls.Any(w => w is null) || Walls.Select(w => w.Id).Distinct().Count() != Walls.Count)
             throw new InvalidDataException("Hay elementos duplicados.");
         foreach (var wall in Walls)
         {
@@ -66,5 +69,11 @@ public sealed class BuildingDocument
                 wall.Thickness is < 0.05 or > 5 || wall.Height is < 0.1 or > 1000)
                 throw new InvalidDataException("Muro inválido o sin nivel asociado.");
         }
+        if (Openings.Any(o => o is null) ||
+            Levels.Select(l => l.Id).Intersect(Walls.Select(w => w.Id)).Any() ||
+            Levels.Select(l => l.Id).Intersect(Openings.Select(o => o.Id)).Any() ||
+            Walls.Select(w => w.Id).Intersect(Openings.Select(o => o.Id)).Any())
+            throw new InvalidDataException("Identificadores de elementos repetidos.");
+        WallGeometry.Validate(Walls, Openings);
     }
 }
