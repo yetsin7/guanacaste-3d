@@ -14,6 +14,7 @@
         <MenuItem Header="Exportar cantidades CSV..." Click="ExportQuantities_Click"/>
         <MenuItem Header="Exportar cantidades de losas CSV..." Click="ExportSlabs_Click"/>
         <MenuItem Header="Exportar dibujo DXF R12..." Click="ExportDxf_Click"/>
+        <MenuItem Header="Exportar instantánea BIM JSON..." Click="ExportAudit_Click"/>
         <Separator/>
         <MenuItem Header="Salir" Click="Exit_Click"/>
       </MenuItem>
