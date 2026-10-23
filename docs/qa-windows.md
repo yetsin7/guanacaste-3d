@@ -23,6 +23,11 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 - [ ] Cambiar ancho y largo de una losa desde el inspector, verificar área/volumen y deshacer sin corrupción.
 - [ ] La ventana abre y muestra Guanacaste 3D.
 - [ ] Crear dos muros de cinco metros y cambiar de planta 2D a modelo 3D.
+- [ ] Seleccionar un muro; crear un tipo de muro y asignarlo a otro.
+- [ ] Cambiar el espesor del tipo: ambos muros vinculados deben actualizarse sin modificar la altura individual.
+- [ ] Deshacer y rehacer la edición del tipo; verificar ambos muros y cantidades.
+- [ ] Desvincular un muro del tipo y editar de nuevo el tipo: el muro independiente debe permanecer sin cambios.
+- [ ] Guardar, cerrar y volver a abrir: conservar tipos, nombres y referencias de muro.
 - [ ] Pulsar L y dibujar una losa de 4 × 5 m; debe aparecer en 2D y 3D con área 20 m².
 - [ ] Seleccionar la losa y establecer espesor de 0,30 m; debe calcular volumen 6 m³.
 - [ ] Duplicar y eliminar una losa; comprobar Deshacer y Rehacer sin afectar los muros.
