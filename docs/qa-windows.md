@@ -19,6 +19,8 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 
 ## 2. Lista de comprobación manual
 
+- [ ] Abrir `samples/casa-demostrativa.g3d.json` y comprobar 2 niveles, 5 muros, 3 aberturas y 2 losas.
+- [ ] Cambiar ancho y largo de una losa desde el inspector, verificar área/volumen y deshacer sin corrupción.
 - [ ] La ventana abre y muestra Guanacaste 3D.
 - [ ] Crear dos muros de cinco metros y cambiar de planta 2D a modelo 3D.
 - [ ] Pulsar L y dibujar una losa de 4 × 5 m; debe aparecer en 2D y 3D con área 20 m².
