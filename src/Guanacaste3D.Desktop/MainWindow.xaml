@@ -26,6 +26,7 @@
       <MenuItem Header="_Vista">
         <MenuItem Header="Planta 2D" Click="ShowPlan_Click"/>
         <MenuItem Header="Modelo 3D" Click="ShowModel_Click"/>
+        <MenuItem Header="Ajustar planta a proyecto" Click="FitPlan_Click"/>
       </MenuItem>
       <MenuItem Header="A_yuda">
         <MenuItem Header="Acerca de Guanacaste 3D" Click="About_Click"/>
@@ -53,6 +54,7 @@
           <Button Content="Guardar" Click="Save_Click"/>
           <Separator Margin="6,0"/>
           <Button Content="Seleccionar" Click="Select_Click"/>
+          <Button Content="Encuadrar" Click="FitPlan_Click" ToolTip="Ajustar la escala para mostrar todos los muros del nivel"/>
           <Button Content="Muro (W)" Click="Wall_Click" Background="#D8EEE2" ToolTip="Dibujar muro mediante dos puntos"/>
           <Button Content="Puerta" Click="Door_Click" ToolTip="Insertar abertura de puerta en el muro seleccionado"/>
           <Button Content="Ventana" Click="Window_Click" ToolTip="Insertar abertura de ventana en el muro seleccionado"/>
@@ -107,6 +109,7 @@
         </DockPanel>
       </Grid>
       <Border Grid.Column="2" BorderBrush="#D2DDD6" BorderThickness="1,0,0,0" Background="White">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="15,18">
           <TextBlock Text="INSPECTOR DE PROPIEDADES" FontSize="12" FontWeight="Bold" Foreground="#365B49" Margin="0,0,0,17"/>
           <TextBlock x:Name="PropertiesText" TextWrapping="Wrap" Foreground="#303D34"
@@ -149,6 +152,7 @@
                      Margin="0,24,0,0"
                      Text="Prototipo BIM inicial: las herramientas de documentación avanzada y modelado de producción se incorporarán progresivamente."/>
         </StackPanel>
+        </ScrollViewer>
       </Border>
     </Grid>
   </DockPanel>
