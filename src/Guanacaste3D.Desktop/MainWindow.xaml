@@ -66,25 +66,25 @@
                 Background="{DynamicResource RibbonBrush}" BorderBrush="#C8CED2" BorderThickness="0,0,0,1">
       <TabItem Header="{DynamicResource Ribbon.Architecture}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Click="Wall_Click" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Door}" Click="Door_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Window}" Click="Window_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.OpeningTypes}" Click="OpeningTypes_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Floor}" Click="Floor_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Click="Wall_Click" Tag="{StaticResource Icon.Wall}" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Door}" Click="Door_Click" Tag="{StaticResource Icon.Door}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Window}" Click="Window_Click" Tag="{StaticResource Icon.Window}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.OpeningTypes}" Click="OpeningTypes_Click" Tag="{StaticResource Icon.OpeningTypes}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Floor}" Click="Floor_Click" Tag="{StaticResource Icon.Floor}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Tag="{StaticResource Icon.Room}" Style="{StaticResource RibbonButtonStyle}"/>
           <Separator Margin="8,3"/>
-          <Button Content="{DynamicResource Tool.Level}" Click="AddLevel_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.Levels}" Click="Levels_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Level}" Click="AddLevel_Click" Tag="{StaticResource Icon.Level}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.Levels}" Click="Levels_Click" Tag="{StaticResource Icon.Levels}" Style="{StaticResource RibbonButtonStyle}"/>
           <StackPanel Margin="8,4" VerticalAlignment="Center">
             <TextBlock Text="{DynamicResource Tool.WallType}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
             <ComboBox x:Name="WallTypePicker" Width="210" Margin="0,4,0,0"/>
           </StackPanel>
-          <Button Content="{DynamicResource Properties.ApplyType}" Click="ApplyWallType_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Properties.ApplyType}" Click="ApplyWallType_Click" Tag="{StaticResource Icon.Apply}" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
       <TabItem Header="{DynamicResource Ribbon.Structure}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Tool.Floor}" Click="Floor_Click" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Floor}" Click="Floor_Click" Tag="{StaticResource Icon.Floor}" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
           <TextBlock Text="{DynamicResource Ribbon.StructureNotice}" VerticalAlignment="Center"
                      Foreground="{DynamicResource SecondaryTextBrush}" Margin="16,0"/>
         </StackPanel>
@@ -95,35 +95,35 @@
       </TabItem>
       <TabItem Header="{DynamicResource Ribbon.Insert}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Action.OpenProject}" Click="Open_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Sheet}" Click="AddSheet_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.OpenProject}" Click="Open_Click" Tag="{StaticResource Icon.Open}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Sheet}" Click="AddSheet_Click" Tag="{StaticResource Icon.Sheet}" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
       <TabItem Header="{DynamicResource Ribbon.Annotate}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Tag="{StaticResource Icon.Room}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click" Tag="{StaticResource Icon.Schedule}" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
       <TabItem Header="{DynamicResource Ribbon.View}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Tool.Plan}" Click="ShowPlan_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Model3D}" Click="ShowModel_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Elevation}" Click="ShowElevation_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Section}" Click="ShowSection_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Sheets}" Click="ShowSheet_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Tool.Render}" Click="StartRender_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.Fit}" Click="FitPlan_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Plan}" Click="ShowPlan_Click" Tag="{StaticResource Icon.Plan}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Model3D}" Click="ShowModel_Click" Tag="{StaticResource Icon.Cube}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Elevation}" Click="ShowElevation_Click" Tag="{StaticResource Icon.Elevation}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Section}" Click="ShowSection_Click" Tag="{StaticResource Icon.Section}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click" Tag="{StaticResource Icon.Schedule}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Sheets}" Click="ShowSheet_Click" Tag="{StaticResource Icon.Sheets}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Tool.Render}" Click="StartRender_Click" Tag="{StaticResource Icon.Render}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.Fit}" Click="FitPlan_Click" Tag="{StaticResource Icon.Fit}" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
       <TabItem Header="{DynamicResource Ribbon.Manage}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.ExportIfc}" Click="ExportIfc_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.ExportModel3D}" Click="ExportModel3D_Click" Style="{StaticResource RibbonButtonStyle}"/>
-          <Button Content="{DynamicResource Action.ProjectParameters}" Click="ProjectParameters_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click" Tag="{StaticResource Icon.ExportTable}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click" Tag="{StaticResource Icon.ExportDxf}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportIfc}" Click="ExportIfc_Click" Tag="{StaticResource Icon.ExportCube}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ExportModel3D}" Click="ExportModel3D_Click" Tag="{StaticResource Icon.ExportCube}" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.ProjectParameters}" Click="ProjectParameters_Click" Tag="{StaticResource Icon.Parameters}" Style="{StaticResource RibbonButtonStyle}"/>
         </StackPanel>
       </TabItem>
     </TabControl>

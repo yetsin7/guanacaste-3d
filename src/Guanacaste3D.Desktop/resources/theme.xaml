@@ -21,12 +21,45 @@
     <Setter Property="BorderBrush" Value="#BFC8CE"/>
     <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
   </Style>
+  <!-- Ribbon button: an icon (from Tag) stacked above a wrapped caption, with hover feedback. -->
   <Style x:Key="RibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-    <Setter Property="MinWidth" Value="72"/>
-    <Setter Property="MinHeight" Value="54"/>
-    <Setter Property="Padding" Value="10,7"/>
+    <Setter Property="MinWidth" Value="68"/>
+    <Setter Property="MaxWidth" Value="88"/>
+    <Setter Property="MinHeight" Value="62"/>
+    <Setter Property="Padding" Value="6,6"/>
+    <Setter Property="FontSize" Value="11"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Chrome" CornerRadius="5" BorderThickness="1"
+                  Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <StackPanel VerticalAlignment="Center">
+              <Image Source="{TemplateBinding Tag}" Width="26" Height="26" Stretch="Uniform"
+                     Margin="0,0,0,5" RenderOptions.BitmapScalingMode="HighQuality"/>
+              <TextBlock Text="{TemplateBinding Content}" TextAlignment="Center" TextWrapping="Wrap"
+                         LineHeight="13" LineStackingStrategy="BlockLineHeight"
+                         Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}"/>
+            </StackPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Chrome" Property="Background" Value="#E3F3F7"/>
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="#AFD7E1"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Chrome" Property="Background" Value="#CDE9F0"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Chrome" Property="Opacity" Value="0.4"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
   <Style x:Key="PrimaryRibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource RibbonButtonStyle}">
     <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
