@@ -1,0 +1,343 @@
+using System.Numerics;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+
+/// <summary>
+/// Checks the architectural element catalog: the type library, pitched roofs, column and beam sections,
+/// guard and stair styles, ramps, gutters, downspouts, curtain walls, skylights, and operated doors and windows.
+/// </summary>
+static class ArchitectureChecks
+{
+    public static void Run(Action<bool, string> check)
+    {
+        CheckLibrary(check);
+        CheckRoofs(check);
+        CheckColumnsAndMembers(check);
+        CheckNewElements(check);
+        CheckOperatedOpenings(check);
+    }
+
+    private static int Triangles(BuildingDocument document) => BuildingMesher.Build(document).TriangleCount;
+
+    private static void CheckLibrary(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Library"));
+        var walls = ArchitecturalLibrary.WallTypes();
+        var openings = ArchitecturalLibrary.OpeningTypes();
+        check(walls.Count >= 20 && walls.Select(type => type.Id).Distinct().Count() == walls.Count &&
+              Enum.GetValues<WallFunction>().All(function => walls.Any(type => type.Function == function)),
+            "The wall library offers 20+ distinct assemblies across every wall function");
+        check(openings.Count(type => type.Kind == OpeningKind.Door) >= 20 &&
+              openings.Count(type => type.Kind == OpeningKind.Window) >= 15 &&
+              openings.Select(type => type.FamilyName).Distinct().Count() >= 14,
+            "The opening library offers 14+ door and window families");
+        var added = session.LoadArchitecturalLibrary();
+        session.Document.Validate();
+        check(added == walls.Count + openings.Count && session.Document.WallTypes.Count == 3 + walls.Count,
+            "Loading the library adds every missing type and the project still validates");
+        check(session.LoadArchitecturalLibrary() == 0, "Loading the library twice adds nothing");
+        session.Undo();
+        check(session.Document.WallTypes.Count == 3 && session.Document.OpeningTypes.Count == 6,
+            "Loading the library is one undoable transaction");
+        session.Redo();
+
+        var path = Path.Combine(Path.GetTempPath(), $"library-{Guid.NewGuid():N}.g3");
+        try
+        {
+            ProjectFile.Save(path, session.Document);
+            var reloaded = ProjectFile.Load(path);
+            var sliding = reloaded.OpeningTypes.First(type => type.Operation == OpeningOperation.Sliding &&
+                                                              type.Kind == OpeningKind.Door);
+            check(reloaded.WallTypes.Count == session.Document.WallTypes.Count && sliding.GlazedLeaf,
+                "Library types survive a project round trip with their operation");
+        }
+        finally { File.Delete(path); }
+
+        // Resizing an instance must keep its family and operation, not fall back to the default family.
+        var wall = session.AddWall(session.Document.Levels[0].Id, new Point2(0, 0), new Point2(8, 0));
+        var slidingType = session.Document.OpeningTypes.First(type => type.Operation == OpeningOperation.Sliding &&
+                                                                       type.Kind == OpeningKind.Door);
+        var door = session.AddOpening(wall, OpeningKind.Door, 4.0, openingTypeId: slidingType.Id);
+        session.UpdateOpening(door, 4.0, 2.2, 0, 2.1);
+        var resized = session.Document.OpeningTypes.Single(type =>
+            type.Id == session.Document.Openings.Single(opening => opening.Id == door).OpeningTypeId);
+        check(resized.Operation == OpeningOperation.Sliding && resized.FamilyName == slidingType.FamilyName,
+            "Resizing a door instance keeps its family and operation");
+    }
+
+    private static (DocumentSession Session, Guid Level, Guid Roof) RoofSession(RoofShape shape, double pitch,
+        double width = 10, double depth = 6)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Roofs"));
+        var level = session.Document.Levels[0].Id;
+        var roof = session.AddFloor(level, [new(0, 0), new(width, 0), new(width, depth), new(0, depth)], 0.10,
+            kind: FloorKind.Roof, elevationOffset: 3.0);
+        session.SetRoofShape(roof, shape, pitch);
+        return (session, level, roof);
+    }
+
+    private static void CheckRoofs(Action<bool, string> check)
+    {
+        var (flat, _, _) = RoofSession(RoofShape.Flat, 0);
+        var flatTriangles = Triangles(flat.Document);
+        var (gable, _, gableId) = RoofSession(RoofShape.Gable, 30);
+        var gableRoof = gable.Document.Floors.Single(floor => floor.Id == gableId);
+        var ridge = RoofGeometry.RidgeRise(gableRoof);
+        check(Math.Abs(ridge - 3 * Math.Tan(30 * Math.PI / 180)) < 1e-9 &&
+              Math.Abs(RoofGeometry.RiseAt(gableRoof, new Point2(5, 3)) - ridge) < 1e-9 &&
+              RoofGeometry.RiseAt(gableRoof, new Point2(5, 0)) == 0,
+            "A gable roof rises from the eave to a ridge of span/2 × tan(pitch)");
+        check(RoofGeometry.Facets(gableRoof).Count == 2 &&
+              RoofGeometry.Facets(gableRoof).Sum(facet => Math.Abs(PolygonTriangulator.SignedDoubleArea(facet.Outline)) / 2)
+              is > 59.999 and < 60.001,
+            "A gable roof splits into two facets that cover the whole boundary");
+        var mesh = BuildingMesher.Build(gable.Document);
+        var (min, max) = mesh.Bounds();
+        check(Math.Abs((max.Z - 3.0f) - (float)ridge) < 1e-4, "The gable roof mesh reaches the ridge height");
+        check(Triangles(gable.Document) > flatTriangles, "A gable roof has more faces than a flat slab");
+
+        var (hip, _, hipId) = RoofSession(RoofShape.Hip, 25);
+        var hipRoof = hip.Document.Floors.Single(floor => floor.Id == hipId);
+        check(RoofGeometry.Facets(hipRoof).Count == 4 &&
+              RoofGeometry.CreaseLines(hipRoof).Count == 5 &&
+              Math.Abs(RoofGeometry.Facets(hipRoof).Sum(f => Math.Abs(PolygonTriangulator.SignedDoubleArea(f.Outline)) / 2) - 60) < 1e-6,
+            "A hip roof has four facets and a ridge with four hips");
+        check(Math.Abs(RoofGeometry.RiseAt(hipRoof, new Point2(5, 3)) - 3 * Math.Tan(25 * Math.PI / 180)) < 1e-9,
+            "A hip roof reaches its maximum rise along the ridge");
+
+        var (shed, _, shedId) = RoofSession(RoofShape.Shed, 10);
+        var shedRoof = shed.Document.Floors.Single(floor => floor.Id == shedId);
+        check(Math.Abs(RoofGeometry.RiseAt(shedRoof, new Point2(2, 6)) - 6 * Math.Tan(10 * Math.PI / 180)) < 1e-9 &&
+              RoofGeometry.Facets(shedRoof).Count == 1, "A shed roof is one plane rising across the short side");
+
+        // An L-shaped roof must still triangulate into valid facets covering its area.
+        var lShaped = new DocumentSession(BuildingDocument.Create("L"));
+        var levelId = lShaped.Document.Levels[0].Id;
+        var lRoof = lShaped.AddFloor(levelId, [new(0, 0), new(8, 0), new(8, 3), new(3, 3), new(3, 7), new(0, 7)], 0.1,
+            kind: FloorKind.Roof, elevationOffset: 3);
+        lShaped.SetRoofShape(lRoof, RoofShape.Hip, 30);
+        lShaped.Document.Validate();
+        check(Triangles(lShaped.Document) > 20, "A hip roof over an L-shaped boundary meshes without failing");
+
+        var flatFloorFailed = false;
+        try
+        {
+            var plain = new DocumentSession(BuildingDocument.Create("Bad"));
+            var floor = plain.AddFloor(plain.Document.Levels[0].Id, [new(0, 0), new(4, 0), new(4, 4), new(0, 4)]);
+            plain.SetRoofShape(floor, RoofShape.Gable, 20);
+        }
+        catch (InvalidDataException) { flatFloorFailed = true; }
+        check(flatFloorFailed, "Only roofs may be pitched");
+
+        var steepFailed = false;
+        try { gable.SetRoofShape(gableId, RoofShape.Gable, 80); }
+        catch (InvalidDataException) { steepFailed = true; }
+        check(steepFailed && gable.Document.Floors.Single(f => f.Id == gableId).Pitch == 30,
+            "A pitch above 70° is rejected atomically");
+
+        var dormerSession = RoofSession(RoofShape.Gable, 30);
+        var dormer = dormerSession.Session.AddDormer(dormerSession.Level, "Dormer", new Point2(1, 0.5), new Point2(2, 1.5));
+        var dormerElement = dormerSession.Session.Document.StructuralElements.Single(item => item.Id == dormer);
+        check(dormer is not null && dormerElement.Offset >= 3.0 && dormerElement.Offset < 3.0 + ridge,
+            "A dormer on a pitched roof rests on the lowest roof height under its footprint");
+        var skylight = dormerSession.Session.AddSkylight(dormerSession.Level, "Skylight", new Point2(6, 1), new Point2(7.5, 2));
+        check(skylight is not null && dormerSession.Session.AddSkylight(dormerSession.Level, "Outside",
+                  new Point2(20, 20), new Point2(21, 21)) is null,
+            "A skylight needs a roof under its whole footprint");
+        dormerSession.Session.SetRoofShape(dormerSession.Roof, RoofShape.Flat, 0);
+        check(dormerSession.Session.Document.StructuralElements.Where(item => item.Kind is
+                  StructuralElementKind.Dormer or StructuralElementKind.Skylight).All(item => item.Offset == 3.0),
+            "Flattening a roof lowers the dormers and skylights standing on it");
+    }
+
+    private static void CheckColumnsAndMembers(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Sections"));
+        var level = session.Document.Levels[0].Id;
+        foreach (var preset in ArchitecturalLibrary.ColumnPresets)
+            session.AddColumnFromPreset(level, new Point2(session.Document.Columns.Count * 2, 0), preset);
+        session.Document.Validate();
+        var shapes = session.Document.Columns.Select(column => column.Shape).Distinct().Count();
+        check(shapes == 5, "Columns come in rectangular, round, octagonal, L-shaped and T-shaped sections");
+        var round = session.Document.Columns.First(column => column.Shape == ColumnShape.Round);
+        check(round.Outline.Count == 24 && round.Outline.All(point =>
+                  Math.Abs(point.DistanceTo(round.Position) - round.Width / 2) < 1e-9),
+            "A round column outline lies on its circle");
+        var lShape = session.Document.Columns.First(column => column.Shape == ColumnShape.LShaped);
+        var lArea = Math.Abs(PolygonTriangulator.SignedDoubleArea(lShape.Outline)) / 2;
+        check(lArea < lShape.Width * lShape.Depth * 0.7 && lArea > 0.1, "An L-shaped column removes a quadrant");
+        check(PolygonTriangulator.Triangulate(lShape.Outline).Count == 4, "The L-shaped outline triangulates");
+
+        var rectangular = new DocumentSession(BuildingDocument.Create("Rect"));
+        rectangular.AddColumn(rectangular.Document.Levels[0].Id, new Point2(0, 0));
+        var roundSession = new DocumentSession(BuildingDocument.Create("Round"));
+        var roundColumn = roundSession.AddColumn(roundSession.Document.Levels[0].Id, new Point2(0, 0));
+        roundSession.SetColumnShape(roundColumn, ColumnShape.Round);
+        check(Triangles(roundSession.Document) > Triangles(rectangular.Document),
+            "A round column meshes with more faces than a square one");
+
+        var beams = new DocumentSession(BuildingDocument.Create("Beams"));
+        var beamLevel = beams.Document.Levels[0].Id;
+        var plain = beams.AddStructuralElement(beamLevel, StructuralElementKind.Beam, "Beam", new(0, 0), new(6, 0));
+        var plainParts = ElementGeometry.Parts(beams.Document.StructuralElements.Single(item => item.Id == plain)).ToArray();
+        beams.SetElementStyle(plain, ElementStyle.IShape);
+        var iParts = ElementGeometry.Parts(beams.Document.StructuralElements.Single(item => item.Id == plain)).ToArray();
+        beams.SetElementStyle(plain, ElementStyle.Tee);
+        var teeParts = ElementGeometry.Parts(beams.Document.StructuralElements.Single(item => item.Id == plain)).ToArray();
+        check(plainParts.Length == 1 && iParts.Length == 3 && teeParts.Length == 2 &&
+              Math.Abs(iParts.Min(part => part.Bottom) - plainParts[0].Bottom) < 1e-9 &&
+              Math.Abs(iParts.Max(part => part.Top) - plainParts[0].Top) < 1e-9,
+            "I-shaped and tee beams are built from flanges and a web inside the same envelope");
+        beams.Document.Validate();
+        var pier = beams.AddStructuralElement(beamLevel, StructuralElementKind.IsolatedFoundation, "Pier", new(2, 2), new(2, 2));
+        beams.SetElementStyle(pier, ElementStyle.Round);
+        check(ElementGeometry.Parts(beams.Document.StructuralElements.Single(item => item.Id == pier))
+                  .Single().Footprint.Count == 24, "A round pier has a circular footprint");
+
+        var badStyleFailed = false;
+        try { beams.SetElementStyle(pier, (ElementStyle)99); }
+        catch (InvalidDataException) { badStyleFailed = true; }
+        check(badStyleFailed, "Unknown element styles are rejected");
+
+        var presets = ArchitecturalLibrary.ElementPresets;
+        check(presets.Select(preset => preset.Name).Distinct().Count() == presets.Count &&
+              Enum.GetValues<StructuralElementKind>().Where(kind => kind is StructuralElementKind.Railing or
+                  StructuralElementKind.Stair or StructuralElementKind.Ramp or StructuralElementKind.Gutter or
+                  StructuralElementKind.Downspout or StructuralElementKind.CurtainWall).All(kind =>
+                  ArchitecturalLibrary.PresetsFor(kind).Any()),
+            "Every circulation and drainage kind has catalog sections");
+    }
+
+    private static void CheckNewElements(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Elements"));
+        var level = session.Document.Levels[0].Id;
+        double Area(IReadOnlyList<Point2> footprint) => Math.Abs(PolygonTriangulator.SignedDoubleArea(footprint)) / 2;
+
+        var railing = session.AddStructuralElement(level, StructuralElementKind.Railing, "Guard", new(0, 0), new(6, 0));
+        var counts = new Dictionary<ElementStyle, int>();
+        foreach (var style in new[] { ElementStyle.Default, ElementStyle.Pickets, ElementStyle.GlassPanel,
+                     ElementStyle.Cable, ElementStyle.SolidParapet })
+        {
+            session.SetElementStyle(railing, style);
+            counts[style] = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == railing)).Count();
+        }
+        check(counts[ElementStyle.Pickets] > 50 && counts[ElementStyle.SolidParapet] == 2 &&
+              counts[ElementStyle.GlassPanel] < counts[ElementStyle.Pickets] &&
+              counts[ElementStyle.Default] == CirculationGeometry.Parts(
+                  session.Document.StructuralElements.Single(item => item.Id == railing) with { Style = ElementStyle.Default }).Count(),
+            "Guards offer posts and rails, balusters, glass, cable and solid parapet styles");
+        session.SetElementStyle(railing, ElementStyle.GlassPanel);
+        check(ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == railing))
+                  .Any(part => part.Kind == SurfaceKind.Glass), "A glass guard carries a glass pane");
+
+        var stair = session.AddStructuralElement(level, StructuralElementKind.Stair, "Stair", new(0, 2), new(5, 2));
+        var solid = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == stair)).Count();
+        session.SetElementStyle(stair, ElementStyle.Open);
+        var open = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == stair)).ToArray();
+        check(solid == 18 && open.Length == 18 * 3 && open.Max(part => part.Top) <= 3.0 + 1e-9,
+            "An open stair has a tread and two stringers per step within the same rise");
+
+        var ramp = session.AddStructuralElement(level, StructuralElementKind.Ramp, "Ramp", new(0, 4), new(7.2, 4));
+        var rampPart = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == ramp)).Single();
+        check(rampPart.EndTop == 0.60 && rampPart.Top < rampPart.EndTop && Area(rampPart.Footprint) is > 10.7 and < 10.9,
+            "A ramp rises from its toe to its full height over its run");
+        var rampMesh = Triangles(session.Document);
+        check(rampMesh > 0, "A ramp meshes as a closed wedge");
+
+        var gutter = session.AddStructuralElement(level, StructuralElementKind.Gutter, "Gutter", new(0, 6), new(8, 6));
+        var gutterParts = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == gutter)).ToArray();
+        check(gutterParts.Length == 3 && gutterParts.All(part => part.Bottom == 2.85),
+            "A gutter is a channel with a bottom and two sides at the eave");
+
+        var downspout = session.AddStructuralElement(level, StructuralElementKind.Downspout, "Downspout", new(0, 6), new(0, 6));
+        var spoutPart = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == downspout)).Single();
+        check(spoutPart.Top - spoutPart.Bottom == 2.85 && Math.Abs(Area(spoutPart.Footprint) - 0.09 * 0.09) < 1e-9,
+            "A downspout is a vertical pipe from the ground to the eave");
+
+        var curtain = session.AddStructuralElement(level, StructuralElementKind.CurtainWall, "Curtain wall", new(0, 8), new(6, 8));
+        var curtainParts = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == curtain)).ToArray();
+        check(curtainParts.Count(part => part.Kind == SurfaceKind.Glass) == 1 && curtainParts.Length == 1 + 5 + 4,
+            "A curtain wall has one glass pane, mullions every 1.5 m and transoms every 1.2 m");
+        session.Document.Validate();
+
+        var tooShort = false;
+        try { session.AddStructuralElement(level, StructuralElementKind.Gutter, "Short", new(0, 0), new(0.01, 0)); session.Document.Validate(); }
+        catch (InvalidDataException) { tooShort = true; }
+        check(tooShort, "A gutter shorter than 10 cm is rejected");
+    }
+
+    private static void CheckOperatedOpenings(Action<bool, string> check)
+    {
+        int Faces(OpeningKind kind, OpeningOperation operation, double width, double height, double sill, int lights = 0,
+            double depth = 0.04, bool glazed = false)
+        {
+            var document = BuildingDocument.Create("Operated");
+            var type = new OpeningType(Guid.NewGuid(), kind, "Test", "Type", width, height, kind == OpeningKind.Door ? 0 : sill)
+            { Operation = operation, GlazingLightCount = lights, Depth = kind == OpeningKind.Door ? depth : 0, GlazedLeaf = glazed };
+            document.OpeningTypes.Add(type);
+            var session = new DocumentSession(document);
+            var wall = session.AddWall(document.Levels[0].Id, new Point2(0, 0), new Point2(8, 0));
+            session.AddOpening(wall, kind, 2.0, width, kind == OpeningKind.Door ? 0 : sill, height, type.Id);
+            session.Document.Validate();
+            // A geometry signature, so two operations with the same face count still compare as different.
+            var hash = new HashCode();
+            var mesh = BuildingMesher.Build(session.Document);
+            foreach (var position in mesh.Positions)
+                hash.Add((int)Math.Round(position.X * 1000) * 31 + (int)Math.Round(position.Y * 1000) * 17 +
+                         (int)Math.Round(position.Z * 1000));
+            return hash.ToHashCode() ^ mesh.TriangleCount;
+        }
+
+        var swing = Faces(OpeningKind.Door, OpeningOperation.Standard, 1.8, 2.1, 0);
+        var glazedSwing = Faces(OpeningKind.Door, OpeningOperation.Standard, 1.8, 2.1, 0, glazed: true);
+        var counts = new[]
+        {
+            swing,
+            Faces(OpeningKind.Door, OpeningOperation.Sliding, 1.8, 2.1, 0, glazed: true),
+            Faces(OpeningKind.Door, OpeningOperation.Folding, 1.8, 2.1, 0),
+            Faces(OpeningKind.Door, OpeningOperation.Overhead, 1.8, 2.1, 0, depth: 0.05),
+            Faces(OpeningKind.Door, OpeningOperation.Pocket, 1.8, 2.1, 0),
+            Faces(OpeningKind.Door, OpeningOperation.Revolving, 1.8, 2.1, 0, depth: 0.9)
+        };
+        check(glazedSwing == swing && counts.Distinct().Count() == counts.Length,
+            "Every door operation builds its own leaves; a glazed leaf swaps the pane, not the geometry");
+
+        var windows = new[]
+        {
+            Faces(OpeningKind.Window, OpeningOperation.Standard, 1.2, 1.2, 0.9, 1),
+            Faces(OpeningKind.Window, OpeningOperation.Sliding, 1.2, 1.2, 0.9, 2),
+            Faces(OpeningKind.Window, OpeningOperation.Hung, 1.2, 1.2, 0.9, 1),
+            Faces(OpeningKind.Window, OpeningOperation.Louvered, 1.2, 1.2, 0.9, 1),
+            Faces(OpeningKind.Window, OpeningOperation.Casement, 1.2, 1.2, 0.9, 1),
+            Faces(OpeningKind.Window, OpeningOperation.Awning, 1.2, 1.2, 0.9, 1)
+        };
+        check(windows.Distinct().Count() == windows.Length,
+            "Window operations differ: sliding tracks, hung sashes, louver blades and handles");
+
+        var invalidDoor = false;
+        try
+        {
+            var document = BuildingDocument.Create("Bad");
+            document.OpeningTypes.Add(new OpeningType(Guid.NewGuid(), OpeningKind.Door, "Bad", "Awning door", 0.9, 2.1, 0)
+            { Operation = OpeningOperation.Awning });
+            document.Validate();
+        }
+        catch (InvalidDataException) { invalidDoor = true; }
+        check(invalidDoor, "A door cannot be an awning and a window cannot be a garage door");
+
+        var symbol = (OpeningOperation operation) => DoorPlanSymbol.Build(0, operation == OpeningOperation.Overhead ? 2.4 : 1.8,
+            0.2, 0.04, operation);
+        check(symbol(OpeningOperation.Standard).Swings.Count == 2 && symbol(OpeningOperation.Sliding).Swings.Count == 0 &&
+              symbol(OpeningOperation.Sliding).Outlines.Count(o => o.Part == DoorPlanPart.Leaf) == 2 &&
+              symbol(OpeningOperation.Revolving).Swings.Count == 1 &&
+              symbol(OpeningOperation.Folding).Outlines.Count(o => o.Part == DoorPlanPart.Leaf) >= 4 &&
+              symbol(OpeningOperation.Pocket).Thresholds.Count == 4,
+            "The plan symbol follows the operation: swing arcs, sliding panels, folded leaves, pocket cavity and drum");
+
+        // Existing swing-door symbols are unchanged by the new parameter.
+        check(DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04).Outlines.Count ==
+              DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04, OpeningOperation.Standard).Outlines.Count,
+            "A swing door keeps its original plan symbol");
+    }
+}

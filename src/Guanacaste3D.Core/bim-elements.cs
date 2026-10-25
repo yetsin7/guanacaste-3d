@@ -83,6 +83,22 @@ public enum FloorKind
     Roof
 }
 
+/// <summary>Plan shape of a roof. Pitched shapes rise from the eave toward a ridge.</summary>
+public enum RoofShape
+{
+    /// <summary>A horizontal slab.</summary>
+    Flat,
+
+    /// <summary>One plane rising across the shorter side of the boundary.</summary>
+    Shed,
+
+    /// <summary>Two planes meeting at a ridge along the longer side (gable roof).</summary>
+    Gable,
+
+    /// <summary>Four planes rising from every edge (hip roof).</summary>
+    Hip
+}
+
 /// <summary>Represents a horizontal slab with a closed polygonal boundary.</summary>
 public sealed record FloorSlab(
     Guid Id,
@@ -91,6 +107,15 @@ public sealed record FloorSlab(
     List<Point2> Boundary,
     double Thickness)
 {
+    /// <summary>Plan shape; only roofs may be pitched. The eave stays at <see cref="ElevationOffset"/>.</summary>
+    public RoofShape Shape { get; init; } = RoofShape.Flat;
+
+    /// <summary>Roof pitch in degrees from the horizontal. Ignored for flat slabs.</summary>
+    public double Pitch { get; init; }
+
+    /// <summary>Whether the slab rises above its eave (a pitched roof with a positive pitch).</summary>
+    [JsonIgnore] public bool IsPitched => Kind == FloorKind.Roof && Shape != RoofShape.Flat && Pitch > 0;
+
     /// <summary>Finish applied to the walking surface, used for finish area takeoff.</summary>
     public FinishKind Finish { get; init; }
 
@@ -115,14 +140,32 @@ public sealed record FloorSlab(
     }
 }
 
-/// <summary>Represents a rectangular structural column standing on a building level.</summary>
+/// <summary>Cross-section outline of a column. Width and depth give the overall extent in plan.</summary>
+public enum ColumnShape
+{
+    Rectangular,
+    Round,
+    LShaped,
+    TShaped,
+    Octagonal
+}
+
+/// <summary>Represents a structural column standing on a building level.</summary>
 public sealed record Column(
     Guid Id,
     Guid LevelId,
     Point2 Position,
     double Width,
     double Depth,
-    double Height);
+    double Height)
+{
+    /// <summary>Plan outline of the column; rectangular unless a catalog type says otherwise.</summary>
+    public ColumnShape Shape { get; init; } = ColumnShape.Rectangular;
+
+    /// <summary>Counter-clockwise plan outline of the column around its position.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<Point2> Outline => ArchitecturalShapes.ColumnOutline(this);
+}
 
 /// <summary>Supported physical paper sizes for drawing sheets.</summary>
 public enum SheetPaperSize

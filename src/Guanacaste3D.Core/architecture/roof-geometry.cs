@@ -1,0 +1,166 @@
+using Guanacaste3D.Core.Geometry;
+
+namespace Guanacaste3D.Core;
+
+/// <summary>A planar piece of a pitched roof: a counter-clockwise plan polygon over which the rise is linear.</summary>
+public sealed record RoofFacet(IReadOnlyList<Point2> Outline);
+
+/// <summary>
+/// Height and facet rules of shed, gable and hip roofs. Heights are measured above the eave, which sits at the
+/// roof's own elevation. The ridge of a gable or hip roof runs along the longer side of the boundary's bounding box.
+/// </summary>
+public static class RoofGeometry
+{
+    /// <summary>Steepest pitch, in degrees, accepted for a roof.</summary>
+    public const double MaximumPitch = 70;
+
+    private const double Epsilon = 1e-9;
+
+    /// <summary>Height of the roof surface above the eave at a plan point, never negative.</summary>
+    public static double RiseAt(FloorSlab roof, Point2 point)
+    {
+        if (!roof.IsPitched) return 0;
+        var tan = Math.Tan(roof.Pitch * Math.PI / 180);
+        var (minX, maxX, minY, maxY) = Extent(roof.Boundary);
+        var ridgeAlongX = maxX - minX >= maxY - minY;
+        var coordinate = ridgeAlongX ? point.Y : point.X;
+        var minimum = ridgeAlongX ? minY : minX;
+        var span = ridgeAlongX ? maxY - minY : maxX - minX;
+        var rise = roof.Shape switch
+        {
+            RoofShape.Shed => tan * (coordinate - minimum),
+            RoofShape.Gable => tan * (span / 2 - Math.Abs(coordinate - (minimum + span / 2))),
+            RoofShape.Hip => tan * Math.Min(Math.Min(point.X - minX, maxX - point.X),
+                Math.Min(point.Y - minY, maxY - point.Y)),
+            _ => 0
+        };
+        return Math.Max(0, rise);
+    }
+
+    /// <summary>The greatest height of the roof surface above its eave.</summary>
+    public static double RidgeRise(FloorSlab roof)
+    {
+        if (!roof.IsPitched) return 0;
+        var tan = Math.Tan(roof.Pitch * Math.PI / 180);
+        var (minX, maxX, minY, maxY) = Extent(roof.Boundary);
+        var span = Math.Min(maxX - minX, maxY - minY);
+        return roof.Shape switch
+        {
+            RoofShape.Shed => tan * span,
+            RoofShape.Gable or RoofShape.Hip => tan * span / 2,
+            _ => 0
+        };
+    }
+
+    /// <summary>The lowest roof height over a set of plan points; a structure standing there rests on this level.</summary>
+    public static double LowestRiseOver(FloorSlab roof, IEnumerable<Point2> points) =>
+        points.Select(point => RiseAt(roof, point)).DefaultIfEmpty(0).Min();
+
+    /// <summary>Splits a pitched roof into planar facets. A flat roof is a single facet.</summary>
+    public static IReadOnlyList<RoofFacet> Facets(FloorSlab roof)
+    {
+        var boundary = roof.Boundary.ToArray();
+        if (PolygonTriangulator.SignedDoubleArea(boundary) < 0) Array.Reverse(boundary);
+        var whole = new RoofFacet(boundary);
+        if (!roof.IsPitched || roof.Shape == RoofShape.Shed) return [whole];
+
+        var (minX, maxX, minY, maxY) = Extent(boundary);
+        var pieces = new List<IReadOnlyList<Point2>>();
+        if (roof.Shape == RoofShape.Gable)
+        {
+            if (maxX - minX >= maxY - minY)
+            {
+                var middle = (minY + maxY) / 2;
+                pieces.Add(Clip(boundary, 0, 1, -middle));
+                pieces.Add(Clip(boundary, 0, -1, middle));
+            }
+            else
+            {
+                var middle = (minX + maxX) / 2;
+                pieces.Add(Clip(boundary, 1, 0, -middle));
+                pieces.Add(Clip(boundary, -1, 0, middle));
+            }
+        }
+        else
+        {
+            // Distance to each side as a linear function a*x + b*y + c; a hip facet is where its side is nearest.
+            (double A, double B, double C)[] sides = [(1, 0, -minX), (-1, 0, maxX), (0, 1, -minY), (0, -1, maxY)];
+            for (var index = 0; index < sides.Length; index++)
+            {
+                var piece = (IReadOnlyList<Point2>)boundary;
+                for (var other = 0; other < sides.Length && piece.Count >= 3; other++)
+                {
+                    if (other == index) continue;
+                    piece = Clip(piece, sides[index].A - sides[other].A, sides[index].B - sides[other].B,
+                        sides[index].C - sides[other].C);
+                }
+                pieces.Add(piece);
+            }
+        }
+        return pieces.Where(piece => piece.Count >= 3 && Math.Abs(PolygonTriangulator.SignedDoubleArea(piece)) > Epsilon)
+            .Select(piece => new RoofFacet(piece)).ToArray();
+    }
+
+    /// <summary>The ridge and hip lines to draw in plan, as pairs of end points. Empty for flat and shed roofs.</summary>
+    public static IReadOnlyList<(Point2 From, Point2 To)> CreaseLines(FloorSlab roof)
+    {
+        if (!roof.IsPitched || roof.Shape is RoofShape.Flat or RoofShape.Shed) return [];
+        var (minX, maxX, minY, maxY) = Extent(roof.Boundary);
+        var width = maxX - minX;
+        var depth = maxY - minY;
+        var half = Math.Min(width, depth) / 2;
+        if (roof.Shape == RoofShape.Gable)
+            return width >= depth
+                ? [(new Point2(minX, minY + half), new Point2(maxX, minY + half))]
+                : [(new Point2(minX + half, minY), new Point2(minX + half, maxY))];
+
+        var wide = width >= depth;
+        var ridgeStart = new Point2(minX + half, minY + half);
+        var ridgeEnd = wide ? new Point2(maxX - half, minY + half) : new Point2(minX + half, maxY - half);
+        (Point2 From, Point2 To)[] lines =
+        [
+            (ridgeStart, ridgeEnd),
+            (new Point2(minX, minY), ridgeStart),
+            (wide ? new Point2(minX, maxY) : new Point2(maxX, minY), ridgeStart),
+            (new Point2(maxX, maxY), ridgeEnd),
+            (wide ? new Point2(maxX, minY) : new Point2(minX, maxY), ridgeEnd)
+        ];
+        return lines.Where(line => line.From.DistanceTo(line.To) > Epsilon).ToArray();
+    }
+
+    /// <summary>Axis-aligned bounding box of a polygon.</summary>
+    public static (double MinX, double MaxX, double MinY, double MaxY) Extent(IReadOnlyList<Point2> polygon) =>
+        (polygon.Min(point => point.X), polygon.Max(point => point.X),
+            polygon.Min(point => point.Y), polygon.Max(point => point.Y));
+
+    /// <summary>Keeps the part of a polygon where a*x + b*y + c is not positive (one Sutherland-Hodgman step).</summary>
+    private static IReadOnlyList<Point2> Clip(IReadOnlyList<Point2> polygon, double a, double b, double c)
+    {
+        var result = new List<Point2>();
+        for (var index = 0; index < polygon.Count; index++)
+        {
+            var current = polygon[index];
+            var previous = polygon[(index + polygon.Count - 1) % polygon.Count];
+            var currentValue = a * current.X + b * current.Y + c;
+            var previousValue = a * previous.X + b * previous.Y + c;
+            if (currentValue <= Epsilon)
+            {
+                if (previousValue > Epsilon) result.Add(Cross(previous, current, previousValue, currentValue));
+                result.Add(current);
+            }
+            else if (previousValue <= Epsilon)
+            {
+                result.Add(Cross(previous, current, previousValue, currentValue));
+            }
+        }
+        // Drop consecutive duplicates introduced when a vertex lies exactly on the clipping line.
+        return result.Where((point, index) => point.DistanceTo(result[(index + 1) % result.Count]) > Epsilon).ToArray();
+    }
+
+    private static Point2 Cross(Point2 previous, Point2 current, double previousValue, double currentValue)
+    {
+        var fraction = previousValue / (previousValue - currentValue);
+        return new Point2(previous.X + (current.X - previous.X) * fraction,
+            previous.Y + (current.Y - previous.Y) * fraction);
+    }
+}

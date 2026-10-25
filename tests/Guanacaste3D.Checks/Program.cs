@@ -396,4 +396,5 @@ PlanDimensionChecks.Run(Check);
 DoorPlanSymbolChecks.Run(Check);
 StructuralChecks.Run(Check);
 FamilyTemplateChecks.Run(Check);
+ArchitectureChecks.Run(Check);
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

@@ -44,7 +44,8 @@ public static class DoorPlanSymbol
     private const double Clearance = 0.004;
 
     /// <summary>Returns the plan primitives for a door of the given rough opening inside a wall of the given thickness.</summary>
-    public static DoorPlanSymbolGeometry Build(double begin, double end, double wallThickness, double leafDepth)
+    public static DoorPlanSymbolGeometry Build(double begin, double end, double wallThickness, double leafDepth,
+        OpeningOperation operation = OpeningOperation.Standard)
     {
         var width = end - begin;
         if (!double.IsFinite(width) || width <= 0 || !double.IsFinite(wallThickness) || wallThickness <= 0)
@@ -66,6 +67,8 @@ public static class DoorPlanSymbol
 
         var swings = new List<DoorPlanArc>();
         var depth = Math.Clamp(leafDepth, 0.02, Math.Max(0.02, 2 * liningHalf - StopDepth));
+        if (operation != OpeningOperation.Standard)
+            return OperatedLeaves(operation, outlines, begin, end, lining, liningHalf, depth);
         // The leaf hinges at the swing-side face of the lining, so the open leaf starts flush with the wall.
         // When closed it would lie just inside that face, against a stop on each jamb.
         var hingeV = liningHalf;
@@ -93,6 +96,65 @@ public static class DoorPlanSymbol
             new DoorPlanLine((begin + lining, -liningHalf), (end - lining, -liningHalf)),
             new DoorPlanLine((begin + lining, liningHalf), (end - lining, liningHalf))
         };
+        return new DoorPlanSymbolGeometry(outlines, swings, thresholds);
+    }
+
+    /// <summary>
+    /// Leaves of a door that does not swing: two offset sliding panels, a pocket leaf with its cavity, folded leaves,
+    /// a single overhead section, or the crossed wings of a revolving door inside their drum.
+    /// </summary>
+    private static DoorPlanSymbolGeometry OperatedLeaves(OpeningOperation operation, List<DoorPlanOutline> outlines,
+        double begin, double end, double lining, double liningHalf, double depth)
+    {
+        var swings = new List<DoorPlanArc>();
+        var thresholds = new List<DoorPlanLine>
+        {
+            new((begin + lining, -liningHalf), (end - lining, -liningHalf)),
+            new((begin + lining, liningHalf), (end - lining, liningHalf))
+        };
+        var left = begin + lining + Clearance;
+        var right = end - lining - Clearance;
+        var leaf = Math.Min(depth, 0.05);
+        switch (operation)
+        {
+            case OpeningOperation.Sliding:
+            {
+                var panel = (right - left + 0.05) / 2;
+                outlines.Add(Box(DoorPlanPart.Leaf, left, left + panel, -leaf - 0.005, -0.005));
+                outlines.Add(Box(DoorPlanPart.Leaf, right - panel, right, 0.005, leaf + 0.005));
+                break;
+            }
+            case OpeningOperation.Pocket:
+                // The closed leaf is drawn in the opening; its cavity continues inside the wall.
+                outlines.Add(Box(DoorPlanPart.Leaf, left, right, -leaf / 2, leaf / 2));
+                thresholds.Add(new((right, -leaf / 2), (right + (right - left), -leaf / 2)));
+                thresholds.Add(new((right, leaf / 2), (right + (right - left), leaf / 2)));
+                break;
+            case OpeningOperation.Folding:
+            {
+                var leaves = Math.Max(2, (int)Math.Round((right - left) / 0.45 / 2) * 2);
+                var width = (right - left) / leaves;
+                for (var index = 0; index < leaves; index++)
+                {
+                    var shift = index % 2 == 0 ? -0.03 : 0.03;
+                    outlines.Add(Box(DoorPlanPart.Leaf, left + index * width, left + (index + 1) * width,
+                        shift - 0.01, shift + 0.01));
+                }
+                break;
+            }
+            case OpeningOperation.Overhead:
+                outlines.Add(Box(DoorPlanPart.Leaf, left, right, -leaf / 2, leaf / 2));
+                break;
+            case OpeningOperation.Revolving:
+            {
+                var center = (begin + end) / 2;
+                var radius = Math.Min((right - left) / 2, liningHalf + 0.4);
+                outlines.Add(Box(DoorPlanPart.Leaf, center - radius, center + radius, -0.02, 0.02));
+                outlines.Add(Box(DoorPlanPart.Leaf, center - 0.02, center + 0.02, -radius, radius));
+                swings.Add(new DoorPlanArc(center, 0, radius, 0, 2 * Math.PI));
+                break;
+            }
+        }
         return new DoorPlanSymbolGeometry(outlines, swings, thresholds);
     }
 

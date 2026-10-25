@@ -30,7 +30,53 @@ public enum StructuralElementKind
     Stair,
 
     /// <summary>A straight guard with posts and two horizontal rails.</summary>
-    Railing
+    Railing,
+
+    /// <summary>A sloped walking surface rising from the start to the end by its height.</summary>
+    Ramp,
+
+    /// <summary>A rain gutter (canal) running along the eave between its two points.</summary>
+    Gutter,
+
+    /// <summary>A vertical rainwater pipe (bajante) at a point, running up from its offset by its height.</summary>
+    Downspout,
+
+    /// <summary>A glazed wall system with a mullion and transom grid between its two points.</summary>
+    CurtainWall,
+
+    /// <summary>A glazed rooflight in a rectangle of a roof; it cuts the roof and stands on its top face.</summary>
+    Skylight
+}
+
+/// <summary>Variant of an element's geometry. Which values apply depends on the element kind.</summary>
+public enum ElementStyle
+{
+    /// <summary>The standard form of the kind.</summary>
+    Default,
+
+    /// <summary>Round section for point elements (piers, foundations, downspouts).</summary>
+    Round,
+
+    /// <summary>Wide-flange section for beams, braces and trusses.</summary>
+    IShape,
+
+    /// <summary>Tee section for beams, braces and trusses.</summary>
+    Tee,
+
+    /// <summary>A guard with closely spaced vertical balusters.</summary>
+    Pickets,
+
+    /// <summary>A guard with a glass panel between the rails.</summary>
+    GlassPanel,
+
+    /// <summary>A guard with slim horizontal cables.</summary>
+    Cable,
+
+    /// <summary>A solid parapet with a cap.</summary>
+    SolidParapet,
+
+    /// <summary>A stair of treads on stringers, without risers.</summary>
+    Open
 }
 
 /// <summary>
@@ -53,6 +99,9 @@ public sealed record StructuralElement(
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }
 
+    /// <summary>Geometry variant: beam section, guard type, stair type, or round point elements.</summary>
+    public ElementStyle Style { get; init; }
+
     /// <summary>Drafting marks and openings have no solid of their own; openings only cut floor slabs.</summary>
     [JsonIgnore] public bool HasSolid => Kind is not (StructuralElementKind.ModelLine or StructuralElementKind.Opening
         or StructuralElementKind.Shaft or StructuralElementKind.ModelText);
@@ -66,7 +115,7 @@ public sealed record StructuralElement(
             var half = Width / 2;
             var length = Start.DistanceTo(End);
             if (Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft or StructuralElementKind.Dormer
-                && length >= 1e-9)
+                    or StructuralElementKind.Skylight && length >= 1e-9)
                 return Geometry.SlabOpenings.Corners(PlanExtent);
             if (length < 1e-9)
                 return
@@ -113,6 +162,13 @@ public static class StructuralElementStandards
         StructuralElementKind.Dormer => (0, 2.40, 0),
         StructuralElementKind.Stair => (1.20, 3.0, 0),
         StructuralElementKind.Railing => (0.06, 1.10, 0),
+        // A ramp rises 0.60 m by default; its run is the distance between the clicks (1:12 is 7.2 m).
+        StructuralElementKind.Ramp => (1.50, 0.60, 0),
+        // Gutters hang at the eave of a 3 m wall; the channel is 12 cm wide and 10 cm deep.
+        StructuralElementKind.Gutter => (0.12, 0.10, 2.85),
+        StructuralElementKind.Downspout => (0.09, 2.85, 0),
+        StructuralElementKind.CurtainWall => (0.10, 3.0, 0),
+        StructuralElementKind.Skylight => (0, 0.15, 0),
         _ => (0.02, 0, 0)
     };
 }

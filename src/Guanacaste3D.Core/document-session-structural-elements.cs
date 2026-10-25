@@ -194,7 +194,7 @@ public sealed partial class DocumentSession
         var id = Guid.NewGuid();
         Commit("Transaction.AddDormer", document => document.StructuralElements.Add(
             CreateStructuralElement(id, document, levelId, StructuralElementKind.Dormer, name, first, opposite)
-                with { Offset = roof.ElevationOffset }));
+                with { Offset = roof.ElevationOffset + RoofGeometry.LowestRiseOver(roof, Geometry.SlabOpenings.Corners(extent)) }));
         return id;
     }
 

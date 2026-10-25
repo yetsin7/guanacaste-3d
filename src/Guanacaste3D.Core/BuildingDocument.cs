@@ -166,6 +166,7 @@ public sealed class BuildingDocument
         WallGeometry.Validate(Walls, Openings);
         PlanDimensions.Validate(this);
         CirculationGeometry.Validate(this);
+        ArchitecturalShapes.Validate(this);
         OpeningTypeRules.Validate(this);
         LevelConstraints.Validate(this);
         ParameterRules.Validate(this);

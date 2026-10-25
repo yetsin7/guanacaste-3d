@@ -85,19 +85,20 @@ public static class BuildingMesher
         }
 
         foreach (var floor in document.Floors)
-            AddSlab(mesh, floor.Boundary, elevations[floor.LevelId] + floor.ElevationOffset, floor.Thickness,
-                FloorOpenings(document, floor, elevations));
+        {
+            var slabTop = elevations[floor.LevelId] + floor.ElevationOffset;
+            if (floor.IsPitched) AddPitchedRoof(mesh, floor, slabTop);
+            else AddSlab(mesh, floor.Boundary, slabTop, floor.Thickness, FloorOpenings(document, floor, elevations));
+        }
 
         foreach (var column in document.Columns)
             AddColumn(mesh, column, elevations[column.LevelId], document.Levels);
 
-        foreach (var element in document.StructuralElements.Where(element => element.HasSolid)
-                     .SelectMany(element => element.Kind is StructuralElementKind.Stair or StructuralElementKind.Railing
-                         ? CirculationGeometry.Parts(element) : new[] { element }))
+        foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
-            var bottom = elevations[element.LevelId] + element.Offset;
-            AddPrism(mesh, element.Footprint.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray(),
-                (float)bottom, (float)(bottom + element.Height), SurfaceKind.Structure);
+            var datum = elevations[element.LevelId];
+            foreach (var part in ElementGeometry.Parts(element))
+                AddPart(mesh, part, datum);
         }
 
         if (includeGround)
@@ -136,18 +137,184 @@ public static class BuildingMesher
             top - lining, top, SurfaceKind.OpeningFrame);
         if (opening.Kind == OpeningKind.Window)
         {
-            AddWindowSash(mesh, wall, opening, type, lining, bottom, top);
+            if (type.Operation is OpeningOperation.Standard or OpeningOperation.Casement or OpeningOperation.Awning)
+                AddWindowSash(mesh, wall, opening, type, lining, bottom, top);
+            else
+                AddOperatedWindow(mesh, wall, opening, type, lining, bottom, top);
+            if (type.Operation is OpeningOperation.Casement or OpeningOperation.Awning)
+                AddWindowHandles(mesh, wall, opening, type, lining, bottom, top);
             AddWindowSill(mesh, wall, opening, bottom);
             return;
         }
-        var depth = WallGeometry.LeafDepth(type, wall);
+        var depth = type.Operation == OpeningOperation.Revolving ? type.Depth : WallGeometry.LeafDepth(type, wall);
         if (depth <= 0) return;
-        AddDoorLeaves(mesh, wall, opening, depth, lining, bottom, top);
+        if (type.Operation == OpeningOperation.Standard)
+            AddDoorLeaves(mesh, wall, opening, depth, lining, bottom, top, type.GlazedLeaf);
+        else
+            AddOperatedDoor(mesh, wall, opening, type, depth, lining, bottom, top);
+    }
+
+    /// <summary>
+    /// Adds the leaves of a door that does not swing: sliding panels on two tracks, a closed pocket leaf, narrow
+    /// folding leaves, overhead sections, or the glass wings of a revolving door.
+    /// </summary>
+    private static void AddOperatedDoor(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type, double depth,
+        double lining, double bottom, double top)
+    {
+        const double clearance = 0.004;
+        const double thresholdGap = 0.012;
+        var left = opening.Begin + lining + clearance;
+        var right = opening.End - lining - clearance;
+        var low = bottom + thresholdGap;
+        var high = top - lining - clearance;
+        var panelKind = type.GlazedLeaf ? SurfaceKind.Glass : SurfaceKind.DoorLeaf;
+        switch (type.Operation)
+        {
+            case OpeningOperation.Sliding:
+            {
+                // Two panels overlap by one stile and run on separate tracks, one in front of the other.
+                const double overlap = 0.05;
+                var panelWidth = (right - left + overlap) / 2;
+                var half = Math.Min(depth, 0.06) / 2;
+                AddWallBlock(mesh, wall, left, right, -half * 2, half * 2, high, high + lining, SurfaceKind.OpeningFrame);
+                for (var panel = 0; panel < 2; panel++)
+                {
+                    var from = panel == 0 ? left : right - panelWidth;
+                    var shift = panel == 0 ? -half : half;
+                    AddSlidingPanel(mesh, wall, from, from + panelWidth, shift - half, shift + half, low, high, panelKind);
+                }
+                break;
+            }
+            case OpeningOperation.Pocket:
+                AddDoorPanel(mesh, wall, left, right, Math.Min(depth, 0.035), low, high);
+                break;
+            case OpeningOperation.Folding:
+            {
+                var leaves = Math.Max(2, (int)Math.Round((right - left) / 0.45 / 2) * 2);
+                var leafWidth = (right - left) / leaves;
+                for (var leaf = 0; leaf < leaves; leaf++)
+                {
+                    var from = left + leaf * leafWidth;
+                    var shift = leaf % 2 == 0 ? -0.012 : 0.012;
+                    AddWallBlock(mesh, wall, from + 0.002, from + leafWidth - 0.002, shift - 0.015, shift + 0.015,
+                        low, high, SurfaceKind.DoorLeaf);
+                }
+                break;
+            }
+            case OpeningOperation.Overhead:
+            {
+                var sections = Math.Max(4, (int)Math.Round((high - low) / 0.5));
+                var sectionHeight = (high - low) / sections;
+                var half = Math.Min(depth, wall.Thickness) / 2;
+                for (var section = 0; section < sections; section++)
+                {
+                    var from = low + section * sectionHeight;
+                    AddWallBlock(mesh, wall, left, right, -half, half, from + 0.005, from + sectionHeight - 0.005,
+                        SurfaceKind.DoorLeaf);
+                }
+                break;
+            }
+            case OpeningOperation.Revolving:
+            {
+                var center = (opening.Begin + opening.End) / 2;
+                var radius = Math.Min((right - left) / 2, depth / 2);
+                AddWallBlock(mesh, wall, center - radius, center + radius, -0.02, 0.02, low, high, SurfaceKind.Glass);
+                AddWallBlock(mesh, wall, center - 0.02, center + 0.02, -radius, radius, low, high, SurfaceKind.Glass);
+                AddWallBlock(mesh, wall, center - 0.05, center + 0.05, -0.05, 0.05, low, high, SurfaceKind.OpeningFrame);
+                break;
+            }
+        }
+    }
+
+    /// <summary>One sliding panel: a frame of four members around a pane that is glass or timber.</summary>
+    private static void AddSlidingPanel(SceneMesh mesh, Wall wall, double from, double to, double sideA, double sideB,
+        double bottom, double top, SurfaceKind pane)
+    {
+        const double member = 0.05;
+        AddWallBlock(mesh, wall, from, from + member, sideA, sideB, bottom, top, SurfaceKind.OpeningFrame);
+        AddWallBlock(mesh, wall, to - member, to, sideA, sideB, bottom, top, SurfaceKind.OpeningFrame);
+        AddWallBlock(mesh, wall, from + member, to - member, sideA, sideB, top - member, top, SurfaceKind.OpeningFrame);
+        AddWallBlock(mesh, wall, from + member, to - member, sideA, sideB, bottom, bottom + member, SurfaceKind.OpeningFrame);
+        var middle = (sideA + sideB) / 2;
+        AddWallBlock(mesh, wall, from + member, to - member, middle - 0.003, middle + 0.003, bottom + member, top - member, pane);
+    }
+
+    /// <summary>Adds the sashes of sliding, hung and louvered windows inside the lining.</summary>
+    private static void AddOperatedWindow(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type,
+        double lining, double bottom, double top)
+    {
+        var member = Math.Min(type.FrameWidth, 0.07);
+        const double sashHalf = 0.02;
+        const double glassHalf = 0.003;
+        const double plane = 0.0225;
+        var from = opening.Begin + lining;
+        var to = opening.End - lining;
+        var sashBottom = bottom + lining;
+        var sashTop = top - lining;
+        var columns = type.Operation == OpeningOperation.Sliding ? Math.Max(2, type.GlazingLightCount) : 1;
+        var rows = type.Operation == OpeningOperation.Hung ? 2 : 1;
+        var cellWidth = (to - from) / columns;
+        var cellHeight = (sashTop - sashBottom) / rows;
+        for (var row = 0; row < rows; row++)
+        for (var column = 0; column < columns; column++)
+        {
+            var x0 = from + column * cellWidth;
+            var x1 = x0 + cellWidth;
+            var y0 = sashBottom + row * cellHeight;
+            var y1 = y0 + cellHeight;
+            // Neighbouring sashes sit on alternate tracks so they can pass one another.
+            var shift = type.Operation == OpeningOperation.Louvered ? 0 : ((row + column) % 2 == 0 ? -plane : plane);
+            AddWallBlock(mesh, wall, x0, x0 + member, shift - sashHalf, shift + sashHalf, y0, y1, SurfaceKind.OpeningFrame);
+            AddWallBlock(mesh, wall, x1 - member, x1, shift - sashHalf, shift + sashHalf, y0, y1, SurfaceKind.OpeningFrame);
+            AddWallBlock(mesh, wall, x0 + member, x1 - member, shift - sashHalf, shift + sashHalf, y1 - member, y1,
+                SurfaceKind.OpeningFrame);
+            AddWallBlock(mesh, wall, x0 + member, x1 - member, shift - sashHalf, shift + sashHalf, y0, y0 + member,
+                SurfaceKind.OpeningFrame);
+            if (type.Operation == OpeningOperation.Louvered)
+            {
+                // Overlapping glass blades, each a thin horizontal slat.
+                const double pitch = 0.07;
+                const double blade = 0.045;
+                for (var level = y0 + member; level + blade <= y1 - member + 1e-9; level += pitch)
+                    AddWallBlock(mesh, wall, x0 + member, x1 - member, -0.035, 0.035, level, level + 0.006, SurfaceKind.Glass);
+            }
+            else
+            {
+                AddWallBlock(mesh, wall, x0 + member, x1 - member, shift - glassHalf, shift + glassHalf,
+                    y0 + member, y1 - member, SurfaceKind.Glass);
+            }
+        }
+    }
+
+    /// <summary>Adds an operating handle on the free stile of each casement light, or at the base of an awning sash.</summary>
+    private static void AddWindowHandles(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type, double lining,
+        double bottom, double top)
+    {
+        var member = Math.Min(type.FrameWidth, 0.07);
+        var from = opening.Begin + lining;
+        var to = opening.End - lining;
+        var lights = type.GlazingLightCount > 0 ? type.GlazingLightCount : opening.Width > 1.0 ? 2 : 1;
+        var lightWidth = (to - from) / lights;
+        if (type.Operation == OpeningOperation.Awning)
+        {
+            var center = (from + to) / 2;
+            AddWallBlock(mesh, wall, center - 0.04, center + 0.04, 0.02, 0.04, bottom + lining + member / 2 - 0.01,
+                bottom + lining + member / 2 + 0.01, SurfaceKind.OpeningFrame);
+            return;
+        }
+        var handleHeight = bottom + (top - bottom) / 2;
+        for (var light = 0; light < lights; light++)
+        {
+            // Handles alternate sides so adjacent casements meet at their handles.
+            var edge = light % 2 == 0 ? from + (light + 1) * lightWidth - member : from + light * lightWidth + member;
+            AddWallBlock(mesh, wall, edge - 0.01, edge + 0.01, 0.02, 0.04, handleHeight - 0.06, handleHeight + 0.06,
+                SurfaceKind.OpeningFrame);
+        }
     }
 
     /// <summary>Adds the door leaves, one per half of a wide opening, each clear of the lining by a few millimeters.</summary>
     private static void AddDoorLeaves(SceneMesh mesh, Wall wall, WallOpening opening, double depth, double lining,
-        double bottom, double top)
+        double bottom, double top, bool glazed = false)
     {
         const double clearance = 0.004;
         const double thresholdGap = 0.012;
@@ -158,7 +325,7 @@ public static class BuildingMesher
         for (var leaf = 0; leaf < leafCount; leaf++)
         {
             var from = left + leaf * leafWidth;
-            AddDoorPanel(mesh, wall, from, from + leafWidth, depth, bottom + thresholdGap, top - clearance);
+            AddDoorPanel(mesh, wall, from, from + leafWidth, depth, bottom + thresholdGap, top - clearance, glazed);
         }
     }
 
@@ -167,7 +334,7 @@ public static class BuildingMesher
     /// with a thinner raised panel between them that sits recessed inside the frame.
     /// </summary>
     private static void AddDoorPanel(SceneMesh mesh, Wall wall, double from, double to, double depth,
-        double bottom, double top)
+        double bottom, double top, bool glazed = false)
     {
         const double stile = 0.07;
         const double headRail = 0.09;
@@ -180,7 +347,7 @@ public static class BuildingMesher
         AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, top - headRail, top, kind);
         AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, bottom, bottom + kickRail, kind);
         AddWallBlock(mesh, wall, from + stile, to - stile, -panelHalf, panelHalf,
-            bottom + kickRail, top - headRail, kind);
+            bottom + kickRail, top - headRail, glazed ? SurfaceKind.Glass : kind);
     }
 
     /// <summary>
@@ -294,7 +461,7 @@ public static class BuildingMesher
             .Where(element => (element.Kind == StructuralElementKind.Opening && element.LevelId == floor.LevelId) ||
                 (element.Kind == StructuralElementKind.Shaft && elevations[element.LevelId] <= floorElevation) ||
                 // A dormer opens the roof it stands on; other slabs keep their solid top.
-                (element.Kind == StructuralElementKind.Dormer && floor.Kind == FloorKind.Roof &&
+                (element.Kind is StructuralElementKind.Dormer or StructuralElementKind.Skylight && floor.Kind == FloorKind.Roof &&
                     element.LevelId == floor.LevelId))
             .Select(element => Geometry.PlanRectangle.Of(element.Footprint))
             .Where(rectangle => Geometry.SlabOpenings.ContainsRectangle(floor.Boundary, rectangle))
@@ -313,23 +480,87 @@ public static class BuildingMesher
         }
     }
 
+    /// <summary>Adds one element part as a prism, or as a sloped wedge when it carries an end height.</summary>
+    private static void AddPart(SceneMesh mesh, ElementPart part, double datum)
+    {
+        var outline = part.Footprint.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray();
+        if (part.EndTop is not double endTop || outline.Length != 4)
+        {
+            AddPrism(mesh, outline, (float)(datum + part.Bottom), (float)(datum + part.Top), part.Kind);
+            return;
+        }
+        // Vertices 0 and 3 sit at the start (Top); vertices 1 and 2 at the end (EndTop).
+        var bottom = (float)(datum + part.Bottom);
+        float[] tops = [(float)(datum + part.Top), (float)(datum + endTop), (float)(datum + endTop), (float)(datum + part.Top)];
+        var counterClockwise = PolygonTriangulator.SignedDoubleArea(
+            outline.Select(point => new Point2(point.X, point.Y)).ToArray()) > 0;
+        var order = counterClockwise ? new[] { 0, 1, 2, 3 } : new[] { 3, 2, 1, 0 };
+        Vector3 Top(int index) => new(outline[order[index]].X, outline[order[index]].Y, tops[order[index]]);
+        Vector3 Bottom(int index) => new(outline[order[index]].X, outline[order[index]].Y, bottom);
+        mesh.AddQuad(Top(0), Top(1), Top(2), Top(3), part.Kind);
+        mesh.AddQuad(Bottom(3), Bottom(2), Bottom(1), Bottom(0), part.Kind);
+        for (var index = 0; index < 4; index++)
+        {
+            var next = (index + 1) % 4;
+            mesh.AddQuad(Bottom(index), Bottom(next), Top(next), Top(index), part.Kind);
+        }
+    }
+
+    /// <summary>
+    /// Adds a pitched roof as planar facets. The eave sits at <paramref name="eaveTop"/>; each facet rises linearly,
+    /// its underside follows it a slab thickness lower, and the exterior edges close the section.
+    /// </summary>
+    private static void AddPitchedRoof(SceneMesh mesh, FloorSlab roof, double eaveTop)
+    {
+        var boundary = PolygonTriangulator.SignedDoubleArea(roof.Boundary) > 0 ? roof.Boundary : [.. roof.Boundary.AsEnumerable().Reverse()];
+        Vector3 Surface(Point2 point, double drop) =>
+            new((float)point.X, (float)point.Y, (float)(eaveTop + RoofGeometry.RiseAt(roof, point) - drop));
+        foreach (var facet in RoofGeometry.Facets(roof))
+        {
+            IReadOnlyList<(int A, int B, int C)> triangles;
+            try { triangles = PolygonTriangulator.Triangulate(facet.Outline); }
+            catch (ArgumentException) { continue; }
+            foreach (var (a, b, c) in triangles)
+            {
+                mesh.AddTriangle(Surface(facet.Outline[a], 0), Surface(facet.Outline[b], 0), Surface(facet.Outline[c], 0),
+                    SurfaceKind.Floor);
+                mesh.AddTriangle(Surface(facet.Outline[c], roof.Thickness), Surface(facet.Outline[b], roof.Thickness),
+                    Surface(facet.Outline[a], roof.Thickness), SurfaceKind.Floor);
+            }
+            for (var index = 0; index < facet.Outline.Count; index++)
+            {
+                var current = facet.Outline[index];
+                var next = facet.Outline[(index + 1) % facet.Outline.Count];
+                if (!LiesOnBoundary(boundary, new Point2((current.X + next.X) / 2, (current.Y + next.Y) / 2))) continue;
+                mesh.AddQuad(Surface(current, roof.Thickness), Surface(next, roof.Thickness), Surface(next, 0),
+                    Surface(current, 0), SurfaceKind.Floor);
+            }
+        }
+    }
+
+    /// <summary>Tests whether a point lies on any edge of a closed polygon, within a micrometer.</summary>
+    private static bool LiesOnBoundary(IReadOnlyList<Point2> polygon, Point2 point)
+    {
+        for (var index = 0; index < polygon.Count; index++)
+        {
+            var a = polygon[index];
+            var b = polygon[(index + 1) % polygon.Count];
+            var edge = a.DistanceTo(b);
+            if (edge < 1e-12) continue;
+            var cross = Math.Abs((b.X - a.X) * (point.Y - a.Y) - (b.Y - a.Y) * (point.X - a.X)) / edge;
+            var along = ((point.X - a.X) * (b.X - a.X) + (point.Y - a.Y) * (b.Y - a.Y)) / edge;
+            if (cross < 1e-6 && along >= -1e-6 && along <= edge + 1e-6) return true;
+        }
+        return false;
+    }
+
     /// <summary>Raises a plan point to a model elevation.</summary>
     private static Vector3 LiftPoint(Point2 point, float z) => new((float)point.X, (float)point.Y, z);
 
     /// <summary>Adds a rectangular column standing on its level, up to the resolved column top.</summary>
     private static void AddColumn(SceneMesh mesh, Column column, double elevation, IReadOnlyList<Level> levels)
     {
-        var halfWidth = column.Width / 2;
-        var halfDepth = column.Depth / 2;
-        var x = column.Position.X;
-        var y = column.Position.Y;
-        var outline = new[]
-        {
-            new Vector2((float)(x - halfWidth), (float)(y - halfDepth)),
-            new Vector2((float)(x + halfWidth), (float)(y - halfDepth)),
-            new Vector2((float)(x + halfWidth), (float)(y + halfDepth)),
-            new Vector2((float)(x - halfWidth), (float)(y + halfDepth))
-        };
+        var outline = column.Outline.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray();
         AddPrism(mesh, outline, (float)elevation, (float)ColumnTop(column, elevation, levels), SurfaceKind.Wall);
     }
 

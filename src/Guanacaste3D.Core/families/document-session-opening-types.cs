@@ -53,7 +53,7 @@ public sealed partial class DocumentSession
                        Math.Abs(current.Width - width) <= OpeningTypeRules.SizeTolerance &&
                        Math.Abs(current.Height - height) <= OpeningTypeRules.SizeTolerance
                 ? current
-                : OpeningTypeRules.FindOrCreate(doc.OpeningTypes, opening.Kind, width, height, sill);
+                : OpeningTypeRules.FindOrCreate(doc.OpeningTypes, opening.Kind, width, height, sill, current);
             doc.Openings[index] = opening with
             {
                 Offset = offset, Sill = sill, Width = type.Width, Height = type.Height, OpeningTypeId = type.Id
