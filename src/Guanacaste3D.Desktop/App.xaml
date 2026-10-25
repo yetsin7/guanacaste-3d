@@ -7,6 +7,7 @@
         <ResourceDictionary Source="resources/icons.xaml"/>
         <ResourceDictionary Source="resources/theme.xaml"/>
         <ResourceDictionary Source="resources/localization.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.ribbons.es.xaml"/>
         <ResourceDictionary Source="resources/localization.parameters.es.xaml"/>
         <ResourceDictionary Source="resources/localization.errors.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>

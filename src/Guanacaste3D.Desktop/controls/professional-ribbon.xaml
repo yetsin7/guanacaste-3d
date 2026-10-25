@@ -1,0 +1,9 @@
+<UserControl x:Class="Guanacaste3D.Desktop.Controls.ProfessionalRibbon"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="{DynamicResource RibbonBrush}">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                PanningMode="HorizontalOnly">
+    <StackPanel x:Name="GroupHost" Orientation="Horizontal" Margin="10,5,10,4"/>
+  </ScrollViewer>
+</UserControl>

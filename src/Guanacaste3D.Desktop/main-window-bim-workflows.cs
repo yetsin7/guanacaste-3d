@@ -122,7 +122,9 @@ public partial class MainWindow
     {
         if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
         if (ActiveViewText is null || ViewTabs.SelectedItem is not TabItem tab) return;
-        ActiveViewText.Text = tab.Header?.ToString() ?? string.Empty;
+        var activeViewName = tab.Header?.ToString() ?? string.Empty;
+        ActiveViewText.Text = activeViewName;
+        if (PropertiesActiveViewText is not null) PropertiesActiveViewText.Text = activeViewName;
     }
 
     /// <summary>Completes room placement when the plan canvas receives two corners.</summary>

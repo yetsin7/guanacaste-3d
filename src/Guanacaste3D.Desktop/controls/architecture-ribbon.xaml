@@ -1,0 +1,199 @@
+<UserControl x:Class="Guanacaste3D.Desktop.Controls.ArchitectureRibbon"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  MinHeight="102">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                Background="{DynamicResource RibbonBrush}">
+    <StackPanel Orientation="Horizontal" Margin="7,3,7,0">
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Button Content="{DynamicResource Tool.Modify}" CommandParameter="{StaticResource Icon.Apply}"
+                  Tag="Modify" Click="ArchitectureButton_Click"
+                  Style="{StaticResource LargeRibbonButtonStyle}" Background="{DynamicResource AccentSoftBrush}"
+                  BorderBrush="#B8D7FF" Foreground="#005BBB"/>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Selection}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Tag="Wall" CommandParameter="{StaticResource Icon.Wall}" Click="ArchitectureButton_Click"
+                    Style="{StaticResource LargeRibbonButtonStyle}" ToolTip="{DynamicResource ToolTip.Wall}"/>
+            <Button Content="{DynamicResource Tool.Door}" Tag="Door" CommandParameter="{StaticResource Icon.Door}" Click="ArchitectureButton_Click"
+                    Style="{StaticResource LargeRibbonButtonStyle}" ToolTip="{DynamicResource ToolTip.Door}"/>
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Window}" Tag="Window" CommandParameter="{StaticResource Icon.Window}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Component}" Tag="Component" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Column}" Tag="Column" CommandParameter="{StaticResource Icon.Level}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Roof}" Tag="Roof" CommandParameter="{StaticResource Icon.Floor}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Ceiling}" Tag="Ceiling" CommandParameter="{StaticResource Icon.Floor}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Floor}" Tag="Floor" CommandParameter="{StaticResource Icon.Floor}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.CurtainSystem}" Tag="CurtainSystem" CommandParameter="{StaticResource Icon.Window}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.CurtainGrid}" Tag="CurtainGrid" CommandParameter="{StaticResource Icon.Window}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Mullion}" Tag="Mullion" CommandParameter="{StaticResource Icon.Window}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Build}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Railing}" Tag="Railing" CommandParameter="{StaticResource Icon.Wall}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Ramp}" Tag="Ramp" CommandParameter="{StaticResource Icon.Floor}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Stair}" Tag="Stair" CommandParameter="{StaticResource Icon.Levels}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Circulation}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.ModelText}" Tag="ModelText" CommandParameter="{StaticResource Icon.Parameters}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.ModelLine}" Tag="ModelLine" CommandParameter="{StaticResource Icon.Section}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.ModelGroup}" Tag="ModelGroup" CommandParameter="{StaticResource Icon.Cube}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Model}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Room}" Tag="Room" CommandParameter="{StaticResource Icon.Room}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.RoomSeparator}" Tag="RoomSeparator" CommandParameter="{StaticResource Icon.Section}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.TagRoom}" Tag="TagRoom" CommandParameter="{StaticResource Icon.Apply}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Area}" Tag="Area" CommandParameter="{StaticResource Icon.Floor}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.AreaBoundary}" Tag="AreaBoundary" CommandParameter="{StaticResource Icon.Plan}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.TagArea}" Tag="TagArea" CommandParameter="{StaticResource Icon.Apply}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.RoomAndArea}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.FaceOpening}" Tag="FaceOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.ShaftOpening}" Tag="ShaftOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.WallOpening}" Tag="WallOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.VerticalOpening}" Tag="VerticalOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.DormerOpening}" Tag="DormerOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Action.OpeningTypes}" Tag="OpeningTypes" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Opening}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.Level}" Tag="Level" CommandParameter="{StaticResource Icon.Level}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Action.Levels}" Tag="Levels" CommandParameter="{StaticResource Icon.Levels}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.Grid}" Tag="Grid" CommandParameter="{StaticResource Icon.Level}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Datum}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
+            <StackPanel>
+              <Button Content="{DynamicResource Tool.SetWorkPlane}" Tag="SetWorkPlane" CommandParameter="{StaticResource Icon.Plan}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.ShowWorkPlane}" Tag="ShowWorkPlane" CommandParameter="{StaticResource Icon.Plan}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+              <Button Content="{DynamicResource Tool.ReferencePlane}" Tag="ReferencePlane" CommandParameter="{StaticResource Icon.Section}" Click="ArchitectureButton_Click"
+                      Style="{StaticResource CompactRibbonButtonStyle}"/>
+            </StackPanel>
+            <Button Content="{DynamicResource Tool.Viewer}" Tag="Viewer" CommandParameter="{StaticResource Icon.Cube}" Click="ArchitectureButton_Click"
+                    Style="{StaticResource LargeRibbonButtonStyle}"/>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.WorkPlane}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Margin="5,0" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource Tool.WallType}" Style="{StaticResource RibbonFieldLabelStyle}"/>
+            <ComboBox x:Name="WallTypePicker" Width="188" Margin="0,3,0,4"/>
+            <Button Content="{DynamicResource Properties.ApplyType}" Tag="ApplyWallType"
+                    Click="ArchitectureButton_Click" Style="{StaticResource RibbonFieldButtonStyle}"/>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Type}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
