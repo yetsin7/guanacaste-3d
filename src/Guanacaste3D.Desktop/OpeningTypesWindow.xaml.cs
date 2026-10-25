@@ -151,6 +151,9 @@ public partial class OpeningTypesWindow : Window
         SillBox.Text = Meters(type.DefaultSill);
         SillBox.IsEnabled = type.Kind == OpeningKind.Window;
         MaterialBox.Text = type.MaterialName;
+        FrameWidthBox.Text = Meters(type.FrameWidth);
+        GlazingLightsBox.Text = type.GlazingLightCount.ToString(CultureInfo.CurrentCulture);
+        GlazingLightsBox.IsEnabled = type.Kind == OpeningKind.Window;
         UsageText.Text = Format("OpeningTypes.Usage",
             DocumentSession.CountOpeningInstances(_session.Document).GetValueOrDefault(id));
     }
@@ -168,6 +171,9 @@ public partial class OpeningTypesWindow : Window
         HeightBox.Text = Meters(kind == OpeningKind.Door ? 2.1 : 1.2);
         SillBox.Text = Meters(kind == OpeningKind.Door ? 0 : 0.9);
         SillBox.IsEnabled = kind == OpeningKind.Window;
+        FrameWidthBox.Text = Meters(0.06);
+        GlazingLightsBox.Text = "0";
+        GlazingLightsBox.IsEnabled = kind == OpeningKind.Window;
     }
 
     /// <summary>Keeps the sill rules in sync with the kind chosen for a new type.</summary>
@@ -184,7 +190,14 @@ public partial class OpeningTypesWindow : Window
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (!TryReadLength(WidthBox, out var width) || !TryReadLength(HeightBox, out var height) ||
-            !TryReadLength(SillBox, out var sill)) return;
+            !TryReadLength(SillBox, out var sill) || !TryReadLength(FrameWidthBox, out var frameWidth)) return;
+        if (!int.TryParse(GlazingLightsBox.Text, System.Globalization.NumberStyles.Integer,
+                CultureInfo.CurrentCulture, out var glazingLights))
+        {
+            StatusText.Text = Format("Parameters.InvalidValue", GlazingLightsBox.Text, Text("OpeningTypes.GlazingLights"));
+            GlazingLightsBox.Focus();
+            return;
+        }
         if (string.IsNullOrWhiteSpace(NameBox.Text) || string.IsNullOrWhiteSpace(FamilyBox.Text))
         {
             StatusText.Text = Text("OpeningTypes.NeedNames");
@@ -193,10 +206,10 @@ public partial class OpeningTypesWindow : Window
         RunTransaction(() =>
         {
             if (_editingTypeId is Guid id)
-                _session.UpdateOpeningType(id, FamilyBox.Text, NameBox.Text, width, height, sill, MaterialBox.Text);
+                _session.UpdateOpeningType(id, FamilyBox.Text, NameBox.Text, width, height, sill, MaterialBox.Text, frameWidth, glazingLights);
             else
                 _editingTypeId = _session.AddOpeningType((OpeningKind)KindBox.SelectedValue, FamilyBox.Text,
-                    NameBox.Text, width, height, sill, MaterialBox.Text);
+                    NameBox.Text, width, height, sill, MaterialBox.Text, frameWidth, glazingLights);
         });
     }
 

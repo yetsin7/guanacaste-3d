@@ -125,7 +125,7 @@ public static class BuildingMesher
     {
         var bottom = elevation + opening.Sill;
         var top = bottom + opening.Height;
-        var lining = Math.Min(0.06, Math.Min(opening.Width, opening.Height) / 6);
+        var lining = Math.Min(type.FrameWidth, Math.Min(opening.Width, opening.Height) / 6);
         // The lining sits 1 cm inside both wall faces, so the reveal reads as a step rather than a flush cut.
         var liningHalf = wall.Thickness / 2 - Math.Min(0.01, wall.Thickness / 4);
         AddWallBlock(mesh, wall, opening.Begin, opening.Begin + lining, -liningHalf, liningHalf, bottom, top,
@@ -136,7 +136,7 @@ public static class BuildingMesher
             top - lining, top, SurfaceKind.OpeningFrame);
         if (opening.Kind == OpeningKind.Window)
         {
-            AddWindowSash(mesh, wall, opening, lining, bottom, top);
+            AddWindowSash(mesh, wall, opening, type, lining, bottom, top);
             AddWindowSill(mesh, wall, opening, bottom);
             return;
         }
@@ -187,17 +187,17 @@ public static class BuildingMesher
     /// Adds the sash frame and glass inside the lining. A wide window is split into two lights by a
     /// mullion, the way a sliding window carries two sashes.
     /// </summary>
-    private static void AddWindowSash(SceneMesh mesh, Wall wall, WallOpening opening, double lining,
+    private static void AddWindowSash(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type, double lining,
         double bottom, double top)
     {
-        const double member = 0.05;
+        var member = Math.Min(type.FrameWidth, 0.07);
         const double sashHalf = 0.025;
         const double glassHalf = 0.003;
         var from = opening.Begin + lining;
         var to = opening.End - lining;
         var sashBottom = bottom + lining;
         var sashTop = top - lining;
-        var lights = opening.Width > 1.0 ? 2 : 1;
+        var lights = type.GlazingLightCount > 0 ? type.GlazingLightCount : opening.Width > 1.0 ? 2 : 1;
         var lightWidth = (to - from) / lights;
         for (var light = 0; light < lights; light++)
         {

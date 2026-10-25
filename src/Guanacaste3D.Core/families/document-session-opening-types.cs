@@ -97,14 +97,14 @@ public sealed partial class DocumentSession
 
     /// <summary>Creates a door or window type.</summary>
     public Guid AddOpeningType(OpeningKind kind, string familyName, string name, double width, double height,
-        double defaultSill, string materialName = "", double depth = 0)
+        double defaultSill, string materialName = "", double depth = 0, double frameWidth = 0.06, int glazingLightCount = 0)
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddOpeningType", doc => doc.OpeningTypes.Add(new OpeningType(
             id, kind, familyName.Trim(), name.Trim(), width, height, defaultSill)
         {
             MaterialName = materialName.Trim(),
-            Depth = depth
+            Depth = depth, FrameWidth = frameWidth, GlazingLightCount = glazingLightCount
         }));
         return id;
     }
@@ -126,7 +126,7 @@ public sealed partial class DocumentSession
     /// whole change is rejected and nothing is modified.
     /// </summary>
     public void UpdateOpeningType(Guid typeId, string familyName, string name, double width, double height,
-        double defaultSill, string materialName = "")
+        double defaultSill, string materialName = "", double frameWidth = 0.06, int glazingLightCount = 0)
     {
         if (!Document.OpeningTypes.Any(type => type.Id == typeId))
             throw new InvalidDataException("The door or window type does not exist.");
@@ -136,7 +136,8 @@ public sealed partial class DocumentSession
             doc.OpeningTypes[index] = doc.OpeningTypes[index] with
             {
                 FamilyName = familyName.Trim(), Name = name.Trim(), Width = width, Height = height,
-                DefaultSill = defaultSill, MaterialName = materialName.Trim()
+                DefaultSill = defaultSill, MaterialName = materialName.Trim(),
+                FrameWidth = frameWidth, GlazingLightCount = glazingLightCount
             };
         });
     }

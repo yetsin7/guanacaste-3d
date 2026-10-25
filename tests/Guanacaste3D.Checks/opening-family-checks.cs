@@ -28,15 +28,59 @@ internal static class OpeningFamilyChecks
                 "Default assemblies are layered: a five-member door leaf, lining, sill, sash members, and two glazed lights");
             check(mesh.Positions.All(point => float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z)),
                 "Opening assemblies generate finite geometry");
+            var windowTypeId = session.Document.Openings.Single(opening => opening.Id == windowId).OpeningTypeId;
+            var customWindowType = session.Document.OpeningTypes.Single(type => type.Id == windowTypeId);
+            session.UpdateOpeningType(windowTypeId, customWindowType.FamilyName, customWindowType.Name,
+                customWindowType.Width, customWindowType.Height, customWindowType.DefaultSill,
+                customWindowType.MaterialName, frameWidth: 0.08, glazingLightCount: 3);
+            var customMesh = BuildingMesher.Build(session.Document);
+            check(customMesh.TriangleKinds.Count(kind => kind == SurfaceKind.Glass) == 3 * 12 &&
+                customMesh.TriangleCount > mesh.TriangleCount,
+                "Family light-count parameter regenerates three distinct glass solids");
+            var familyPath = Path.Combine(directory, "custom-window.G3Df");
+            FamilyFile.Save(familyPath, FamilyDocument.FromProject(session.Document, customWindowType.FamilyName));
+            var reloadedFamily = FamilyFile.Load(familyPath);
+            var reloadedType = reloadedFamily.Types.Single(type => type.Id == windowTypeId);
+            check(reloadedType.FrameWidth == 0.08 && reloadedType.GlazingLightCount == 3,
+                "Native family round trip preserves geometry-driving type parameters");
+            var receivingProject = new DocumentSession(BuildingDocument.Create());
+            receivingProject.ImportOpeningFamily(reloadedFamily);
+            var importedType = receivingProject.Document.OpeningTypes.Single(type =>
+                type.FamilyName == customWindowType.FamilyName &&
+                type.Name == customWindowType.Name + " (2)");
+            check(importedType.FrameWidth == 0.08 && importedType.GlazingLightCount == 3,
+                "Import retains custom geometry when a default type has the same name and size");
+            receivingProject.ImportOpeningFamily(reloadedFamily);
+            check(receivingProject.Document.OpeningTypes.Count(type =>
+                type.FamilyName == customWindowType.FamilyName && type.GlazingLightCount == 3) == 1,
+                "Repeated family import reuses the matching geometry without extra types");
+            session.Undo();
+            check(BuildingMesher.Build(session.Document).TriangleCount == mesh.TriangleCount,
+                "Undo restores the previous window geometry");
+            session.Redo();
+            check(BuildingMesher.Build(session.Document).TriangleCount == customMesh.TriangleCount,
+                "Redo rebuilds custom family geometry");
+            var beforeInvalidType = session.Document;
+            try
+            {
+                session.UpdateOpeningType(windowTypeId, customWindowType.FamilyName, customWindowType.Name,
+                    customWindowType.Width, customWindowType.Height, customWindowType.DefaultSill,
+                    frameWidth: 0.2, glazingLightCount: 3);
+            }
+            catch (InvalidDataException) { }
+            check(ReferenceEquals(beforeInvalidType, session.Document),
+                "Invalid frame width rejects the edit atomically");
             var projectPath = Path.Combine(directory, "families.g3");
             ProjectFile.Save(projectPath, session.Document);
             var loaded = ProjectFile.Load(projectPath);
-            check(BuildingMesher.Build(loaded).TriangleCount == mesh.TriangleCount,
+            check(BuildingMesher.Build(loaded).TriangleCount == customMesh.TriangleCount,
                 "Native save and reopen preserves the complete family assemblies");
+            session.Undo();
             session.Undo();
             check(session.Document.Openings.Count == 1, "Undo removes a window assembly atomically");
             session.Redo();
-            check(BuildingMesher.Build(session.Document).TriangleCount == mesh.TriangleCount,
+            session.Redo();
+            check(BuildingMesher.Build(session.Document).TriangleCount == customMesh.TriangleCount,
                 "Redo restores frame and glass geometry");
             var legacy = loaded.OpeningTypes.FindIndex(type => type.Id == BuiltInOpeningTypes.SingleDoor900Id);
             loaded.OpeningTypes[legacy] = loaded.OpeningTypes[legacy] with { Depth = 0 };

@@ -128,14 +128,30 @@ public static class OpeningFamilyImport
         foreach (var incoming in family.Types)
         {
             var existing = document.OpeningTypes.FirstOrDefault(type =>
-                type.Kind == incoming.Kind && type.FamilyName == family.Name && type.Name == incoming.Name &&
+                type.Kind == incoming.Kind && type.FamilyName == family.Name &&
+                MatchesImportedName(type.Name, incoming.Name) &&
                 Math.Abs(type.Width - incoming.Width) <= OpeningTypeRules.SizeTolerance &&
-                Math.Abs(type.Height - incoming.Height) <= OpeningTypeRules.SizeTolerance);
+                Math.Abs(type.Height - incoming.Height) <= OpeningTypeRules.SizeTolerance &&
+                Math.Abs(type.DefaultSill - incoming.DefaultSill) <= OpeningTypeRules.SizeTolerance &&
+                Math.Abs(type.Depth - incoming.Depth) <= OpeningTypeRules.SizeTolerance &&
+                Math.Abs(type.FrameWidth - incoming.FrameWidth) <= OpeningTypeRules.SizeTolerance &&
+                type.GlazingLightCount == incoming.GlazingLightCount &&
+                type.MaterialName == incoming.MaterialName);
             if (existing is not null) continue;
             var id = document.OpeningTypes.Any(type => type.Id == incoming.Id) ? Guid.NewGuid() : incoming.Id;
             var name = UniqueName(document.OpeningTypes, family.Name, incoming.Name);
             document.OpeningTypes.Add(incoming with { Id = id, Name = name });
         }
+    }
+
+    /// <summary>Recognizes an earlier collision suffix so importing the same family is idempotent.</summary>
+    private static bool MatchesImportedName(string existingName, string incomingName)
+    {
+        if (existingName == incomingName) return true;
+        var prefix = incomingName + " (";
+        return existingName.StartsWith(prefix, StringComparison.Ordinal) &&
+            existingName.EndsWith(')') &&
+            int.TryParse(existingName[prefix.Length..^1], out var suffix) && suffix >= 2;
     }
 
     /// <summary>Returns the type name, or the name with a numeric suffix when the family already uses it.</summary>

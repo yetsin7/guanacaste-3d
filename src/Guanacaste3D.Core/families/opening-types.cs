@@ -26,6 +26,12 @@ public sealed record OpeningType(
     /// </summary>
     public double Depth { get; init; }
 
+    /// <summary>Visible lining width in meters; also controls the sash member size.</summary>
+    public double FrameWidth { get; init; } = 0.06;
+
+    /// <summary>Window lights; zero derives one or two lights from the opening width.</summary>
+    public int GlazingLightCount { get; init; }
+
     /// <summary>Returns "Family: Type" for lists and schedules.</summary>
     public string DisplayName => $"{FamilyName}: {Name}";
 }
@@ -75,6 +81,15 @@ public static class OpeningTypeRules
                 !double.IsFinite(type.Height) || type.Height is < 0.3 or > 20 ||
                 !double.IsFinite(type.DefaultSill) || type.DefaultSill is < 0 or > 50 ||
                 !double.IsFinite(type.Depth) || type.Depth is < 0 or > 1 ||
+                !double.IsFinite(type.FrameWidth) || type.FrameWidth is < 0.02 or > 0.15 ||
+                type.GlazingLightCount is < 0 or > 4 ||
+                type.Width <= 2 * type.FrameWidth + 0.1 ||
+                (type.Kind == OpeningKind.Window &&
+                    (type.Width - 2 * type.FrameWidth) /
+                    (type.GlazingLightCount > 0 ? type.GlazingLightCount : type.Width > 1 ? 2 : 1)
+                    <= 2 * Math.Min(type.FrameWidth, 0.07) + 0.02) ||
+                (type.Kind == OpeningKind.Door && type.GlazingLightCount != 0) ||
+                (type.GlazingLightCount > 0 && type.Width / type.GlazingLightCount < 0.18) ||
                 (type.Kind == OpeningKind.Door && type.DefaultSill != 0)))
             throw new InvalidDataException("Invalid door or window type catalog.");
         if (types.Select(type => type.Id).Distinct().Count() != types.Count ||
