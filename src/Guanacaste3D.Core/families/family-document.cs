@@ -238,8 +238,8 @@ public static class FamilyFormulaRules
                 byName.TryGetValue(name, out var referenced) ? TypeFor(referenced.Kind) : null);
             var expected = TypeFor(parameter.Kind);
             if (actual != expected)
-                throw new InvalidDataException("Family formula '" + parameter.Name +
-                    "' produces " + actual.Describe() + " but the parameter requires " + expected.Describe() + ".");
+                throw new InvalidDataException("Formula error: '" + parameter.Name +
+                    "' produces " + actual.Describe() + " but the parameter is " + expected.Describe() + ".");
         }
 
         var calculatedByName = calculated.ToDictionary(parameter => parameter.Name, StringComparer.OrdinalIgnoreCase);
@@ -248,8 +248,8 @@ public static class FamilyFormulaRules
         {
             if (state.GetValueOrDefault(parameter.Id) == 2) return;
             if (state.GetValueOrDefault(parameter.Id) == 1)
-                throw new InvalidDataException("Family parameter formulas contain a circular dependency at '" +
-                    parameter.Name + "'.");
+                throw new InvalidDataException("Formula error: '" + parameter.Name +
+                    "' depends on itself through other formulas.");
             state[parameter.Id] = 1;
             foreach (var reference in FormulaParser.References(parsed[parameter.Id]))
                 if (calculatedByName.TryGetValue(reference, out var dependency))
