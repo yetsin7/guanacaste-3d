@@ -29,6 +29,7 @@ static class InPlaceFamilyChecks
         CheckUndoRedoAndPersistence(check);
         CheckSchemaEightMigration(check);
         CheckSceneIntegration(check);
+        CheckOfficialContainerKeepsFamilies(check);
     }
 
     /// <summary>Creates a session on a new project so each check starts from an empty document.</summary>
@@ -246,6 +247,31 @@ static class InPlaceFamilyChecks
         finally
         {
             if (File.Exists(filename)) File.Delete(filename);
+        }
+    }
+
+    /// <summary>Verifies that families survive the official .g3d container, the format new projects are saved in.</summary>
+    private static void CheckOfficialContainerKeepsFamilies(Action<bool, string> check)
+    {
+        var session = NewSession();
+        var familyId = session.CreateInPlaceFamily(GenericModels, "Container block");
+        session.SetInPlaceParameter(familyId, "Altura", 0.5);
+        session.AddInPlaceExtrusion(familyId, WorkPlane.Horizontal(0), TwoByOneRectangle, 0, 0.5,
+            depthParameter: "Altura", materialName: "Concrete");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-container-{Guid.NewGuid():N}.g3d");
+        try
+        {
+            ProjectFile.Save(path, session.Document);
+            var reopened = ProjectFile.Load(path).InPlaceFamilies.Single();
+            var volume = InPlaceFamilyRules.SignedVolume(InPlaceFamilyRules.Tessellate(reopened));
+            check(reopened.Name == "Container block" && reopened.Parameters.Single().Value == 0.5 &&
+                  reopened.Extrusions.Single().DepthParameter == "Altura" && Math.Abs(volume - 1.0) < Tolerance,
+                "Families survive the official .g3d container with their parameters, binding and regenerated volume");
+        }
+        finally
+        {
+            foreach (var file in new[] { path, path + ".bak" })
+                if (File.Exists(file)) File.Delete(file);
         }
     }
 
