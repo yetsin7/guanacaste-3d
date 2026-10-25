@@ -27,7 +27,10 @@ and support undo/redo. Their remove control deletes only the annotation. Deletin
 an owner removes dependent annotations. Project schema 10 migrates schema 9;
 templates strip annotations along with their model owners. Cardinal gaps use
 axis-aligned bounding envelopes, not perpendicular distances between arbitrary
-oblique faces. Annotation export to DXF/IFC and sheet placement are not included.
+oblique faces. DXF export includes current measurement lines, architectural ticks and numeric
+labels on a dedicated DIMENSION layer per level. This is a static drawing
+snapshot, not native CAD constraint objects. IFC annotation export and sheet
+placement are not included.
 
 Wall corners now match faces independently of endpoint direction and type.
 Miter extensions are bounded against short walls. The plan strokes the combined

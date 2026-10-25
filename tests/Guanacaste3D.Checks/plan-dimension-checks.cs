@@ -45,6 +45,7 @@ internal static class PlanDimensionChecks
         check(Math.Abs(PlanDimensions.Resolve(session.Document, gap)!.Value.Value - 5) < 1e-9, "Column gap edit solves the clear distance to a wall face");
         session.AddDimension(gap);
         check(TemplateRules.StripModelContent(session.Document).Dimensions.Count == 0, "Templates remove annotations with their model owners");
+        DimensionExportChecks.Run(check);
         CheckCorners(check);
         var stair = session.AddStructuralElement(level, StructuralElementKind.Stair, "Straight stair", new(1, 1), new(6, 1));
         var railing = session.AddStructuralElement(level, StructuralElementKind.Railing, "Straight guard", new(1, 2), new(6, 2));

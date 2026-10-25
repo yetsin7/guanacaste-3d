@@ -7,7 +7,7 @@ namespace Guanacaste3D.Core;
 /// Exports metric DXF R12 (AC1009) floor-plan geometry without external CAD dependencies.
 /// It is a one-way drawing interchange, not a round-trip BIM serialization.
 /// </summary>
-public static class DxfExporter
+public static partial class DxfExporter
 {
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
     private static readonly (string Suffix, int Color)[] LayerKinds =
@@ -16,7 +16,8 @@ public static class DxfExporter
         ("DOOR", 1),
         ("WINDOW", 5),
         ("SLAB", 3),
-        ("ROOM", 4)
+        ("ROOM", 4),
+        ("DIMENSION", 2)
     ];
 
     /// <summary>Builds an ASCII DXF document with one layer group per building level.</summary>
@@ -98,6 +99,8 @@ public static class DxfExporter
             if (previous < wall.Length)
                 WriteWallRectangle(output, wall, previous, wall.Length, z, LayerName(index, "WALL"));
         }
+
+        WriteDimensions(output, document, level, index);
 
         foreach (var room in document.Rooms.Where(r => r.LevelId == level.Id).OrderBy(r => r.Number))
         {
@@ -182,8 +185,10 @@ public static class DxfExporter
     private static string SanitizeText(string text) =>
         new(text.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
 
+    /// <summary>Formats metric coordinates independently of the current user locale.</summary>
     private static string Number(double value) => value.ToString("0.########", Invariant);
 
+    /// <summary>Appends a group-code pair using the DXF ASCII line convention.</summary>
     private static void Pair(StringBuilder output, int code, string value) =>
         output.Append(code.ToString(Invariant)).Append("\r\n").Append(value).Append("\r\n");
 }
