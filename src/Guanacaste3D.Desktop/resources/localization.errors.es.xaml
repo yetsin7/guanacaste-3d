@@ -116,4 +116,25 @@
   <sys:String x:Key="Error.The OBJ file has no door geometry.">El archivo OBJ no contiene geometría de puerta.</sys:String>
   <sys:String x:Key="Error.The IFC length unit is not supported.">La unidad de longitud del IFC no es compatible. Exporta en metros o milímetros.</sys:String>
   <sys:String x:Key="Error.The IFC file has no matching opening with declared dimensions.">El IFC no contiene una abertura de la categoría seleccionada con ancho y alto definidos.</sys:String>
+  <sys:String x:Key="Error.The family has no types in this project.">La familia no tiene tipos en este proyecto.</sys:String>
+  <sys:String x:Key="Error.A family cannot mix doors and windows.">Una familia no puede combinar puertas y ventanas.</sys:String>
+  <sys:String x:Key="Error.Unsupported family schema version.">La versión del formato de familia no es compatible.</sys:String>
+  <sys:String x:Key="Error.The family identity, name, or category is invalid.">La identidad, el nombre o la categoría de la familia no son válidos.</sys:String>
+  <sys:String x:Key="Error.A family must contain at least one type of its own category and name.">Una familia debe tener al menos un tipo de su misma categoría y nombre.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D families must use the .G3Df extension.">Las familias de Guanacaste 3D deben usar la extensión .G3Df.</sys:String>
+  <sys:String x:Key="Error.The file is not a Guanacaste 3D family.">El archivo no es una familia de Guanacaste 3D.</sys:String>
+  <sys:String x:Key="Error.The family document is empty.">El documento de familia está vacío.</sys:String>
+  <sys:String x:Key="Error.The document exceeds the 20 MB limit.">El documento supera el límite de 20 MB.</sys:String>
+  <sys:String x:Key="Error.The document signature is missing.">Falta la firma del documento.</sys:String>
+  <sys:String x:Key="Error.The document signature is missing or unsupported.">La firma del documento falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The document checksum does not match its content. The file may be damaged or edited.">La suma de comprobación no coincide con el contenido. El archivo puede estar dañado o haber sido editado.</sys:String>
+  <sys:String x:Key="Error.The document schema version is invalid.">La versión del esquema del documento no es válida.</sys:String>
+  <sys:String x:Key="Error.The document must be a JSON object.">El documento debe ser un objeto JSON.</sys:String>
+  <sys:String x:Key="Error.The document contains duplicate fields.">El documento contiene campos duplicados.</sys:String>
+  <sys:String x:Key="Error.The file exceeds 20 MB.">El archivo supera los 20 MB.</sys:String>
+  <sys:String x:Key="Error.The file exceeds the 20 MB limit.">El archivo supera el límite de 20 MB.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D templates must use the .G3Dt extension.">Las plantillas de Guanacaste 3D deben usar la extensión .G3Dt.</sys:String>
+  <sys:String x:Key="Error.The file is not a Guanacaste 3D template.">El archivo no es una plantilla de Guanacaste 3D.</sys:String>
+  <sys:String x:Key="Error.Unsupported template schema version.">La versión del formato de plantilla no es compatible.</sys:String>
+  <sys:String x:Key="Error.A template cannot contain model elements or parameter values.">Una plantilla no puede contener elementos del modelo ni valores de parámetros.</sys:String>
 </ResourceDictionary>

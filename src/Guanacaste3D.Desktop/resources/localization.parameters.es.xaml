@@ -145,6 +145,7 @@
   <sys:String x:Key="Transaction.UpdateOpeningType">Modificar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.RemoveOpeningType">Eliminar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.PurgeOpeningTypes">Purgar tipos de abertura</sys:String>
+  <sys:String x:Key="Transaction.ImportOpeningFamily">Importar familia de aberturas</sys:String>
   <!-- Parametric levels and wall top constraints (schema 7). -->
   <sys:String x:Key="Action.Levels">Niveles…</sys:String>
   <sys:String x:Key="Levels.WindowTitle">Niveles y restricciones</sys:String>

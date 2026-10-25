@@ -393,5 +393,6 @@ WallPlacementChecks.Run(Check);
 WallAppearanceChecks.Run(Check);
 WallJoinChecks.Run(Check);
 StructuralChecks.Run(Check);
+FamilyTemplateChecks.Run(Check);
 
 Console.WriteLine("Guanacaste 3D: all core checks passed.");
