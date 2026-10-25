@@ -42,39 +42,52 @@ public partial class MainWindow
         AddLine(At(opening.Begin, -half), At(opening.Begin, half), 2, OpeningFrameBrush, tag);
         AddLine(At(opening.End, -half), At(opening.End, half), 2, OpeningFrameBrush, tag);
 
-        if (opening.Kind == OpeningKind.Window)
+        if (opening.Kind == OpeningKind.Door)
         {
-            // Two glazing lines sit a third of the way from the centreline to each face of the frame.
-            var pane = half / 3;
-            AddLine(At(opening.Begin, -pane), At(opening.End, -pane), 1.5, brush, tag);
-            AddLine(At(opening.Begin, pane), At(opening.End, pane), 1.5, brush, tag);
+            DrawDoorSymbol(wall, opening, At, brush, leafFill, tag);
             return;
         }
 
-        // The leaf is drawn open at 90°, hinged at the begin jamb; its plan width stays visible at any zoom.
-        var leafHalf = Math.Max(0.02, 2 / _scale);
-        PlanCanvas.Children.Add(new Polygon
-        {
-            Points = new PointCollection
-            {
-                WorldToCanvas(At(opening.Begin - leafHalf, 0)), WorldToCanvas(At(opening.Begin + leafHalf, 0)),
-                WorldToCanvas(At(opening.Begin + leafHalf, opening.Width)),
-                WorldToCanvas(At(opening.Begin - leafHalf, opening.Width))
-            },
-            Fill = leafFill,
-            Stroke = brush,
-            StrokeThickness = 1.5,
-            Tag = tag
-        });
+        // Two glazing lines sit a third of the way from the centreline to each face of the frame.
+        var pane = half / 3;
+        AddLine(At(opening.Begin, -pane), At(opening.End, -pane), 1.5, brush, tag);
+        AddLine(At(opening.Begin, pane), At(opening.End, pane), 1.5, brush, tag);
+    }
 
-        // The swing arc runs from the latch jamb (angle 0) to the leaf tip (90°), dashed as in drafting convention.
-        var swing = new List<Point2>();
-        for (var step = 0; step <= 24; step++)
-        {
-            var angle = step * Math.PI / 48;
-            swing.Add(At(opening.Begin + opening.Width * Math.Cos(angle), opening.Width * Math.Sin(angle)));
-        }
-        AddPolyline(swing, 1, brush, tag, dashed: true);
+    /// <summary>
+    /// Draws the shared door symbol: filled jamb linings, casings proud of both wall faces, threshold
+    /// lines, each leaf open at 90° with its real thickness, and a fine continuous swing arc.
+    /// </summary>
+    private void DrawDoorSymbol(Wall wall, WallOpening opening, Func<double, double, Point2> at,
+        Brush brush, Brush leafFill, Guid? tag)
+    {
+        var type = _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == opening.OpeningTypeId);
+        var symbol = DoorPlanSymbol.Build(opening.Begin, opening.End, wall.Thickness,
+            type is null ? 0.04 : WallGeometry.LeafDepth(type, wall));
+        Point ToCanvas((double U, double V) point) => WorldToCanvas(at(point.U, point.V));
+        foreach (var line in symbol.Thresholds)
+            PlanCanvas.Children.Add(new Line
+            {
+                X1 = ToCanvas(line.From).X, Y1 = ToCanvas(line.From).Y, X2 = ToCanvas(line.To).X, Y2 = ToCanvas(line.To).Y,
+                Stroke = brush, StrokeThickness = 0.6, Tag = tag
+            });
+        foreach (var arc in symbol.Swings)
+            PlanCanvas.Children.Add(new Polyline
+            {
+                Points = new PointCollection(DoorPlanSymbol.Sample(arc).Select(ToCanvas)),
+                Stroke = brush, StrokeThickness = 0.8, Tag = tag
+            });
+        foreach (var outline in symbol.Outlines)
+            PlanCanvas.Children.Add(new Polygon
+            {
+                Points = new PointCollection(outline.Points.Select(ToCanvas)),
+                Fill = outline.Part == DoorPlanPart.Casing ? Brushes.White : leafFill,
+                Stroke = outline.Part == DoorPlanPart.Leaf ? brush : OpeningFrameBrush,
+                StrokeThickness = outline.Part == DoorPlanPart.Leaf ? 1.4 : 1,
+                StrokeLineJoin = PenLineJoin.Miter,
+                SnapsToDevicePixels = true,
+                Tag = tag
+            });
     }
 
     /// <summary>Adds a model-space polyline, optionally dashed, to the plan canvas.</summary>

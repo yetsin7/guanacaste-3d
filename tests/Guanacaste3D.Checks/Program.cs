@@ -392,6 +392,7 @@ SolarChecks.Run(Check);
 WallPlacementChecks.Run(Check);
 WallAppearanceChecks.Run(Check);
 WallJoinChecks.Run(Check);
+DoorPlanSymbolChecks.Run(Check);
 StructuralChecks.Run(Check);
 FamilyTemplateChecks.Run(Check);
 
