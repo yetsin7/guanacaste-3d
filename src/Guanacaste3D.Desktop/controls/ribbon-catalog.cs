@@ -5,17 +5,8 @@ namespace Guanacaste3D.Desktop.Controls;
 /// reference BIM application's Spanish ribbon. Labels and icons are resource keys resolved by the
 /// control at runtime; command ids are routed by <c>MainWindow</c>.
 /// </summary>
-public static class RibbonCatalog
+public static partial class RibbonCatalog
 {
-    private static RibbonCommandDefinition L(string id, string label, string icon) =>
-        new(id, label, icon, RibbonCommandSize.Large);
-
-    private static RibbonCommandDefinition S(string id, string label, string icon) =>
-        new(id, label, icon, RibbonCommandSize.Compact);
-
-    private static RibbonGroupDefinition G(string label, params RibbonCommandDefinition[] commands) =>
-        new(label, commands);
-
     /// <summary>The "Seleccionar" group with the Modify button, shared by every workspace.</summary>
     private static RibbonGroupDefinition Selection() =>
         G("RibbonGroup.Selection", L("Modify", "Tool.Modify", "Icon.Apply"));
@@ -39,6 +30,7 @@ public static class RibbonCatalog
         _ => [Selection()]
     };
 
+    /// <summary>Defines structural modeling, foundations, openings, and datum tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Structure() =>
     [
         Selection(),
@@ -77,6 +69,7 @@ public static class RibbonCatalog
             S("Viewer", "RibbonCommand.Viewer", "Icon.Cube")),
     ];
 
+    /// <summary>Defines reinforcement and precast concrete authoring tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Concrete() =>
     [
         Selection(),
@@ -108,6 +101,7 @@ public static class RibbonCatalog
             S("Viewer", "RibbonCommand.Viewer", "Icon.Cube")),
     ];
 
+    /// <summary>Defines steel fabrication connections, elements, modifiers, and cuts.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Steel() =>
     [
         Selection(),
@@ -135,6 +129,7 @@ public static class RibbonCatalog
             S("Viewer", "RibbonCommand.Viewer", "Icon.Cube")),
     ];
 
+    /// <summary>Defines coordinated mechanical, plumbing, electrical, and fabrication tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Systems() =>
     [
         Selection(),
@@ -162,6 +157,7 @@ public static class RibbonCatalog
             S("ElectricalEquipment", "RibbonCommand.ElectricalEquipment", "Icon.Wire")),
     ];
 
+    /// <summary>Defines external reference, import, and library loading tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Insert() =>
     [
         Selection(),
@@ -188,6 +184,7 @@ public static class RibbonCatalog
             L("InsertFromFile", "RibbonCommand.InsertFromFile", "Icon.Open")),
     ];
 
+    /// <summary>Defines dimensions, details, text, tags, color fills, and symbols.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Annotate() =>
     [
         Selection(),
@@ -222,6 +219,7 @@ public static class RibbonCatalog
         G("RibbonGroup.Symbol", L("Symbol", "RibbonCommand.Symbol", "Icon.Level")),
     ];
 
+    /// <summary>Defines analytical modeling, reports, checks, optimization, and results.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Analyze() =>
     [
         Selection(),
@@ -248,6 +246,7 @@ public static class RibbonCatalog
             S("ResultsFill", "RibbonCommand.ResultsFill", "Icon.Render")),
     ];
 
+    /// <summary>Defines conceptual massing, face-based elements, terrain, and site analysis.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> MassAndSite() =>
     [
         Selection(),
@@ -272,6 +271,7 @@ public static class RibbonCatalog
             S("GradedRegion", "RibbonCommand.GradedRegion", "Icon.Site")),
     ];
 
+    /// <summary>Defines team communication, worksharing, synchronization, and coordination.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Collaborate() =>
     [
         Selection(),
@@ -294,6 +294,7 @@ public static class RibbonCatalog
             L("Share", "RibbonCommand.Share", "Icon.ExportCube")),
     ];
 
+    /// <summary>Defines graphics, presentation, view creation, sheets, and window tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> ViewTab() =>
     [
         Selection(),
@@ -331,6 +332,7 @@ public static class RibbonCatalog
             S("CanvasTheme", "RibbonCommand.CanvasTheme", "Icon.Render")),
     ];
 
+    /// <summary>Defines project settings, options, phases, inquiry, and automation tools.</summary>
     private static IReadOnlyList<RibbonGroupDefinition> Manage() =>
     [
         Selection(),
@@ -360,48 +362,4 @@ public static class RibbonCatalog
             S("AutomationPlayer", "RibbonCommand.AutomationPlayer", "Icon.Dynamo")),
     ];
 
-    private static IReadOnlyList<RibbonGroupDefinition> AddIns() =>
-    [
-        Selection(),
-        G("RibbonGroup.ModelTransfer",
-            L("TransmitModel", "RibbonCommand.TransmitModel", "Icon.ExportCube"),
-            S("Help", "RibbonCommand.Help", "Icon.Apply"),
-            S("About", "RibbonCommand.ModelCheck", "Icon.Apply")),
-        G("RibbonGroup.Conversion", L("FamilyConverter", "RibbonCommand.FamilyConverter", "Icon.ExportCube")),
-        G("RibbonGroup.Automation", L("AiAssistant", "RibbonCommand.AutomationAssistant", "Icon.Render")),
-    ];
-
-    private static IReadOnlyList<RibbonGroupDefinition> Modify() =>
-    [
-        Selection(),
-        G("RibbonGroup.Properties", L("Properties", "RibbonCommand.Properties", "Icon.Parameters")),
-        G("RibbonGroup.Clipboard",
-            L("Paste", "RibbonCommand.Paste", "Icon.Paste"),
-            S("Cut", "RibbonCommand.Cut", "Icon.Section"),
-            S("Copy", "RibbonCommand.Copy", "Icon.Paste"),
-            S("MatchProperties", "RibbonCommand.MatchProperties", "Icon.Apply")),
-        G("RibbonGroup.Geometry",
-            S("TrimExtend", "RibbonCommand.TrimExtend", "Icon.Section"),
-            S("CutGeometry", "RibbonCommand.CutGeometry", "Icon.Section"),
-            S("JoinGeometry", "RibbonCommand.JoinGeometry", "Icon.Section"),
-            S("UnjoinGeometry", "RibbonCommand.UnjoinGeometry", "Icon.Section")),
-        G("RibbonGroup.Transform",
-            L("Move", "RibbonCommand.MeasureBetween", "Icon.Move"),
-            S("CopyElement", "RibbonCommand.Copy", "Icon.Paste"),
-            S("Rotate", "RibbonCommand.MirrorDrawAxis", "Icon.Move"),
-            S("MirrorPickAxis", "RibbonCommand.MirrorPickAxis", "Icon.Move"),
-            S("Align", "RibbonCommand.Align", "Icon.Move"),
-            S("Array", "RibbonCommand.Array", "Icon.Grid"),
-            S("Scale", "RibbonCommand.Scale", "Icon.Fit"),
-            S("Split", "RibbonCommand.Split", "Icon.Section"),
-            S("Offset", "RibbonCommand.Offset", "Icon.Section"),
-            S("Pin", "RibbonCommand.Pin", "Icon.Apply"),
-            S("Delete", "RibbonCommand.Cut", "Icon.Section")),
-        G("RibbonGroup.Measure",
-            L("Measure", "RibbonCommand.MeasureBetween", "Icon.Fit"),
-            S("MeasureAlong", "RibbonCommand.MeasureAlong", "Icon.Fit")),
-        G("RibbonGroup.Create",
-            S("CreateGroup", "RibbonCommand.CreateGroup", "Icon.Cube"),
-            S("CreateAssembly", "RibbonCommand.CreateAssembly", "Icon.Cube")),
-    ];
 }
