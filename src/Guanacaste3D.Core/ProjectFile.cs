@@ -115,6 +115,13 @@ public static class ProjectFile
             document.SchemaVersion = 8;
             document.Schedules ??= [];
         }
+        if (document.SchemaVersion == 8)
+        {
+            // Schema 9 adds in-place families; earlier projects have none.
+            document.SchemaVersion = 9;
+            document.InPlaceFamilies ??= [];
+        }
+
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

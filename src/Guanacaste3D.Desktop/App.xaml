@@ -10,6 +10,7 @@
         <ResourceDictionary Source="resources/localization.ribbons.es.xaml"/>
         <ResourceDictionary Source="resources/localization.parameters.es.xaml"/>
         <ResourceDictionary Source="resources/localization.errors.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.in-place.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
