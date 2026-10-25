@@ -135,6 +135,13 @@ public static class ProjectFile
             document.SchemaVersion = 8;
             document.Schedules ??= [];
         }
+        if (document.SchemaVersion == 8)
+        {
+            // Schema 9 adds in-place families; earlier projects have none.
+            document.SchemaVersion = 9;
+            document.InPlaceFamilies ??= [];
+        }
+
     }
 
     /// <summary>

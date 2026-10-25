@@ -142,4 +142,16 @@
   <sys:String x:Key="Error.A schedule references a field that is not available.">La tabla usa un campo que no existe para esta categoría.</sys:String>
   <sys:String x:Key="Error.Schedule identifiers and names must be unique.">Ya existe una tabla con ese nombre.</sys:String>
   <sys:String x:Key="Error.The schedule does not exist.">La tabla no existe.</sys:String>
+  <sys:String x:Key="Error.A profile needs between 3 and 500 vertices.">Un perfil necesita entre 3 y 500 vértices.</sys:String>
+  <sys:String x:Key="Error.A profile vertex has a non-finite coordinate.">Un vértice del perfil tiene una coordenada no finita.</sys:String>
+  <sys:String x:Key="Error.In-place family and extrusion identifiers and names must be unique.">Los identificadores y nombres de familias y extrusiones in situ deben ser únicos.</sys:String>
+  <sys:String x:Key="Error.The extrusion depth refers to a parameter that does not exist.">La profundidad de la extrusión hace referencia a un parámetro que no existe.</sys:String>
+  <sys:String x:Key="Error.The extrusion does not exist.">La extrusión no existe.</sys:String>
+  <sys:String x:Key="Error.The family category does not exist.">La categoría de familia no existe.</sys:String>
+  <sys:String x:Key="Error.The in-place family collection is invalid.">La colección de familias in situ no es válida.</sys:String>
+  <sys:String x:Key="Error.The in-place family does not exist.">La familia in situ no existe.</sys:String>
+  <sys:String x:Key="Error.The profile encloses no area; its vertices may be collinear.">El perfil no encierra área; sus vértices podrían estar alineados.</sys:String>
+  <sys:String x:Key="Error.The work plane must have a finite origin and orthogonal unit axes.">El plano de trabajo debe tener un origen finito y ejes unitarios ortogonales.</sys:String>
+  <sys:String x:Key="Error.This category does not accept in-place families yet.">Esta categoría todavía no admite familias in situ.</sys:String>
+  <sys:String x:Key="Error.An in-place family is invalid or uses a category that does not accept in-place families.">Una familia in situ no es válida o usa una categoría que no admite familias in situ.</sys:String>
 </ResourceDictionary>

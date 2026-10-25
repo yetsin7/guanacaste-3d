@@ -79,6 +79,9 @@ public static class BuildingMesher
         foreach (var floor in document.Floors)
             AddSlab(mesh, floor.Boundary, elevations[floor.LevelId], floor.Thickness);
 
+        foreach (var family in document.InPlaceFamilies)
+            InPlaceFamilyRules.AppendTo(mesh, family);
+
         if (includeGround)
         {
             var (min, max) = mesh.Bounds();
