@@ -20,6 +20,12 @@ public sealed record OpeningType(
     /// <summary>Optional frame or panel material shown in schedules and exports.</summary>
     public string MaterialName { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Leaf or panel thickness in meters. Zero means the opening is a plain hole. A
+    /// positive depth fills the opening with a leaf no thicker than its host wall.
+    /// </summary>
+    public double Depth { get; init; }
+
     /// <summary>Returns "Family: Type" for lists and schedules.</summary>
     public string DisplayName => $"{FamilyName}: {Name}";
 }
@@ -37,9 +43,9 @@ public static class BuiltInOpeningTypes
     /// <summary>Creates an independent default opening-type catalog for a new document.</summary>
     public static List<OpeningType> CreateDefaults() =>
     [
-        new(SingleDoor800Id, OpeningKind.Door, "Single Door", "800 × 2100 mm", 0.8, 2.1, 0),
-        new(SingleDoor900Id, OpeningKind.Door, "Single Door", "900 × 2100 mm", 0.9, 2.1, 0),
-        new(DoubleDoor1500Id, OpeningKind.Door, "Double Door", "1500 × 2100 mm", 1.5, 2.1, 0),
+        new(SingleDoor800Id, OpeningKind.Door, "Single Door", "800 × 2100 mm", 0.8, 2.1, 0) { Depth = 0.04 },
+        new(SingleDoor900Id, OpeningKind.Door, "Single Door", "900 × 2100 mm", 0.9, 2.1, 0) { Depth = 0.04 },
+        new(DoubleDoor1500Id, OpeningKind.Door, "Double Door", "1500 × 2100 mm", 1.5, 2.1, 0) { Depth = 0.04 },
         new(FixedWindow600Id, OpeningKind.Window, "Fixed Window", "600 × 600 mm", 0.6, 0.6, 1.5),
         new(FixedWindow1200Id, OpeningKind.Window, "Fixed Window", "1200 × 1200 mm", 1.2, 1.2, 0.9),
         new(SlidingWindow1600Id, OpeningKind.Window, "Sliding Window", "1600 × 1400 mm", 1.6, 1.4, 0.9)
@@ -68,6 +74,7 @@ public static class OpeningTypeRules
                 !double.IsFinite(type.Width) || type.Width is < 0.3 or > 10 ||
                 !double.IsFinite(type.Height) || type.Height is < 0.3 or > 20 ||
                 !double.IsFinite(type.DefaultSill) || type.DefaultSill is < 0 or > 50 ||
+                !double.IsFinite(type.Depth) || type.Depth is < 0 or > 1 ||
                 (type.Kind == OpeningKind.Door && type.DefaultSill != 0)))
             throw new InvalidDataException("Invalid door or window type catalog.");
         if (types.Select(type => type.Id).Distinct().Count() != types.Count ||
@@ -115,7 +122,7 @@ public static class OpeningTypeRules
         for (var suffix = 2; types.Any(type => type.FamilyName == family && type.Name == name); suffix++)
             name = string.Create(CultureInfo.InvariantCulture, $"{width * 1000:0} × {height * 1000:0} mm ({suffix})");
         var created = new OpeningType(Guid.NewGuid(), kind, family, name, width, height,
-            kind == OpeningKind.Door ? 0 : defaultSill);
+            kind == OpeningKind.Door ? 0 : defaultSill) { Depth = kind == OpeningKind.Door ? 0.04 : 0 };
         types.Add(created);
         return created;
     }

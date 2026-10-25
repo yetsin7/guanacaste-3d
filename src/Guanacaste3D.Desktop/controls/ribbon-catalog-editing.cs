@@ -47,6 +47,7 @@ public static partial class RibbonCatalog
         G("RibbonGroup.Transform",
             L("Move", "Action.Move", "Icon.Move"),
             S("CopyElement", "Action.Duplicate", "Icon.Paste"),
+            S("CreateSimilar", "RibbonCommand.CreateSimilar", "Icon.Wall"),
             S("Rotate", "Action.Rotate", "Icon.Move"),
             S("MirrorPickAxis", "RibbonCommand.MirrorPickAxis", "Icon.Move"),
             S("Align", "RibbonCommand.Align", "Icon.Move"),

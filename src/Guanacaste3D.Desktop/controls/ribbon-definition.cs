@@ -17,7 +17,8 @@ public enum RibbonWorkspace
     View,
     Manage,
     AddIns,
-    Modify
+    Modify,
+    Wall
 }
 
 /// <summary>

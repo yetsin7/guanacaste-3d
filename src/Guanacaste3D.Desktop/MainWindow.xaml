@@ -5,7 +5,8 @@
   Title="{DynamicResource App.Name}" Width="1680" Height="960"
   MinWidth="1180" MinHeight="760" FontFamily="Segoe UI Variable Display, Segoe UI"
   Background="{DynamicResource AppBackgroundBrush}" WindowStartupLocation="CenterScreen"
-  WindowState="Maximized">
+  WindowState="Maximized" PreviewTextInput="MainWindow_PreviewTextInput"
+  PreviewKeyDown="MainWindow_PreviewKeyDown">
   <DockPanel LastChildFill="True">
     <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="48"
             BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,0,1">
@@ -15,12 +16,11 @@
             <TextBlock Text="G3" Foreground="White" FontWeight="Bold" FontSize="12"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
-          <Button Content="↶" Click="Undo_Click" Style="{StaticResource QuickAccessButtonStyle}"
-                  ToolTip="{DynamicResource Action.Undo}"/>
-          <Button Content="↷" Click="Redo_Click" Style="{StaticResource QuickAccessButtonStyle}"
-                  ToolTip="{DynamicResource Action.Redo}"/>
-          <Button Content="▣" Click="Save_Click" Style="{StaticResource QuickAccessButtonStyle}"
-                  ToolTip="{DynamicResource Action.Save}"/>
+          <StackPanel x:Name="QuickAccessHost" Orientation="Horizontal"/>
+          <Button Click="CustomizeCommands_Click" Style="{StaticResource QuickAccessButtonStyle}"
+                  ToolTip="{DynamicResource CommandCustomization.ToolTip}">
+            <Image Source="{StaticResource Icon.Shortcut}" Width="18" Height="18"/>
+          </Button>
         </StackPanel>
         <TextBlock Text="{DynamicResource App.Name}" Foreground="{DynamicResource PrimaryTextBrush}"
                    FontWeight="SemiBold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -28,7 +28,6 @@
                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
       </Grid>
     </Border>
-
     <Menu DockPanel.Dock="Top" Background="#FBFBFD" Padding="9,1" Foreground="{DynamicResource PrimaryTextBrush}"
           BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,0,1">
       <MenuItem Header="{DynamicResource Menu.File}">
@@ -68,7 +67,6 @@
         <MenuItem Header="{DynamicResource Action.About}" Click="About_Click"/>
       </MenuItem>
     </Menu>
-
     <TabControl x:Name="RibbonTabControl" DockPanel.Dock="Top" Height="166"
                 Background="{DynamicResource RibbonBrush}" BorderBrush="{DynamicResource PanelBorderBrush}"
                 BorderThickness="0,0,0,1" ItemContainerStyle="{StaticResource RibbonTabItemStyle}">
@@ -115,8 +113,10 @@
       <TabItem Header="{DynamicResource Ribbon.Modify}">
         <controls:ProfessionalRibbon Workspace="Modify" CommandInvoked="ProfessionalRibbon_CommandInvoked"/>
       </TabItem>
+      <TabItem x:Name="WallContextTab" Header="{DynamicResource Ribbon.WallTools}">
+        <controls:ProfessionalRibbon Workspace="Wall" CommandInvoked="ProfessionalRibbon_CommandInvoked"/>
+      </TabItem>
     </TabControl>
-
     <StatusBar DockPanel.Dock="Bottom" Background="#FBFBFD" BorderBrush="{DynamicResource PanelBorderBrush}"
                BorderThickness="0,1,0,0" Padding="8,2">
       <StatusBarItem><TextBlock x:Name="StatusText" Text="{DynamicResource Status.Ready}" Foreground="{DynamicResource SecondaryTextBrush}"/></StatusBarItem>
@@ -125,13 +125,11 @@
       <Separator/>
       <StatusBarItem><TextBlock x:Name="ScaleText" Text="{DynamicResource Status.Scale}"/></StatusBarItem>
     </StatusBar>
-
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="326" MinWidth="286" MaxWidth="420"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
-
       <Grid Grid.Column="0" Background="{DynamicResource PanelBrush}">
         <Grid.RowDefinitions>
           <RowDefinition Height="3*" MinHeight="270"/>
@@ -168,10 +166,28 @@
                          FontSize="12" LineHeight="20"/>
               <Separator Margin="12,14,12,11"/>
               <TextBlock Text="{DynamicResource Properties.Instance}" Style="{StaticResource PropertySectionHeaderStyle}"/>
-              <TextBlock Text="{DynamicResource Properties.Thickness}" Style="{StaticResource PropertyLabelStyle}"/>
-              <TextBox x:Name="ThicknessInput" Text="0.20" Margin="12,0"/>
+              <TextBlock Text="{DynamicResource Properties.Length}" Style="{StaticResource PropertyLabelStyle}"/>
+              <DockPanel Margin="12,0">
+                <CheckBox x:Name="LockLengthCheck" DockPanel.Dock="Right" Content="{DynamicResource Properties.LockFixed}"
+                          ToolTip="{DynamicResource Properties.LockHint}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <TextBox x:Name="PropertyLengthInput" Text="0.00"/>
+              </DockPanel>
               <TextBlock Text="{DynamicResource Properties.Height}" Style="{StaticResource PropertyLabelStyle}"/>
-              <TextBox x:Name="HeightInput" Text="3.00" Margin="12,0"/>
+              <DockPanel Margin="12,0">
+                <CheckBox x:Name="LockHeightCheck" DockPanel.Dock="Right" Content="{DynamicResource Properties.LockFixed}"
+                          ToolTip="{DynamicResource Properties.LockHint}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <TextBox x:Name="HeightInput" Text="3.00"/>
+              </DockPanel>
+              <TextBlock Text="{DynamicResource Properties.Area}" Style="{StaticResource PropertyLabelStyle}"/>
+              <TextBox x:Name="PropertyAreaInput" Text="0.00" Margin="12,0"/>
+              <TextBlock Text="{DynamicResource Properties.Finish}" Style="{StaticResource PropertyLabelStyle}"/>
+              <ComboBox x:Name="FinishPicker" Margin="12,0" DisplayMemberPath="Label" SelectedValuePath="Value"/>
+              <TextBlock Text="{DynamicResource Properties.Thickness}" Style="{StaticResource PropertyLabelStyle}"/>
+              <DockPanel Margin="12,0">
+                <CheckBox x:Name="LockThicknessCheck" DockPanel.Dock="Right" Content="{DynamicResource Properties.LockFixed}"
+                          ToolTip="{DynamicResource Properties.LockHint}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <TextBox x:Name="ThicknessInput" Text="0.20"/>
+              </DockPanel>
               <Button Content="{DynamicResource Properties.ApplyWall}" Click="ApplyProperties_Click"
                       Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Stretch" Margin="12,8,12,0"/>
               <Separator Margin="12,14,12,11"/>
@@ -231,7 +247,6 @@
           </DockPanel>
         </Border>
       </Grid>
-
       <Grid Grid.Column="1" Background="{DynamicResource CanvasBrush}">
         <DockPanel>
           <Border x:Name="WallOptionsBar" DockPanel.Dock="Top" Visibility="Collapsed"
@@ -251,8 +266,9 @@
                 <TextBox x:Name="WallHeightInput" Text="3.00" Width="54" VerticalAlignment="Center" Margin="4,0,12,0"
                          TextChanged="WallOptions_Changed"/>
                 <TextBlock Text="{DynamicResource WallOptions.Length}" Style="{StaticResource OptionLabelStyle}"/>
-                <TextBox x:Name="WallLengthInput" Width="58" VerticalAlignment="Center" Margin="4,0,3,0"
-                         KeyDown="WallLengthInput_KeyDown"/>
+                <TextBox x:Name="WallLengthInput" Width="70" VerticalAlignment="Center" Margin="4,0,3,0"
+                         PreviewTextInput="WallLengthInput_PreviewTextInput"
+                         TextChanged="WallLengthInput_TextChanged" KeyDown="WallLengthInput_KeyDown"/>
                 <Button Content="{DynamicResource WallOptions.PlaceLength}" Click="PlaceWallByLength_Click"
                         Style="{StaticResource ContextualButtonStyle}" Margin="0,0,12,0"/>
                 <TextBlock Text="{DynamicResource WallOptions.LocationLine}" Style="{StaticResource OptionLabelStyle}"/>
@@ -267,7 +283,7 @@
                          TextChanged="WallOptions_Changed"/>
                 <CheckBox x:Name="WallChainCheck" Content="{DynamicResource WallOptions.Chain}" IsChecked="True"
                           VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <CheckBox x:Name="WallOrthogonalCheck" Content="{DynamicResource WallOptions.Orthogonal}" IsChecked="True"
+                <CheckBox x:Name="WallOrthogonalCheck" Content="{DynamicResource WallOptions.Orthogonal}" IsChecked="False"
                           VerticalAlignment="Center" Margin="0,0,12,0" Checked="WallOptions_Changed" Unchecked="WallOptions_Changed"/>
                 <CheckBox x:Name="WallObjectSnapCheck" Content="{DynamicResource WallOptions.ObjectSnap}" IsChecked="True"
                           VerticalAlignment="Center" Margin="0,0,12,0" Checked="WallOptions_Changed" Unchecked="WallOptions_Changed"/>
@@ -295,8 +311,10 @@
                       BorderThickness="0" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}"
                       SelectionChanged="ViewTabs_SelectionChanged">
             <TabItem Header="{DynamicResource View.Plan}">
-              <Canvas x:Name="PlanCanvas" Background="White" ClipToBounds="True"
+              <Canvas x:Name="PlanCanvas" Background="White" ClipToBounds="True" Focusable="True"
+                      PreviewMouseDown="PlanCanvas_PreviewMouseDown" PreviewMouseUp="PlanCanvas_PreviewMouseUp"
                       MouseLeftButtonDown="PlanCanvas_MouseLeftButtonDown"
+                      MouseLeftButtonUp="PlanCanvas_MouseLeftButtonUp"
                       MouseRightButtonDown="PlanCanvas_MouseRightButtonDown"
                       MouseMove="PlanCanvas_MouseMove"
                       MouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
@@ -381,7 +399,6 @@
           </TabControl>
         </DockPanel>
       </Grid>
-
     </Grid>
   </DockPanel>
 </Window>

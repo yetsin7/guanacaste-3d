@@ -15,6 +15,8 @@
   <sys:String x:Key="Error.Element identifiers must be unique.">Los identificadores de elementos deben ser únicos.</sys:String>
   <sys:String x:Key="Error.Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3 o la heredada .g3d.json.</sys:String>
   <sys:String x:Key="Error.Hosted openings cannot overlap.">Las aberturas de un mismo muro no pueden solaparse.</sys:String>
+  <sys:String x:Key="Error.The opening can only move to a wall on its level.">La abertura solo puede pasar a un muro del mismo nivel.</sys:String>
+  <sys:String x:Key="Error.Invalid column definitions.">Las columnas no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
@@ -49,6 +51,13 @@
   <sys:String x:Key="Error.The selected wall type does not exist.">El tipo de muro seleccionado no existe.</sys:String>
   <sys:String x:Key="Error.The wall collection contains duplicate identifiers.">Hay muros con identificadores duplicados.</sys:String>
   <sys:String x:Key="Error.The wall does not exist.">El muro no existe.</sys:String>
+  <sys:String x:Key="Error.The floor slab does not exist.">La losa no existe.</sys:String>
+  <sys:String x:Key="Error.The Revit family has no readable family metadata.">La familia de Revit no tiene metadatos legibles.</sys:String>
+  <sys:String x:Key="Error.The Revit family metadata is damaged.">Los metadatos de la familia de Revit están dañados.</sys:String>
+  <sys:String x:Key="Error.The family is not a door or window; only openings can be imported for now.">La familia no es una puerta ni una ventana. Por ahora solo se importan aberturas.</sys:String>
+  <sys:String x:Key="Error.The family category does not match the selected kind.">La categoría de la familia no coincide con el tipo seleccionado (puerta o ventana).</sys:String>
+  <sys:String x:Key="Error.The Revit family does not declare a width and height.">La familia de Revit no declara ancho y alto.</sys:String>
+  <sys:String x:Key="Error.The selected finish is not supported.">El acabado seleccionado no es compatible.</sys:String>
   <sys:String x:Key="Error.The wall to duplicate does not exist.">El muro que se quiere duplicar no existe.</sys:String>
   <sys:String x:Key="Error.The wall type does not exist.">El tipo de muro no existe.</sys:String>
   <sys:String x:Key="Error.Unsupported project schema version.">La versión del formato del proyecto no es compatible.</sys:String>
@@ -96,4 +105,15 @@
   <sys:String x:Key="Error.A schedule references a field that is not available.">La tabla usa un campo que no existe para esta categoría.</sys:String>
   <sys:String x:Key="Error.Schedule identifiers and names must be unique.">Ya existe una tabla con ese nombre.</sys:String>
   <sys:String x:Key="Error.The schedule does not exist.">La tabla no existe.</sys:String>
+  <sys:String x:Key="Error.A locked dimension cannot change.">Una dimensión bloqueada no puede modificarse.</sys:String>
+  <sys:String x:Key="Error.The requested wall area is invalid.">El área solicitada para el muro no es válida.</sys:String>
+  <sys:String x:Key="Error.With length and height both fixed, the area cannot change.">El área no puede cambiar cuando la longitud y la altura están fijadas.</sys:String>
+  <sys:String x:Key="Error.The door file is too large to import.">El archivo de puerta supera el tamaño permitido para importación.</sys:String>
+  <sys:String x:Key="Error.The door file format is not supported.">El formato del archivo de puerta no es compatible.</sys:String>
+  <sys:String x:Key="Error.The imported door size is outside the supported range.">El tamaño de la puerta importada está fuera del intervalo admitido.</sys:String>
+  <sys:String x:Key="Error.The IFC file has no door with OverallWidth and OverallHeight.">El archivo IFC no contiene una puerta con ancho y alto generales.</sys:String>
+  <sys:String x:Key="Error.The DXF file has no door geometry.">El archivo DXF no contiene geometría de puerta.</sys:String>
+  <sys:String x:Key="Error.The OBJ file has no door geometry.">El archivo OBJ no contiene geometría de puerta.</sys:String>
+  <sys:String x:Key="Error.The IFC length unit is not supported.">La unidad de longitud del IFC no es compatible. Exporta en metros o milímetros.</sys:String>
+  <sys:String x:Key="Error.The IFC file has no matching opening with declared dimensions.">El IFC no contiene una abertura de la categoría seleccionada con ancho y alto definidos.</sys:String>
 </ResourceDictionary>

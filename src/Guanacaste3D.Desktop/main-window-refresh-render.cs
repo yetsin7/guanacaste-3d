@@ -116,8 +116,7 @@ public partial class MainWindow
             _session.Document.Openings.Count(opening => opening.WallId == wall.Id),
             WallGeometry.NetVolume(wall, _session.Document.Openings.Where(opening => opening.WallId == wall.Id)),
             wall.Id.ToString()[..8]);
-        ThicknessInput.Text = wall.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
-        HeightInput.Text = wall.Height.ToString("0.00", CultureInfo.CurrentCulture);
+        LoadWallDimensionFields(wall);
         WallTypePicker.SelectedItem = WallTypePicker.Items.OfType<ComboBoxItem>()
             .FirstOrDefault(item => Equals(item.Tag, wall.WallTypeId));
     }
@@ -148,6 +147,12 @@ public partial class MainWindow
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        if (TryHandleDirectWallLengthKey(e))
+        {
+            e.Handled = true;
+            base.OnPreviewKeyDown(e);
+            return;
+        }
         if (Keyboard.FocusedElement is TextBox)
         {
             base.OnPreviewKeyDown(e);

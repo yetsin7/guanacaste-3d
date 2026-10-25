@@ -21,6 +21,22 @@
         <Grid>
           <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
+            <Button Content="{DynamicResource Action.Move}" CommandParameter="{StaticResource Icon.Move}"
+                    Tag="Move" Click="ArchitectureButton_Click" ToolTip="{DynamicResource Action.Move}"
+                    Style="{StaticResource LargeRibbonButtonStyle}"/>
+            <Button Content="{DynamicResource RibbonCommand.CreateSimilar}" CommandParameter="{StaticResource Icon.Wall}"
+                    Tag="CreateSimilar" Click="ArchitectureButton_Click" ToolTip="{DynamicResource RibbonCommand.CreateSimilar}"
+                    Style="{StaticResource LargeRibbonButtonStyle}"/>
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Transform}"
+                     Style="{StaticResource RibbonGroupLabelStyle}"/>
+        </Grid>
+      </Border>
+
+      <Border Style="{StaticResource RibbonGroupBorderStyle}">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal">
             <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Tag="Wall" CommandParameter="{StaticResource Icon.Wall}" Click="ArchitectureButton_Click"
                     Style="{StaticResource LargeRibbonButtonStyle}" ToolTip="{DynamicResource ToolTip.Wall}"/>
             <Button Content="{DynamicResource Tool.Door}" Tag="Door" CommandParameter="{StaticResource Icon.Door}" Click="ArchitectureButton_Click"

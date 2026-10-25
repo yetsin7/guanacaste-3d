@@ -12,33 +12,61 @@ public partial class MainWindow
     /// </summary>
     private void ProfessionalRibbon_CommandInvoked(object? sender, ProfessionalRibbonCommandEventArgs e)
     {
-        var eventArguments = new RoutedEventArgs();
-        switch (e.CommandId)
+        if (!ExecuteApplicationCommand(e.CommandId))
         {
-            case "Modify": Select_Click(this, eventArguments); return;
-            case "Wall": Wall_Click(this, eventArguments); return;
-            case "Floor": Floor_Click(this, eventArguments); return;
-            case "Level": AddLevel_Click(this, eventArguments); return;
-            case "Grid": ToggleGrid_Click(this, eventArguments); return;
-            case "Viewer": ShowModel_Click(this, eventArguments); return;
-            case "Move": Move_Click(this, eventArguments); return;
-            case "CopyElement": Duplicate_Click(this, eventArguments); return;
-            case "Rotate": Rotate_Click(this, eventArguments); return;
-            case "Delete": Delete_Click(this, eventArguments); return;
-            case "Plan": ShowPlan_Click(this, eventArguments); return;
-            case "Model3D": ShowModel_Click(this, eventArguments); return;
-            case "Elevation": ShowElevation_Click(this, eventArguments); return;
-            case "Section": ShowSection_Click(this, eventArguments); return;
-            case "Schedule": ShowSchedule_Click(this, eventArguments); return;
-            case "Sheet": AddSheet_Click(this, eventArguments); return;
-            case "Render": StartRender_Click(this, eventArguments); return;
-            case "Fit": FitPlan_Click(this, eventArguments); return;
-            case "ProjectParameters": ProjectParameters_Click(this, eventArguments); return;
-            case "Levels": Levels_Click(this, eventArguments); return;
-            case "Schedules": Schedules_Click(this, eventArguments); return;
-            case "OpeningTypes": OpeningTypes_Click(this, eventArguments); return;
-            case "About": About_Click(this, eventArguments); return;
-            default: ShowPlannedRibbonCommand(e); return;
+            ShowPlannedRibbonCommand(e);
+        }
+    }
+
+    /// <summary>
+    /// Executes a command shared by ribbons, quick access buttons, and keyboard sequences.
+    /// </summary>
+    private bool ExecuteApplicationCommand(string commandId)
+    {
+        var eventArguments = new RoutedEventArgs();
+        CancelStructuralTool();
+        switch (commandId)
+        {
+            case "NewProject": New_Click(this, eventArguments); return true;
+            case "OpenProject": Open_Click(this, eventArguments); return true;
+            case "Save": Save_Click(this, eventArguments); return true;
+            case "SaveAs": SaveAs_Click(this, eventArguments); return true;
+            case "Undo": Undo_Click(this, eventArguments); return true;
+            case "Redo": Redo_Click(this, eventArguments); return true;
+            case "Modify": Select_Click(this, eventArguments); return true;
+            case "Wall": Wall_Click(this, eventArguments); return true;
+            case "Door": Door_Click(this, eventArguments); return true;
+            case "Window": Window_Click(this, eventArguments); return true;
+            case "Room": Room_Click(this, eventArguments); return true;
+            case "Floor": Floor_Click(this, eventArguments); return true;
+            case "Level": AddLevel_Click(this, eventArguments); return true;
+            case "Grid": ToggleGrid_Click(this, eventArguments); return true;
+            case "Viewer":
+            case "Model3D": ShowModel_Click(this, eventArguments); return true;
+            case "Move": Move_Click(this, eventArguments); return true;
+            case "CopyElement": Duplicate_Click(this, eventArguments); return true;
+            case "CreateSimilar": CreateSimilar_Click(this, eventArguments); return true;
+            case "Rotate": Rotate_Click(this, eventArguments); return true;
+            case "Delete": Delete_Click(this, eventArguments); return true;
+            case "Plan": ShowPlan_Click(this, eventArguments); return true;
+            case "Elevation": ShowElevation_Click(this, eventArguments); return true;
+            case "Section": ShowSection_Click(this, eventArguments); return true;
+            case "Schedule": ShowSchedule_Click(this, eventArguments); return true;
+            case "Sheet": AddSheet_Click(this, eventArguments); return true;
+            case "Render": StartRender_Click(this, eventArguments); return true;
+            case "Fit": FitPlan_Click(this, eventArguments); return true;
+            case "ProjectParameters":
+            case "WallProperties":
+            case "WallTypes": ProjectParameters_Click(this, eventArguments); return true;
+            case "Levels": Levels_Click(this, eventArguments); return true;
+            case "Schedules": Schedules_Click(this, eventArguments); return true;
+            case "OpeningTypes":
+            case "WallOpenings": OpeningTypes_Click(this, eventArguments); return true;
+            case "ExportIfc": ExportIfc_Click(this, eventArguments); return true;
+            case "ExportModel3D": ExportModel3D_Click(this, eventArguments); return true;
+            case "CustomizeCommands": CustomizeCommands_Click(this, eventArguments); return true;
+            case "About": About_Click(this, eventArguments); return true;
+            default: return TryExecuteStructuralCommand(commandId);
         }
     }
 
@@ -72,6 +100,7 @@ public partial class MainWindow
         RibbonWorkspace.Manage => "Ribbon.Manage",
         RibbonWorkspace.AddIns => "Ribbon.AddIns",
         RibbonWorkspace.Modify => "Ribbon.Modify",
+        RibbonWorkspace.Wall => "Ribbon.WallTools",
         _ => "App.Name"
     });
 }

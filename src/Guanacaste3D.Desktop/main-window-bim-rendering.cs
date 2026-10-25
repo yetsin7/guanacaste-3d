@@ -24,6 +24,25 @@ public partial class MainWindow
             };
             PlanCanvas.Children.Add(polygon);
         }
+        foreach (var column in _session.Document.Columns.Where(column => column.LevelId == _activeLevelId))
+        {
+            var first = WorldToCanvas(new Point2(
+                column.Position.X - column.Width / 2, column.Position.Y - column.Depth / 2));
+            var second = WorldToCanvas(new Point2(
+                column.Position.X + column.Width / 2, column.Position.Y + column.Depth / 2));
+            var rectangle = new Rectangle
+            {
+                Width = Math.Abs(second.X - first.X),
+                Height = Math.Abs(second.Y - first.Y),
+                Fill = new SolidColorBrush(Color.FromArgb(170, 96, 102, 110)),
+                Stroke = column.Id == _selectedColumnId ? Brushes.DarkOrange : Brushes.DimGray,
+                StrokeThickness = column.Id == _selectedColumnId ? 2.5 : 1,
+                Tag = column.Id
+            };
+            Canvas.SetLeft(rectangle, Math.Min(first.X, second.X));
+            Canvas.SetTop(rectangle, Math.Min(first.Y, second.Y));
+            PlanCanvas.Children.Add(rectangle);
+        }
         foreach (var room in _session.Document.Rooms.Where(room => room.LevelId == _activeLevelId))
         {
             var first = WorldToCanvas(room.FirstCorner);
@@ -53,6 +72,7 @@ public partial class MainWindow
             Canvas.SetTop(label, center.Y - 24);
             PlanCanvas.Children.Add(label);
         }
+        RenderStructuralPlanElements();
     }
 
     /// <summary>Renders the selected sheet with a live plan viewport and title block.</summary>

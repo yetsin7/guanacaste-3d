@@ -1,0 +1,77 @@
+using System.Text.Json;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+
+/// <summary>Exercises complete built-in assemblies, legacy repair, and external dimension ingestion.</summary>
+internal static class OpeningFamilyChecks
+{
+    /// <summary>Runs family checks against temporary files and removes only this run's fixtures.</summary>
+    public static void Run(Action<bool, string> check)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"g3-opening-families-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var session = new DocumentSession(BuildingDocument.Create("Opening family verification"));
+            var wallId = session.AddWall(session.Document.Levels[0].Id, new Point2(0, 0), new Point2(8, 0));
+            var doorId = session.AddOpening(wallId, OpeningKind.Door, offset: 2);
+            var windowId = session.AddOpening(wallId, OpeningKind.Window, offset: 5);
+            check(session.Document.Openings.Single(opening => opening.Id == windowId).OpeningTypeId ==
+                BuiltInOpeningTypes.FixedWindow1200Id, "Window placement uses the built-in 1200 mm family");
+            var mesh = BuildingMesher.Build(session.Document);
+            // Each solid is a prism of 12 triangles. The 900 mm door has 3 lining solids and a leaf of 5 solids
+            // (two stiles, head and kick rails, panel). The 1200 mm window has 3 lining solids, a sill, and two
+            // lights of 4 sash members each; its glazing is one solid per light.
+            check(mesh.TriangleKinds.Count(kind => kind == SurfaceKind.DoorLeaf) == 5 * 12 &&
+                mesh.TriangleKinds.Count(kind => kind == SurfaceKind.OpeningFrame) == (3 + 3 + 1 + 8) * 12 &&
+                mesh.TriangleKinds.Count(kind => kind == SurfaceKind.Glass) == 2 * 12,
+                "Default assemblies are layered: a five-member door leaf, lining, sill, sash members, and two glazed lights");
+            check(mesh.Positions.All(point => float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z)),
+                "Opening assemblies generate finite geometry");
+            var projectPath = Path.Combine(directory, "families.g3");
+            ProjectFile.Save(projectPath, session.Document);
+            var loaded = ProjectFile.Load(projectPath);
+            check(BuildingMesher.Build(loaded).TriangleCount == mesh.TriangleCount,
+                "Native save and reopen preserves the complete family assemblies");
+            session.Undo();
+            check(session.Document.Openings.Count == 1, "Undo removes a window assembly atomically");
+            session.Redo();
+            check(BuildingMesher.Build(session.Document).TriangleCount == mesh.TriangleCount,
+                "Redo restores frame and glass geometry");
+            var legacy = loaded.OpeningTypes.FindIndex(type => type.Id == BuiltInOpeningTypes.SingleDoor900Id);
+            loaded.OpeningTypes[legacy] = loaded.OpeningTypes[legacy] with { Depth = 0 };
+            loaded.SchemaVersion = 8;
+            File.WriteAllText(projectPath, "G3-PROJECT/1\n" + JsonSerializer.Serialize(loaded));
+            var migrated = ProjectFile.Load(projectPath);
+            check(migrated.OpeningTypes[legacy].Depth == 0.04 && migrated.Openings.Any(opening => opening.Id == doorId),
+                "Schema-eight built-in doors gain a leaf without changing placed instance identities");
+            var ifcPath = Path.Combine(directory, "window.ifc");
+            File.WriteAllText(ifcPath, "#1=IFCSIUNIT($,.LENGTHUNIT.,.CENTI.,.METRE.);#2=IFCUNITASSIGNMENT((#1));" +
+                "#3=IFCWINDOW('g',$,'Window',$,$,$,$,$,120.,180.);");
+            var window = DoorFamilyImport.Read(ifcPath, kind: OpeningKind.Window);
+            check(Math.Abs(window.Width - 1.8) < 1e-9 && Math.Abs(window.Height - 1.2) < 1e-9,
+                "IFC windows use declared centimeter units without swapping wide window dimensions");
+            var objPath = Path.Combine(directory, "wide-window.obj");
+            File.WriteAllText(objPath, "v 0 0 0\nv 1.8 0 0\nv 1.8 1.2 0.06\n");
+            var imported = DoorFamilyImport.Read(objPath, kind: OpeningKind.Window);
+            check(imported.Width == 1.8 && imported.Height == 1.2 && imported.Depth == 0.06,
+                "Y-up meter OBJ windows retain width and height even when wider than tall");
+            check(Rejects(() => DoorFamilyImport.Read(ifcPath)), "Import rejects an IFC containing only the other opening category");
+            var dxfPath = Path.Combine(directory, "invalid-height.dxf");
+            File.WriteAllText(dxfPath, "0\nLINE\n10\n0\n20\n0\n11\n0.9\n21\n0.04\n");
+            check(Rejects(() => DoorFamilyImport.Read(dxfPath, double.NaN)), "Non-finite plan import heights are rejected");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>Reports whether an invalid external model is rejected before catalog mutation.</summary>
+    private static bool Rejects(Action operation)
+    {
+        try { operation(); }
+        catch (InvalidDataException) { return true; }
+        return false;
+    }
+}

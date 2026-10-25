@@ -22,6 +22,8 @@ public partial class MainWindow
     private Guid? _selectedRoomId;
     private Guid? _selectedFloorId;
     private Guid? _selectedSheetId;
+    private bool _drawingColumn;
+    private Guid? _selectedColumnId;
 
     /// <summary>Resolves a user-facing string from the active WPF resource dictionary.</summary>
     private static string GetText(string key) =>
@@ -45,7 +47,16 @@ public partial class MainWindow
     }
 
     /// <summary>Creates a floor from the bounding rectangle of active-level walls.</summary>
-    private void Floor_Click(object sender, RoutedEventArgs e)
+    private void Floor_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Floor);
+
+    /// <summary>Creates a ceiling hung at the wall top of the active level.</summary>
+    private void Ceiling_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Ceiling);
+
+    /// <summary>Creates a roof slab that bears on the wall top of the active level.</summary>
+    private void Roof_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Roof);
+
+    /// <summary>Creates a slab of the requested role from the bounding rectangle of active-level walls.</summary>
+    private void CreateEnclosureSlab(FloorKind kind)
     {
         var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();
         if (walls.Length < 2)
@@ -63,6 +74,20 @@ public partial class MainWindow
             StatusText.Text = GetText("Status.FloorNeedsEnclosure");
             return;
         }
+        const double slabThickness = 0.20;
+        var wallTop = walls.Max(wall => wall.Height);
+        var elevationOffset = kind switch
+        {
+            FloorKind.Ceiling => wallTop,
+            FloorKind.Roof => wallTop + slabThickness,
+            _ => 0
+        };
+        var (nameKey, statusKey) = kind switch
+        {
+            FloorKind.Ceiling => ("Tool.Ceiling", "Status.CeilingCreated"),
+            FloorKind.Roof => ("Tool.Roof", "Status.RoofCreated"),
+            _ => ("Entity.Floor", "Status.FloorCreated")
+        };
         var index = _session.Document.Floors.Count + 1;
         _selectedFloorId = _session.AddFloor(_activeLevelId,
         [
@@ -70,8 +95,8 @@ public partial class MainWindow
             new Point2(maximumX, minimumY),
             new Point2(maximumX, maximumY),
             new Point2(minimumX, maximumY)
-        ], name: $"{GetText("Entity.Floor")} {index}");
-        StatusText.Text = GetText("Status.FloorCreated");
+        ], slabThickness, $"{GetText(nameKey)} {index}", kind, elevationOffset);
+        StatusText.Text = GetText(statusKey);
         RefreshAll();
     }
 
@@ -152,11 +177,40 @@ public partial class MainWindow
         return true;
     }
 
-    /// <summary>Cancels room placement and clears its provisional corner.</summary>
+    /// <summary>Starts structural column placement in the active plan view.</summary>
+    private void Column_Click(object sender, RoutedEventArgs e)
+    {
+        SetWallTool(false);
+        _drawingColumn = true;
+        _selectedViewId = null;
+        ViewTabs.SelectedIndex = 0;
+        StatusText.Text = GetText("Status.ColumnPlace");
+        RenderPlan();
+    }
+
+    /// <summary>Places a column at the clicked plan point while column placement is active.</summary>
+    private bool TryHandleColumnPlacement(MouseButtonEventArgs e)
+    {
+        if (!_drawingColumn) return false;
+        var point = CanvasToWorld(e.GetPosition(PlanCanvas));
+        if (SnapGridCheck.IsChecked == true)
+            point = new Point2(
+                Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
+                Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10);
+        SelectExtendedElement(columnId: _session.AddColumn(_activeLevelId, point));
+        _drawingColumn = false;
+        StatusText.Text = GetText("Status.ColumnPlaced");
+        RefreshAll();
+        return true;
+    }
+
+    /// <summary>Cancels room and column placement and clears their provisional state.</summary>
     private void CancelExtendedDrawing()
     {
         _drawingRoom = false;
+        _drawingColumn = false;
         _pendingRoomStart = null;
+        CancelStructuralTool();
     }
 
     /// <summary>Selects a room or floor from its rendered plan element.</summary>
@@ -173,15 +227,28 @@ public partial class MainWindow
             SelectExtendedElement(floorId: id);
             return true;
         }
+        if (_session.Document.Columns.Any(column => column.Id == id))
+        {
+            SelectExtendedElement(columnId: id);
+            return true;
+        }
+        if (_session.Document.StructuralElements.Any(element => element.Id == id))
+        {
+            SelectExtendedElement(structuralId: id);
+            return true;
+        }
         return false;
     }
 
-    /// <summary>Centralizes selection state for rooms, floors, and sheets.</summary>
-    private void SelectExtendedElement(Guid? roomId = null, Guid? floorId = null, Guid? sheetId = null)
+    /// <summary>Centralizes selection state for rooms, floors, sheets, columns, and structural elements.</summary>
+    private void SelectExtendedElement(Guid? roomId = null, Guid? floorId = null, Guid? sheetId = null,
+        Guid? columnId = null, Guid? structuralId = null)
     {
         _selectedRoomId = roomId;
         _selectedFloorId = floorId;
         _selectedSheetId = sheetId;
+        _selectedColumnId = columnId;
+        _selectedStructuralId = structuralId;
         _selectedViewId = null;
         _selectedWallId = null;
         _selectedOpeningId = null;
@@ -234,10 +301,14 @@ public partial class MainWindow
         if (_selectedRoomId is Guid roomId) _session.RemoveRoom(roomId);
         else if (_selectedFloorId is Guid floorId) _session.RemoveFloor(floorId);
         else if (_selectedSheetId is Guid sheetId) _session.RemoveSheet(sheetId);
+        else if (_selectedColumnId is Guid columnId) _session.RemoveColumn(columnId);
+        else if (_selectedStructuralId is Guid structuralId) _session.RemoveStructuralElement(structuralId);
         else return false;
         _selectedRoomId = null;
         _selectedFloorId = null;
         _selectedSheetId = null;
+        _selectedColumnId = null;
+        _selectedStructuralId = null;
         RefreshAll();
         return true;
     }
@@ -312,6 +383,7 @@ public partial class MainWindow
     /// <summary>Updates the properties palette for rooms, floors, sheets, and wall types.</summary>
     private bool TryRefreshExtendedProperties()
     {
+        if (TryRefreshStructuralProperties()) return true;
         var selectedView = _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId);
         if (selectedView is not null)
         {
@@ -332,6 +404,13 @@ public partial class MainWindow
         {
             PropertiesText.Text = FormatText(
                 "Properties.FloorSummary", floor.Name, floor.CalculateArea(), floor.Thickness, levelNames[floor.LevelId]);
+            return true;
+        }
+        var column = _session.Document.Columns.FirstOrDefault(candidate => candidate.Id == _selectedColumnId);
+        if (column is not null)
+        {
+            PropertiesText.Text = FormatText(
+                "Properties.ColumnSummary", column.Width, column.Depth, column.Height, levelNames[column.LevelId]);
             return true;
         }
         var sheet = _session.Document.Sheets.FirstOrDefault(candidate => candidate.Id == _selectedSheetId);

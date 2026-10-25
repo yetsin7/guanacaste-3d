@@ -63,5 +63,11 @@ static class WallPlacementChecks
             "Exact-length placement respects the active orthogonal direction");
         check(exactDiagonal == new Point2(6, 8),
             "Exact-length placement preserves a free drawing direction");
+
+        var footprint = WallPlacementGeometry.Footprint(
+            new Point2(0, 0), new Point2(5, 0), 0.20, 0.10, WallLocationReference.ExteriorFace);
+        check(footprint.StartLeft.DistanceTo(new Point2(0, 0.30)) < 1e-12 &&
+              footprint.EndRight.DistanceTo(new Point2(5, 0.10)) < 1e-12,
+            "Wall preview footprint reflects type thickness, face reference, and placement offset");
     }
 }

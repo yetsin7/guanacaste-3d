@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using Guanacaste3D.Core;
 using Guanacaste3D.Desktop.Controls;
 
 namespace Guanacaste3D.Desktop;
@@ -31,6 +32,12 @@ public partial class MainWindow
             case ArchitectureCommand.Modify:
                 Select_Click(this, eventArguments);
                 break;
+            case ArchitectureCommand.Move:
+                Move_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.CreateSimilar:
+                CreateSimilar_Click(this, eventArguments);
+                break;
             case ArchitectureCommand.Wall:
                 Wall_Click(this, eventArguments);
                 break;
@@ -42,6 +49,15 @@ public partial class MainWindow
                 break;
             case ArchitectureCommand.Floor:
                 Floor_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Ceiling:
+                Ceiling_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Roof:
+                Roof_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Column:
+                Column_Click(this, eventArguments);
                 break;
             case ArchitectureCommand.Room:
                 Room_Click(this, eventArguments);
@@ -73,8 +89,15 @@ public partial class MainWindow
     /// <summary>
     /// Opens the available type and parameter editor from the properties palette.
     /// </summary>
-    private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e) =>
-        ProjectParameters_Click(sender, e);
+    private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedTypeId = _selectedWallId is Guid wallId
+            ? _session.Document.Walls.Single(wall => wall.Id == wallId).WallTypeId
+            : (WallTypePicker.SelectedItem as ComboBoxItem)?.Tag as Guid? ?? BuiltInWallTypes.Basic200Id;
+        var editor = new WallTypeEditorWindow(_session, selectedTypeId) { Owner = this };
+        if (editor.ShowDialog() == true)
+            StatusText.Text = GetText("Status.WallTypeUpdated");
+    }
 
     /// <summary>
     /// Reports commands that are intentionally visible for workspace completeness

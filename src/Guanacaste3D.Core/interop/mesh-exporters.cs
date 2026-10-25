@@ -18,8 +18,11 @@ public static class MeshExporter
     /// <summary>Surface appearance shared by both exporters (linear RGB, alpha 1 = opaque).</summary>
     private static (string Name, Vector3 Color, float Alpha, float Roughness) Appearance(SurfaceKind kind) => kind switch
     {
+        SurfaceKind.DoorLeaf => ("G3D_DoorLeaf", new Vector3(0.60f, 0.39f, 0.22f), 1, 0.6f),
+        SurfaceKind.OpeningFrame => ("G3D_OpeningFrame", new Vector3(0.25f, 0.27f, 0.29f), 1, 0.4f),
         SurfaceKind.Wall => ("G3D_Wall", new Vector3(0.80f, 0.78f, 0.73f), 1, 0.9f),
         SurfaceKind.Floor => ("G3D_Floor", new Vector3(0.56f, 0.55f, 0.52f), 1, 0.8f),
+        SurfaceKind.Structure => ("G3D_Structure", new Vector3(0.45f, 0.42f, 0.38f), 1, 0.7f),
         SurfaceKind.Glass => ("G3D_Glass", new Vector3(0.60f, 0.75f, 0.82f), 0.3f, 0.05f),
         _ => ("G3D_Ground", new Vector3(0.30f, 0.40f, 0.24f), 1, 1)
     };

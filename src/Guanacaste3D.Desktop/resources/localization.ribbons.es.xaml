@@ -130,6 +130,7 @@
   <sys:String x:Key="RibbonCommand.CoverSettings">Configuración de recubrimiento</sys:String>
   <sys:String x:Key="RibbonCommand.CreateAssembly">Crear ensamblaje</sys:String>
   <sys:String x:Key="RibbonCommand.CreateGroup">Crear grupo</sys:String>
+  <sys:String x:Key="RibbonCommand.CreateSimilar">Crear similar</sys:String>
   <sys:String x:Key="RibbonCommand.CreateStudy">Crear estudio</sys:String>
   <sys:String x:Key="RibbonCommand.CurtainSystem">Sistema de muro cortina</sys:String>
   <sys:String x:Key="RibbonCommand.CustomFabricSheet">Lámina de mallazo personalizada</sys:String>

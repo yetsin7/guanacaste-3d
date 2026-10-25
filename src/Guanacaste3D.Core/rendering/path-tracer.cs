@@ -324,8 +324,11 @@ public sealed class PathTracer
     /// <summary>Returns base reflectance; the ground uses a subtle procedural tile so scale is readable.</summary>
     private static Vector3 Albedo(SurfaceKind kind, Vector3 position) => kind switch
     {
+        SurfaceKind.DoorLeaf => new Vector3(0.60f, 0.39f, 0.22f),
+        SurfaceKind.OpeningFrame => new Vector3(0.25f, 0.27f, 0.29f),
         SurfaceKind.Wall => new Vector3(0.80f, 0.78f, 0.73f),
         SurfaceKind.Floor => new Vector3(0.56f, 0.55f, 0.52f),
+        SurfaceKind.Structure => new Vector3(0.45f, 0.42f, 0.38f),
         SurfaceKind.Ground => ((int)MathF.Floor(position.X) + (int)MathF.Floor(position.Y) & 1) == 0
             ? new Vector3(0.30f, 0.40f, 0.24f)
             : new Vector3(0.28f, 0.37f, 0.22f),

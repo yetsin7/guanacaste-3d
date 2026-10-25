@@ -15,6 +15,10 @@
   <SolidColorBrush x:Key="CanvasBrush" Color="#ECEDEF"/>
   <SolidColorBrush x:Key="ControlBorderBrush" Color="#C7C7CC"/>
   <SolidColorBrush x:Key="ControlHoverBrush" Color="#F0F0F2"/>
+  <LinearGradientBrush x:Key="IconTileBrush" StartPoint="0,0" EndPoint="1,1">
+    <GradientStop Color="#FFFFFF" Offset="0"/>
+    <GradientStop Color="#EAF6FC" Offset="1"/>
+  </LinearGradientBrush>
 
   <Style TargetType="Button">
     <Setter Property="Padding" Value="12,6"/>
@@ -73,7 +77,7 @@
   <Style x:Key="RibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
     <Setter Property="MinWidth" Value="68"/>
     <Setter Property="MaxWidth" Value="92"/>
-    <Setter Property="MinHeight" Value="62"/>
+    <Setter Property="MinHeight" Value="68"/>
     <Setter Property="Padding" Value="6,6"/>
     <Setter Property="Margin" Value="2"/>
     <Setter Property="FontSize" Value="11"/>
@@ -86,8 +90,11 @@
                   Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                   Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
             <StackPanel VerticalAlignment="Center">
-              <Image Source="{TemplateBinding Tag}" Width="26" Height="26" Stretch="Uniform"
-                     Margin="0,0,0,5" RenderOptions.BitmapScalingMode="HighQuality"/>
+              <Border Width="36" Height="36" CornerRadius="9" Background="{StaticResource IconTileBrush}"
+                      BorderBrush="#D5E6EF" BorderThickness="1" Margin="0,0,0,5">
+                <Image Source="{TemplateBinding Tag}" Width="27" Height="27" Stretch="Uniform"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+              </Border>
               <TextBlock Text="{TemplateBinding Content}" TextAlignment="Center" TextWrapping="Wrap"
                          LineHeight="13" LineStackingStrategy="BlockLineHeight"
                          Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}"/>
@@ -149,8 +156,10 @@
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   CornerRadius="3" Padding="{TemplateBinding Padding}">
             <StackPanel Orientation="Horizontal">
-              <Image Source="{TemplateBinding CommandParameter}" Width="16" Height="16"
-                     Margin="0,0,5,0" Stretch="Uniform"/>
+              <Border Width="20" Height="20" CornerRadius="5" Background="{StaticResource IconTileBrush}"
+                      BorderBrush="#D8E8F0" BorderThickness="1" Margin="0,0,5,0">
+                <Image Source="{TemplateBinding CommandParameter}" Width="15" Height="15" Stretch="Uniform"/>
+              </Border>
               <TextBlock Text="{TemplateBinding Content}" VerticalAlignment="Center"
                          Foreground="{TemplateBinding Foreground}" FontSize="11"/>
             </StackPanel>
@@ -171,8 +180,8 @@
 
   <Style x:Key="LargeRibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
     <Setter Property="MinWidth" Value="61"/>
-    <Setter Property="Height" Value="75"/>
-    <Setter Property="MinHeight" Value="75"/>
+    <Setter Property="Height" Value="82"/>
+    <Setter Property="MinHeight" Value="82"/>
     <Setter Property="Padding" Value="5,4"/>
     <Setter Property="Margin" Value="1,0"/>
     <Setter Property="Background" Value="Transparent"/>
@@ -184,8 +193,10 @@
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   CornerRadius="4" Padding="{TemplateBinding Padding}">
             <StackPanel>
-              <Image Source="{TemplateBinding CommandParameter}" Width="29" Height="29"
-                     Margin="0,1,0,4" Stretch="Uniform"/>
+              <Border Width="38" Height="38" CornerRadius="9" Background="{StaticResource IconTileBrush}"
+                      BorderBrush="#D5E6EF" BorderThickness="1" Margin="0,0,0,4">
+                <Image Source="{TemplateBinding CommandParameter}" Width="28" Height="28" Stretch="Uniform"/>
+              </Border>
               <TextBlock Text="{TemplateBinding Content}" TextAlignment="Center" TextWrapping="Wrap"
                          Foreground="{TemplateBinding Foreground}" FontSize="11"/>
             </StackPanel>

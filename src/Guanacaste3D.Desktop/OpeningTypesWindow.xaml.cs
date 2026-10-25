@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Guanacaste3D.Core;
@@ -31,6 +32,63 @@ public partial class OpeningTypesWindow : Window
         ResetEditor(OpeningKind.Door);
         RefreshAll();
         if (initialTypeId is Guid id) TypesList.SelectedValue = id;
+    }
+
+    /// <summary>
+    /// Previews dimensions from IFC, DXF, or OBJ before creating a type in the selected category.
+    /// The imported type receives a unique name and can be assigned to an opening
+    /// hosted by a wall; source meshes and vendor-specific parameters are not retained.
+    /// </summary>
+    private async void Import_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = Text("OpeningTypes.ImportTitle"),
+            Filter = Text("OpeningTypes.ImportFilter"),
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var kind = KindBox.SelectedValue as OpeningKind? ?? OpeningKind.Door;
+            if (!TryReadLength(HeightBox, out var planHeight)) return;
+            ImportButton.IsEnabled = false;
+            ImportProgress.Value = 0;
+            ImportProgress.Visibility = Visibility.Visible;
+            ImportedDoor door;
+            try
+            {
+                // The read runs on a worker thread; the progress bar is updated on the UI thread.
+                door = await DoorFamilyImport.ReadAsync(dialog.FileName, planHeight, kind,
+                    new Progress<int>(value => ImportProgress.Value = value));
+            }
+            finally
+            {
+                ImportButton.IsEnabled = true;
+                ImportProgress.Visibility = Visibility.Collapsed;
+            }
+            if (MessageBox.Show(this, Format("OpeningTypes.ImportPreview", Text($"OpeningKind.{kind}"),
+                    Meters(door.Width), Meters(door.Height), Meters(door.Depth)), Text("OpeningTypes.ImportTitle"),
+                    MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK) return;
+            var family = $"{Text("OpeningTypes.ImportedFamily")} {door.SourceFormat}";
+            var baseName = Path.GetFileNameWithoutExtension(dialog.FileName);
+            if (baseName.Length > 100) baseName = baseName[..100];
+            var name = baseName;
+            for (var suffix = 2; _session.Document.OpeningTypes.Any(type =>
+                     type.FamilyName == family && type.Name == name); suffix++)
+                name = $"{baseName} ({suffix})";
+            var typeId = _session.AddOpeningType(kind, family, name, door.Width, door.Height,
+                kind == OpeningKind.Door ? 0 : 0.9, depth: door.Depth > 0 ? door.Depth : 0.04);
+            _editingTypeId = typeId;
+            KindFilterBox.SelectedIndex = 0;
+            RefreshAll();
+            TypesList.SelectedValue = typeId;
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception is InvalidDataException ? LocalizedErrors.Translate(exception.Message) : Text("OpeningTypes.ReadFailed"), Text("OpeningTypes.ImportTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     /// <summary>Resolves a localized string, falling back to its key when missing.</summary>
@@ -104,7 +162,7 @@ public partial class OpeningTypesWindow : Window
         TypesList.SelectedItem = null;
         KindBox.IsEnabled = true;
         KindBox.SelectedValue = kind;
-        FamilyBox.Text = kind == OpeningKind.Door ? "Single Door" : "Fixed Window";
+        FamilyBox.Text = Text(kind == OpeningKind.Door ? "OpeningTypes.DoorFamily" : "OpeningTypes.WindowFamily");
         NameBox.Text = MaterialBox.Text = UsageText.Text = string.Empty;
         WidthBox.Text = Meters(kind == OpeningKind.Door ? 0.9 : 1.2);
         HeightBox.Text = Meters(kind == OpeningKind.Door ? 2.1 : 1.2);

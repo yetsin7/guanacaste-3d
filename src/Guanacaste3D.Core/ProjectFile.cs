@@ -115,6 +115,20 @@ public static class ProjectFile
             document.SchemaVersion = 8;
             document.Schedules ??= [];
         }
+        if (document.SchemaVersion == 8)
+        {
+            // Earlier built-in doors had no leaf. Preserve custom sizes, names, and nonzero depths.
+            var defaults = BuiltInOpeningTypes.CreateDefaults().Where(type => type.Kind == OpeningKind.Door)
+                .ToDictionary(type => type.Id);
+            for (var index = 0; index < document.OpeningTypes.Count; index++)
+            {
+                var type = document.OpeningTypes[index];
+                if (type.Kind == OpeningKind.Door && type.Depth == 0 && defaults.TryGetValue(type.Id, out var standard))
+                    document.OpeningTypes[index] = type with { Depth = standard.Depth };
+            }
+            document.SchemaVersion = 9;
+        }
+
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

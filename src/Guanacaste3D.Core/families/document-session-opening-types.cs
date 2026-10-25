@@ -61,6 +61,26 @@ public sealed partial class DocumentSession
         });
     }
 
+    /// <summary>
+    /// Moves an opening along its host or into another wall on the same level. The move is one
+    /// transaction: an offset that overlaps a neighbour or leaves the wall rejects it and nothing changes.
+    /// </summary>
+    public void MoveOpening(Guid id, Guid wallId, double offset)
+    {
+        var opening = Document.Openings.FirstOrDefault(candidate => candidate.Id == id)
+            ?? throw new InvalidDataException("The opening does not exist.");
+        var target = Document.Walls.FirstOrDefault(wall => wall.Id == wallId)
+            ?? throw new InvalidDataException("The host wall does not exist.");
+        var host = Document.Walls.Single(wall => wall.Id == opening.WallId);
+        if (target.LevelId != host.LevelId)
+            throw new InvalidDataException("The opening can only move to a wall on its level.");
+        Commit("Transaction.MoveOpening", doc =>
+        {
+            var index = doc.Openings.FindIndex(candidate => candidate.Id == id);
+            doc.Openings[index] = doc.Openings[index] with { WallId = wallId, Offset = offset };
+        });
+    }
+
     /// <summary>Assigns another type of the same kind to an opening; its size follows the new type.</summary>
     public void SetOpeningType(Guid openingId, Guid typeId)
     {
@@ -77,11 +97,15 @@ public sealed partial class DocumentSession
 
     /// <summary>Creates a door or window type.</summary>
     public Guid AddOpeningType(OpeningKind kind, string familyName, string name, double width, double height,
-        double defaultSill, string materialName = "")
+        double defaultSill, string materialName = "", double depth = 0)
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddOpeningType", doc => doc.OpeningTypes.Add(new OpeningType(
-            id, kind, familyName.Trim(), name.Trim(), width, height, defaultSill) { MaterialName = materialName.Trim() }));
+            id, kind, familyName.Trim(), name.Trim(), width, height, defaultSill)
+        {
+            MaterialName = materialName.Trim(),
+            Depth = depth
+        }));
         return id;
     }
 

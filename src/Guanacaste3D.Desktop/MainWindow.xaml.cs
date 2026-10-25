@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     public MainWindow(string? projectPath = null)
     {
         InitializeComponent();
+        InitializeCommandCustomization();
         SunDatePicker.SelectedDate = DateTime.Today;
         _session = new DocumentSession(BuildingDocument.Create(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
@@ -292,12 +293,7 @@ public partial class MainWindow : Window
         if (wall is null) return;
         try
         {
-            if (kind == OpeningKind.Door)
-                _session.AddOpening(wallId, OpeningKind.Door,
-                    offset: _selectedWallOffset, width: 0.90, height: 2.10);
-            else
-                _session.AddOpening(wallId, OpeningKind.Window,
-                    offset: _selectedWallOffset, width: 1.00, sill: 0.90, height: 1.20);
+            _selectedOpeningId = _session.AddOpening(wallId, kind, offset: _selectedWallOffset);
             StatusText.Text = GetText(kind == OpeningKind.Door
                 ? "Status.DoorOpeningCreated"
                 : "Status.WindowOpeningCreated");
@@ -329,14 +325,18 @@ public partial class MainWindow : Window
     /// <summary>Switches between wall placement and selection while cancelling competing sketches.</summary>
     private void SetWallTool(bool drawing)
     {
+        CancelMoveTool();
         CancelExtendedDrawing();
         _selectedViewId = null;
         _drawingWall = drawing;
+        _awaitingSimilarWallPick = false;
         _pendingWallStart = null;
         _wallPreviewPoint = null;
+        _chainTail = null;
+        _alignmentGuides = [];
         if (drawing)
         {
-            RibbonTabControl.SelectedIndex = 0;
+            WallContextTab.IsSelected = true;
             ViewTabs.SelectedIndex = 0;
         }
         UpdateWallToolVisualState();

@@ -6,6 +6,8 @@ namespace Guanacaste3D.Desktop.Controls;
 public enum ArchitectureCommand
 {
     Modify,
+    Move,
+    CreateSimilar,
     Wall,
     Door,
     Window,
