@@ -66,7 +66,7 @@
                 Background="{DynamicResource RibbonBrush}" BorderBrush="#C8CED2" BorderThickness="0,0,0,1">
       <TabItem Header="{DynamicResource Ribbon.Architecture}">
         <StackPanel Orientation="Horizontal" Margin="10,5">
-          <Button Content="{DynamicResource Tool.Wall}" Click="Wall_Click" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
+          <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Click="Wall_Click" Style="{StaticResource PrimaryRibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Door}" Click="Door_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Tool.Window}" Click="Window_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Button Content="{DynamicResource Action.OpeningTypes}" Click="OpeningTypes_Click" Style="{StaticResource RibbonButtonStyle}"/>
@@ -74,6 +74,7 @@
           <Button Content="{DynamicResource Tool.Room}" Click="Room_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <Separator Margin="8,3"/>
           <Button Content="{DynamicResource Tool.Level}" Click="AddLevel_Click" Style="{StaticResource RibbonButtonStyle}"/>
+          <Button Content="{DynamicResource Action.Levels}" Click="Levels_Click" Style="{StaticResource RibbonButtonStyle}"/>
           <StackPanel Margin="8,4" VerticalAlignment="Center">
             <TextBlock Text="{DynamicResource Tool.WallType}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}"/>
             <ComboBox x:Name="WallTypePicker" Width="210" Margin="0,4,0,0"/>
@@ -161,6 +162,43 @@
 
       <Grid Grid.Column="1" Background="{DynamicResource CanvasBrush}">
         <DockPanel>
+          <Border x:Name="WallOptionsBar" DockPanel.Dock="Top" Visibility="Collapsed"
+                  Background="{DynamicResource ContextualBarBrush}" BorderBrush="#8AB8C8"
+                  BorderThickness="0,0,0,1" Padding="10,6">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{DynamicResource WallOptions.Title}" FontWeight="SemiBold"
+                           Foreground="#123743" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                <TextBlock Text="{DynamicResource WallOptions.DrawMode}" Style="{StaticResource OptionLabelStyle}"/>
+                <RadioButton x:Name="WallLineMode" Content="{DynamicResource WallOptions.Line}" GroupName="WallDrawMode"
+                             IsChecked="True" VerticalAlignment="Center" Margin="3,0,8,0"
+                             Checked="WallOptions_Changed"/>
+                <RadioButton x:Name="WallRectangleMode" Content="{DynamicResource WallOptions.Rectangle}" GroupName="WallDrawMode"
+                             VerticalAlignment="Center" Margin="3,0,14,0" Checked="WallOptions_Changed"/>
+                <TextBlock Text="{DynamicResource WallOptions.Height}" Style="{StaticResource OptionLabelStyle}"/>
+                <TextBox x:Name="WallHeightInput" Text="3.00" Width="54" VerticalAlignment="Center" Margin="4,0,12,0"
+                         TextChanged="WallOptions_Changed"/>
+                <TextBlock Text="{DynamicResource WallOptions.LocationLine}" Style="{StaticResource OptionLabelStyle}"/>
+                <ComboBox x:Name="WallLocationLinePicker" Width="142" SelectedIndex="0" VerticalAlignment="Center"
+                          SelectionChanged="WallOptions_Changed">
+                  <ComboBoxItem Content="{DynamicResource WallOptions.Centerline}" Tag="Center"/>
+                  <ComboBoxItem Content="{DynamicResource WallOptions.ExteriorFace}" Tag="Exterior"/>
+                  <ComboBoxItem Content="{DynamicResource WallOptions.InteriorFace}" Tag="Interior"/>
+                </ComboBox>
+                <TextBlock Text="{DynamicResource WallOptions.Offset}" Style="{StaticResource OptionLabelStyle}" Margin="12,0,0,0"/>
+                <TextBox x:Name="WallOffsetInput" Text="0.00" Width="54" VerticalAlignment="Center" Margin="4,0,12,0"
+                         TextChanged="WallOptions_Changed"/>
+                <CheckBox x:Name="WallChainCheck" Content="{DynamicResource WallOptions.Chain}" IsChecked="True"
+                          VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <CheckBox x:Name="WallOrthogonalCheck" Content="{DynamicResource WallOptions.Orthogonal}" IsChecked="True"
+                          VerticalAlignment="Center" Margin="0,0,12,0" Checked="WallOptions_Changed" Unchecked="WallOptions_Changed"/>
+                <Button Content="{DynamicResource WallOptions.Finish}" Click="FinishWallTool_Click"
+                        Style="{StaticResource ContextualButtonStyle}"/>
+                <Button Content="{DynamicResource WallOptions.Cancel}" Click="CancelWallTool_Click"
+                        Style="{StaticResource ContextualButtonStyle}"/>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
           <Border DockPanel.Dock="Top" Background="#FFFFFF" BorderBrush="#D3D9DD" BorderThickness="0,0,0,1" Padding="10,5">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{DynamicResource Workspace.ActiveLevel}" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -178,6 +216,7 @@
               <Canvas x:Name="PlanCanvas" Background="White" ClipToBounds="True"
                       MouseLeftButtonDown="PlanCanvas_MouseLeftButtonDown"
                       MouseRightButtonDown="PlanCanvas_MouseRightButtonDown"
+                      MouseMove="PlanCanvas_MouseMove"
                       MouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="{DynamicResource View.Model3D}">
@@ -235,9 +274,14 @@
                       <ComboBoxItem Content="{DynamicResource Render.Medium}"/>
                       <ComboBoxItem Content="{DynamicResource Render.High}"/>
                     </ComboBox>
-                    <TextBlock Text="{DynamicResource Render.SunHour}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="14,0,6,0"/>
-                    <Slider x:Name="SunHourSlider" Minimum="6.5" Maximum="17.5" Value="10" Width="140"
-                            VerticalAlignment="Center" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
+                    <TextBlock Text="{DynamicResource Render.Date}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="14,0,6,0"/>
+                    <DatePicker x:Name="SunDatePicker" Width="112" VerticalAlignment="Center" SelectedDateFormat="Short"/>
+                    <TextBlock Text="{DynamicResource Render.Latitude}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                    <TextBox x:Name="SiteLatitudeInput" Text="12.1" Width="44" VerticalAlignment="Center"
+                             ToolTip="{DynamicResource Render.LatitudeHint}"/>
+                    <TextBlock Text="{DynamicResource Render.SunHour}" Foreground="#DDE4E8" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                    <Slider x:Name="SunHourSlider" Minimum="5" Maximum="19" Value="10" Width="120"
+                            VerticalAlignment="Center" TickFrequency="0.25" IsSnapToTickEnabled="True"/>
                     <TextBlock Text="{Binding Value, ElementName=SunHourSlider, StringFormat={}{0:0.0} h}" Foreground="#DDE4E8"
                                VerticalAlignment="Center" Margin="6,0,0,0" Width="40"/>
                     <CheckBox x:Name="DenoiseCheck" Content="{DynamicResource Render.Denoise}" IsChecked="True" Foreground="#DDE4E8"

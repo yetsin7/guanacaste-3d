@@ -6,8 +6,9 @@
   <SolidColorBrush x:Key="RibbonBrush" Color="#F8F9FA"/>
   <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
   <SolidColorBrush x:Key="PanelBorderBrush" Color="#C9D0D5"/>
-  <SolidColorBrush x:Key="AccentBrush" Color="#247A5A"/>
-  <SolidColorBrush x:Key="AccentSoftBrush" Color="#DDEDE6"/>
+  <SolidColorBrush x:Key="AccentBrush" Color="#007FA3"/>
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#D9EEF4"/>
+  <SolidColorBrush x:Key="ContextualBarBrush" Color="#E3F3F7"/>
   <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1E272E"/>
   <SolidColorBrush x:Key="SecondaryTextBrush" Color="#61707B"/>
   <SolidColorBrush x:Key="CanvasBrush" Color="#F8FAFB"/>
@@ -37,6 +38,18 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/>
     <Setter Property="Margin" Value="12,12,8,8"/>
+  </Style>
+  <Style x:Key="OptionLabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="#35515B"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style x:Key="ContextualButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Setter Property="MinHeight" Value="28"/>
+    <Setter Property="Padding" Value="10,3"/>
+    <Setter Property="Margin" Value="3,0"/>
+    <Setter Property="Background" Value="#F8FCFD"/>
+    <Setter Property="BorderBrush" Value="#78AAB9"/>
   </Style>
   <Style TargetType="TextBox">
     <Setter Property="Padding" Value="8,6"/>

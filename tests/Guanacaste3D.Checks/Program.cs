@@ -370,5 +370,7 @@ LocalizationChecks.Run(Check);
 IfcChecks.Run(Check);
 MeshExportChecks.Run(Check);
 DenoiserChecks.Run(Check);
+SolarChecks.Run(Check);
+WallPlacementChecks.Run(Check);
 
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

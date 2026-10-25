@@ -67,6 +67,11 @@ public partial class MainWindow
     private void PlanCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (TryHandleRoomPlacement(e)) return;
+        if (_drawingWall)
+        {
+            HandleWallPlacementClick(e.GetPosition(PlanCanvas));
+            return;
+        }
         if (!_drawingWall)
         {
             if (TrySelectExtendedPlanElement(e)) return;
@@ -90,39 +95,17 @@ public partial class MainWindow
             return;
         }
 
-        var point = CanvasToWorld(e.GetPosition(PlanCanvas));
-        if (SnapGridCheck.IsChecked == true)
-        {
-            point = new Point2(
-                Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
-                Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10);
-        }
-        if (_pendingWallStart is null)
-        {
-            _pendingWallStart = point;
-            StatusText.Text = GetText("Status.WallSecondPoint");
-            RenderPlan();
-            return;
-        }
-        try
-        {
-            var wallTypeId = (WallTypePicker.SelectedItem as ComboBoxItem)?.Tag as Guid?;
-            _selectedWallId = _session.AddWall(
-                _activeLevelId, _pendingWallStart.Value, point, wallTypeId: wallTypeId);
-            _selectedViewId = null;
-            _pendingWallStart = null;
-            StatusText.Text = GetText("Status.WallCreated");
-            RefreshAll();
-        }
-        catch (InvalidDataException exception)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidGeometry"), MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
     }
 
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_drawingWall)
+        {
+            CancelWallPlacementStep();
+            e.Handled = true;
+            return;
+        }
         _pendingWallStart = null;
         CancelExtendedDrawing();
         RenderPlan();
@@ -239,6 +222,7 @@ public partial class MainWindow
             Canvas.SetTop(marker, canvasPoint.Y - 6);
             PlanCanvas.Children.Add(marker);
         }
+        RenderWallSketchOverlay();
     }
 
     /// <summary>Adds a selectable model-space line to the plan canvas.</summary>

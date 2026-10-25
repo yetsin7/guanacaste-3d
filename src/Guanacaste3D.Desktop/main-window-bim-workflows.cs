@@ -34,7 +34,7 @@ public partial class MainWindow
     /// <summary>Starts rectangular room placement in the active plan view.</summary>
     private void Room_Click(object sender, RoutedEventArgs e)
     {
-        _drawingWall = false;
+        SetWallTool(false);
         _drawingRoom = true;
         _selectedViewId = null;
         _pendingWallStart = null;

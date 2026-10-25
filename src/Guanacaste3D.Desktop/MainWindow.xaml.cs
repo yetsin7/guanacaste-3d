@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     public MainWindow(string? projectPath = null)
     {
         InitializeComponent();
+        SunDatePicker.SelectedDate = DateTime.Today;
         _session = new DocumentSession(BuildingDocument.Create(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
         _session.Changed += OnDocumentChanged;
@@ -235,6 +236,7 @@ public partial class MainWindow : Window
         _filePath = filename;
         _dirty = false;
         _drawingWall = false;
+        UpdateWallToolVisualState();
         RefreshAll();
     }
 
@@ -331,6 +333,13 @@ public partial class MainWindow : Window
         _selectedViewId = null;
         _drawingWall = drawing;
         _pendingWallStart = null;
+        _wallPreviewPoint = null;
+        if (drawing)
+        {
+            RibbonTabControl.SelectedIndex = 0;
+            ViewTabs.SelectedIndex = 0;
+        }
+        UpdateWallToolVisualState();
         StatusText.Text = GetText(drawing ? "Status.WallTool" : "Status.SelectionMode");
         RenderPlan();
     }

@@ -1,0 +1,234 @@
+using System.Globalization;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Guanacaste3D.Core;
+
+namespace Guanacaste3D.Desktop;
+
+/// <summary>Contains the contextual, preview-driven wall placement workflow.</summary>
+public partial class MainWindow
+{
+    private Point2? _wallPreviewPoint;
+
+    /// <summary>Tracks the pointer in model space so the active wall sketch has immediate visual feedback.</summary>
+    private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_drawingWall || _pendingWallStart is null) return;
+        _wallPreviewPoint = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        RenderPlan();
+    }
+
+    /// <summary>Handles either endpoint placement or a two-corner rectangular wall operation.</summary>
+    private void HandleWallPlacementClick(Point canvasPoint)
+    {
+        var point = SnapWallPoint(CanvasToWorld(canvasPoint));
+        if (_pendingWallStart is null)
+        {
+            _pendingWallStart = point;
+            _wallPreviewPoint = point;
+            StatusText.Text = GetText("Status.WallSecondPoint");
+            RenderPlan();
+            return;
+        }
+
+        if (!TryReadWallPlacementOptions(out var height, out var offset, out var typeId))
+        {
+            StatusText.Text = GetText("Status.WallInvalidOptions");
+            return;
+        }
+
+        var start = _pendingWallStart.Value;
+        try
+        {
+            if (WallRectangleMode.IsChecked == true)
+                CreateWallRectangle(start, point, height, offset, typeId);
+            else
+                CreateWallSegment(start, ConstrainWallEndpoint(start, point), height, offset, typeId);
+        }
+        catch (InvalidDataException exception)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidGeometry"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Creates a line wall and optionally carries its reference endpoint into a chained segment.</summary>
+    private void CreateWallSegment(Point2 referenceStart, Point2 referenceEnd, double height, double offset, Guid typeId)
+    {
+        var (start, end) = OffsetWallCenterline(referenceStart, referenceEnd, offset, typeId);
+        _selectedWallId = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
+        _selectedViewId = null;
+        _pendingWallStart = WallChainCheck.IsChecked == true ? referenceEnd : null;
+        _wallPreviewPoint = referenceEnd;
+        StatusText.Text = GetText("Status.WallCreated");
+        RefreshAll();
+    }
+
+    /// <summary>Creates four joined walls in one undoable transaction from opposite reference corners.</summary>
+    private void CreateWallRectangle(Point2 first, Point2 opposite, double height, double offset, Guid typeId)
+    {
+        var type = _session.Document.WallTypes.Single(candidate => candidate.Id == typeId);
+        var centerlines = WallPlacementGeometry.Rectangle(
+            first, opposite, type.Thickness, offset, SelectedWallLocationReference());
+
+        using var group = _session.BeginGroup("Transaction.DrawRectangle");
+        foreach (var centerline in centerlines)
+            _selectedWallId = _session.AddWall(
+                _activeLevelId, centerline.Start, centerline.End,
+                height: height, wallTypeId: typeId);
+        group.Assimilate();
+        _selectedViewId = null;
+        _pendingWallStart = null;
+        _wallPreviewPoint = null;
+        StatusText.Text = GetText("Status.WallRectangleCreated");
+        RefreshAll();
+    }
+
+    /// <summary>Snaps a reference point to the active ten-centimeter drawing grid.</summary>
+    private Point2 SnapWallPoint(Point2 point) => SnapGridCheck.IsChecked == true
+        ? new Point2(
+            Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
+            Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10)
+        : point;
+
+    /// <summary>Locks a line endpoint to the dominant axis when orthogonal placement is enabled.</summary>
+    private Point2 ConstrainWallEndpoint(Point2 start, Point2 candidate)
+        => WallPlacementGeometry.ConstrainEndpoint(start, candidate, WallOrthogonalCheck.IsChecked == true);
+
+    /// <summary>Moves the stored centerline according to the chosen reference face and explicit offset.</summary>
+    private (Point2 Start, Point2 End) OffsetWallCenterline(
+        Point2 start, Point2 end, double offset, Guid typeId)
+    {
+        var thickness = _session.Document.WallTypes.Single(type => type.Id == typeId).Thickness;
+        var centerline = WallPlacementGeometry.OffsetLine(
+            start, end, thickness, offset, SelectedWallLocationReference());
+        return (centerline.Start, centerline.End);
+    }
+
+    /// <summary>Maps the localized placement selector to a stable domain reference.</summary>
+    private WallLocationReference SelectedWallLocationReference() =>
+        ((WallLocationLinePicker.SelectedItem as ComboBoxItem)?.Tag as string) switch
+        {
+            "Exterior" => WallLocationReference.ExteriorFace,
+            "Interior" => WallLocationReference.InteriorFace,
+            _ => WallLocationReference.Centerline
+        };
+
+    /// <summary>Validates localized numeric placement inputs without mutating the document.</summary>
+    private bool TryReadWallPlacementOptions(out double height, out double offset, out Guid typeId)
+    {
+        var validHeight = double.TryParse(WallHeightInput.Text, NumberStyles.Float,
+            CultureInfo.CurrentCulture, out height) && height is >= 0.1 and <= 1000;
+        var validOffset = double.TryParse(WallOffsetInput.Text, NumberStyles.Float,
+            CultureInfo.CurrentCulture, out offset) && double.IsFinite(offset) && Math.Abs(offset) <= 100000;
+        typeId = (WallTypePicker.SelectedItem as ComboBoxItem)?.Tag as Guid? ?? Guid.Empty;
+        return validHeight && validOffset && typeId != Guid.Empty;
+    }
+
+    /// <summary>Draws the provisional line or rectangle and its live dimensions over the plan.</summary>
+    private void RenderWallSketchOverlay()
+    {
+        if (!_drawingWall || _pendingWallStart is not Point2 start || _wallPreviewPoint is not Point2 preview) return;
+        if (WallRectangleMode.IsChecked == true)
+        {
+            var corners = new[]
+            {
+                start, new Point2(preview.X, start.Y), preview, new Point2(start.X, preview.Y)
+            };
+            for (var index = 0; index < corners.Length; index++)
+                AddWallPreviewLine(corners[index], corners[(index + 1) % corners.Length]);
+            AddWallMeasurement(start, preview, FormatText("WallOptions.RectangleMeasurement",
+                Math.Abs(preview.X - start.X), Math.Abs(preview.Y - start.Y)));
+            return;
+        }
+
+        var end = ConstrainWallEndpoint(start, preview);
+        AddWallPreviewLine(start, end);
+        var angle = Math.Atan2(end.Y - start.Y, end.X - start.X) * 180 / Math.PI;
+        var length = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
+        AddWallMeasurement(start, end, FormatText("WallOptions.Measurement", length, angle));
+    }
+
+    /// <summary>Adds a dashed cyan reference line to the current plan canvas.</summary>
+    private void AddWallPreviewLine(Point2 start, Point2 end)
+    {
+        var from = WorldToCanvas(start);
+        var to = WorldToCanvas(end);
+        PlanCanvas.Children.Add(new Line
+        {
+            X1 = from.X,
+            Y1 = from.Y,
+            X2 = to.X,
+            Y2 = to.Y,
+            Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
+            StrokeThickness = 2,
+            StrokeDashArray = new DoubleCollection { 6, 3 },
+            IsHitTestVisible = false
+        });
+    }
+
+    /// <summary>Places a compact dimension callout at the midpoint of a provisional wall sketch.</summary>
+    private void AddWallMeasurement(Point2 start, Point2 end, string text)
+    {
+        var midpoint = WorldToCanvas(new Point2((start.X + end.X) / 2, (start.Y + end.Y) / 2));
+        var label = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(7, 3, 7, 3),
+            Child = new TextBlock { Text = text, FontSize = 11, Foreground = Brushes.DarkSlateGray },
+            IsHitTestVisible = false
+        };
+        Canvas.SetLeft(label, midpoint.X + 8);
+        Canvas.SetTop(label, midpoint.Y - 28);
+        PlanCanvas.Children.Add(label);
+    }
+
+    /// <summary>Refreshes the provisional sketch when a contextual placement option changes.</summary>
+    private void WallOptions_Changed(object sender, RoutedEventArgs e)
+    {
+        if (PlanCanvas is not null && _session is not null) RenderPlan();
+    }
+
+    /// <summary>Leaves wall placement while retaining all completed wall transactions.</summary>
+    private void FinishWallTool_Click(object sender, RoutedEventArgs e) => SetWallTool(false);
+
+    /// <summary>Cancels the provisional wall and leaves the wall command.</summary>
+    private void CancelWallTool_Click(object sender, RoutedEventArgs e)
+    {
+        _pendingWallStart = null;
+        _wallPreviewPoint = null;
+        SetWallTool(false);
+    }
+
+    /// <summary>Cancels the active segment first and exits the wall command on the next cancellation.</summary>
+    private void CancelWallPlacementStep()
+    {
+        if (_pendingWallStart is not null)
+        {
+            _pendingWallStart = null;
+            _wallPreviewPoint = null;
+            StatusText.Text = GetText("Status.WallTool");
+            RenderPlan();
+            return;
+        }
+        SetWallTool(false);
+    }
+
+    /// <summary>Applies Revit-like two-stage escape behavior to the active placement command.</summary>
+    private void HandleWallEscape() => CancelWallPlacementStep();
+
+    /// <summary>Shows or hides contextual placement controls so command state is always visible.</summary>
+    private void UpdateWallToolVisualState()
+    {
+        if (WallOptionsBar is null) return;
+        WallOptionsBar.Visibility = _drawingWall ? Visibility.Visible : Visibility.Collapsed;
+        WallCommandButton.FontWeight = _drawingWall ? FontWeights.Bold : FontWeights.Normal;
+    }
+}

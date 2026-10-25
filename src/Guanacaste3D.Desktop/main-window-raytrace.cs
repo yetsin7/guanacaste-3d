@@ -98,11 +98,8 @@ public partial class MainWindow
         var document = _session.Document;
         var (min, max) = ModelBounds();
         var camera = CurrentRenderCamera(min, max);
-        var settings = new RenderSettings
-        {
-            SunDirection = SunDirectionFromHour(SunHourSlider.Value),
-            MaxThreads = Math.Max(1, Environment.ProcessorCount - 1)
-        };
+        var settings = DaylightSettings(SiteLatitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear,
+            SunHourSlider.Value);
 
         using var cancellation = new CancellationTokenSource();
         _renderCancellation = cancellation;
@@ -172,15 +169,34 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Approximates a tropical sun path (≈12° N): rises east (+X) at 6 h, sets west at 18 h.</summary>
-    private static Vector3 SunDirectionFromHour(double hour)
+    /// <summary>Default site latitude: Managua, Nicaragua.</summary>
+    private const double DefaultLatitude = 12.1;
+
+    /// <summary>Reads the site latitude field, falling back to Managua when it is empty or invalid.</summary>
+    private double SiteLatitude()
     {
-        var dayFraction = Math.Clamp((hour - 6) / 12, 0, 1) * Math.PI; // 0 = sunrise, π = sunset
-        var altitude = Math.Max(3, Math.Sin(dayFraction) * 78) * Math.PI / 180;
-        // The arc leans slightly south (-Y) of the zenith at this latitude.
-        var heading = Vector2.Normalize(new Vector2((float)Math.Cos(dayFraction), (float)(-0.35 * Math.Sin(dayFraction))));
-        var horizontal = (float)Math.Cos(altitude);
-        return new Vector3(heading.X * horizontal, heading.Y * horizontal, (float)Math.Sin(altitude));
+        var text = SiteLatitudeInput.Text.Replace(',', '.');
+        return double.TryParse(text, System.Globalization.NumberStyles.Float,
+                   System.Globalization.CultureInfo.InvariantCulture, out var latitude) &&
+               latitude is >= -90 and <= 90
+            ? latitude
+            : DefaultLatitude;
+    }
+
+    /// <summary>Builds lighting from the real sun position; below the horizon it renders dusk sky light only.</summary>
+    private static RenderSettings DaylightSettings(double latitude, int dayOfYear, double solarHour)
+    {
+        var sun = SolarPosition.Direction(latitude, dayOfYear, solarHour);
+        var altitude = SolarPosition.AltitudeDegrees(sun);
+        // Fade the sun over its last 3° above the horizon so sunrise and sunset do not pop.
+        var sunFactor = (float)Math.Clamp(altitude / 3, 0, 1);
+        return new RenderSettings
+        {
+            SunDirection = altitude > 0 ? sun : Vector3.Normalize(new Vector3(sun.X, sun.Y, 0.02f)),
+            SunIntensity = new RenderSettings().SunIntensity * sunFactor,
+            SkyIntensity = new RenderSettings().SkyIntensity * (altitude > 0 ? 1 : 0.15f),
+            MaxThreads = Math.Max(1, Environment.ProcessorCount - 1)
+        };
     }
     /// <summary>Keeps the interactive camera aspect in sync with the viewport.</summary>
     private void ModelViewport_SizeChanged(object sender, SizeChangedEventArgs e) => Render3D();

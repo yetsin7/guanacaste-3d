@@ -159,6 +159,7 @@ public partial class MainWindow
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
         else if (e.Key == Key.R) { Room_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
+        else if (e.Key == Key.Escape && _drawingWall) { HandleWallEscape(); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }
         base.OnPreviewKeyDown(e);
