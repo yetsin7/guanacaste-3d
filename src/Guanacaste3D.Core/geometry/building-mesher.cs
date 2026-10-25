@@ -98,6 +98,9 @@ public static class BuildingMesher
                 (float)bottom, (float)(bottom + element.Height), SurfaceKind.Structure);
         }
 
+        foreach (var family in document.InPlaceFamilies)
+            InPlaceFamilyRules.AppendTo(mesh, family);
+
         if (includeGround)
         {
             var (min, max) = mesh.Bounds();

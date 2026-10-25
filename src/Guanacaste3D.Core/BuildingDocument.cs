@@ -33,7 +33,7 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -52,6 +52,7 @@ public sealed class BuildingDocument
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
+    public List<InPlaceFamily> InPlaceFamilies { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -90,6 +91,11 @@ public sealed class BuildingDocument
         Schedules = Schedules.Select(schedule => schedule with
         {
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
+        }).ToList(),
+        InPlaceFamilies = InPlaceFamilies.Select(family => family with
+        {
+            Parameters = [.. family.Parameters],
+            Extrusions = family.Extrusions.Select(extrusion => extrusion with { Profile = [.. extrusion.Profile] }).ToList()
         }).ToList()
     };
 
@@ -154,6 +160,7 @@ public sealed class BuildingDocument
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
             .Concat((OpeningTypes ?? []).Select(type => type.Id))
             .Concat((Schedules ?? []).Select(schedule => schedule.Id))
+            .Concat((InPlaceFamilies ?? []).Where(family => family is not null).Select(family => family.Id))
             .ToArray();
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
@@ -162,6 +169,7 @@ public sealed class BuildingDocument
         LevelConstraints.Validate(this);
         ParameterRules.Validate(this);
         ScheduleDefinitionRules.Validate(this);
+        InPlaceFamilyRules.Validate(this);
     }
 
     /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>

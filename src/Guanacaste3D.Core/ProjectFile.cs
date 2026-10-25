@@ -128,6 +128,12 @@ public static class ProjectFile
             }
             document.SchemaVersion = 9;
         }
+        if (document.SchemaVersion == 9)
+        {
+            // Schema 10 adds in-place families; earlier projects have none.
+            document.SchemaVersion = 10;
+            document.InPlaceFamilies ??= [];
+        }
 
     }
 
