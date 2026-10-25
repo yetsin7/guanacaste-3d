@@ -1,7 +1,20 @@
 # Development status
 
-Last updated: 2026-10-23. Version in development: 0.4.0 (csproj still says 0.3.0
+Last updated: 2026-10-25. Version in development: 0.4.0 (csproj still says 0.3.0
 until the parameters increment lands).
+
+
+## Native documents and family-system foundation (2026-10-25)
+
+- Official `.g3d` project container implemented with a typed header, schema version, document identity, GZip payload, SHA-256 verification, atomic replacement and `.bak` recovery copy.
+- Previous `.g3` project files and `.g3d.json` imports remain supported. New Save As defaults to `.g3d`.
+- `.g3df` family persistence and `.g3dt` project-template persistence implemented in Core.
+- Universal family domain model added: categories, hosting behavior, type/instance/shared/calculated parameters, work planes, operation dependency graph, nested-family references and cycle rejection.
+- Built-in parametric foundations added for the architectural door, mortise lock and sliding window, including the requested default door dimensions, grille/lock/hinge operation descriptors and nested hardware references.
+- Metric architecture template foundation can instantiate an independent `BuildingDocument`.
+- Regression checks cover round trips, content-signature detection, corruption rejection, wrong-document-kind rejection, family defaults, template independence and circular-dependency rejection.
+
+**Not yet claimed complete:** exact B-Rep evaluation of family operations, the WPF family editor, wall-host placement of `.g3df` instances, and direct desktop editing of `.g3dt` remain subsequent implementation stages.
 
 ## Verified on Windows 11 (local)
 

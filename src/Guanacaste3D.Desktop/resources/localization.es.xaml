@@ -222,8 +222,8 @@
   <sys:String x:Key="Schedule.Room">Habitación</sys:String>
   <sys:String x:Key="Schedule.Floor">Suelo</sys:String>
   <sys:String x:Key="Schedule.Sheet">Lámina</sys:String>
-  <sys:String x:Key="Dialog.OpenProjectFilter">Proyecto Guanacaste 3D (*.g3)|*.g3|Proyecto anterior (*.g3d.json)|*.g3d.json</sys:String>
-  <sys:String x:Key="Dialog.ProjectFilter">Proyecto Guanacaste 3D (*.g3)|*.g3</sys:String>
+  <sys:String x:Key="Dialog.OpenProjectFilter">Proyecto Guanacaste 3D (*.g3d)|*.g3d|Proyecto de vista previa (*.g3)|*.g3|Proyecto anterior (*.g3d.json)|*.g3d.json</sys:String>
+  <sys:String x:Key="Dialog.ProjectFilter">Proyecto Guanacaste 3D (*.g3d)|*.g3d|Proyecto de vista previa (*.g3)|*.g3</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFilter">Tabla de cantidades (*.csv)|*.csv</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFileName">cantidades-guanacaste3d.csv</sys:String>
   <sys:String x:Key="Action.OpenSample">Abrir proyecto de ejemplo</sys:String>

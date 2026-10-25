@@ -23,3 +23,7 @@ Short-term work is in [NEXT_TASKS.md](NEXT_TASKS.md).
   binaries or assets.
 - Nothing is marked done without an automated check or a recorded manual
   verification.
+
+## Foundation landed on 2026-10-25
+
+The persistence part of the family milestone has started earlier than the UI milestone: official `.g3d`, `.g3df` and `.g3dt` containers, the family semantic model, nested references, dependency validation, built-in door/lock/window definitions and the metric template model now exist in Core. The 0.7 milestone still requires the interactive family editor, exact geometry-kernel evaluation, placement/regeneration in projects and production-ready family libraries before it can be marked complete.

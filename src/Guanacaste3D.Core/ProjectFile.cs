@@ -3,38 +3,69 @@ using System.Text.Json;
 
 namespace Guanacaste3D.Core;
 
-/// <summary>Versioned on-disk projects, with validation and a previous-copy backup.</summary>
+/// <summary>
+/// Project persistence facade. New projects use the official compressed .g3d
+/// container; the earlier .g3 envelope and .g3d.json preview remain readable.
+/// </summary>
 public static class ProjectFile
 {
     private const long MaximumBytes = 20L * 1024 * 1024;
-    private const string NativeHeader = "G3-PROJECT/1\n";
-    public const string NativeExtension = ".g3";
+    private const string PreviewHeader = "G3-PROJECT/1\n";
+
+    /// <summary>Official Guanacaste 3D project extension.</summary>
+    public const string NativeExtension = NativeDocumentStore.ProjectExtension;
+
+    /// <summary>Previous preview project extension, retained for compatibility.</summary>
+    public const string PreviewExtension = ".g3";
+
+    /// <summary>Old JSON-only preview extension, import-only.</summary>
     public const string LegacyExtension = ".g3d.json";
+
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = false
     };
 
-    /// <summary>Returns whether a path uses the native Guanacaste 3D extension.</summary>
+    /// <summary>Returns whether a path is a supported native project path.</summary>
     public static bool IsNativePath(string path) =>
+        IsOfficialPath(path) || IsPreviewPath(path);
+
+    public static bool IsOfficialPath(string path) =>
         string.Equals(Path.GetExtension(path), NativeExtension, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Returns whether a path uses the import-only preview extension.</summary>
+    public static bool IsPreviewPath(string path) =>
+        string.Equals(Path.GetExtension(path), PreviewExtension, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Returns whether a path uses the import-only JSON preview extension.</summary>
     public static bool IsLegacyPath(string path) =>
         path.EndsWith(LegacyExtension, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Loads, migrates, and validates a native or legacy project document.</summary>
+    /// <summary>
+    /// Loads and validates a project. Official containers are identified by
+    /// signature even when a caller supplies a non-standard extension.
+    /// </summary>
     public static BuildingDocument Load(string path)
     {
-        if (!IsNativePath(path) && !IsLegacyPath(path))
-            throw new InvalidDataException("Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.");
+        if (IsOfficialPath(path))
+            return NativeDocumentStore.LoadProject(path);
+
+        if (!IsPreviewPath(path) && !IsLegacyPath(path))
+        {
+            if (NativeDocumentStore.TryInspect(path, out var info) && info?.Kind == NativeDocumentKind.Project)
+                return NativeDocumentStore.LoadProject(path);
+            throw new InvalidDataException(
+                "Guanacaste 3D projects must be a valid .g3d container, .g3 preview, or .g3d.json legacy document.");
+        }
+
         if (new FileInfo(path).Length > MaximumBytes)
-            throw new InvalidDataException("The project file exceeds 20 MB.");
+            throw new InvalidDataException("The preview project file exceeds 20 MB.");
+
         var content = File.ReadAllText(path, Encoding.UTF8);
-        if (IsNativePath(path) && !content.StartsWith(NativeHeader, StringComparison.Ordinal))
+        if (IsPreviewPath(path) && !content.StartsWith(PreviewHeader, StringComparison.Ordinal))
             throw new InvalidDataException("The .g3 project header is missing or unsupported.");
-        var json = IsNativePath(path) ? content[NativeHeader.Length..] : content;
+
+        var json = IsPreviewPath(path) ? content[PreviewHeader.Length..] : content;
         using (var parsed = JsonDocument.Parse(json))
         {
             if (parsed.RootElement.ValueKind != JsonValueKind.Object)
@@ -45,8 +76,9 @@ public static class ProjectFile
                     throw new InvalidDataException("The project document contains duplicate fields.");
             foreach (var required in new[] { "SchemaVersion", "Id", "Name", "Levels", "Walls" })
                 if (!fields.Contains(required))
-                    throw new InvalidDataException($"The required field is missing: {required}.");
+                    throw new InvalidDataException("The required field is missing: " + required + ".");
         }
+
         var document = JsonSerializer.Deserialize<BuildingDocument>(json, Options)
             ?? throw new InvalidDataException("The project document is empty.");
         UpgradeLegacyDocument(document);
@@ -78,16 +110,12 @@ public static class ProjectFile
         }
         if (document.SchemaVersion == 3)
         {
-            // Schema 4 adds project parameters; earlier projects start with none.
             document.SchemaVersion = 4;
             document.ParameterDefinitions ??= [];
             document.ParameterValues ??= [];
         }
         if (document.SchemaVersion == 4)
         {
-            // Schema 5 moves door and window sizes onto reusable types. Each
-            // existing opening is matched to a built-in type of the same size,
-            // or receives a generated type, so geometry is preserved exactly.
             document.SchemaVersion = 5;
             document.OpeningTypes = BuiltInOpeningTypes.CreateDefaults();
             for (var index = 0; index < document.Openings.Count; index++)
@@ -99,40 +127,43 @@ public static class ProjectFile
             }
         }
         if (document.SchemaVersion == 5)
-        {
-            // Schema 6 adds optional parameter formulas. No data changes, but the
-            // version bump stops older builds from silently dropping formulas.
             document.SchemaVersion = 6;
-        }
         if (document.SchemaVersion == 6)
-        {
-            // Schema 7 adds optional wall top constraints; existing walls stay unconnected.
             document.SchemaVersion = 7;
-        }
         if (document.SchemaVersion == 7)
         {
-            // Schema 8 adds saved schedule definitions; earlier projects have none.
             document.SchemaVersion = 8;
             document.Schedules ??= [];
         }
     }
 
-    /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>
+    /// <summary>
+    /// Saves an official .g3d project, or the older .g3 format when an existing
+    /// compatibility path is explicitly supplied.
+    /// </summary>
     public static void Save(string path, BuildingDocument document)
     {
-        if (!IsNativePath(path))
-            throw new InvalidDataException("Native Guanacaste 3D projects must use the .g3 extension.");
+        if (IsOfficialPath(path))
+        {
+            NativeDocumentStore.SaveProject(path, document);
+            return;
+        }
+        if (!IsPreviewPath(path))
+            throw new InvalidDataException("Native Guanacaste 3D projects must use the .g3d extension.");
+
         document.Validate();
         var full = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(full)
             ?? throw new InvalidDataException("The file path is invalid.");
         if (!Directory.Exists(directory))
             throw new DirectoryNotFoundException(directory);
+
         var json = JsonSerializer.Serialize(document, Options);
-        var content = NativeHeader + json;
+        var content = PreviewHeader + json;
         if (Encoding.UTF8.GetByteCount(content) > MaximumBytes)
-            throw new InvalidDataException("The project exceeds the 20 MB limit.");
-        var temp = Path.Combine(directory, $".{Guid.NewGuid():N}.tmp");
+            throw new InvalidDataException("The project exceeds the 20 MB preview-format limit.");
+
+        var temp = Path.Combine(directory, "." + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             File.WriteAllText(temp, content, new UTF8Encoding(false));
@@ -142,7 +173,8 @@ public static class ProjectFile
         }
         finally
         {
-            if (File.Exists(temp)) File.Delete(temp);
+            if (File.Exists(temp))
+                File.Delete(temp);
         }
     }
 }

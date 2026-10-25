@@ -50,3 +50,10 @@ next-event estimation to a finite sun disk for soft shadows, thin-glass
 Fresnel, analytic sky, Russian roulette, ACES tone mapping) → BGRA32 bytes →
 WPF `WriteableBitmap`. Each pass adds one sample per pixel on all cores but
 one, so the UI stays responsive and the image refines progressively.
+
+
+## Native document and family layer
+
+The original `.g3` preview envelope remains a compatibility format. New project saves use `NativeDocumentStore`, which writes `.g3d` with the `G3DNATV1` signature, container/schema metadata, document GUID, compressed JSON payload and SHA-256 verification. The same container protocol carries `.g3df` family documents and `.g3dt` project templates.
+
+`FamilyDocument` is deliberately independent of WPF. It models category/hosting, typed parameters, family types, work planes, ordered geometry-operation descriptors and nested-family references. `FamilyDependencyGraph` rejects cycles before persistence. Operation descriptors are the semantic regeneration tree; exact CAD/B-Rep evaluation is a separate geometry-kernel stage and is not represented as complete yet.
