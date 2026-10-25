@@ -174,7 +174,7 @@ static class FamilyTemplateChecks
 
         var path = Path.Combine(folder, "metrica.G3Dt");
         TemplateFile.Save(path, session.Document);
-        check(File.ReadLines(path).First().StartsWith("G3-TEMPLATE/9 sha256=", StringComparison.Ordinal),
+        check(File.ReadLines(path).First().StartsWith($"G3-TEMPLATE/{BuildingDocument.CurrentSchemaVersion} sha256=", StringComparison.Ordinal),
             "Template files open with the template signature and a SHA-256 checksum");
         var template = TemplateFile.Load(path);
         check(template.Walls.Count == 0 && template.Openings.Count == 0 && template.ParameterValues.Count == 0,

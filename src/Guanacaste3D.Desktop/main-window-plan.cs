@@ -66,6 +66,7 @@ public partial class MainWindow
     /// <summary>Handles wall placement and element selection in the plan canvas.</summary>
     private void PlanCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (TryPlaceOpening(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
         {
@@ -234,8 +235,9 @@ public partial class MainWindow
         var joins = WallJoinIndex.Build(_session.Document.Walls);
         var levelWalls = _session.Document.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
         // Every outline sits beneath every fill, so a neighbour covers the shared faces and miter seams.
-        foreach (var wall in levelWalls) AddWallOutline(wall, joins);
+        var wallLayer = PlanCanvas.Children.Count;
         foreach (var wall in levelWalls) AddWallBody(wall, joins);
+        RenderJoinedWallOutline(levelWalls, joins, wallLayer);
         foreach (var wall in levelWalls)
         {
             foreach (var opening in _session.Document.Openings.Where(candidate => candidate.WallId == wall.Id))
@@ -257,6 +259,8 @@ public partial class MainWindow
         RenderWallSketchOverlay();
         RenderStructuralPreview();
         AddAlignmentGuides();
+        RenderPlacementPreview();
+        RenderPermanentDimensions();
     }
 
     /// <summary>Fills a wall's mitered plan footprint, drawn above every outline so joined faces disappear.</summary>
@@ -273,22 +277,24 @@ public partial class MainWindow
         });
     }
 
-    /// <summary>
-    /// Strokes a wall's mitered plan footprint beneath the fills. The fill covers the inner half of
-    /// the stroke, so the visible contour keeps its width and only the outer edge of a joined run shows.
-    /// </summary>
-    private void AddWallOutline(Wall wall, WallJoinIndex joins)
+    /// <summary>Strokes the union boundary, hiding interior seams at corners, tees and crossings.</summary>
+    private void RenderJoinedWallOutline(IReadOnlyList<Wall> walls, WallJoinIndex joins, int wallLayer)
     {
-        var selected = wall.Id == _selectedWallId;
-        var footprint = joins.Footprint(wall);
-        PlanCanvas.Children.Add(new Polygon
+        Geometry outline = Geometry.Empty;
+        foreach (var wall in walls)
         {
-            Points = new PointCollection(footprint.Points.Select(WorldToCanvas)),
-            Stroke = selected ? Brushes.DarkOrange : Brushes.DarkSlateGray,
-            StrokeThickness = selected ? 4 : 2,
-            SnapsToDevicePixels = true,
+            var points = joins.Footprint(wall).Points.Select(WorldToCanvas).ToArray();
+            var figure = new PathFigure { StartPoint = points[0], IsClosed = true, IsFilled = true };
+            figure.Segments.Add(new PolyLineSegment(points.Skip(1), true));
+            outline = Geometry.Combine(outline, new PathGeometry(new[] { figure }), GeometryCombineMode.Union, null);
+        }
+        PlanCanvas.Children.Insert(wallLayer, new System.Windows.Shapes.Path
+        {
+            Data = outline, Fill = Brushes.DarkSlateGray, Stroke = Brushes.DarkSlateGray, StrokeThickness = 1,
             IsHitTestVisible = false
         });
+        if (walls.FirstOrDefault(wall => wall.Id == _selectedWallId) is { } selected)
+            AddLine(selected.Start, selected.End, 1.5, Brushes.DarkOrange, selected.Id);
     }
 
     /// <summary>Adds a selectable model-space line to the plan canvas.</summary>

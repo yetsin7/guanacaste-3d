@@ -24,7 +24,13 @@ public enum StructuralElementKind
     ModelText,
 
     /// <summary>A box rising from a roof slab. It cuts an opening through that roof and stands on its top face.</summary>
-    Dormer
+    Dormer,
+
+    /// <summary>A straight run of solid steps rising from the start to the end.</summary>
+    Stair,
+
+    /// <summary>A straight guard with posts and two horizontal rails.</summary>
+    Railing
 }
 
 /// <summary>
@@ -105,6 +111,8 @@ public static class StructuralElementStandards
         StructuralElementKind.Shaft or StructuralElementKind.ModelText => (0, 0, 0),
         // A dormer's Height is its body height above the roof top; its Offset is set from the roof when placed.
         StructuralElementKind.Dormer => (0, 2.40, 0),
+        StructuralElementKind.Stair => (1.20, 3.0, 0),
+        StructuralElementKind.Railing => (0.06, 1.10, 0),
         _ => (0.02, 0, 0)
     };
 }

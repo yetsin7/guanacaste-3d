@@ -33,11 +33,12 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled Project";
+    public List<PlanDimension> Dimensions { get; set; } = [];
     public List<Level> Levels { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
     public List<WallOpening> Openings { get; set; } = [];
@@ -73,6 +74,7 @@ public sealed class BuildingDocument
         SchemaVersion = SchemaVersion,
         Id = Id,
         Name = Name,
+        Dimensions = [.. Dimensions],
         Levels = [.. Levels],
         Walls = [.. Walls],
         Openings = [.. Openings],
@@ -99,7 +101,7 @@ public sealed class BuildingDocument
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
-        if (Levels is null || Walls is null || Openings is null || WallTypes is null ||
+        if (Dimensions is null || Levels is null || Walls is null || Openings is null || WallTypes is null ||
             Rooms is null || Floors is null || Columns is null || StructuralElements is null ||
             Sheets is null || Views is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000 ||
@@ -142,6 +144,8 @@ public sealed class BuildingDocument
         ValidateColumns(levelIds);
         ValidateSheets();
         ValidateViews(levelIds);
+        if (Dimensions.Any(item => item is null) || StructuralElements.Any(item => item is null))
+            throw new InvalidDataException("Invalid plan dimension references.");
         var allIds = Levels.Select(level => level.Id)
             .Concat(Walls.Select(wall => wall.Id))
             .Concat(Openings.Select(opening => opening.Id))
@@ -149,6 +153,8 @@ public sealed class BuildingDocument
             .Concat(Rooms.Select(room => room.Id))
             .Concat(Floors.Select(floor => floor.Id))
             .Concat(Columns.Select(column => column.Id))
+            .Concat(Dimensions.Select(dimension => dimension.Id))
+            .Concat(StructuralElements.Select(element => element.Id))
             .Concat(Sheets.Select(sheet => sheet.Id))
             .Concat(Views.Select(view => view.Id))
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
@@ -158,6 +164,8 @@ public sealed class BuildingDocument
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
+        PlanDimensions.Validate(this);
+        CirculationGeometry.Validate(this);
         OpeningTypeRules.Validate(this);
         LevelConstraints.Validate(this);
         ParameterRules.Validate(this);

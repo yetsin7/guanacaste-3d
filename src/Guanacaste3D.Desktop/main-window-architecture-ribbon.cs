@@ -59,6 +59,15 @@ public partial class MainWindow
             case ArchitectureCommand.Column:
                 Column_Click(this, eventArguments);
                 break;
+            case ArchitectureCommand.Stair:
+                BeginStructuralTool(StructuralElementKind.Stair, StructuralPlacementMode.Line);
+                break;
+            case ArchitectureCommand.Railing:
+                BeginStructuralTool(StructuralElementKind.Railing, StructuralPlacementMode.Line);
+                break;
+            case ArchitectureCommand.Component:
+                BeginStructuralTool(StructuralElementKind.Component, StructuralPlacementMode.Point);
+                break;
             case ArchitectureCommand.Room:
                 Room_Click(this, eventArguments);
                 break;

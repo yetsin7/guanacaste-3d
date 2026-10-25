@@ -11,8 +11,7 @@ public enum WallEnd
 public readonly record struct WallJoin(Wall Other, WallEnd OtherEnd);
 
 /// <summary>
-/// Resolves wall corners from coincident centerline endpoints on the same level. Only walls of
-/// the same type join. A corner shared by exactly two such walls is mitered so both faces meet
+/// Resolves wall corners from coincident centerline endpoints on the same level. Walls on the same level join regardless of type. A corner shared by exactly two such walls is mitered so both faces meet
 /// on one line. Corners where three or more walls meet, collinear continuations, and near-reversed
 /// walls keep flat ends.
 /// </summary>
@@ -26,9 +25,10 @@ public sealed class WallJoinIndex
 
     private readonly Dictionary<(Guid WallId, WallEnd End), WallJoin> _joins;
 
+    /// <summary>Stores the resolved endpoint adjacency without changing model geometry.</summary>
     private WallJoinIndex(Dictionary<(Guid WallId, WallEnd End), WallJoin> joins) => _joins = joins;
 
-    /// <summary>Indexes every wall end that meets exactly one other wall of the same type on its level.</summary>
+    /// <summary>Indexes every wall end that meets exactly one other wall of the same level.</summary>
     public static WallJoinIndex Build(IReadOnlyList<Wall> walls)
     {
         var joins = new Dictionary<(Guid WallId, WallEnd End), WallJoin>();
@@ -40,7 +40,7 @@ public sealed class WallJoinIndex
                 var meeting = new List<WallJoin>();
                 foreach (var other in walls)
                 {
-                    if (other.Id == wall.Id || other.LevelId != wall.LevelId || other.WallTypeId != wall.WallTypeId) continue;
+                    if (other.Id == wall.Id || other.LevelId != wall.LevelId) continue;
                     if (corner.DistanceTo(other.Start) <= Tolerance) meeting.Add(new WallJoin(other, WallEnd.Start));
                     if (corner.DistanceTo(other.End) <= Tolerance) meeting.Add(new WallJoin(other, WallEnd.End));
                 }
@@ -69,6 +69,7 @@ public sealed class WallJoinIndex
         var (normalX, normalY) = LeftNormal(wall);
         var half = wall.Thickness / 2;
 
+        /// <summary>Returns a square-section face point away from joined ends.</summary>
         Point2 Station(double distance, double side) => new(
             wall.Start.X + directionX * distance + side * normalX * half,
             wall.Start.Y + directionY * distance + side * normalY * half);
@@ -97,6 +98,12 @@ public sealed class WallJoinIndex
             return Square(corner, normalX * half, normalY * half);
 
         var (otherNormalX, otherNormalY) = LeftNormal(join.Other);
+        // Equal endpoint roles reverse the neighbour's face correspondence.
+        if (end == join.OtherEnd)
+        {
+            otherNormalX = -otherNormalX;
+            otherNormalY = -otherNormalY;
+        }
         var otherHalf = join.Other.Thickness / 2;
         var determinant = normalX * otherNormalY - normalY * otherNormalX;
         if (Math.Abs(determinant) < 1e-9)
@@ -105,7 +112,8 @@ public sealed class WallJoinIndex
         // Solves n·x = half for both walls: x is the left-face corner relative to the shared corner.
         var offsetX = (half * otherNormalY - otherHalf * normalY) / determinant;
         var offsetY = (normalX * otherHalf - otherNormalX * half) / determinant;
-        if (Math.Sqrt(offsetX * offsetX + offsetY * offsetY) > MaximumMiterFactor * Math.Max(half, otherHalf))
+        if (Math.Sqrt(offsetX * offsetX + offsetY * offsetY) > Math.Min(MaximumMiterFactor * Math.Max(half, otherHalf),
+                Math.Min(wall.Length, join.Other.Length) / 2))
             return Square(corner, normalX * half, normalY * half);
         return (new Point2(corner.X + offsetX, corner.Y + offsetY),
             new Point2(corner.X - offsetX, corner.Y - offsetY));

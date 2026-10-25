@@ -207,6 +207,8 @@ public partial class MainWindow
     /// <summary>Cancels room and column placement and clears their provisional state.</summary>
     private void CancelExtendedDrawing()
     {
+        _placingOpening = null;
+        _placementPointer = null;
         _drawingRoom = false;
         _drawingColumn = false;
         _pendingRoomStart = null;
@@ -378,45 +380,6 @@ public partial class MainWindow
     {
         var query = ProjectSearchInput?.Text?.Trim() ?? string.Empty;
         return query.Length == 0 || value.Contains(query, StringComparison.CurrentCultureIgnoreCase);
-    }
-
-    /// <summary>Updates the properties palette for rooms, floors, sheets, and wall types.</summary>
-    private bool TryRefreshExtendedProperties()
-    {
-        if (TryRefreshStructuralProperties()) return true;
-        var selectedView = _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId);
-        if (selectedView is not null)
-        {
-            PropertiesText.Text = FormatText(
-                "Properties.ViewSummary", selectedView.Name, selectedView.Kind, selectedView.Orientation);
-            return true;
-        }
-        var levelNames = _session.Document.Levels.ToDictionary(level => level.Id, level => level.Name);
-        var room = _session.Document.Rooms.FirstOrDefault(candidate => candidate.Id == _selectedRoomId);
-        if (room is not null)
-        {
-            PropertiesText.Text = FormatText(
-                "Properties.RoomSummary", room.Number, room.Name, room.Area, levelNames[room.LevelId]);
-            return true;
-        }
-        var floor = _session.Document.Floors.FirstOrDefault(candidate => candidate.Id == _selectedFloorId);
-        if (floor is not null)
-        {
-            PropertiesText.Text = FormatText(
-                "Properties.FloorSummary", floor.Name, floor.CalculateArea(), floor.Thickness, levelNames[floor.LevelId]);
-            return true;
-        }
-        var column = _session.Document.Columns.FirstOrDefault(candidate => candidate.Id == _selectedColumnId);
-        if (column is not null)
-        {
-            PropertiesText.Text = FormatText(
-                "Properties.ColumnSummary", column.Width, column.Depth, column.Height, levelNames[column.LevelId]);
-            return true;
-        }
-        var sheet = _session.Document.Sheets.FirstOrDefault(candidate => candidate.Id == _selectedSheetId);
-        if (sheet is null) return false;
-        PropertiesText.Text = FormatText("Properties.SheetSummary", sheet.Number, sheet.Name, sheet.PaperSize);
-        return true;
     }
 
 }

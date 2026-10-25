@@ -91,7 +91,9 @@ public static class BuildingMesher
         foreach (var column in document.Columns)
             AddColumn(mesh, column, elevations[column.LevelId], document.Levels);
 
-        foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
+        foreach (var element in document.StructuralElements.Where(element => element.HasSolid)
+                     .SelectMany(element => element.Kind is StructuralElementKind.Stair or StructuralElementKind.Railing
+                         ? CirculationGeometry.Parts(element) : new[] { element }))
         {
             var bottom = elevations[element.LevelId] + element.Offset;
             AddPrism(mesh, element.Footprint.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray(),

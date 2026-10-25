@@ -62,6 +62,7 @@ public static class TemplateRules
     public static BuildingDocument StripModelContent(BuildingDocument document)
     {
         var template = document.Clone();
+        template.Dimensions = [];
         template.Walls = [];
         template.Openings = [];
         template.Rooms = [];

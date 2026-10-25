@@ -344,4 +344,22 @@
   <sys:String x:Key="Dialog.InvalidWallDimensions">Usa números válidos en las dimensiones.</sys:String>
   <sys:String x:Key="Dialog.AboutTitle">Acerca de Guanacaste 3D</sys:String>
   <sys:String x:Key="Dialog.AboutText">Guanacaste 3D 0.3.0&#10;Aplicación BIM de escritorio en C# y .NET 10.</sys:String>
+  <sys:String x:Key="Status.OpeningPlacement">Mueve el cursor sobre un muro y haz clic para colocar. Esc cancela.</sys:String>
+  <sys:String x:Key="Status.OpeningPlacementBlocked">La abertura no cabe aquí. Busca un muro libre y suficientemente grande.</sys:String>
+  <sys:String x:Key="Dimension.Meters">{0:0.00} m</sys:String>
+  <sys:String x:Key="Dimension.Edit">Editar cota</sys:String>
+  <sys:String x:Key="Dimension.EnterMeters">Nueva distancia en metros:</sys:String>
+  <sys:String x:Key="Dimension.Invalid">Introduce una distancia positiva y finita en metros.</sys:String>
+  <sys:String x:Key="Dimension.PromoteGlyph">↗</sys:String>
+  <sys:String x:Key="Dimension.RemoveGlyph">×</sys:String>
+  <sys:String x:Key="Dimension.Promote">Convertir en cota permanente</sys:String>
+  <sys:String x:Key="Dimension.Remove">Eliminar cota</sys:String>
+  <sys:String x:Key="Transaction.AddDimension">Crear cota permanente</sys:String>
+  <sys:String x:Key="Transaction.RemoveDimension">Eliminar cota</sys:String>
+  <sys:String x:Key="Transaction.EditDimension">Editar distancia</sys:String>
+  <sys:String x:Key="Error.Invalid plan dimension references.">Las referencias de la cota no son válidas.</sys:String>
+  <sys:String x:Key="Error.Dimension value must be positive and finite.">La distancia debe ser positiva y finita.</sys:String>
+  <sys:String x:Key="Error.The opening cannot move across its host wall.">La abertura solo puede desplazarse a lo largo de su muro.</sys:String>
+  <sys:String x:Key="Error.The dimension reference moved with the selected element.">La referencia se mueve junto al objeto. Utiliza otra referencia.</sys:String>
+  <sys:String x:Key="Error.Invalid stair or railing geometry.">El tramo de escalera o barandal no tiene una geometría válida.</sys:String>
 </ResourceDictionary>

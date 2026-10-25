@@ -32,9 +32,9 @@ static class WallJoinChecks
             WallTypeId = Guid.NewGuid()
         };
         var differentTypeFootprint = WallJoinIndex.Build([first, otherType]).Footprint(first);
-        check(Near(differentTypeFootprint.EndLeft, new Point2(4, 0.1)) &&
-              Near(differentTypeFootprint.EndRight, new Point2(4, -0.1)),
-            "Walls of different types keep square ends at their shared corner");
+        check(Near(differentTypeFootprint.EndLeft, firstFootprint.EndLeft) &&
+              Near(differentTypeFootprint.EndRight, firstFootprint.EndRight),
+            "Walls of different types meet at the same geometric corner");
 
         var outline = joins.SectionOutline(first, 0, first.Length);
         check(Near(outline[1], new Point2(3.9, 0.1)) && Near(outline[2], new Point2(4.1, -0.1)),

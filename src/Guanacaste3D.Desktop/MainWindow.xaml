@@ -323,7 +323,7 @@
                       MouseLeftButtonDown="PlanCanvas_MouseLeftButtonDown"
                       MouseLeftButtonUp="PlanCanvas_MouseLeftButtonUp"
                       MouseRightButtonDown="PlanCanvas_MouseRightButtonDown"
-                      MouseMove="PlanCanvas_MouseMove"
+                      MouseMove="PlanCanvas_MouseMove" MouseLeave="PlanCanvas_MouseLeave"
                       MouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="{DynamicResource View.Model3D}">

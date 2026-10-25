@@ -132,6 +132,8 @@ public static class ProjectFile
             document.SchemaVersion = 9;
         }
 
+        if (document.SchemaVersion == 9) document.SchemaVersion = 10;
+
     }
 
     /// <summary>Saves a validated project atomically and retains the previous file as a backup.</summary>

@@ -1,206 +1,193 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Guanacaste3D.Core;
 
 namespace Guanacaste3D.Desktop;
 
-/// <summary>
-/// Temporary witness dimensions for the selected wall, door, or window. They show the clear
-/// distance from the element to the nearest wall on each side, and for a hosted opening its
-/// distances to the host wall's ends. They follow a drag in progress and are never saved.
-/// Elements are measured by their plan bounding boxes, which is exact for orthogonal walls.
-/// </summary>
 public partial class MainWindow
 {
-    /// <summary>Distance from the wall face to the dimension line, in meters, so lines never touch the geometry.</summary>
-    private const double DimensionOffset = 0.45;
-
-    /// <summary>Gaps smaller than this are not dimensioned, which hides dimensions between touching walls.</summary>
-    private const double DimensionMinimum = 0.01;
-
-    /// <summary>Axis-aligned plan bounds of a model element, in meters.</summary>
-    private readonly record struct ElementBounds(double MinX, double MinY, double MaxX, double MaxY)
-    {
-        public ElementBounds Shifted(double deltaX, double deltaY) =>
-            new(MinX + deltaX, MinY + deltaY, MaxX + deltaX, MaxY + deltaY);
-    }
-
-    /// <summary>Draws the temporary dimensions of the selected wall or hosted opening on the active level.</summary>
+    /// <summary>Shows editable measurements for the selected element while no placement operation is active.</summary>
     private void RenderTemporaryDimensions()
     {
-        if (_drawingWall || _selectedWallId is not Guid wallId) return;
-        var host = _session.Document.Walls.FirstOrDefault(wall => wall.Id == wallId);
-        if (host is null || host.LevelId != _activeLevelId) return;
-        if (_selectedOpeningId is Guid openingId &&
-            _session.Document.Openings.FirstOrDefault(opening => opening.Id == openingId) is { } opening)
-            RenderOpeningDimensions(host, opening);
-        else if (_selectedOpeningId is null)
-            RenderWallDimensions(host);
-    }
-
-    /// <summary>Dimensions a wall's length and the clear gaps around its moved footprint.</summary>
-    private void RenderWallDimensions(Wall wall)
-    {
-        var (deltaX, deltaY) = CurrentMoveDelta();
-        AddGapDimensions(WallBounds(wall).Shifted(deltaX, deltaY), OtherWallBounds(wall.Id));
-
-        var (axisX, axisY) = WallAxis(wall);
-        var origin = new Point2(wall.Start.X + deltaX, wall.Start.Y + deltaY);
-        var across = wall.Thickness / 2 + DimensionOffset;
-        AddDimensionLine(
-            WallPoint(origin, axisX, axisY, 0, across),
-            WallPoint(origin, axisX, axisY, wall.Length, across),
-            wall.Length);
-    }
-
-    /// <summary>
-    /// Dimensions a hosted opening's position along its host and its width, plus the clear
-    /// gaps around it. A drag slides the opening along the wall, so only the along-wall part
-    /// of the delta moves it, the same rule the move tool applies.
-    /// </summary>
-    private void RenderOpeningDimensions(Wall host, WallOpening opening)
-    {
-        var (deltaX, deltaY) = CurrentMoveDelta();
-        var (axisX, axisY) = WallAxis(host);
-        var offset = opening.Offset + deltaX * axisX + deltaY * axisY;
-        var begin = offset - opening.Width / 2;
-        var end = offset + opening.Width / 2;
-        var halfThickness = host.Thickness / 2;
-
-        var corners = new[]
+        _dimensionEditorDrawn = false;
+        if (_drawingWall || _placingOpening is not null || _drawingColumn || _drawingRoom ||
+            _structuralTool is not null || _movingElement) return;
+        var selected = _selectedOpeningId ?? _selectedColumnId ?? _selectedStructuralId ??
+            _selectedRoomId ?? _selectedFloorId ?? _selectedWallId;
+        if (selected is not Guid id) return;
+        foreach (var dimension in PlanDimensions.ForSelection(_session.Document, id))
         {
-            WallPoint(host.Start, axisX, axisY, begin, -halfThickness),
-            WallPoint(host.Start, axisX, axisY, end, -halfThickness),
-            WallPoint(host.Start, axisX, axisY, end, halfThickness),
-            WallPoint(host.Start, axisX, axisY, begin, halfThickness)
-        };
-        AddGapDimensions(PlanBoundsOf(corners), OtherWallBounds(host.Id));
-
-        var across = halfThickness + DimensionOffset;
-        if (begin > DimensionMinimum)
-            AddDimensionLine(WallPoint(host.Start, axisX, axisY, 0, across),
-                WallPoint(host.Start, axisX, axisY, begin, across), begin);
-        var remainder = host.Length - end;
-        if (remainder > DimensionMinimum)
-            AddDimensionLine(WallPoint(host.Start, axisX, axisY, end, across),
-                WallPoint(host.Start, axisX, axisY, host.Length, across), remainder);
-        AddDimensionLine(WallPoint(host.Start, axisX, axisY, begin, -across),
-            WallPoint(host.Start, axisX, axisY, end, -across), opening.Width);
-    }
-
-    /// <summary>Adds the nearest clear gap in each of the four directions from the element.</summary>
-    private void AddGapDimensions(ElementBounds element, IReadOnlyList<ElementBounds> others)
-    {
-        AddGapDimension(element, others, horizontal: true, positive: true);
-        AddGapDimension(element, others, horizontal: true, positive: false);
-        AddGapDimension(element, others, horizontal: false, positive: true);
-        AddGapDimension(element, others, horizontal: false, positive: false);
-    }
-
-    /// <summary>
-    /// Finds the nearest wall that faces the element in one direction and overlaps it on the
-    /// perpendicular axis, then dimensions the gap between the two facing edges.
-    /// </summary>
-    private void AddGapDimension(ElementBounds element, IReadOnlyList<ElementBounds> others, bool horizontal, bool positive)
-    {
-        ElementBounds? nearest = null;
-        var nearestGap = double.MaxValue;
-        foreach (var other in others)
-        {
-            var overlaps = horizontal
-                ? other.MaxY > element.MinY && other.MinY < element.MaxY
-                : other.MaxX > element.MinX && other.MinX < element.MaxX;
-            var gap = horizontal
-                ? positive ? other.MinX - element.MaxX : element.MinX - other.MaxX
-                : positive ? other.MinY - element.MaxY : element.MinY - other.MaxY;
-            if (!overlaps || gap < DimensionMinimum || gap >= nearestGap) continue;
-            nearestGap = gap;
-            nearest = other;
+            if (_session.Document.Dimensions.Any(item => item.OwnerId == dimension.OwnerId &&
+                item.Kind == dimension.Kind && item.ReferenceId == dimension.ReferenceId)) continue;
+            DrawPlanDimension(dimension, false);
         }
-        if (nearest is not ElementBounds target) return;
+    }
 
-        if (horizontal)
+    /// <summary>Recomputes saved annotation geometry instead of displaying stale text after a model edit.</summary>
+    private void RenderPermanentDimensions()
+    {
+        foreach (var dimension in _session.Document.Dimensions.Where(item => item.LevelId == _activeLevelId))
+            DrawPlanDimension(dimension, true);
+        // A selection change or tool that hides the edited dimension ends the edit instead of reviving it later.
+        if (_dimensionEditorDrawn) return;
+        _editingDimension = null;
+        _dimensionEditText = null;
+    }
+
+    /// <summary>Draws the numeric editor target and a separate promotion arrow that consumes its own click.</summary>
+    private void DrawPlanDimension(PlanDimension dimension, bool permanent)
+    {
+        if (PlanDimensions.Resolve(_session.Document, dimension) is not { } measurement) return;
+        var start = WorldToCanvas(measurement.From);
+        var end = WorldToCanvas(measurement.To);
+        var brush = permanent ? Brushes.DarkSlateGray : Brushes.RoyalBlue;
+        PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
+            Stroke = brush, StrokeThickness = 1, IsHitTestVisible = false });
+        AddDimensionTick(start, brush);
+        AddDimensionTick(end, brush);
+        if (IsEditing(dimension))
         {
-            var y = (element.MinY + element.MaxY) / 2;
-            AddDimensionLine(
-                new Point2(positive ? element.MaxX : element.MinX, y),
-                new Point2(positive ? target.MinX : target.MaxX, y),
-                nearestGap);
+            _dimensionEditorDrawn = true;
+            var editor = new TextBox
+            {
+                Text = _dimensionEditText ?? measurement.Value.ToString("0.00", CultureInfo.CurrentCulture),
+                Tag = dimension, FontSize = 11, MinWidth = 56, Padding = new Thickness(2, 0, 2, 0),
+                BorderBrush = brush, BorderThickness = new Thickness(1.5), ToolTip = GetText("Dimension.EnterMeters")
+            };
+            editor.KeyDown += DimensionEditor_KeyDown;
+            editor.TextChanged += (_, _) => _dimensionEditText = editor.Text;
+            editor.LostKeyboardFocus += (_, _) => Dispatcher.BeginInvoke(() =>
+            {
+                // A re-render detaches this editor and draws a fresh one, so only a still-attached editor
+                // losing focus means the user clicked away from the edit.
+                if (editor.Parent is not null && !editor.IsKeyboardFocusWithin) CancelDimensionEdit();
+            });
+            Canvas.SetLeft(editor, (start.X + end.X) / 2 + 4);
+            Canvas.SetTop(editor, (start.Y + end.Y) / 2 - 25);
+            PlanCanvas.Children.Add(editor);
+            editor.Loaded += (_, _) =>
+            {
+                Keyboard.Focus(editor);
+                if (_dimensionEditText is null) editor.SelectAll();
+                else editor.CaretIndex = editor.Text.Length;
+            };
         }
         else
         {
-            var x = (element.MinX + element.MaxX) / 2;
-            AddDimensionLine(
-                new Point2(x, positive ? element.MaxY : element.MinY),
-                new Point2(x, positive ? target.MinY : target.MaxY),
-                nearestGap);
+            var label = new Button
+            {
+                Content = FormatText("Dimension.Meters", measurement.Value), Tag = dimension,
+                Foreground = brush, Background = Brushes.White, FontSize = 11,
+                Padding = new Thickness(3, 1, 3, 1), MinWidth = 0, MinHeight = 0,
+                ToolTip = GetText("Dimension.Edit"), Cursor = Cursors.Hand
+            };
+            label.Click += DimensionValue_Click;
+            Canvas.SetLeft(label, (start.X + end.X) / 2 + 4);
+            Canvas.SetTop(label, (start.Y + end.Y) / 2 - 25);
+            PlanCanvas.Children.Add(label);
+        }
+        var action = new Button
+        {
+            Content = GetText(permanent ? "Dimension.RemoveGlyph" : "Dimension.PromoteGlyph"),
+            Tag = dimension, Padding = new Thickness(3, 0, 3, 0), MinWidth = 18, MinHeight = 18,
+            ToolTip = GetText(permanent ? "Dimension.Remove" : "Dimension.Promote"), Cursor = Cursors.Hand
+        };
+        action.Click += DimensionAction_Click;
+        Canvas.SetLeft(action, (start.X + end.X) / 2 - 19);
+        Canvas.SetTop(action, (start.Y + end.Y) / 2 - 25);
+        PlanCanvas.Children.Add(action);
+    }
+
+    /// <summary>The measurement whose number is being typed in place, if any, and its unsent text.</summary>
+    private PlanDimension? _editingDimension;
+    private string? _dimensionEditText;
+    private bool _dimensionEditorDrawn;
+
+    /// <summary>Matches by semantic reference so a temporary dimension survives being rebuilt on every render.</summary>
+    private bool IsEditing(PlanDimension dimension) => _editingDimension is { } editing &&
+        editing.Id == dimension.Id && editing.OwnerId == dimension.OwnerId &&
+        editing.ReferenceId == dimension.ReferenceId && editing.Kind == dimension.Kind;
+
+    /// <summary>Turns the clicked number into an in-place editor over the same dimension line.</summary>
+    private void DimensionValue_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is not Button { Tag: PlanDimension dimension }) return;
+        _editingDimension = dimension;
+        _dimensionEditText = null;
+        StatusText.Text = GetText("Dimension.EnterMeters");
+        RenderPlan();
+    }
+
+    /// <summary>Enter applies the typed distance; Escape restores the number without touching the model.</summary>
+    private void DimensionEditor_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { Tag: PlanDimension dimension } editor) return;
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            CancelDimensionEdit();
+            return;
+        }
+        if (e.Key is not (Key.Enter or Key.Return)) return;
+        e.Handled = true;
+        _editingDimension = null;
+        _dimensionEditText = null;
+        ApplyDimensionText(dimension, editor.Text);
+    }
+
+    /// <summary>Leaves in-place editing and redraws the plain number.</summary>
+    private void CancelDimensionEdit()
+    {
+        if (_editingDimension is null) return;
+        _editingDimension = null;
+        _dimensionEditText = null;
+        Dispatcher.BeginInvoke(RenderPlan);
+    }
+
+    /// <summary>Edits a measurement through the transactional solver; invalid input leaves the model intact.</summary>
+    private void ApplyDimensionText(PlanDimension dimension, string input)
+    {
+        // Either decimal mark is accepted, so "3,5" and "3.5" both mean three and a half meters in any culture.
+        input = input.Trim().TrimEnd('m', 'M').Trim().Replace(',', '.');
+        if (!double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
+            !double.IsFinite(value) || value <= 0)
+        {
+            StatusText.Text = GetText("Dimension.Invalid");
+            RenderPlan();
+            return;
+        }
+        try
+        {
+            _session.EditDimension(dimension, value);
+            RefreshAll();
+        }
+        catch (InvalidDataException exception)
+        {
+            StatusText.Text = LocalizedErrors.Translate(exception.Message);
+            RenderPlan();
         }
     }
 
-    /// <summary>Plan bounds of every other wall on the active level, used as gap targets.</summary>
-    private IReadOnlyList<ElementBounds> OtherWallBounds(Guid excludedWallId) =>
-        _session.Document.Walls
-            .Where(wall => wall.LevelId == _activeLevelId && wall.Id != excludedWallId)
-            .Select(WallBounds).ToArray();
-
-    /// <summary>Plan bounds of a wall's footprint, using its drawn centerline and thickness.</summary>
-    private static ElementBounds WallBounds(Wall wall) =>
-        PlanBoundsOf(WallPlacementGeometry.Footprint(wall.Start, wall.End, wall.Thickness, 0,
-            WallLocationReference.Centerline).Points);
-
-    /// <summary>Returns the unit direction of a wall's centerline.</summary>
-    private static (double X, double Y) WallAxis(Wall wall) =>
-        ((wall.End.X - wall.Start.X) / wall.Length, (wall.End.Y - wall.Start.Y) / wall.Length);
-
-    /// <summary>Returns the model point at a distance along a wall axis and across it, positive toward the normal.</summary>
-    private static Point2 WallPoint(Point2 origin, double axisX, double axisY, double along, double across) =>
-        new(origin.X + axisX * along - axisY * across, origin.Y + axisY * along + axisX * across);
-
-    /// <summary>Returns the bounding box of a set of plan points.</summary>
-    private static ElementBounds PlanBoundsOf(IEnumerable<Point2> points)
+    /// <summary>Promotes a temporary annotation or removes a permanent one without selecting the underlying wall.</summary>
+    private void DimensionAction_Click(object sender, RoutedEventArgs e)
     {
-        var list = points.ToArray();
-        return new ElementBounds(
-            list.Min(point => point.X), list.Min(point => point.Y),
-            list.Max(point => point.X), list.Max(point => point.Y));
+        e.Handled = true;
+        if (sender is not Button { Tag: PlanDimension dimension }) return;
+        if (dimension.Id == Guid.Empty) _session.AddDimension(dimension);
+        else _session.RemoveDimension(dimension.Id);
+        RefreshAll();
     }
 
-    /// <summary>Draws one dimension: a line between two model points, end ticks, and its length as a label.</summary>
-    private void AddDimensionLine(Point2 from, Point2 to, double value)
+    /// <summary>Adds a diagonal architectural tick in screen space.</summary>
+    private void AddDimensionTick(Point center, Brush brush) => PlanCanvas.Children.Add(new Line
     {
-        var brush = new SolidColorBrush(Color.FromRgb(0, 112, 192));
-        var start = WorldToCanvas(from);
-        var end = WorldToCanvas(to);
-        PlanCanvas.Children.Add(new Line
-        {
-            X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
-            Stroke = brush, StrokeThickness = 1, IsHitTestVisible = false
-        });
-        AddDimensionTick(start, brush);
-        AddDimensionTick(end, brush);
-
-        var label = new TextBlock
-        {
-            Text = value.ToString("0.00", CultureInfo.CurrentCulture) + " m",
-            Foreground = brush,
-            Background = Brushes.White,
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            IsHitTestVisible = false
-        };
-        Canvas.SetLeft(label, (start.X + end.X) / 2 + 4);
-        Canvas.SetTop(label, (start.Y + end.Y) / 2 - 18);
-        PlanCanvas.Children.Add(label);
-    }
-
-    /// <summary>Adds the 45-degree architectural tick that marks a dimension endpoint.</summary>
-    private void AddDimensionTick(Point center, Brush brush) =>
-        PlanCanvas.Children.Add(new Line
-        {
-            X1 = center.X - 4, Y1 = center.Y + 4, X2 = center.X + 4, Y2 = center.Y - 4,
-            Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false
-        });
+        X1 = center.X - 4, Y1 = center.Y + 4, X2 = center.X + 4, Y2 = center.Y - 4,
+        Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false
+    });
 }

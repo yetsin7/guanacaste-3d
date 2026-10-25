@@ -281,29 +281,15 @@ public partial class MainWindow : Window
     private void Window_Click(object sender, RoutedEventArgs e) =>
         CreateHostedOpening(OpeningKind.Window);
 
-    /// <summary>Creates a parametrically hosted door or window near the selected wall position.</summary>
+    /// <summary>Arms a hosted placement preview without mutating the document.</summary>
     private void CreateHostedOpening(OpeningKind kind)
     {
-        if (_selectedWallId is not Guid wallId)
-        {
-            StatusText.Text = GetText("Status.SelectWallInPlan");
-            return;
-        }
-        var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == wallId);
-        if (wall is null) return;
-        try
-        {
-            _selectedOpeningId = _session.AddOpening(wallId, kind, offset: _selectedWallOffset);
-            StatusText.Text = GetText(kind == OpeningKind.Door
-                ? "Status.DoorOpeningCreated"
-                : "Status.WindowOpeningCreated");
-            RefreshAll();
-        }
-        catch (InvalidDataException ex)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.InvalidOpening"),
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        SetWallTool(false);
+        _placingOpening = kind;
+        _selectedOpeningId = _selectedWallId = null;
+        ViewTabs.SelectedIndex = 0;
+        StatusText.Text = GetText("Status.OpeningPlacement");
+        RenderPlan();
     }
     /// <summary>Shows the active architectural plan.</summary>
     private void ShowPlan_Click(object sender, RoutedEventArgs e)
