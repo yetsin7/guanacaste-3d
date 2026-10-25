@@ -15,6 +15,18 @@ public partial class ArchitectureRibbon : UserControl
     public ArchitectureRibbon()
     {
         InitializeComponent();
+        Loaded += (_, _) => AttachDemoToolTips(this);
+    }
+
+    /// <summary>Gives every tagged command button its rich tooltip once localized labels have resolved.</summary>
+    private static void AttachDemoToolTips(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
+        {
+            if (child is Button { Tag: string commandId, Content: string label } button && button.ToolTip is not System.Windows.Controls.ToolTip)
+                CommandDemoToolTip.Attach(button, commandId, label);
+            AttachDemoToolTips(child);
+        }
     }
 
     /// <summary>

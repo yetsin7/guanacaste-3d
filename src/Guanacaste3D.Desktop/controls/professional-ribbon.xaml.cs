@@ -148,6 +148,7 @@ public partial class ProfessionalRibbon : UserControl
             this,
             new ProfessionalRibbonCommandEventArgs(Workspace, definition.CommandId, label));
         AutomationProperties.SetName(button, label);
+        CommandDemoToolTip.Attach(button, definition.CommandId, label);
         return button;
     }
 
