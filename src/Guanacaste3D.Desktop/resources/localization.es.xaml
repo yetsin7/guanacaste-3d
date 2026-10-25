@@ -13,6 +13,11 @@
   <sys:String x:Key="Action.OpenProject">Abrir proyecto…</sys:String>
   <sys:String x:Key="Action.Save">Guardar</sys:String>
   <sys:String x:Key="Action.SaveAs">Guardar como…</sys:String>
+  <sys:String x:Key="Action.NewArchitecturalMetric">Nuevo proyecto con plantilla métrica</sys:String>
+  <sys:String x:Key="Action.NewFromTemplate">Nuevo proyecto desde plantilla…</sys:String>
+  <sys:String x:Key="Action.SaveAsTemplate">Guardar como plantilla…</sys:String>
+  <sys:String x:Key="Action.ImportFamily">Importar familia de puertas o ventanas…</sys:String>
+  <sys:String x:Key="Action.SaveFamily">Guardar familia de la selección…</sys:String>
   <sys:String x:Key="Action.ExportQuantities">Exportar cantidades CSV…</sys:String>
   <sys:String x:Key="Action.Exit">Salir</sys:String>
   <sys:String x:Key="Action.Undo">Deshacer</sys:String>
@@ -170,6 +175,11 @@
   <sys:String x:Key="Status.LegacyProjectImported">Proyecto anterior importado. Guárdalo como archivo .g3.</sys:String>
   <sys:String x:Key="Status.QuantitiesExported">Cantidades BIM exportadas a CSV.</sys:String>
   <sys:String x:Key="Status.ProjectSaved">Proyecto guardado: {0}</sys:String>
+  <sys:String x:Key="Status.ProjectFromTemplate">Proyecto creado desde la plantilla. Guárdalo para conservar cambios.</sys:String>
+  <sys:String x:Key="Status.TemplateSaved">Plantilla guardada: {0}</sys:String>
+  <sys:String x:Key="Status.FamilyImported">Familia importada al catálogo del proyecto: {0}</sys:String>
+  <sys:String x:Key="Status.FamilySaved">Familia guardada: {0}</sys:String>
+  <sys:String x:Key="Status.SelectOpeningForFamily">Selecciona una puerta o ventana para guardar su familia.</sys:String>
   <sys:String x:Key="Status.SelectWall">Selecciona un muro.</sys:String>
   <sys:String x:Key="Status.SelectWallInPlan">Selecciona primero un muro en planta.</sys:String>
   <sys:String x:Key="Status.DoorOpeningCreated">Hueco de puerta creado.</sys:String>
@@ -274,6 +284,8 @@
   <sys:String x:Key="Schedule.Sheet">Lámina</sys:String>
   <sys:String x:Key="Dialog.OpenProjectFilter">Proyecto Guanacaste 3D (*.g3)|*.g3|Proyecto anterior (*.g3d.json)|*.g3d.json</sys:String>
   <sys:String x:Key="Dialog.ProjectFilter">Proyecto Guanacaste 3D (*.g3)|*.g3</sys:String>
+  <sys:String x:Key="Dialog.TemplateFilter">Plantilla Guanacaste 3D (*.G3Dt)|*.G3Dt</sys:String>
+  <sys:String x:Key="Dialog.FamilyFilter">Familia Guanacaste 3D (*.G3Df)|*.G3Df</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFilter">Tabla de cantidades (*.csv)|*.csv</sys:String>
   <sys:String x:Key="Dialog.QuantitiesFileName">cantidades-guanacaste3d.csv</sys:String>
   <sys:String x:Key="Action.OpenSample">Abrir proyecto de ejemplo</sys:String>

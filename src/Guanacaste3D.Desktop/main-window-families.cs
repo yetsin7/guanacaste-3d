@@ -1,0 +1,122 @@
+using System.IO;
+using System.Windows;
+using Guanacaste3D.Core;
+using Microsoft.Win32;
+
+namespace Guanacaste3D.Desktop;
+
+/// <summary>File commands for project templates (.G3Dt) and door or window families (.G3Df).</summary>
+public partial class MainWindow
+{
+    /// <summary>Starts a project from the bundled metric architecture template after protecting unsaved edits.</summary>
+    private void NewArchitecturalMetric_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDiscard()) return;
+        AttachDocument(TemplateRules.CreateProject(OfficialTemplates.CreateArchitecturalMetric(),
+            GetText("Project.Untitled")), null);
+        StatusText.Text = GetText("Status.ProjectFromTemplate");
+    }
+
+    /// <summary>Starts a project from a .G3Dt file. The template is only read, so it never changes.</summary>
+    private void NewFromTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDiscard()) return;
+        var dialog = new OpenFileDialog
+        {
+            Filter = GetText("Dialog.TemplateFilter"),
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var template = TemplateFile.Load(dialog.FileName);
+            AttachDocument(TemplateRules.CreateProject(template, GetText("Project.Untitled")), null);
+            StatusText.Text = GetText("Status.ProjectFromTemplate");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Writes the project's setup as a reusable template. The open project keeps its file and edits.</summary>
+    private void SaveAsTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = GetText("Dialog.TemplateFilter"),
+            FileName = SafeFileName(_session.Document.Name) + TemplateFile.Extension,
+            AddExtension = true,
+            DefaultExt = TemplateFile.Extension
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            TemplateFile.Save(dialog.FileName, _session.Document);
+            StatusText.Text = FormatText("Status.TemplateSaved", Path.GetFileName(dialog.FileName));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Merges a .G3Df family into the project's door and window catalog as one undoable step.</summary>
+    private void ImportFamily_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = GetText("Dialog.FamilyFilter"),
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var family = FamilyFile.Load(dialog.FileName);
+            _session.ImportOpeningFamily(family);
+            StatusText.Text = FormatText("Status.FamilyImported", family.Name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Saves the family of the selected door or window, with every type that family uses in this project.</summary>
+    private void SaveFamily_Click(object sender, RoutedEventArgs e)
+    {
+        var opening = _selectedOpeningId is Guid openingId
+            ? _session.Document.Openings.FirstOrDefault(candidate => candidate.Id == openingId)
+            : null;
+        var type = opening is null
+            ? null
+            : _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == opening.OpeningTypeId);
+        if (type is null)
+        {
+            StatusText.Text = GetText("Status.SelectOpeningForFamily");
+            return;
+        }
+        try
+        {
+            var family = FamilyDocument.FromProject(_session.Document, type.FamilyName);
+            var dialog = new SaveFileDialog
+            {
+                Filter = GetText("Dialog.FamilyFilter"),
+                FileName = SafeFileName(family.Name) + FamilyFile.Extension,
+                AddExtension = true,
+                DefaultExt = FamilyFile.Extension
+            };
+            if (dialog.ShowDialog(this) != true) return;
+            FamilyFile.Save(dialog.FileName, family);
+            StatusText.Text = FormatText("Status.FamilySaved", family.Name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.SaveFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Replaces characters Windows cannot use in file names, so suggested names always save.</summary>
+    private static string SafeFileName(string name) =>
+        string.Concat(name.Select(character => Path.GetInvalidFileNameChars().Contains(character) ? '_' : character));
+}

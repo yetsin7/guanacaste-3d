@@ -34,9 +34,16 @@
         <MenuItem Header="{DynamicResource Action.NewProject}" Click="New_Click"/>
         <MenuItem Header="{DynamicResource Action.OpenProject}" Click="Open_Click"/>
         <MenuItem Header="{DynamicResource Action.OpenSample}" Click="OpenSample_Click"/>
+        <MenuItem Header="{DynamicResource Action.NewArchitecturalMetric}" Click="NewArchitecturalMetric_Click"/>
+        <MenuItem Header="{DynamicResource Action.NewFromTemplate}" Click="NewFromTemplate_Click"/>
         <Separator/>
         <MenuItem Header="{DynamicResource Action.Save}" Click="Save_Click"/>
         <MenuItem Header="{DynamicResource Action.SaveAs}" Click="SaveAs_Click"/>
+        <MenuItem Header="{DynamicResource Action.SaveAsTemplate}" Click="SaveAsTemplate_Click"/>
+        <Separator/>
+        <MenuItem Header="{DynamicResource Action.ImportFamily}" Click="ImportFamily_Click"/>
+        <MenuItem Header="{DynamicResource Action.SaveFamily}" Click="SaveFamily_Click"/>
+        <Separator/>
         <MenuItem Header="{DynamicResource Action.ExportQuantities}" Click="ExportQuantities_Click"/>
         <MenuItem Header="{DynamicResource Action.ExportDxf}" Click="ExportDxf_Click"/>
         <MenuItem Header="{DynamicResource Action.ExportIfc}" Click="ExportIfc_Click"/>
