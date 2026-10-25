@@ -24,6 +24,26 @@ public readonly record struct WallCenterline(Point2 Start, Point2 End);
 /// <summary>Builds precise wall centerlines from contextual placement options.</summary>
 public static class WallPlacementGeometry
 {
+    /// <summary>Projects an endpoint at an exact length along the current drawing direction.</summary>
+    public static Point2 EndpointAtLength(
+        Point2 start,
+        Point2 directionCandidate,
+        double length,
+        bool orthogonal)
+    {
+        if (!double.IsFinite(length) || length < 0.05 || length > 100000)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        var constrained = ConstrainEndpoint(start, directionCandidate, orthogonal);
+        var deltaX = constrained.X - start.X;
+        var deltaY = constrained.Y - start.Y;
+        var directionLength = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (directionLength < 1e-9)
+            throw new InvalidDataException("A wall is invalid or has no associated level.");
+        return new Point2(
+            start.X + deltaX / directionLength * length,
+            start.Y + deltaY / directionLength * length);
+    }
+
     /// <summary>
     /// Finds the nearest endpoint or midpoint inside a model-space tolerance.
     /// Endpoint candidates win exact ties so joined walls remain topologically precise.

@@ -52,6 +52,8 @@
   <sys:String x:Key="WallOptions.Line">Línea</sys:String>
   <sys:String x:Key="WallOptions.Rectangle">Rectángulo</sys:String>
   <sys:String x:Key="WallOptions.Height">Altura (m)</sys:String>
+  <sys:String x:Key="WallOptions.Length">Longitud (m)</sys:String>
+  <sys:String x:Key="WallOptions.PlaceLength">Colocar</sys:String>
   <sys:String x:Key="WallOptions.LocationLine">Línea de ubicación</sys:String>
   <sys:String x:Key="WallOptions.Centerline">Eje del muro</sys:String>
   <sys:String x:Key="WallOptions.ExteriorFace">Cara exterior</sys:String>
@@ -119,6 +121,8 @@
   <sys:String x:Key="Status.WallCreated">Muro creado. Continúa la cadena o pulsa Finalizar.</sys:String>
   <sys:String x:Key="Status.WallRectangleCreated">Recinto rectangular creado como una sola operación.</sys:String>
   <sys:String x:Key="Status.WallInvalidOptions">Revisa la altura y el desfase del muro.</sys:String>
+  <sys:String x:Key="Status.WallLengthRequiresLine">La longitud exacta se aplica al trazado por línea.</sys:String>
+  <sys:String x:Key="Status.WallLengthNeedsDirection">Define un inicio y mueve el puntero para indicar la dirección.</sys:String>
   <sys:String x:Key="Transaction.DrawRectangle">Trazar recinto rectangular</sys:String>
   <sys:String x:Key="Status.PlanCentered">Planta centrada en el origen.</sys:String>
   <sys:String x:Key="Status.PlanFit">Planta encuadrada al nivel activo.</sys:String>

@@ -54,5 +54,14 @@ static class WallPlacementChecks
         check(midpointSnap == new WallSnapResult(new Point2(3, 0), WallSnapKind.Midpoint),
             "Object snapping locates the midpoint of an existing wall");
         check(outsideSnap is null, "Object snapping leaves distant placement coordinates unchanged");
+
+        var exactHorizontal = WallPlacementGeometry.EndpointAtLength(
+            new Point2(2, 3), new Point2(8, 4), 5.5, orthogonal: true);
+        var exactDiagonal = WallPlacementGeometry.EndpointAtLength(
+            new Point2(0, 0), new Point2(3, 4), 10, orthogonal: false);
+        check(exactHorizontal == new Point2(7.5, 3),
+            "Exact-length placement respects the active orthogonal direction");
+        check(exactDiagonal == new Point2(6, 8),
+            "Exact-length placement preserves a free drawing direction");
     }
 }

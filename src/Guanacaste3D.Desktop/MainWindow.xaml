@@ -178,6 +178,11 @@
                 <TextBlock Text="{DynamicResource WallOptions.Height}" Style="{StaticResource OptionLabelStyle}"/>
                 <TextBox x:Name="WallHeightInput" Text="3.00" Width="54" VerticalAlignment="Center" Margin="4,0,12,0"
                          TextChanged="WallOptions_Changed"/>
+                <TextBlock Text="{DynamicResource WallOptions.Length}" Style="{StaticResource OptionLabelStyle}"/>
+                <TextBox x:Name="WallLengthInput" Width="58" VerticalAlignment="Center" Margin="4,0,3,0"
+                         KeyDown="WallLengthInput_KeyDown"/>
+                <Button Content="{DynamicResource WallOptions.PlaceLength}" Click="PlaceWallByLength_Click"
+                        Style="{StaticResource ContextualButtonStyle}" Margin="0,0,12,0"/>
                 <TextBlock Text="{DynamicResource WallOptions.LocationLine}" Style="{StaticResource OptionLabelStyle}"/>
                 <ComboBox x:Name="WallLocationLinePicker" Width="142" SelectedIndex="0" VerticalAlignment="Center"
                           SelectionChanged="WallOptions_Changed">

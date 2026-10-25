@@ -143,6 +143,50 @@ public partial class MainWindow
         return validHeight && validOffset && typeId != Guid.Empty;
     }
 
+    /// <summary>Creates a line wall at the exact entered length along the current preview direction.</summary>
+    private void PlaceWallByLength_Click(object sender, RoutedEventArgs e)
+    {
+        if (WallRectangleMode.IsChecked == true)
+        {
+            StatusText.Text = GetText("Status.WallLengthRequiresLine");
+            return;
+        }
+        if (_pendingWallStart is not Point2 start || _wallPreviewPoint is not Point2 directionCandidate)
+        {
+            StatusText.Text = GetText("Status.WallLengthNeedsDirection");
+            return;
+        }
+        if (!TryReadWallPlacementOptions(out var height, out var offset, out var typeId) ||
+            !double.TryParse(WallLengthInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var length) ||
+            !double.IsFinite(length) || length is < 0.05 or > 100000)
+        {
+            StatusText.Text = GetText("Status.WallInvalidOptions");
+            return;
+        }
+
+        try
+        {
+            var endpoint = WallPlacementGeometry.EndpointAtLength(
+                start, directionCandidate, length, WallOrthogonalCheck.IsChecked == true);
+            CreateWallSegment(start, endpoint, height, offset, typeId);
+            WallLengthInput.SelectAll();
+            WallLengthInput.Focus();
+        }
+        catch (InvalidDataException exception)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidGeometry"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Places the exact-length wall when Enter is pressed in the contextual length field.</summary>
+    private void WallLengthInput_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        PlaceWallByLength_Click(sender, new RoutedEventArgs());
+        e.Handled = true;
+    }
+
     /// <summary>Draws the provisional line or rectangle and its live dimensions over the plan.</summary>
     private void RenderWallSketchOverlay()
     {
