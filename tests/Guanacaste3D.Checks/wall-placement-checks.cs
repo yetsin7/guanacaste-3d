@@ -37,5 +37,22 @@ static class WallPlacementChecks
             rejected = true;
         }
         check(rejected, "Face offsets cannot collapse a rectangular wall loop");
+
+        var existingWalls = new[]
+        {
+            new WallCenterline(new Point2(0, 0), new Point2(6, 0)),
+            new WallCenterline(new Point2(6, 0), new Point2(6, 4))
+        };
+        var endpointSnap = WallPlacementGeometry.FindNearestSnap(
+            new Point2(6.08, 0.03), existingWalls, 0.15);
+        var midpointSnap = WallPlacementGeometry.FindNearestSnap(
+            new Point2(3.02, -0.04), existingWalls, 0.15);
+        var outsideSnap = WallPlacementGeometry.FindNearestSnap(
+            new Point2(2, 1), existingWalls, 0.15);
+        check(endpointSnap == new WallSnapResult(new Point2(6, 0), WallSnapKind.Endpoint),
+            "Object snapping joins a new wall to an existing endpoint");
+        check(midpointSnap == new WallSnapResult(new Point2(3, 0), WallSnapKind.Midpoint),
+            "Object snapping locates the midpoint of an existing wall");
+        check(outsideSnap is null, "Object snapping leaves distant placement coordinates unchanged");
     }
 }

@@ -59,10 +59,13 @@
   <sys:String x:Key="WallOptions.Offset">Desfase (m)</sys:String>
   <sys:String x:Key="WallOptions.Chain">Cadena</sys:String>
   <sys:String x:Key="WallOptions.Orthogonal">Ortogonal</sys:String>
+  <sys:String x:Key="WallOptions.ObjectSnap">Ajustar a objetos</sys:String>
   <sys:String x:Key="WallOptions.Finish">Finalizar</sys:String>
   <sys:String x:Key="WallOptions.Cancel">Cancelar</sys:String>
   <sys:String x:Key="WallOptions.Measurement">{0:0.00} m · {1:0}°</sys:String>
   <sys:String x:Key="WallOptions.RectangleMeasurement">{0:0.00} × {1:0.00} m</sys:String>
+  <sys:String x:Key="WallSnap.Endpoint">Extremo</sys:String>
+  <sys:String x:Key="WallSnap.Midpoint">Punto medio</sys:String>
   <sys:String x:Key="Browser.Title">NAVEGADOR DE PROYECTO</sys:String>
   <sys:String x:Key="Browser.Search">Buscar vistas y elementos</sys:String>
   <sys:String x:Key="Browser.AddLevel">Añadir nivel</sys:String>

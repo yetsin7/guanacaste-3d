@@ -192,6 +192,8 @@
                           VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <CheckBox x:Name="WallOrthogonalCheck" Content="{DynamicResource WallOptions.Orthogonal}" IsChecked="True"
                           VerticalAlignment="Center" Margin="0,0,12,0" Checked="WallOptions_Changed" Unchecked="WallOptions_Changed"/>
+                <CheckBox x:Name="WallObjectSnapCheck" Content="{DynamicResource WallOptions.ObjectSnap}" IsChecked="True"
+                          VerticalAlignment="Center" Margin="0,0,12,0" Checked="WallOptions_Changed" Unchecked="WallOptions_Changed"/>
                 <Button Content="{DynamicResource WallOptions.Finish}" Click="FinishWallTool_Click"
                         Style="{StaticResource ContextualButtonStyle}"/>
                 <Button Content="{DynamicResource WallOptions.Cancel}" Click="CancelWallTool_Click"

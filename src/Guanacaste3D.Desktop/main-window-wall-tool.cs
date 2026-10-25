@@ -13,11 +13,12 @@ namespace Guanacaste3D.Desktop;
 public partial class MainWindow
 {
     private Point2? _wallPreviewPoint;
+    private WallSnapResult? _activeWallSnap;
 
     /// <summary>Tracks the pointer in model space so the active wall sketch has immediate visual feedback.</summary>
     private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_drawingWall || _pendingWallStart is null) return;
+        if (!_drawingWall) return;
         _wallPreviewPoint = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
         RenderPlan();
     }
@@ -89,11 +90,24 @@ public partial class MainWindow
     }
 
     /// <summary>Snaps a reference point to the active ten-centimeter drawing grid.</summary>
-    private Point2 SnapWallPoint(Point2 point) => SnapGridCheck.IsChecked == true
-        ? new Point2(
-            Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
-            Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10)
-        : point;
+    private Point2 SnapWallPoint(Point2 point)
+    {
+        if (WallObjectSnapCheck.IsChecked == true)
+        {
+            var wallCenterlines = _session.Document.Walls
+                .Where(wall => wall.LevelId == _activeLevelId)
+                .Select(wall => new WallCenterline(wall.Start, wall.End));
+            _activeWallSnap = WallPlacementGeometry.FindNearestSnap(
+                point, wallCenterlines, Math.Max(0.02, 12 / _scale));
+            if (_activeWallSnap is WallSnapResult snap) return snap.Point;
+        }
+        _activeWallSnap = null;
+        return SnapGridCheck.IsChecked == true
+            ? new Point2(
+                Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
+                Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10)
+            : point;
+    }
 
     /// <summary>Locks a line endpoint to the dominant axis when orthogonal placement is enabled.</summary>
     private Point2 ConstrainWallEndpoint(Point2 start, Point2 candidate)
@@ -132,7 +146,9 @@ public partial class MainWindow
     /// <summary>Draws the provisional line or rectangle and its live dimensions over the plan.</summary>
     private void RenderWallSketchOverlay()
     {
-        if (!_drawingWall || _pendingWallStart is not Point2 start || _wallPreviewPoint is not Point2 preview) return;
+        if (!_drawingWall) return;
+        if (_activeWallSnap is WallSnapResult snap) AddWallSnapMarker(snap);
+        if (_pendingWallStart is not Point2 start || _wallPreviewPoint is not Point2 preview) return;
         if (WallRectangleMode.IsChecked == true)
         {
             var corners = new[]
@@ -151,6 +167,58 @@ public partial class MainWindow
         var angle = Math.Atan2(end.Y - start.Y, end.X - start.X) * 180 / Math.PI;
         var length = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
         AddWallMeasurement(start, end, FormatText("WallOptions.Measurement", length, angle));
+    }
+
+    /// <summary>Draws the active endpoint or midpoint snap marker beside its localized label.</summary>
+    private void AddWallSnapMarker(WallSnapResult snap)
+    {
+        var center = WorldToCanvas(snap.Point);
+        Shape marker;
+        if (snap.Kind == WallSnapKind.Endpoint)
+        {
+            marker = new Rectangle
+            {
+                Width = 10,
+                Height = 10,
+                Fill = Brushes.White,
+                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
+                StrokeThickness = 2
+            };
+        }
+        else
+        {
+            marker = new Polygon
+            {
+                Points = new PointCollection
+                {
+                    new(center.X, center.Y - 6), new(center.X + 6, center.Y),
+                    new(center.X, center.Y + 6), new(center.X - 6, center.Y)
+                },
+                Fill = Brushes.White,
+                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
+                StrokeThickness = 2
+            };
+        }
+        if (marker is Rectangle)
+        {
+            Canvas.SetLeft(marker, center.X - 5);
+            Canvas.SetTop(marker, center.Y - 5);
+        }
+        marker.IsHitTestVisible = false;
+        PlanCanvas.Children.Add(marker);
+
+        var label = new TextBlock
+        {
+            Text = GetText(snap.Kind == WallSnapKind.Endpoint ? "WallSnap.Endpoint" : "WallSnap.Midpoint"),
+            Foreground = new SolidColorBrush(Color.FromRgb(0, 96, 124)),
+            Background = Brushes.White,
+            FontSize = 10,
+            Padding = new Thickness(4, 1, 4, 1),
+            IsHitTestVisible = false
+        };
+        Canvas.SetLeft(label, center.X + 9);
+        Canvas.SetTop(label, center.Y + 7);
+        PlanCanvas.Children.Add(label);
     }
 
     /// <summary>Adds a dashed cyan reference line to the current plan canvas.</summary>
@@ -193,6 +261,7 @@ public partial class MainWindow
     /// <summary>Refreshes the provisional sketch when a contextual placement option changes.</summary>
     private void WallOptions_Changed(object sender, RoutedEventArgs e)
     {
+        if (WallObjectSnapCheck?.IsChecked != true) _activeWallSnap = null;
         if (PlanCanvas is not null && _session is not null) RenderPlan();
     }
 
@@ -204,6 +273,7 @@ public partial class MainWindow
     {
         _pendingWallStart = null;
         _wallPreviewPoint = null;
+        _activeWallSnap = null;
         SetWallTool(false);
     }
 
@@ -214,6 +284,7 @@ public partial class MainWindow
         {
             _pendingWallStart = null;
             _wallPreviewPoint = null;
+            _activeWallSnap = null;
             StatusText.Text = GetText("Status.WallTool");
             RenderPlan();
             return;
@@ -230,5 +301,6 @@ public partial class MainWindow
         if (WallOptionsBar is null) return;
         WallOptionsBar.Visibility = _drawingWall ? Visibility.Visible : Visibility.Collapsed;
         WallCommandButton.FontWeight = _drawingWall ? FontWeights.Bold : FontWeights.Normal;
+        if (!_drawingWall) _activeWallSnap = null;
     }
 }
