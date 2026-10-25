@@ -13,7 +13,7 @@ Schema: `.g3` schema 10. Branch `feat/in-place-family-core`, based on
 | Claim | Class | Evidence |
 |---|---|---|
 | Release build has 0 errors and 0 warnings | Observed | `dotnet build Guanacaste3D.slnx -c Release` |
-| All regression checks pass, including 33 in-place checks | Observed | `dotnet run --project tests/Guanacaste3D.Checks -c Release`: 325 `OK:` lines, exit code 0 |
+| All regression checks pass, including 34 in-place checks | Observed | `dotnet run --project tests/Guanacaste3D.Checks -c Release`: 325 `OK:` lines, exit code 0 |
 | Extrusion volume equals profile area times depth, with outward faces | Observed | `SignedVolume` checks on rectangular, clockwise and 32-gon profiles |
 | Solids follow the work-plane normal on vertical and inclined planes | Observed | Bounds and offset checks on planes with normals (0,1,0) and (0,1,1)/√2 |
 | Schema 9 projects migrate to schema 10 without families | Observed | Migration check on a schema 9 file written from JSON |
