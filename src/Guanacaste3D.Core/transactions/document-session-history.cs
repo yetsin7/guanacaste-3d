@@ -60,7 +60,6 @@ public sealed partial class DocumentSession
     {
         LevelConstraints.Apply(document);
         OpeningTypeRules.SynchronizeInstances(document);
-        InPlaceFamilyRules.Synchronize(document);
         ParameterRules.RemoveOrphanedValues(document);
         ScheduleDefinitionRules.RemoveMissingFields(document);
     }

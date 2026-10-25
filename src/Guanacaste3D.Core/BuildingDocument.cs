@@ -47,7 +47,7 @@ public sealed class BuildingDocument
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
-    public List<InPlaceFamily> InPlaceFamilies { get; set; } = [];
+    public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -85,11 +85,7 @@ public sealed class BuildingDocument
         {
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
         }).ToList(),
-        InPlaceFamilies = InPlaceFamilies.Select(family => family with
-        {
-            Parameters = [.. family.Parameters],
-            Extrusions = family.Extrusions.Select(extrusion => extrusion with { Profile = [.. extrusion.Profile] }).ToList()
-        }).ToList()
+        InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList()
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>

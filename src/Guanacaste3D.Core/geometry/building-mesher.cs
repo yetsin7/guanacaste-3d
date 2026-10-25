@@ -80,7 +80,7 @@ public static class BuildingMesher
             AddSlab(mesh, floor.Boundary, elevations[floor.LevelId], floor.Thickness);
 
         foreach (var family in document.InPlaceFamilies)
-            InPlaceFamilyRules.AppendTo(mesh, family);
+            FamilyGeometry.AppendTo(mesh, family);
 
         if (includeGround)
         {

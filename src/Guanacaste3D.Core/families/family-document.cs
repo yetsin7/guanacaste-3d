@@ -63,6 +63,12 @@ public sealed record FamilyOperation(Guid Id, string Name, FamilyOperationKind K
     public Dictionary<string, string> Expressions { get; init; } = new(StringComparer.Ordinal);
     public Guid? MaterialParameterId { get; init; }
     public string ComponentRole { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Closed profile of an extrusion, in its work plane's coordinates and meters. Empty when the operation has
+    /// no profile; such operations have no geometry to regenerate yet.
+    /// </summary>
+    public List<Point2> Profile { get; init; } = [];
 }
 
 public sealed record NestedFamilyReference(Guid Id, Guid FamilyId, string Name, string Role)
@@ -87,6 +93,30 @@ public sealed class FamilyDocument
     public List<NestedFamilyReference> NestedFamilies { get; set; } = [];
     public Dictionary<string, string> Metadata { get; set; } = [];
 
+    /// <summary>Returns a copy whose lists and dictionaries can be edited without changing this instance.</summary>
+    public FamilyDocument Clone() => new()
+    {
+        SchemaVersion = SchemaVersion,
+        Id = Id,
+        Name = Name,
+        Category = Category,
+        Hosting = Hosting,
+        Parameters = [.. Parameters],
+        Types = Types.Select(type => type with { Values = [.. type.Values] }).ToList(),
+        WorkPlanes = [.. WorkPlanes],
+        Operations = Operations.Select(operation => operation with
+        {
+            DependsOn = [.. operation.DependsOn],
+            Expressions = new Dictionary<string, string>(operation.Expressions, StringComparer.Ordinal),
+            Profile = [.. operation.Profile]
+        }).ToList(),
+        NestedFamilies = NestedFamilies.Select(nested => nested with
+        {
+            ParameterLinks = new Dictionary<Guid, Guid>(nested.ParameterLinks)
+        }).ToList(),
+        Metadata = new Dictionary<string, string>(Metadata)
+    };
+
     public void Validate()
     {
         if (SchemaVersion != CurrentSchemaVersion)
@@ -106,6 +136,7 @@ public sealed class FamilyDocument
         ValidateWorkPlanes();
         ValidateOperations();
         ValidateNestedFamilies();
+        FamilyGeometry.ValidateSolids(this);
 
         if (Metadata.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Length > 120 ||
                                  pair.Value is null || pair.Value.Length > 4000))
@@ -201,7 +232,8 @@ public sealed class FamilyDocument
                 operation.Expressions is null || operation.Expressions.Count > 100 ||
                 operation.Expressions.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Length > 80 ||
                                                   string.IsNullOrWhiteSpace(pair.Value) || pair.Value.Length > 2000) ||
-                operation.ComponentRole is null || operation.ComponentRole.Length > 120)
+                operation.ComponentRole is null || operation.ComponentRole.Length > 120 ||
+                operation.Profile is null || operation.Profile.Count > InPlaceProfileRules.MaximumVertices)
                 throw new InvalidDataException("A family geometry operation is invalid.");
         }
 
