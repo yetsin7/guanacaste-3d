@@ -162,7 +162,7 @@ static class ParameterChecks
             [ElementCategory.Levels]);
         session.SetParameterValue(sheetId, drawnBy, null, "YG");
         session.SetParameterValue(levelId, elevation, 0.15, null);
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-parameters-{Guid.NewGuid():N}.g3");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-parameters-{Guid.NewGuid():N}.g3d");
         try
         {
             ProjectFile.Save(path, session.Document);
@@ -171,7 +171,7 @@ static class ParameterChecks
                   reloaded.ParameterDefinitions.Count == 2 &&
                   reloaded.ParameterValues.Any(value => value.OwnerId == sheetId && value.Text == "YG") &&
                   reloaded.ParameterValues.Any(value => value.OwnerId == levelId && value.Number == 0.15),
-                "Parameter definitions and values survive a .g3 round trip");
+                "Parameter definitions and values survive a .g3d round trip");
 
             var legacy = session.Document.Clone();
             legacy.SchemaVersion = 3;

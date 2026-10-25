@@ -13,7 +13,7 @@
   <sys:String x:Key="Error.An opening references a missing or mismatched type.">Una abertura usa un tipo inexistente o de otra clase.</sys:String>
   <sys:String x:Key="Error.Door and window type identifiers and names must be unique.">Los nombres de tipo deben ser únicos dentro de cada familia.</sys:String>
   <sys:String x:Key="Error.Element identifiers must be unique.">Los identificadores de elementos deben ser únicos.</sys:String>
-  <sys:String x:Key="Error.Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3 o la heredada .g3d.json.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D projects must use .g3d, the earlier .g3, or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3d, la anterior .g3 o la heredada .g3d.json.</sys:String>
   <sys:String x:Key="Error.Hosted openings cannot overlap.">Las aberturas de un mismo muro no pueden solaparse.</sys:String>
   <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
@@ -21,9 +21,16 @@
   <sys:String x:Key="Error.Invalid project views.">Las vistas del proyecto no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid room definitions.">Las habitaciones no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid wall-type catalog.">El catálogo de tipos de muro no es válido.</sys:String>
-  <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3 extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3.</sys:String>
+  <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3d extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3d.</sys:String>
   <sys:String x:Key="Error.Project parameter identifiers and names must be unique.">Ya existe un parámetro con ese nombre.</sys:String>
-  <sys:String x:Key="Error.The .g3 project header is missing or unsupported.">El encabezado del proyecto .g3 falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The project header is missing or unsupported.">El encabezado del proyecto falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D templates must use the .g3dt extension.">Las plantillas de Guanacaste 3D deben usar la extensión .g3dt.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D families must use the .g3df extension.">Las familias de Guanacaste 3D deben usar la extensión .g3df.</sys:String>
+  <sys:String x:Key="Error.The template header is missing or unsupported.">El encabezado de la plantilla falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The family file header is missing or unsupported.">El encabezado del archivo de familia falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The family file is empty.">El archivo de familia está vacío.</sys:String>
+  <sys:String x:Key="Error.Unsupported family file version.">La versión del archivo de familia no es compatible.</sys:String>
+  <sys:String x:Key="Error.The family file contains no family.">El archivo de familia no contiene ninguna familia.</sys:String>
   <sys:String x:Key="Error.The document exceeds the supported element limits.">El documento supera los límites de elementos admitidos.</sys:String>
   <sys:String x:Key="Error.The door or window type does not exist.">El tipo de puerta o ventana no existe.</sys:String>
   <sys:String x:Key="Error.The door or window type is still used by placed openings.">El tipo está en uso por aberturas colocadas; cámbialas de tipo antes de eliminarlo.</sys:String>

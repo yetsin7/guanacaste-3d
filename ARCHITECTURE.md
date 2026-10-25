@@ -9,8 +9,8 @@ Guanacaste3D.slnx
 │  ├─ BuildingDocument.cs       source of truth: levels, walls, openings, types,
 │  │                            rooms, floors, sheets, views (+ parameters, schema 4)
 │  ├─ DocumentSession.cs        validated, atomic edits + bounded undo/redo
-│  ├─ ProjectFile.cs            .g3 envelope ("G3-PROJECT/1\n" + JSON), migration,
-│  │                            atomic save with .bak
+│  ├─ ProjectFile.cs            .g3d project, .g3dt template and .g3df family
+│  │                            envelopes (one header each), migration, atomic save with .bak
 │  ├─ WallOpenings.cs           hosted-opening rules and wall solid segmentation
 │  ├─ QuantitySchedule.cs, project-schedules.cs   takeoffs and schedules
 │  ├─ dxf-exporter.cs           DXF R12 plan export

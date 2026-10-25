@@ -5,7 +5,8 @@ Publishes and installs Guanacaste 3D for the current Windows user.
 .DESCRIPTION
 Builds the framework-dependent win-x64 bundle inside the repository, copies it
 to the current user's local Programs directory, creates a Start Menu shortcut,
-and registers the native .g3 project file association. The script only stops a
+and registers the .g3d project file association; earlier .g3 files open there too
+as imports. The script only stops a
 running Guanacaste 3D process when its executable path belongs to that install.
 #>
 [CmdletBinding()]
@@ -66,10 +67,12 @@ try {
     $shortcut.Description = 'Guanacaste 3D BIM authoring application'
     $shortcut.Save()
 
-    $extensionKey = 'HKCU:\Software\Classes\.g3'
     $projectTypeKey = 'HKCU:\Software\Classes\Guanacaste3D.Project'
-    New-Item -Path $extensionKey -Force | Out-Null
-    Set-Item -Path $extensionKey -Value 'Guanacaste3D.Project'
+    foreach ($projectExtension in @('.g3d', '.g3')) {
+        $extensionKey = "HKCU:\Software\Classes\$projectExtension"
+        New-Item -Path $extensionKey -Force | Out-Null
+        Set-Item -Path $extensionKey -Value 'Guanacaste3D.Project'
+    }
     New-Item -Path $projectTypeKey -Force | Out-Null
     Set-Item -Path $projectTypeKey -Value 'Guanacaste 3D Project'
     New-Item -Path "$projectTypeKey\DefaultIcon" -Force | Out-Null
@@ -78,7 +81,7 @@ try {
     Set-Item -Path "$projectTypeKey\shell\open\command" -Value "`"$installedExecutable`" `"%1`""
 
     Write-Output "Installed Guanacaste 3D at $installedExecutable"
-    Write-Output "Registered .g3 as the native Guanacaste 3D project format."
+    Write-Output "Registered .g3d as the Guanacaste 3D project format; .g3 files still open as imports."
 }
 finally {
     Set-Location -LiteralPath $startingLocation

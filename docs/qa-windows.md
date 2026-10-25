@@ -29,8 +29,8 @@ or completed CI jobs with executed steps.
   project schedule.
 - [ ] Create a floor from an enclosed wall extent and verify plan and 3D parity.
 - [ ] Add a drawing sheet and verify its number, title block, and live plan view.
-- [ ] Save and reopen a `.g3` file without losing coordinated entities.
-- [ ] Double-click a `.g3` file and confirm that its project opens in the installed application.
+- [ ] Save and reopen a `.g3d` file without losing coordinated entities.
+- [ ] Double-click a `.g3d` file and confirm that its project opens in the installed application.
 - [ ] Confirm that plan, 3D, north elevation, section, and schedule update from the same model.
 - [ ] Overwrite a project and confirm that the `.bak` copy exists.
 - [ ] Undo and redo representative wall, opening, room, floor, and sheet edits.

@@ -161,7 +161,7 @@ static class InPlaceFamilyChecks
                   TwoByOneRectangle, 0, 1, depthParameter: "Missing")) is not null &&
               session.Document.InPlaceFamilies.Single().Extrusions.Count == 1,
             "An extrusion bound to a missing parameter is rejected without changing the project");
-        var boundPath = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-bound-{Guid.NewGuid():N}.g3");
+        var boundPath = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-bound-{Guid.NewGuid():N}.g3d");
         try
         {
             ProjectFile.Save(boundPath, session.Document);
@@ -225,7 +225,7 @@ static class InPlaceFamilyChecks
         check(session.Document.InPlaceFamilies.Single().Extrusions.Single().Depth == 2.0,
             "Redo reapplies the extrusion edit");
 
-        var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-{Guid.NewGuid():N}.g3");
+        var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-{Guid.NewGuid():N}.g3d");
         try
         {
             var original = InPlaceFamilyRules.SignedVolume(
@@ -264,7 +264,7 @@ static class InPlaceFamilyChecks
     /// <summary>Verifies that a schema 8 file loads and migrates to schema 9 with no in-place families.</summary>
     private static void CheckSchemaEightMigration(Action<bool, string> check)
     {
-        var legacyPath = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-legacy-{Guid.NewGuid():N}.g3");
+        var legacyPath = Path.Combine(Path.GetTempPath(), $"guanacaste-inplace-legacy-{Guid.NewGuid():N}.g3d");
         try
         {
             var node = JsonNode.Parse(JsonSerializer.Serialize(BuildingDocument.Create("Legacy")))!.AsObject();
