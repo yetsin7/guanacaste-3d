@@ -1,17 +1,17 @@
 <UserControl x:Class="Guanacaste3D.Desktop.Controls.ArchitectureRibbon"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  MinHeight="102">
-  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+  Height="98">
+  <ScrollViewer Style="{StaticResource RibbonScrollViewerStyle}"
                 Background="{DynamicResource RibbonBrush}">
-    <StackPanel Orientation="Horizontal" Margin="7,3,7,0">
+    <StackPanel Orientation="Horizontal" Margin="1,0,1,0">
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <Button Content="{DynamicResource Tool.Modify}" CommandParameter="{StaticResource Icon.Apply}"
                   Tag="Modify" Click="ArchitectureButton_Click"
-                  Style="{StaticResource LargeRibbonButtonStyle}" Background="{DynamicResource AccentSoftBrush}"
-                  BorderBrush="#B8D7FF" Foreground="#005BBB"/>
+                  Style="{StaticResource LargeRibbonButtonStyle}" Background="{DynamicResource RibbonCheckedBrush}"
+                  BorderBrush="{DynamicResource RibbonCheckedBorderBrush}"/>
           <TextBlock Grid.Row="1" Text="{DynamicResource RibbonGroup.Selection}"
                      Style="{StaticResource RibbonGroupLabelStyle}"/>
         </Grid>
@@ -19,7 +19,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <Button Content="{DynamicResource Action.Move}" CommandParameter="{StaticResource Icon.Move}"
                     Tag="Move" Click="ArchitectureButton_Click" ToolTip="{DynamicResource Action.Move}"
@@ -35,7 +35,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <Button x:Name="WallCommandButton" Content="{DynamicResource Tool.Wall}" Tag="Wall" CommandParameter="{StaticResource Icon.Wall}" Click="ArchitectureButton_Click"
                     Style="{StaticResource LargeRibbonButtonStyle}" ToolTip="{DynamicResource ToolTip.Wall}"/>
@@ -73,7 +73,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.Railing}" Tag="Railing" CommandParameter="{StaticResource Icon.Wall}" Click="ArchitectureButton_Click"
@@ -91,7 +91,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.ModelText}" Tag="ModelText" CommandParameter="{StaticResource Icon.Parameters}" Click="ArchitectureButton_Click"
@@ -109,7 +109,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.Room}" Tag="Room" CommandParameter="{StaticResource Icon.Room}" Click="ArchitectureButton_Click"
@@ -135,7 +135,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.FaceOpening}" Tag="FaceOpening" CommandParameter="{StaticResource Icon.OpeningTypes}" Click="ArchitectureButton_Click"
@@ -161,7 +161,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.Level}" Tag="Level" CommandParameter="{StaticResource Icon.Level}" Click="ArchitectureButton_Click"
@@ -179,7 +179,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal">
             <StackPanel>
               <Button Content="{DynamicResource Tool.SetWorkPlane}" Tag="SetWorkPlane" CommandParameter="{StaticResource Icon.Plan}" Click="ArchitectureButton_Click"
@@ -199,7 +199,7 @@
 
       <Border Style="{StaticResource RibbonGroupBorderStyle}">
         <Grid>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="17"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="19"/></Grid.RowDefinitions>
           <StackPanel Margin="5,0" VerticalAlignment="Center">
             <TextBlock Text="{DynamicResource Tool.WallType}" Style="{StaticResource RibbonFieldLabelStyle}"/>
             <ComboBox x:Name="WallTypePicker" Width="188" Margin="0,3,0,4"/>

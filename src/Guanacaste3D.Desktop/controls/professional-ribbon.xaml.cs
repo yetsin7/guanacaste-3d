@@ -89,12 +89,12 @@ public partial class ProfessionalRibbon : UserControl
         }
 
         FlushCompactColumn(commandHost, compactColumn);
-        commandHost.VerticalAlignment = VerticalAlignment.Center;
+        commandHost.VerticalAlignment = VerticalAlignment.Top;
 
         // Buttons on top, the group title centred underneath (Revit-style panel).
         var layout = new Grid();
         layout.RowDefinitions.Add(new RowDefinition());
-        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(17) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(19) });
         Grid.SetRow(commandHost, 0);
         layout.Children.Add(commandHost);
         var label = CreateGroupLabel(definition.LabelResourceKey);

@@ -329,6 +329,7 @@ public partial class MainWindow
     {
         if (WallOptionsBar is null) return;
         WallOptionsBar.Visibility = _drawingWall ? Visibility.Visible : Visibility.Collapsed;
+        UpdateContextualTabs();
         WallCommandButton.FontWeight = _drawingWall ? FontWeights.Bold : FontWeights.Normal;
         if (!_drawingWall) _activeWallSnap = null;
     }
