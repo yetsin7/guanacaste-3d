@@ -11,6 +11,7 @@ using Guanacaste3D.Core.Rendering;
 /// </summary>
 static class NavigationChecks
 {
+    /// <summary>Validates navigation, rendering lifecycle, scene links, and bounded camera tours.</summary>
     public static void Run(Action<bool, string> check)
     {
         Camera(check);
@@ -23,7 +24,7 @@ static class NavigationChecks
         WallChains(check);
         Elevations(check);
         Safety(check);
-        LivePreviewChecks(check).GetAwaiter().GetResult();
+        LivePreviewChecks.Run(check).GetAwaiter().GetResult();
         Tours(check).GetAwaiter().GetResult();
     }
 
@@ -316,63 +317,6 @@ static class NavigationChecks
         var fired = new ManualResetEventSlim();
         using (new RenderSafety.Watchdog(1, fired.Set, TimeSpan.FromMilliseconds(30)))
             check(fired.Wait(TimeSpan.FromSeconds(5)), "The memory watchdog fires when the process exceeds its limit");
-    }
-
-    private static async Task LivePreviewChecks(Action<bool, string> check)
-    {
-        var mesh = new SceneMesh();
-        mesh.AddQuad(new(-10, -10, 0), new(10, -10, 0), new(10, 10, 0), new(-10, 10, 0), SurfaceKind.Ground);
-        mesh.AddQuad(new(-2, -2, 0), new(2, -2, 0), new(2, 2, 0), new(-2, 2, 0), SurfaceKind.Floor);
-        var scene = new RenderSceneBuilder().AddBuilding(mesh).Build();
-        var frames = new List<RenderFrame>();
-        var phases = new List<string>();
-        using var preview = new LivePreview { MaximumSamples = 6 };
-        preview.FrameReady += frame => { lock (frames) frames.Add(frame); };
-        preview.PhaseChanged += phase => { lock (phases) phases.Add(phase); };
-        preview.SetSize(96, 54);
-        preview.SetSettings(new RenderSettings());
-        preview.SetCamera(new RenderCamera(new Vector3(6, -6, 4), Vector3.Zero, 45));
-        preview.SetScene(scene);
-        preview.Start();
-        check(await Until(() => { lock (frames) return frames.Count > 0 && frames[^1].Samples >= 6; }, 20), "The live preview shows a first frame and refines up to its sample limit");
-        int count;
-        lock (frames) count = frames.Count;
-        await Task.Delay(500);
-        lock (frames) check(frames.Count == count, "A converged preview goes idle and produces no more frames");
-        RenderFrame first;
-        lock (frames) first = frames[^1];
-
-        preview.SetCamera(new RenderCamera(new Vector3(-6, 6, 4), Vector3.Zero, 45));
-        check(await Until(() => { lock (frames) return frames.Count > count; }, 10), "Moving the camera wakes the preview and renders again");
-        lock (frames) check(!frames[^1].Bgra.SequenceEqual(first.Bgra) || frames[^1].Samples < first.Samples, "The new view produces a different picture");
-
-        lock (frames) count = frames.Count;
-        preview.SetSize(128, 72);
-        check(await Until(() => { lock (frames) return frames.Skip(count).Any(f => f.Width == 128 && f.Height == 72); }, 10), "Changing the preview size resizes the picture without rebuilding the scene");
-        preview.SetSettings(new RenderSettings { SunIntensity = 0 });
-        lock (frames) count = frames.Count;
-        check(await Until(() => { lock (frames) return frames.Count > count; }, 10), "Changing the lighting refreshes the picture");
-
-        preview.Suspend();
-        await Task.Delay(300);
-        lock (frames) count = frames.Count;
-        preview.SetCamera(new RenderCamera(new Vector3(0, -8, 3), Vector3.Zero, 45));
-        await Task.Delay(500);
-        lock (frames) check(frames.Count == count, "A suspended preview does nothing, even when the camera moves");
-        preview.Resume();
-        check(await Until(() => { lock (frames) return frames.Count > count; }, 10), "A resumed preview rebuilds and shows the current view");
-        lock (phases) check(phases.Contains("Render.Preparing") && phases.Contains("Render.Preview"), "The preview reports when it is preparing and when pictures flow");
-    }
-
-    private static async Task<bool> Until(Func<bool> condition, int seconds)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(seconds);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (condition()) return true;
-            await Task.Delay(40);
-        }
-        return condition();
     }
 
     private static async Task Tours(Action<bool, string> check)

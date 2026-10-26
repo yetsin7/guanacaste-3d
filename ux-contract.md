@@ -13,6 +13,7 @@ Commands exposed in several surfaces use the same command identifier and icon ar
 commands reveal the shared Render material and walkthrough controls rather than creating separate editors.
 Camera changes remain shared between the model and Render. A project containing only in-place family
 geometry counts as a modeled scene for framing, live preview, and final rendering.
+Suspension invalidates in-flight preview frames, including frames finishing during an immediate resume.
 
 Every newly supported command must route to a real operation. Unimplemented capabilities remain
 identified by the existing availability status until their domain and persistence behavior are implemented.
