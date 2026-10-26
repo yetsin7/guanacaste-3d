@@ -113,6 +113,8 @@
   <sys:String x:Key="WallOptions.RectangleMeasurement">{0:0.00} × {1:0.00} m</sys:String>
   <sys:String x:Key="WallSnap.Endpoint">Extremo</sys:String>
   <sys:String x:Key="WallSnap.Midpoint">Punto medio</sys:String>
+  <sys:String x:Key="WallSnap.Nearest">Cercano</sys:String>
+  <sys:String x:Key="WallSnap.ChainStart">Cerrar contorno</sys:String>
   <sys:String x:Key="Browser.Title">Navegador de proyectos</sys:String>
   <sys:String x:Key="Browser.Search">Buscar vistas y elementos</sys:String>
   <sys:String x:Key="Browser.Home">Abrir planta activa</sys:String>
@@ -160,7 +162,7 @@
   <sys:String x:Key="Workspace.ActiveLevel">Nivel activo</sys:String>
   <sys:String x:Key="Workspace.Snap">Ajustar a 10 cm</sys:String>
   <sys:String x:Key="Workspace.Grid">Rejilla</sys:String>
-  <sys:String x:Key="Workspace.Shortcuts">W: muro · R: habitación · F: encuadrar · Esc: cancelar</sys:String>
+  <sys:String x:Key="Workspace.Shortcuts">W: muro · R: habitación · F: encuadrar · Espacio: voltear · Mayús: ortogonal · Esc: cancelar</sys:String>
   <sys:String x:Key="View.Plan">Planta arquitectónica</sys:String>
   <sys:String x:Key="View.Model3D">Modelo coordinado 3D</sys:String>
   <sys:String x:Key="View.Schedule">Tabla de proyecto</sys:String>
@@ -194,6 +196,9 @@
   <sys:String x:Key="Status.CreateSimilarPick">Crear similar: selecciona un muro para usar su tipo y altura.</sys:String>
   <sys:String x:Key="Status.SelectionMode">Modo selección.</sys:String>
   <sys:String x:Key="Status.WallSecondPoint">Define el final del muro; Esc cancela el segmento.</sys:String>
+  <sys:String x:Key="Status.WallFlipped">Muro volteado: ahora se coloca al otro lado de la línea de ubicación.</sys:String>
+  <sys:String x:Key="Status.WallFlipCenterline">Con la línea de ubicación en el eje, el muro queda centrado; elige una cara para voltearlo con Espacio.</sys:String>
+  <sys:String x:Key="Status.WallLoopClosed">Contorno cerrado: el último muro se unió al primero. La herramienta sigue lista para el siguiente.</sys:String>
   <sys:String x:Key="Status.WallCreated">Muro creado. Continúa la cadena o pulsa Finalizar.</sys:String>
   <sys:String x:Key="Status.WallRectangleCreated">Recinto rectangular creado como una sola operación.</sys:String>
   <sys:String x:Key="Status.WallInvalidOptions">Revisa la altura y el desfase del muro.</sys:String>

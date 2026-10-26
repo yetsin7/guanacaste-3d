@@ -57,6 +57,12 @@ if (args.Contains("--diagnostics"))
     return;
 }
 
+if (args.Contains("--shot"))
+{
+    ShowcaseShot.Run(outputFolder ?? "shots", width, options.TryGetValue("--passes", out var sp) ? int.Parse(sp) : 64);
+    return;
+}
+
 if (args.Contains("--denoise-speed"))
 {
     DenoiseSpeed.Run();

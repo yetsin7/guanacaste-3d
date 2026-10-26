@@ -64,6 +64,24 @@ static class WallPlacementChecks
         check(exactDiagonal == new Point2(6, 8),
             "Exact-length placement preserves a free drawing direction");
 
+        var nearestSnap = WallPlacementGeometry.FindNearestSnap(new Point2(4.5, 0.06), existingWalls, 0.15);
+        check(nearestSnap == new WallSnapResult(new Point2(4.5, 0), WallSnapKind.Nearest),
+            "Object snapping falls back to the nearest point on a wall when no endpoint or midpoint is in reach");
+
+        var closing = WallPlacementGeometry.FindChainClosure(
+            new Point2(0.2, 2.75), new Point2(0, 3), new Point2(0, 0), 0.4);
+        var firstSegment = WallPlacementGeometry.FindChainClosure(
+            new Point2(0.1, 0.1), new Point2(0, 0), new Point2(0, 0), 0.4);
+        check(closing == new WallSnapResult(new Point2(0, 3), WallSnapKind.ChainStart) && firstSegment is null,
+            "A chain closes on its first point from nearby, but its first segment never snaps back onto its own start");
+
+        var nearlyVertical = WallPlacementGeometry.SnapAngle(new Point2(0, 0), new Point2(0.2, 3), 90, 5);
+        var free = WallPlacementGeometry.SnapAngle(new Point2(0, 0), new Point2(1, 3), 90, 5);
+        check(nearlyVertical is Point2 up && Math.Abs(up.X) < 1e-9 && Math.Abs(up.Y - Math.Sqrt(9.04)) < 1e-9 && free is null,
+            "Angular snapping straightens a nearly vertical wall and leaves a clearly oblique one alone");
+        check(WallPlacementGeometry.RoundLength(new Point2(1, 1), new Point2(1, 3.27), 0.1).DistanceTo(new Point2(1, 3.3)) < 1e-9,
+            "Snapped walls round their length to the drawing increment, keeping their direction");
+
         var footprint = WallPlacementGeometry.Footprint(
             new Point2(0, 0), new Point2(5, 0), 0.20, 0.10, WallLocationReference.ExteriorFace);
         check(footprint.StartLeft.DistanceTo(new Point2(0, 0.30)) < 1e-12 &&

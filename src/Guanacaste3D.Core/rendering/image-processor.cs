@@ -12,7 +12,8 @@ public static class ImageProcessor
     /// <summary>A neutral finish with no bloom, vignette, grading or dithering, matching the original renderer output.</summary>
     public static ImageFinish Plain { get; } = new()
     {
-        Saturation = 1, Contrast = 1, Bloom = 0, Vignette = 0, Dither = false, AutoExposure = false
+        Saturation = 1, Contrast = 1, Bloom = 0, Vignette = 0, Dither = false, AutoExposure = false,
+        ToneMapper = ToneMapper.Aces
     };
 
     /// <summary>Returns BGRA32 bytes for display or saving.</summary>
@@ -26,12 +27,13 @@ public static class ImageProcessor
         if (finish.AutoExposure) exposure *= MeasureAutoExposure(linear, baseExposure, features?.Invoke());
 
         var exposed = new Vector3[linear.Length];
+        var balance = WhiteBalance(finish.Temperature);
         Parallel.For(0, height, row =>
         {
             for (var column = 0; column < width; column++)
             {
                 var index = row * width + column;
-                var value = linear[index] * exposure;
+                var value = linear[index] * balance * exposure;
                 exposed[index] = float.IsFinite(value.X + value.Y + value.Z) ? Vector3.Max(value, Vector3.Zero) : Vector3.Zero;
             }
         });
@@ -101,8 +103,57 @@ public static class ImageProcessor
     {
         ToneMapper.Linear => Vector3.Clamp(color, Vector3.Zero, Vector3.One),
         ToneMapper.Soft => new Vector3(Soft(color.X), Soft(color.Y), Soft(color.Z)),
+        ToneMapper.AgX => AgX(color),
         _ => new Vector3(Aces(color.X), Aces(color.Y), Aces(color.Z))
     };
+
+    /// <summary>
+    /// Channel gains for a white balance shift that keeps luminance: warm raises red and lowers blue, cool the reverse.
+    /// The range is about ±1500 K around daylight.
+    /// </summary>
+    public static Vector3 WhiteBalance(float temperature)
+    {
+        var t = Math.Clamp(float.IsFinite(temperature) ? temperature : 0, -1f, 1f);
+        if (t == 0) return Vector3.One;
+        var gains = new Vector3(1 + 0.16f * t, 1 + 0.02f * t, 1 - 0.20f * t);
+        return gains / Sampling.Luminance(gains);
+    }
+
+    /// <summary>
+    /// AgX view transform (Troy Sobotka's design, with Wrensch's polynomial fit of the default contrast curve). Light is
+    /// first mixed slightly toward the other primaries, so over-bright colors bleach to white instead of clipping one
+    /// channel; the log-encoded result is shaped by the curve and mixed back. The "punchy" finish (30 % more color and a
+    /// 1.25 power on the display values) restores the depth that the plain curve lifts, and a gain of 2 brings mid grey to
+    /// where the previous ACES curve put it, so automatic exposure keeps its calibration.
+    /// </summary>
+    private static Vector3 AgX(Vector3 color)
+    {
+        const float minimumEv = -12.47393f, maximumEv = 4.026069f, punch = 2.2f * 1.25f;
+        color = Vector3.Max(color * 2.0f, Vector3.Zero);
+        var mixed = new Vector3(
+            0.842479062f * color.X + 0.0784336f * color.Y + 0.0792237451f * color.Z,
+            0.0423282423f * color.X + 0.878468636f * color.Y + 0.0791661275f * color.Z,
+            0.0423756549f * color.X + 0.0784336f * color.Y + 0.879142974f * color.Z);
+        static float Curve(float value)
+        {
+            var log = Math.Clamp(MathF.Log2(MathF.Max(value, 1e-10f)), minimumEv, maximumEv);
+            var x = (log - minimumEv) / (maximumEv - minimumEv);
+            var x2 = x * x;
+            var x4 = x2 * x2;
+            return 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
+        }
+        var shaped = new Vector3(Curve(mixed.X), Curve(mixed.Y), Curve(mixed.Z));
+        // Part of the punchy look: the log encoding mutes color, so it is given back here, before mixing out.
+        var grey = Sampling.Luminance(shaped);
+        shaped = Vector3.Max(Vector3.Zero, new Vector3(grey) + (shaped - new Vector3(grey)) * 1.3f);
+        var display = new Vector3(
+            1.19687901f * shaped.X - 0.0980208811f * shaped.Y - 0.099029744f * shaped.Z,
+            -0.0528968518f * shaped.X + 1.15190313f * shaped.Y - 0.0989611768f * shaped.Z,
+            -0.0529716355f * shaped.X - 0.0980434501f * shaped.Y + 1.15107367f * shaped.Z);
+        display = Vector3.Clamp(display, Vector3.Zero, Vector3.One);
+        // The curve's output is display-encoded; return linear light, which the sRGB encoder expects.
+        return new Vector3(MathF.Pow(display.X, punch), MathF.Pow(display.Y, punch), MathF.Pow(display.Z, punch));
+    }
 
     /// <summary>ACES filmic approximation (Narkowicz 2015).</summary>
     private static float Aces(float x)

@@ -42,6 +42,13 @@
   <sys:String x:Key="RenderPanel.Image">Imagen</sys:String>
   <sys:String x:Key="RenderPanel.Exposure">Exposición</sys:String>
   <sys:String x:Key="RenderPanel.AutoExposure">Exposición automática</sys:String>
+  <sys:String x:Key="RenderPanel.Look">Estilo de imagen</sys:String>
+  <sys:String x:Key="RenderPanel.LookPhotographic">Fotográfico (AgX)</sys:String>
+  <sys:String x:Key="RenderPanel.LookContrast">Contrastado (ACES)</sys:String>
+  <sys:String x:Key="RenderPanel.LookSoft">Suave</sys:String>
+  <sys:String x:Key="RenderPanel.Temperature">Balance de blancos</sys:String>
+  <sys:String x:Key="RenderPanel.TemperatureHint">Hacia la derecha, más cálido (dorado); hacia la izquierda, más frío (azulado).</sys:String>
+  <sys:String x:Key="RenderPanel.Haze">Perspectiva aérea (bruma a distancia)</sys:String>
   <sys:String x:Key="RenderPanel.Bloom">Resplandor en luces fuertes</sys:String>
   <sys:String x:Key="RenderPanel.Vignette">Viñeta suave</sys:String>
   <sys:String x:Key="RenderPanel.Verticals">Corregir verticales (fotografía de arquitectura)</sys:String>

@@ -1,6 +1,6 @@
 # Workspace, views and icons
 
-How the drawing area behaves in version 0.9. Everything here is covered by
+How the drawing area behaves in version 0.10. Everything here is covered by
 `tests/desktop-interaction-checks` and `tests/Guanacaste3D.Checks`.
 
 ## Views
@@ -30,6 +30,20 @@ How the drawing area behaves in version 0.9. Everything here is covered by
 - **Walls**: the tool uses a crosshair, shows no wall-shaped ghost before the
   first click, and a chain ends by itself when it lands on or crosses another
   wall (the tool stays armed).
+- **Closing a room**: coming back within 30 px of the chain's first point pulls
+  the pointer onto it (green ring, *Cerrar contorno*); the click joins the last
+  wall to the first, also with a face location line, and ends the chain.
+- **Snaps, in Revit's order**: chain start, endpoint (square), midpoint
+  (triangle), nearest point on a wall (hourglass, for tees), work plane, then the
+  drawing direction (axes within 5°, 45° within 3°, 15° steps within 1.5°, with
+  the length rounded to 10 cm or stopped on an alignment guide), alignment with
+  corners on screen (one guide per axis, the nearest corner), and the grid.
+- **Keys while drawing walls**: SHIFT constrains to the axes like *Ortogonal*,
+  SPACE flips the wall to the other side of a face location line, F8 toggles
+  *Ortogonal*, typing a number sets the length.
+- **Default names** follow a Spanish Revit template: *Nivel 1* (its plan view
+  carries the same name), *{3D}*, *Sección 1*, *Tabla de cantidades*. Older
+  projects keep any name the user gave; untouched English defaults are translated.
 - **Doors**: SPACE steps through the four hinge/swing combinations while a
   door is being placed, and flips the selected door afterwards (one undoable
   step). Delete removes only the door; deleting a wall takes its openings.

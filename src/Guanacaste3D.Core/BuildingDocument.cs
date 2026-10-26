@@ -58,7 +58,7 @@ public sealed class BuildingDocument
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
     {
-        var levels = new List<Level> { new(Guid.NewGuid(), "Level 1", 0) };
+        var levels = new List<Level> { new(Guid.NewGuid(), "Nivel 1", 0) };
         return new BuildingDocument
         {
             Name = name,

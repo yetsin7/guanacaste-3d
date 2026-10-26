@@ -117,6 +117,22 @@
                 <Slider x:Name="ExposureSlider" Minimum="-3" Maximum="3" Value="0" TickFrequency="0.1"
                         IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
               </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Look}"/>
+              <ComboBox x:Name="LookPicker" SelectedIndex="0" SelectionChanged="Look_Changed">
+                <ComboBoxItem Content="{DynamicResource RenderPanel.LookPhotographic}" Tag="AgX"/>
+                <ComboBoxItem Content="{DynamicResource RenderPanel.LookContrast}" Tag="Aces"/>
+                <ComboBoxItem Content="{DynamicResource RenderPanel.LookSoft}" Tag="Soft"/>
+              </ComboBox>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Temperature}"/>
+              <DockPanel>
+                <TextBlock x:Name="TemperatureText" DockPanel.Dock="Right" Width="48"
+                           Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" TextAlignment="Right"/>
+                <Slider x:Name="TemperatureSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Temperature_Changed"
+                        ToolTip="{DynamicResource RenderPanel.TemperatureHint}"/>
+              </DockPanel>
+              <CheckBox x:Name="HazeCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
+                        Content="{DynamicResource RenderPanel.Haze}" Checked="Haze_Changed" Unchecked="Haze_Changed"/>
               <CheckBox x:Name="AutoExposureCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
                         Content="{DynamicResource RenderPanel.AutoExposure}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
               <CheckBox x:Name="BloomCheck" Style="{StaticResource PanelCheck}" IsChecked="True"

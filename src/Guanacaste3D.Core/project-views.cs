@@ -43,6 +43,9 @@ public static class BuiltInProjectViews
     public static readonly Guid EastElevationId = Guid.Parse("c3d8e1b7-92a4-4c6f-b5e0-0f7a2d9c4b16");
     public static readonly Guid WestElevationId = Guid.Parse("e5b9a0d4-1c37-48fa-9d62-6a3c8f1e7b27");
 
+    /// <summary>Default names of the standard views, as a Spanish Revit template calls them.</summary>
+    public const string Model3DName = "{3D}", SectionName = "Sección 1", ScheduleName = "Tabla de cantidades";
+
     /// <summary>Names the four standard elevations carry in a new project; the user may rename any of them.</summary>
     public static readonly IReadOnlyDictionary<ViewOrientation, string> ElevationNames = new Dictionary<ViewOrientation, string>
     {
@@ -54,9 +57,9 @@ public static class BuiltInProjectViews
     public static List<ProjectView> CreateDefaults(IReadOnlyCollection<Level> levels)
     {
         var views = levels.Select(CreatePlan).ToList();
-        views.Add(new ProjectView(Model3DId, "Coordinated 3D", ProjectViewKind.Model3D, null, ViewOrientation.None));
-        views.Add(new ProjectView(SectionAId, "Section A", ProjectViewKind.Section, null, ViewOrientation.East));
-        views.Add(new ProjectView(ProjectScheduleId, "Project Schedule", ProjectViewKind.Schedule, null, ViewOrientation.None));
+        views.Add(new ProjectView(Model3DId, Model3DName, ProjectViewKind.Model3D, null, ViewOrientation.None));
+        views.Add(new ProjectView(SectionAId, SectionName, ProjectViewKind.Section, null, ViewOrientation.East));
+        views.Add(new ProjectView(ProjectScheduleId, ScheduleName, ProjectViewKind.Schedule, null, ViewOrientation.None));
         EnsureElevations(views);
         return views;
     }
@@ -80,12 +83,22 @@ public static class BuiltInProjectViews
             else if (views[index].Name == "North Elevation")
                 views[index] = views[index] with { Name = ElevationNames[orientation] };
         }
+        // Projects made before the views were named in Spanish keep any name the user chose; only the untouched
+        // English defaults are translated.
+        var englishDefaults = new Dictionary<Guid, (string Old, string New)>
+        {
+            [Model3DId] = ("Coordinated 3D", Model3DName), [SectionAId] = ("Section A", SectionName),
+            [ProjectScheduleId] = ("Project Schedule", ScheduleName)
+        };
+        for (var index = 0; index < views.Count; index++)
+            if (englishDefaults.TryGetValue(views[index].Id, out var names) && views[index].Name == names.Old)
+                views[index] = views[index] with { Name = names.New };
     }
 
-    /// <summary>Creates the coordinated plan view owned by one level.</summary>
+    /// <summary>Creates the coordinated plan view owned by one level; like Revit, it carries the level's name.</summary>
     public static ProjectView CreatePlan(Level level) => new(
         Guid.NewGuid(),
-        $"{level.Name} Plan",
+        level.Name,
         ProjectViewKind.Plan,
         level.Id,
         ViewOrientation.None);

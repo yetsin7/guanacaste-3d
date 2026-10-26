@@ -50,12 +50,21 @@ A physically based CPU path tracer, tuned for architecture:
   glass with Fresnel. Sunlight **passes through glass** (shadow rays cross
   transmissive surfaces with their tint), which was blocked before.
 - **Detail without textures**: procedural tiles, boards, masonry, concrete and
-  lawn, evaluated from world position (imported meshes need no UVs).
+  lawn, evaluated from world position (imported meshes need no UVs). Each
+  pattern also has **relief**: the shading normal follows a height field (grout
+  lines, mortar joints, board gaps, trowelled plaster, grass blades), so grazing
+  sun picks out the joints. Fine relief fades with distance so it never sparkles.
+- **Atmosphere**: aerial perspective veils distant surfaces with the color of
+  the horizon (clear air ≈ 12 km visibility, shorter with turbidity), and the
+  daytime horizon band is whitened, removing the pink cast of the Perez fit.
 - **Camera**: field of view, shift-lens vertical correction, depth of field,
   tent-filtered antialiasing.
-- **Image**: edge-aware denoising of indirect light only (sun shadows and glass
-  stay sharp), measured-exposure auto exposure, bloom, ACES or soft tone
-  mapping, vignette, dithering.
+- **Image**: edge-aware denoising of indirect light, rough glossy reflections
+  (roughness ≥ 0.3, so polished floors are not grainy) and the reflections in
+  window panes; sun shadows and sharp reflections stay sharp. Measured-exposure
+  auto exposure, bloom, **AgX** tone mapping by default (*Fotográfico*: bright
+  light bleaches to white like film instead of skewing to cyan or yellow), ACES
+  (*Contrastado*) or a soft curve, white balance (±1500 K), vignette, dithering.
 - **Efficiency**: BVH built in parallel with leaf-ordered triangle data, adaptive
   sampling that stops converged pixels (the sample house kept 34 % of pixels
   active at 96 spp), samples spent in batches that keep the preview updating
@@ -126,8 +135,8 @@ acceleration structure for all of them.
   (reported as a warning), and bounded half-spaces clip as unbounded planes.
 - DWG needs AutoCAD or the ODA File Converter on the same computer; SketchUp
   needs `SketchUpAPI.dll` and reads files up to its own version.
-- Image textures, HDRI skies, bump/displacement and a material browser are not
-  implemented yet (the renderer uses procedural patterns); this is the next step
-  for materials.
+- Image textures, HDRI skies, displacement and a material browser are not
+  implemented yet (the renderer uses procedural patterns with procedural relief);
+  this is the next step for materials.
 - Linework (CAD lines) is imported and kept with the model but is not yet drawn
   in the plan view as an underlay.

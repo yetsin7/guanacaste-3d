@@ -21,6 +21,8 @@ public sealed class PathTracer
     private const int TileSize = 16;
     private const int MaxGlassCrossings = 10;
     private const float CameraSunRadianceLimit = 3000f;
+    /// <summary>GGX alpha (roughness²) from which a glossy reflection counts as blurred light for denoising: roughness 0.3.</summary>
+    private const float RoughReflectionAlpha = 0.09f;
     /// <summary>Largest luminance stored in the radiance cache, so one rare bright path cannot taint a whole cell.</summary>
     private const float CacheValueLimit = 30f;
 
@@ -36,6 +38,7 @@ public sealed class PathTracer
     private float _sunPdf;                    // 1 / solid angle of the sun disk
     private Vector3 _sunRadiance;             // radiance of the sun disk; zero when the sun is off
     private Vector3 _skyScale;
+    private float _hazeDensity;               // extinction of aerial perspective per meter; zero turns it off
     private readonly Vector3 _sceneMin;
     private readonly Vector3 _sceneMax;
     private readonly SkyPortals? _portalCandidates;   // found once from the geometry; the setting only switches them on
@@ -163,6 +166,12 @@ public sealed class PathTracer
             ? sunColor * (MathF.PI * settings.SunIntensity / solidAngle)
             : Vector3.Zero;
         _skyScale = new Vector3(Math.Max(0, settings.SkyIntensity));
+        // Koschmieder: visibility V gives 2 % contrast left, so the extinction is 3.912 / V. Clear air (turbidity 2.5)
+        // is taken as 12 km and hazier air shortens it in proportion.
+        var visibility = 12000f * 2.5f / Math.Clamp(settings.Turbidity, 1.5f, 20f);
+        _hazeDensity = float.IsFinite(settings.AerialPerspective)
+            ? Math.Clamp(settings.AerialPerspective, 0f, 20f) * 3.912f / visibility
+            : 0;
         _lightSampler = _scene.Lights.Length == 0
             ? null
             : new LightSampler(_scene.Lights, _sceneMin, _sceneMax,
@@ -856,9 +865,20 @@ public sealed class PathTracer
         // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
         // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
         if (surface.Pattern != SurfacePattern.None)
-            diffuse *= detailed
-                ? SurfacePatterns.Modulate(surface.Pattern, surface.PatternScale, position, geometric)
-                : new Vector3(surface.PatternMean);
+        {
+            if (detailed)
+            {
+                diffuse *= SurfacePatterns.Modulate(surface.Pattern, surface.PatternScale, position, geometric);
+                // Relief only where the surface is seen sharply, like the pattern itself. A bent normal that would
+                // turn away from the viewer is dropped, so grazing views never show black facets.
+                var bent = SurfacePatterns.Relief(surface.Pattern, surface.PatternScale, position, normal, hit.Distance);
+                if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+            }
+            else
+            {
+                diffuse *= new Vector3(surface.PatternMean);
+            }
+        }
         return new ShadePoint(position, geometric, normal, diffuse, material);
     }
 
@@ -923,6 +943,18 @@ public sealed class PathTracer
 
             sinceScatter += hit.Distance;
             var position = origin + direction * hit.Distance;
+            if (bounce == 0 && _hazeDensity > 0)
+            {
+                // Aerial perspective on the way to the camera: the air in front of a distant surface veils it with
+                // the color of the horizon in that direction.
+                var transmittance = MathF.Exp(-hit.Distance * _hazeDensity);
+                if (transmittance < 0.9999f)
+                {
+                    var horizon = Vector3.Normalize(new Vector3(direction.X, direction.Y, 0.04f));
+                    Deposit(SkyRadiance(horizon) * (1 - transmittance));
+                    throughput *= transmittance;
+                }
+            }
             var point = Shade(hit, bvh, position, direction, detailed: previousDelta);
             ref readonly var surface = ref _surfaces[point.Material];
 
@@ -935,7 +967,11 @@ public sealed class PathTracer
                 {
                     direction = Vector3.Reflect(direction, point.Geometric);
                     origin = position + point.Geometric * _rayEpsilon;
-                    denoisable = false;
+                    // Only a few samples of a pane reflect (Fresnel is a few percent face on), so what they see would
+                    // stay as grain on every window. Seen from the camera it is filtered with the indirect light;
+                    // the pane is flat, so the filter keeps the reflection's shape.
+                    if (denoisable && bounce == 0) inIndirect = true;
+                    else denoisable = false;
                     previousDelta = true;
                     sinceScatter = 0;
                 }
@@ -1010,8 +1046,11 @@ public sealed class PathTracer
             }
             throughput *= weightBsdf;
             if (current >= 0) vertices[current].Weight = continuation;
-            if (diffuseLobe && denoisable) inIndirect = true;
-            else if (!diffuseLobe) denoisable = false;
+            // A rough glossy reflection (polished tile, satin paint) is as blurred as diffuse light, so it is denoised
+            // with it; otherwise its noise stays as white grain on floors. Sharp reflections keep their detail.
+            var blurred = diffuseLobe || (!delta && surface.Alpha >= RoughReflectionAlpha);
+            if (blurred && denoisable) inIndirect = true;
+            else if (!blurred) denoisable = false;
             previousDelta = delta;
             previousPdf = pdf;
             scatterPosition = position;

@@ -101,6 +101,7 @@ internal static class InteractionChecks
             ProjectFile.Save("artifacts/interaction-evidence/placed-elements.g3d", session.Document);
             Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3d").Dimensions.Count == 1,
                 "UI-created annotation survives native save and reopen");
+            WallLoopClosingChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -123,6 +124,44 @@ internal static class InteractionChecks
             _window.Close();
             application.Shutdown();
         }
+    }
+
+    /// <summary>
+    /// Draws two four-wall chains with the real placement handler, ending each a little off its first point, and checks
+    /// that the last click is pulled onto that point, the loop is joined and the chain ends. The second loop is drawn
+    /// from the exterior face, where the closing corner lies off the clicked point.
+    /// </summary>
+    private static void WallLoopClosingChecks(DocumentSession session)
+    {
+        SetField("_scale", 60.0);
+        SetField("_panOffset", new Point(0, 0));
+        Invoke("SetWallTool", true);
+        ((CheckBox)_window.FindName("WallChainCheck")).IsChecked = true;
+        ((CheckBox)_window.FindName("WallOrthogonalCheck")).IsChecked = false;
+        var location = (ComboBox)_window.FindName("WallLocationLinePicker");
+        foreach (var (reference, origin) in new[] { ("Center", new Point2(30, 30)), ("Exterior", new Point2(30, 40)) })
+        {
+            location.SelectedItem = location.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => item.Tag as string == reference) ?? location.Items[0];
+            var before = session.Document.Walls.Count;
+            var corners = new[]
+            {
+                origin, new Point2(origin.X + 6, origin.Y), new Point2(origin.X + 6, origin.Y + 3),
+                new Point2(origin.X, origin.Y + 3), new Point2(origin.X + 0.12, origin.Y + 0.25)
+            };
+            foreach (var corner in corners)
+            {
+                var pixel = (Point)Invoke("WorldToCanvas", corner)!;
+                Invoke("HandleWallPlacementClick", pixel);
+                Pump();
+            }
+            var loop = session.Document.Walls.Skip(before).ToArray();
+            Check(loop.Length == 4 && loop[^1].End.DistanceTo(loop[0].Start) < 1e-6,
+                $"A wall chain drawn from the {reference.ToLowerInvariant()} reference closes on its first wall from a nearby click");
+            Check(Field<Point2?>("_pendingWallStart") is null && Field<object?>("_chainTail") is null,
+                "Closing the loop ends the chain and leaves the wall tool armed for a new wall");
+        }
+        Invoke("SetWallTool", false);
     }
 
     /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>

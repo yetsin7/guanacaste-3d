@@ -37,55 +37,65 @@ public partial class MainWindow
         AddWallMeasurement(start, end, FormatText("WallOptions.Measurement", length, angle));
     }
 
-    /// <summary>Draws the active endpoint or midpoint snap marker beside its localized label.</summary>
+    /// <summary>
+    /// Draws the active snap marker beside its localized label, with Revit's shapes: a square for an endpoint, a
+    /// triangle for a midpoint, an hourglass for the nearest point on a wall, and a ring where the loop closes.
+    /// </summary>
     private void AddWallSnapMarker(WallSnapResult snap)
     {
         var center = WorldToCanvas(snap.Point);
-        Shape marker;
-        if (snap.Kind == WallSnapKind.Endpoint)
+        var accent = snap.Kind == WallSnapKind.ChainStart
+            ? new SolidColorBrush(Color.FromRgb(22, 135, 60))
+            : new SolidColorBrush(Color.FromRgb(0, 127, 163));
+        Shape marker = snap.Kind switch
         {
-            marker = new Rectangle
-            {
-                Width = 10,
-                Height = 10,
-                Fill = Brushes.White,
-                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-                StrokeThickness = 2
-            };
-        }
-        else
-        {
-            marker = new Polygon
+            WallSnapKind.Endpoint => new Rectangle { Width = 10, Height = 10 },
+            WallSnapKind.ChainStart => new Ellipse { Width = 16, Height = 16 },
+            WallSnapKind.Midpoint => new Polygon
             {
                 Points = new PointCollection
                 {
-                    new(center.X, center.Y - 6), new(center.X + 6, center.Y),
-                    new(center.X, center.Y + 6), new(center.X - 6, center.Y)
-                },
-                Fill = Brushes.White,
-                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-                StrokeThickness = 2
-            };
-        }
-        if (marker is Rectangle)
+                    new(center.X, center.Y - 6), new(center.X + 6, center.Y + 5), new(center.X - 6, center.Y + 5)
+                }
+            },
+            _ => new Polygon
+            {
+                Points = new PointCollection
+                {
+                    new(center.X - 6, center.Y - 6), new(center.X + 6, center.Y - 6),
+                    new(center.X - 6, center.Y + 6), new(center.X + 6, center.Y + 6)
+                }
+            }
+        };
+        marker.Fill = snap.Kind == WallSnapKind.ChainStart ? new SolidColorBrush(Color.FromArgb(70, 22, 135, 60)) : Brushes.White;
+        marker.Stroke = accent;
+        marker.StrokeThickness = 2;
+        if (marker is Rectangle or Ellipse)
         {
-            Canvas.SetLeft(marker, center.X - 5);
-            Canvas.SetTop(marker, center.Y - 5);
+            Canvas.SetLeft(marker, center.X - marker.Width / 2);
+            Canvas.SetTop(marker, center.Y - marker.Height / 2);
         }
         marker.IsHitTestVisible = false;
         PlanCanvas.Children.Add(marker);
 
         var label = new TextBlock
         {
-            Text = GetText(snap.Kind == WallSnapKind.Endpoint ? "WallSnap.Endpoint" : "WallSnap.Midpoint"),
-            Foreground = new SolidColorBrush(Color.FromRgb(0, 96, 124)),
+            Text = GetText(snap.Kind switch
+            {
+                WallSnapKind.Endpoint => "WallSnap.Endpoint",
+                WallSnapKind.Midpoint => "WallSnap.Midpoint",
+                WallSnapKind.Nearest => "WallSnap.Nearest",
+                _ => "WallSnap.ChainStart"
+            }),
+            Foreground = accent,
             Background = Brushes.White,
             FontSize = 10,
+            FontWeight = snap.Kind == WallSnapKind.ChainStart ? FontWeights.SemiBold : FontWeights.Normal,
             Padding = new Thickness(4, 1, 4, 1),
             IsHitTestVisible = false
         };
-        Canvas.SetLeft(label, center.X + 9);
-        Canvas.SetTop(label, center.Y + 7);
+        Canvas.SetLeft(label, center.X + 10);
+        Canvas.SetTop(label, center.Y + 8);
         PlanCanvas.Children.Add(label);
     }
 

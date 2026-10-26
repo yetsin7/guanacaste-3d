@@ -18,6 +18,18 @@ public partial class MainWindow
     /// <summary>The last wall of a chained sketch and the reference point where its sketch segment ended.</summary>
     private (Guid WallId, Point2 ReferenceEnd)? _chainTail;
 
+    /// <summary>
+    /// The first wall of the active chain and the reference point the chain started from. Coming back to that point
+    /// closes the loop: the pointer is pulled onto it and the closing wall is joined to the first one.
+    /// </summary>
+    private (Guid FirstWallId, Point2 ReferenceStart)? _chainOrigin;
+
+    /// <summary>Screen reach of the magnet that closes a chain on its own first point; generous, as closing is the common case.</summary>
+    private const double ChainClosureSnapPixels = 30;
+
+    /// <summary>Screen reach of endpoint, midpoint and nearest-on-wall snaps.</summary>
+    private const double WallObjectSnapPixels = 14;
+
     /// <summary>True while Create Similar waits for the next wall picked in the plan.</summary>
     private bool _awaitingSimilarWallPick;
 
@@ -61,6 +73,8 @@ public partial class MainWindow
         if (_pendingWallStart is null)
         {
             _pendingWallStart = point;
+            _chainTail = null;
+            _chainOrigin = null;
             _wallPreviewPoint = point;
             ClearDirectWallLength();
             StatusText.Text = GetText("Status.WallSecondPoint");
@@ -110,20 +124,39 @@ public partial class MainWindow
                 start = corner;
             }
         }
+        var closesLoop = _chainOrigin is { } origin && origin.ReferenceStart.DistanceTo(referenceEnd) < 1e-6;
+        if (closesLoop && _session.Document.Walls.FirstOrDefault(wall => wall.Id == _chainOrigin!.Value.FirstWallId) is
+                { } first && first.WallTypeId == typeId)
+        {
+            // The closing wall and the first wall meet where their centerlines cross; with a face reference that
+            // corner is off the clicked point, so both ends move there and the loop is joined like any other corner.
+            var meeting = WallPlacementGeometry.CenterlineIntersection(
+                new WallCenterline(first.Start, first.End), new WallCenterline(start, end));
+            if (meeting is Point2 corner && corner.DistanceTo(referenceEnd) <= 2 * thickness)
+            {
+                if (corner.DistanceTo(first.Start) > WallJoinIndex.Tolerance)
+                    _session.MoveWallEnd(first.Id, WallEnd.Start, corner);
+                end = corner;
+            }
+        }
         var others = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId)
             .Select(wall => new WallCenterline(wall.Start, wall.End)).ToList();
         var id = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
         group.Assimilate();
         _selectedWallId = id;
-        // A chain ends by itself when it lands on or crosses another wall: the tool stays armed for the next wall.
-        var continuesChain = WallChainCheck.IsChecked == true &&
+        if (_chainTail is null) _chainOrigin = (id, referenceStart);
+        // A chain ends by itself when it closes on its first point, or lands on or crosses another wall: the tool
+        // stays armed for the next wall.
+        var continuesChain = WallChainCheck.IsChecked == true && !closesLoop &&
             !WallPlacementGeometry.EndsOnWall(new WallCenterline(start, end), others, thickness / 2 + 1e-6);
         _chainTail = continuesChain ? (id, referenceEnd) : null;
+        if (!continuesChain) _chainOrigin = null;
         _selectedViewId = null;
         _pendingWallStart = continuesChain ? referenceEnd : null;
         _wallPreviewPoint = continuesChain ? referenceEnd : null;
         ClearDirectWallLength();
-        StatusText.Text = GetText(continuesChain ? "Status.WallCreated" : "Status.WallChainClosed");
+        StatusText.Text = GetText(continuesChain ? "Status.WallCreated"
+            : closesLoop ? "Status.WallLoopClosed" : "Status.WallChainClosed");
         RefreshAll();
     }
 
@@ -144,34 +177,81 @@ public partial class MainWindow
         _pendingWallStart = null;
         _wallPreviewPoint = null;
         _chainTail = null;
+        _chainOrigin = null;
         StatusText.Text = GetText("Status.WallRectangleCreated");
         RefreshAll();
     }
 
-    /// <summary>Snaps a reference point to the active ten-centimeter drawing grid.</summary>
+    /// <summary>
+    /// Resolves the pointer to the point a click would place, in Revit's order of preference: the first point of the
+    /// chain (closing the loop), wall endpoints, midpoints and nearest points, the work plane, then the drawing
+    /// direction (axes, 45° and 15° steps), alignment with corners on screen, and the 10 cm grid.
+    /// </summary>
     private Point2 SnapWallPoint(Point2 point)
     {
+        _activeWallSnap = null;
+        var line = WallRectangleMode.IsChecked != true;
+        if (line && _pendingWallStart is Point2 from &&
+            WallPlacementGeometry.FindChainClosure(point, _chainOrigin?.ReferenceStart, from,
+                ChainClosureSnapPixels / _scale) is WallSnapResult closure)
+        {
+            _activeWallSnap = closure;
+            return closure.Point;
+        }
         if (WallObjectSnapCheck.IsChecked == true)
         {
             var wallCenterlines = _session.Document.Walls
                 .Where(wall => wall.LevelId == _activeLevelId)
                 .Select(wall => new WallCenterline(wall.Start, wall.End));
             _activeWallSnap = WallPlacementGeometry.FindNearestSnap(
-                point, wallCenterlines, Math.Max(0.02, 12 / _scale));
+                point, wallCenterlines, Math.Max(0.02, WallObjectSnapPixels / _scale));
             if (_activeWallSnap is WallSnapResult snap) return snap.Point;
         }
-        _activeWallSnap = null;
         if (SnapToWorkPlane(point) is Point2 onPlane) return onPlane;
-        return SnapGridCheck.IsChecked == true
-            ? new Point2(
-                Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
-                Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10)
-            : point;
+
+        var grid = SnapGridCheck.IsChecked == true;
+        var guides = ChooseAlignmentGuides(point, PlanAlignment.Find(point, AlignmentCorners(null),
+            VisibleWorldBounds(), AlignmentTolerancePixels / _scale));
+        if (line && _pendingWallStart is Point2 start && !OrthogonalDrawingActive() &&
+            SnapWallDirection(start, point) is Point2 along)
+        {
+            // Along a snapped direction only the length is free: stop it on a guide that crosses the line, or round it.
+            var vertical = Math.Abs(along.X - start.X) < 1e-9;
+            var horizontal = Math.Abs(along.Y - start.Y) < 1e-9;
+            foreach (var guide in guides)
+            {
+                if (vertical && guide.Axis == PlanGuideAxis.Horizontal) return new Point2(start.X, guide.Corner.Y);
+                if (horizontal && guide.Axis == PlanGuideAxis.Vertical) return new Point2(guide.Corner.X, start.Y);
+            }
+            return grid ? WallPlacementGeometry.RoundLength(start, along, 0.1) : along;
+        }
+
+        double? alignedX = null, alignedY = null;
+        foreach (var guide in guides)
+        {
+            if (guide.Axis == PlanGuideAxis.Vertical) alignedX ??= guide.Corner.X;
+            else alignedY ??= guide.Corner.Y;
+        }
+        return new Point2(
+            alignedX ?? (grid ? Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10 : point.X),
+            alignedY ?? (grid ? Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10 : point.Y));
     }
 
-    /// <summary>Locks a line endpoint to the dominant axis when orthogonal placement is enabled.</summary>
-    private Point2 ConstrainWallEndpoint(Point2 start, Point2 candidate)
-        => WallPlacementGeometry.ConstrainEndpoint(start, candidate, WallOrthogonalCheck.IsChecked == true);
+    /// <summary>Snaps the drawing direction: firmly to the axes, a little less to 45° and only just to 15° steps.</summary>
+    private static Point2? SnapWallDirection(Point2 start, Point2 pointer) =>
+        WallPlacementGeometry.SnapAngle(start, pointer, 90, 5) ??
+        WallPlacementGeometry.SnapAngle(start, pointer, 45, 3) ??
+        WallPlacementGeometry.SnapAngle(start, pointer, 15, 1.5);
+
+    /// <summary>Orthogonal drawing is on when the option is checked or, as in Revit, while Shift is held.</summary>
+    private bool OrthogonalDrawingActive() =>
+        WallOrthogonalCheck.IsChecked == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+    /// <summary>Locks a line endpoint to the dominant axis when orthogonal placement is enabled; a closing point is kept exact.</summary>
+    private Point2 ConstrainWallEndpoint(Point2 start, Point2 candidate) =>
+        _activeWallSnap?.Kind == WallSnapKind.ChainStart
+            ? candidate
+            : WallPlacementGeometry.ConstrainEndpoint(start, candidate, OrthogonalDrawingActive());
 
     /// <summary>Moves the stored centerline according to the chosen reference face and explicit offset.</summary>
     private (Point2 Start, Point2 End) OffsetWallCenterline(
@@ -227,7 +307,7 @@ public partial class MainWindow
         try
         {
             var endpoint = WallPlacementGeometry.EndpointAtLength(
-                start, directionCandidate, length, WallOrthogonalCheck.IsChecked == true);
+                start, directionCandidate, length, OrthogonalDrawingActive());
             CreateWallSegment(start, endpoint, height, offset, typeId);
             ClearDirectWallLength();
         }
@@ -262,6 +342,8 @@ public partial class MainWindow
         _pendingWallStart = null;
         _wallPreviewPoint = null;
         _activeWallSnap = null;
+        _chainTail = null;
+        _chainOrigin = null;
         ClearDirectWallLength();
         SetWallTool(false);
     }
@@ -274,12 +356,38 @@ public partial class MainWindow
             _pendingWallStart = null;
             _wallPreviewPoint = null;
             _activeWallSnap = null;
+            _chainTail = null;
+            _chainOrigin = null;
             ClearDirectWallLength();
             StatusText.Text = GetText("Status.WallTool");
             RenderPlan();
             return;
         }
         SetWallTool(false);
+    }
+
+    /// <summary>
+    /// Revit's spacebar during wall placement: the wall moves to the other side of the line being drawn. With a face
+    /// reference that swaps exterior and interior face; on the centerline both sides are the same, which is reported.
+    /// </summary>
+    private bool TryFlipWallSide()
+    {
+        var target = ((WallLocationLinePicker.SelectedItem as ComboBoxItem)?.Tag as string) switch
+        {
+            "Exterior" => "Interior",
+            "Interior" => "Exterior",
+            _ => null
+        };
+        if (target is null)
+        {
+            StatusText.Text = GetText("Status.WallFlipCenterline");
+            return true;
+        }
+        WallLocationLinePicker.SelectedItem = WallLocationLinePicker.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag as string == target);
+        StatusText.Text = GetText("Status.WallFlipped");
+        RenderPlan();
+        return true;
     }
 
     /// <summary>Applies Revit-like two-stage escape behavior to the active placement command.</summary>

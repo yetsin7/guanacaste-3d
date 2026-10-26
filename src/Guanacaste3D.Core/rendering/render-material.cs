@@ -104,7 +104,7 @@ public static class MaterialLibrary
         },
         SurfaceKind.Ground => new RenderMaterial
         {
-            Name = "Terreno", BaseColor = new(0.35f, 0.38f, 0.25f), Roughness = 0.97f,
+            Name = "Terreno", BaseColor = new(0.22f, 0.28f, 0.13f), Roughness = 0.97f,
             Pattern = SurfacePattern.Grass, PatternScale = 1
         },
         SurfaceKind.DoorLeaf => new RenderMaterial

@@ -8,7 +8,7 @@ public sealed partial class DocumentSession
     /// constrained to the level, or whose base sits on it under a constrained
     /// top, regenerate their height in the same transaction; if a hosted
     /// opening would no longer fit, the whole change is rejected. A plan view
-    /// still carrying the default "&lt;level&gt; Plan" name is renamed along.
+    /// still carrying the level's name (or the older "&lt;level&gt; Plan") is renamed along.
     /// </summary>
     public void UpdateLevel(Guid levelId, string name, double elevation)
     {
@@ -26,8 +26,9 @@ public sealed partial class DocumentSession
             for (var viewIndex = 0; viewIndex < document.Views.Count; viewIndex++)
             {
                 var view = document.Views[viewIndex];
-                if (view.LevelId == levelId && view.Name == $"{oldName} Plan")
-                    document.Views[viewIndex] = view with { Name = $"{trimmed} Plan" };
+                if (view.LevelId != levelId) continue;
+                if (view.Name == oldName) document.Views[viewIndex] = view with { Name = trimmed };
+                else if (view.Name == $"{oldName} Plan") document.Views[viewIndex] = view with { Name = $"{trimmed} Plan" };
             }
         });
     }

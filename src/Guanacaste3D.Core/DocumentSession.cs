@@ -37,8 +37,8 @@ public sealed partial class DocumentSession
         {
             var elevation = doc.Levels.Max(l => l.Elevation) + 3;
             var number = doc.Levels.Count + 1;
-            while (doc.Levels.Any(existing => existing.Name == $"Level {number}")) number++;
-            var level = new Level(id, $"Level {number}", elevation);
+            while (doc.Levels.Any(existing => existing.Name == $"Nivel {number}")) number++;
+            var level = new Level(id, $"Nivel {number}", elevation);
             doc.Levels.Add(level);
             doc.Views.Add(BuiltInProjectViews.CreatePlan(level));
         });

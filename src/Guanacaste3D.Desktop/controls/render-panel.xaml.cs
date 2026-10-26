@@ -259,7 +259,7 @@ public partial class RenderPanel : UserControl
 
     private RenderSettings LightingFor(RenderQuality quality, ResourceMode resources) =>
         RenderPresets.Lighting(Scenario(), Latitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear, HourSlider.Value,
-            quality, resources);
+            quality, resources) with { AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f };
 
     private RenderSettings PreviewSettings() => LightingFor(RenderQuality.Draft, ResourceMode.Eco) with
     {
@@ -274,9 +274,30 @@ public partial class RenderPanel : UserControl
             AutoExposure = AutoExposureCheck.IsChecked == true,
             ExposureStops = baseFinish.ExposureStops + (float)ExposureSlider.Value,
             Bloom = BloomCheck.IsChecked == true ? Math.Max(0.12f, baseFinish.Bloom) : 0,
-            Vignette = VignetteCheck.IsChecked == true ? 0.12f : 0
+            Vignette = VignetteCheck.IsChecked == true ? 0.12f : 0,
+            ToneMapper = ((LookPicker.SelectedItem as ComboBoxItem)?.Tag as string) switch
+            {
+                "Aces" => ToneMapper.Aces,
+                "Soft" => ToneMapper.Soft,
+                _ => ToneMapper.AgX
+            },
+            Temperature = (float)TemperatureSlider.Value
         };
     }
+
+    /// <summary>Reapplies the finish when the picture style changes; like exposure, no re-render is needed.</summary>
+    private void Look_Changed(object sender, SelectionChangedEventArgs e) => Finish_Changed(sender, e);
+
+    /// <summary>Shows the white balance as a color temperature and reapplies the finish.</summary>
+    private void Temperature_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // About ±1500 K around 5500 K daylight: warm (lower) to the right, the way photographers move the slider.
+        if (TemperatureText is not null) TemperatureText.Text = $"{5500 - 1500 * e.NewValue:0} K";
+        Finish_Changed(sender, e);
+    }
+
+    /// <summary>Aerial perspective is part of the lighting, so it changes the preview settings, not only the finish.</summary>
+    private void Haze_Changed(object sender, RoutedEventArgs e) => Lighting_Changed(sender, e);
 
     private RenderCamera CurrentCamera()
     {

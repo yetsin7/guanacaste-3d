@@ -99,6 +99,11 @@ public sealed record RenderSettings
     public float RadianceCacheCellSize { get; init; }
     /// <summary>Samples windows as light portals (with multiple importance sampling) so interiors lit by the sky converge quickly.</summary>
     public bool SkyPortals { get; init; } = true;
+    /// <summary>
+    /// Strength of aerial perspective: distant surfaces fade toward the color of the horizon, as air does over
+    /// hundreds of meters, so the ground meets the sky softly. 1 is clear air (scaled by turbidity), 0 turns it off.
+    /// </summary>
+    public float AerialPerspective { get; init; } = 1f;
     /// <summary>Reflectance of the ground seen below the horizon when the scene has none.</summary>
     public Vector3 GroundColor { get; init; } = new(0.30f, 0.29f, 0.27f);
 
@@ -111,6 +116,11 @@ public enum ToneMapper
 {
     /// <summary>ACES filmic approximation (Narkowicz): rich contrast, desaturated highlights.</summary>
     Aces,
+    /// <summary>
+    /// AgX (Blender's photographic view transform): bright light desaturates toward white the way film does instead of
+    /// skewing to saturated cyan or yellow, so sunlit plaster stays white and skies stay blue.
+    /// </summary>
+    AgX,
     /// <summary>Gentle Reinhard roll-off that keeps colors more neutral.</summary>
     Soft,
     /// <summary>No curve; values above 1 clip. For measuring, not for pictures.</summary>
@@ -124,8 +134,10 @@ public sealed record ImageFinish
     public float ExposureStops { get; init; }
     /// <summary>Measures the image and scales it toward middle grey before <see cref="ExposureStops"/> is applied.</summary>
     public bool AutoExposure { get; init; }
-    public ToneMapper ToneMapper { get; init; } = ToneMapper.Aces;
+    public ToneMapper ToneMapper { get; init; } = ToneMapper.AgX;
     public float Saturation { get; init; } = 1.05f;
+    /// <summary>White balance from −1 (cool, bluish) to 1 (warm, golden); 0 is neutral daylight.</summary>
+    public float Temperature { get; init; }
     public float Contrast { get; init; } = 1.0f;
     /// <summary>Glow around bright areas, 0–1.</summary>
     public float Bloom { get; init; } = 0.12f;

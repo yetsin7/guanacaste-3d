@@ -12,7 +12,11 @@ public enum WallLocationReference
 public enum WallSnapKind
 {
     Endpoint,
-    Midpoint
+    Midpoint,
+    /// <summary>The closest point on an existing wall centerline, where a new wall meets it in a tee.</summary>
+    Nearest,
+    /// <summary>The first point of the active chain: placing there closes the loop.</summary>
+    ChainStart
 }
 
 /// <summary>Describes the model point and reference kind selected by object snapping.</summary>
@@ -75,6 +79,18 @@ public static class WallPlacementGeometry
             EvaluateCandidate(wall.End, WallSnapKind.Endpoint);
             EvaluateCandidate(midpoint, WallSnapKind.Midpoint);
         }
+        if (nearest is not null) return nearest;
+
+        // Points on a wall rank after its endpoints and midpoint, as in Revit: a precise point always wins when both
+        // are in reach, and the nearest point on a centerline only catches the pointer when nothing better is near.
+        foreach (var wall in existingWalls)
+        {
+            var onLine = ClosestPointOnSegment(candidate, wall);
+            var distanceSquared = Math.Pow(onLine.X - candidate.X, 2) + Math.Pow(onLine.Y - candidate.Y, 2);
+            if (distanceSquared > maximumDistanceSquared || distanceSquared >= nearestDistanceSquared) continue;
+            nearest = new WallSnapResult(onLine, WallSnapKind.Nearest);
+            nearestDistanceSquared = distanceSquared;
+        }
         return nearest;
 
         /// <summary>Retains a nearby snap candidate using distance and kind as stable ordering rules.</summary>
@@ -88,6 +104,48 @@ public static class WallPlacementGeometry
             nearest = new WallSnapResult(point, kind);
             nearestDistanceSquared = distanceSquared;
         }
+    }
+
+    /// <summary>
+    /// Pulls the pointer onto the first point of the active chain when it comes within <paramref name="tolerance"/>,
+    /// so the last wall of a room closes the loop without pixel hunting. The current segment must already have left
+    /// that point, otherwise the very first wall would snap back onto its own start.
+    /// </summary>
+    public static WallSnapResult? FindChainClosure(
+        Point2 candidate, Point2? chainStart, Point2 segmentStart, double tolerance)
+    {
+        if (chainStart is not Point2 origin || !double.IsFinite(tolerance) || tolerance <= 0) return null;
+        if (segmentStart.DistanceTo(origin) < 0.05) return null;
+        return candidate.DistanceTo(origin) <= tolerance ? new WallSnapResult(origin, WallSnapKind.ChainStart) : null;
+    }
+
+    /// <summary>
+    /// Revit-style angular snap: when the drawing direction is within <paramref name="toleranceDegrees"/> of a multiple
+    /// of <paramref name="incrementDegrees"/>, the endpoint is projected onto that exact direction, keeping its length.
+    /// Returns null when the direction is free, so the caller keeps the raw point.
+    /// </summary>
+    public static Point2? SnapAngle(Point2 start, Point2 candidate, double incrementDegrees, double toleranceDegrees)
+    {
+        var deltaX = candidate.X - start.X;
+        var deltaY = candidate.Y - start.Y;
+        var length = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (length < 1e-6 || incrementDegrees <= 0) return null;
+        var angle = Math.Atan2(deltaY, deltaX) * 180 / Math.PI;
+        var snapped = Math.Round(angle / incrementDegrees) * incrementDegrees;
+        if (Math.Abs(angle - snapped) > toleranceDegrees) return null;
+        var radians = snapped * Math.PI / 180;
+        return new Point2(start.X + Math.Cos(radians) * length, start.Y + Math.Sin(radians) * length);
+    }
+
+    /// <summary>Rounds the distance from <paramref name="start"/> to a multiple of <paramref name="step"/>, keeping the direction.</summary>
+    public static Point2 RoundLength(Point2 start, Point2 candidate, double step)
+    {
+        var length = start.DistanceTo(candidate);
+        if (length < 1e-9 || step <= 0) return candidate;
+        var rounded = Math.Max(step, Math.Round(length / step, MidpointRounding.AwayFromZero) * step);
+        return new Point2(
+            start.X + (candidate.X - start.X) / length * rounded,
+            start.Y + (candidate.Y - start.Y) / length * rounded);
     }
 
     /// <summary>Locks a candidate endpoint to the dominant axis when orthogonal drawing is active.</summary>
@@ -170,14 +228,17 @@ public static class WallPlacementGeometry
         return false;
     }
 
-    private static double DistanceToSegment(Point2 point, WallCenterline segment)
+    private static double DistanceToSegment(Point2 point, WallCenterline segment) =>
+        point.DistanceTo(ClosestPointOnSegment(point, segment));
+
+    private static Point2 ClosestPointOnSegment(Point2 point, WallCenterline segment)
     {
         var dx = segment.End.X - segment.Start.X;
         var dy = segment.End.Y - segment.Start.Y;
         var lengthSquared = dx * dx + dy * dy;
-        if (lengthSquared < 1e-18) return point.DistanceTo(segment.Start);
+        if (lengthSquared < 1e-18) return segment.Start;
         var t = Math.Clamp(((point.X - segment.Start.X) * dx + (point.Y - segment.Start.Y) * dy) / lengthSquared, 0, 1);
-        return point.DistanceTo(new Point2(segment.Start.X + dx * t, segment.Start.Y + dy * t));
+        return new Point2(segment.Start.X + dx * t, segment.Start.Y + dy * t);
     }
 
     private static Point2? SegmentCrossing(WallCenterline first, WallCenterline second)

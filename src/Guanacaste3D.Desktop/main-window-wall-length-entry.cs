@@ -85,7 +85,7 @@ public partial class MainWindow
         try
         {
             return WallPlacementGeometry.EndpointAtLength(
-                start, pointer, length, WallOrthogonalCheck.IsChecked == true);
+                start, pointer, length, OrthogonalDrawingActive());
         }
         catch (InvalidDataException)
         {

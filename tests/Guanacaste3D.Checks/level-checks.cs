@@ -58,21 +58,21 @@ static class LevelChecks
         var (session, ground, upper, wallA, _) = TwoStoreys();
         session.AttachWallsToLevelAbove(ground);
         session.AddOpening(wallA, OpeningKind.Door, offset: 2);
-        session.UpdateLevel(upper, "Level 2", 3.6);
+        session.UpdateLevel(upper, "Nivel 2", 3.6);
         check(session.Document.Walls.All(wall => Math.Abs(wall.Height - 3.6) < 1e-12) &&
               session.UndoName == "Transaction.UpdateLevel",
             "Raising a level regenerates every wall constrained to it");
         session.Undo();
         check(session.Document.Walls.All(wall => wall.Height == 3), "Undo restores the level and the wall heights");
         var rejected = false;
-        try { session.UpdateLevel(upper, "Level 2", 2.0); } catch (InvalidDataException) { rejected = true; }
+        try { session.UpdateLevel(upper, "Nivel 2", 2.0); } catch (InvalidDataException) { rejected = true; }
         check(rejected && session.Document.Levels.Single(l => l.Id == upper).Elevation == 3,
             "Lowering a level below a hosted door's head is rejected atomically");
         rejected = false;
-        try { session.UpdateLevel(upper, "Level 1", 3); } catch (InvalidDataException) { rejected = true; }
+        try { session.UpdateLevel(upper, "Nivel 1", 3); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "Level names stay unique");
         session.UpdateLevel(upper, "Mezzanine", 3);
-        check(session.Document.Views.Any(view => view.LevelId == upper && view.Name == "Mezzanine Plan"),
+        check(session.Document.Views.Any(view => view.LevelId == upper && view.Name == "Mezzanine"),
             "Renaming a level renames its default plan view");
         rejected = false;
         try { session.RemoveLevel(upper); } catch (InvalidDataException) { rejected = true; }
@@ -85,7 +85,7 @@ static class LevelChecks
         try { session.RemoveLevel(ground); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "The last level cannot be deleted");
         var added = session.AddLevel();
-        check(session.Document.Levels.Single(l => l.Id == added).Name == "Level 2",
+        check(session.Document.Levels.Single(l => l.Id == added).Name == "Nivel 2",
             "New levels receive a name that is not already taken");
     }
 
@@ -97,7 +97,7 @@ static class LevelChecks
         var schedule = CategoryScheduleService.Build(session.Document, ElementCategory.Walls);
         var top = schedule.Columns.Single(c => c.Key == ScheduleQuantities.TopConstraint);
         check(schedule.Rows.All(row => CategoryScheduleService.FormatCell(row, top,
-                System.Globalization.CultureInfo.InvariantCulture) == "Level 2"),
+                System.Globalization.CultureInfo.InvariantCulture) == "Nivel 2"),
             "Wall schedules show the top constraint level");
         var parapet = session.AddParameter("Parapet", ParameterSpec.YesNo, ParameterBinding.Instance,
             [ElementCategory.Walls], formula: "TopOffset > 0");

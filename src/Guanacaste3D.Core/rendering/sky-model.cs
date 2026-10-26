@@ -138,6 +138,17 @@ public sealed class SkyModel
         var luminance = ReferenceZenithLuminance * _zenithLuminanceScale * luminanceShape;
         var color = ToLinearRgb(x, y, luminance);
 
+        // The Perez fit turns the horizon pink at low turbidity; a real daytime horizon is a pale, almost white blue
+        // (light scattered through a long column of air). The band is whitened by day and left alone near sunset,
+        // where its warmth is real.
+        var daytime = 1 - SmoothStep(25f, 2f, Math.Clamp(SunAltitudeDegrees, 0f, 25f));
+        var whitening = MathF.Exp(-MathF.Max(direction.Z, 0) * 5f) * 0.75f * daytime;
+        if (whitening > 0.001f)
+        {
+            var paleBlue = new Vector3(0.90f, 0.95f, 1.0f);
+            color = Vector3.Lerp(color, paleBlue * (Sampling.Luminance(color) / Sampling.Luminance(paleBlue)), whitening);
+        }
+
         // Sunset warmth: low sun tints the horizon near its azimuth with the extincted sun color.
         var degrees = SunAltitudeDegrees;
         if (degrees < 25)

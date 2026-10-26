@@ -61,10 +61,11 @@ public partial class MainWindow
     private static IReadOnlyList<PlanAlignmentGuide> ChooseAlignmentGuides(
         Point2 pointer, IReadOnlyList<PlanAlignmentGuide> matches)
     {
-        // TODO(human): Decide how many of the matching guides to keep when several corners line up
-        // with the pointer on the same axis: keep all of them, only the nearest per axis (using the
-        // pointer distance to each corner), or a capped number. Return the guides you keep.
-        return matches;
+        // One guide per axis, from the corner nearest the pointer, as Revit does: several parallel dashed lines
+        // through the same pointer would be noise, and the snap must follow exactly the line that is drawn.
+        return matches.GroupBy(guide => guide.Axis)
+            .Select(axis => axis.MinBy(guide => guide.Corner.DistanceTo(pointer)))
+            .ToArray();
     }
 
     /// <summary>Returns the model-space rectangle the plan viewport currently shows.</summary>
