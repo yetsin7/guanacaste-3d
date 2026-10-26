@@ -2,6 +2,13 @@ using System.Numerics;
 
 namespace Guanacaste3D.Core.Rendering;
 
+/// <summary>The world-space projection textures use, shared by the renderer and the interactive 3D view.</summary>
+public static class TextureProjection
+{
+    /// <summary>Plane coordinates in meters of a point on a face: (x, y) on floors, (along, height) on walls.</summary>
+    public static (float U, float V) PlaneUv(Vector3 position, Vector3 normal) => SurfacePatterns.PlaneUv(position, normal);
+}
+
 /// <summary>
 /// An image texture for the renderer: 8-bit sRGB texels in a mip chain, so a wall seen from afar averages its texels
 /// instead of sparkling. Sampling is trilinear in linear light and wraps in both directions, because textures are

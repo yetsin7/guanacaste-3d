@@ -14,29 +14,59 @@ internal static class ScenePresentation
     /// <summary>Model (x, y, z) to WPF (x, z, -y): a proper rotation, so triangle winding is preserved.</summary>
     public static Point3D ToWpf(System.Numerics.Vector3 point) => new(point.X, point.Z, -point.Y);
 
-    /// <summary>Builds one frozen model per surface kind; transparent glass is emitted last.</summary>
-    public static IEnumerable<GeometryModel3D> ToWpfModels(SceneMesh scene)
+    /// <summary>
+    /// Builds one frozen model per surface kind; transparent glass is emitted last. Kinds with an image in
+    /// <paramref name="textures"/> are drawn with it, projected in world space exactly as the renderer projects it, so
+    /// the interactive view previews the render's materials.
+    /// </summary>
+    public static IEnumerable<GeometryModel3D> ToWpfModels(SceneMesh scene,
+        IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>? textures = null)
     {
         var meshes = new Dictionary<SurfaceKind, MeshGeometry3D>();
         for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
         {
             var kind = scene.TriangleKinds[triangle];
             if (!meshes.TryGetValue(kind, out var mesh)) meshes[kind] = mesh = new MeshGeometry3D();
+            var textured = textures is not null && textures.TryGetValue(kind, out var texture) ? texture.Size : 0;
+            var a = scene.Positions[scene.Indices[triangle * 3]];
+            var normal = System.Numerics.Vector3.Cross(scene.Positions[scene.Indices[triangle * 3 + 1]] - a,
+                scene.Positions[scene.Indices[triangle * 3 + 2]] - a);
             for (var corner = 0; corner < 3; corner++)
             {
+                var position = scene.Positions[scene.Indices[triangle * 3 + corner]];
                 mesh.TriangleIndices.Add(mesh.Positions.Count);
-                mesh.Positions.Add(ToWpf(scene.Positions[scene.Indices[triangle * 3 + corner]]));
+                mesh.Positions.Add(ToWpf(position));
+                if (textured <= 0) continue;
+                // Image rows run downward while v runs up a wall, hence the minus sign.
+                var (u, v) = TextureProjection.PlaneUv(position, normal);
+                mesh.TextureCoordinates.Add(new System.Windows.Point(u / textured, -v / textured));
             }
         }
         foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
             mesh.Freeze();
-            var material = MaterialFor(kind);
+            var material = textures is not null && textures.TryGetValue(kind, out var texture)
+                ? Textured(texture.Image)
+                : MaterialFor(kind);
             var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
             model.Freeze();
             yield return model;
         }
+    }
+
+    /// <summary>A material that repeats an image once per texture-coordinate unit.</summary>
+    private static Material Textured(ImageSource image)
+    {
+        var brush = new ImageBrush(image)
+        {
+            TileMode = TileMode.Tile, ViewportUnits = BrushMappingMode.Absolute,
+            Viewport = new System.Windows.Rect(0, 0, 1, 1), Stretch = Stretch.Fill
+        };
+        brush.Freeze();
+        var material = new DiffuseMaterial(brush);
+        material.Freeze();
+        return material;
     }
 
     /// <summary>Converts a renderer camera so the interactive view and the ray-traced image match.</summary>

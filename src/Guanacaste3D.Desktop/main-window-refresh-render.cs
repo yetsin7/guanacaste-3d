@@ -148,7 +148,8 @@ public partial class MainWindow
         });
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
         var thickness = EdgeThickness();
-        foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene))
+        var textures = _clayMode ? null : RenderTextureLibrary.Previews3D(_session.Document.RenderMaterials, _filePath);
+        foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
         if (_showEdges)
         {

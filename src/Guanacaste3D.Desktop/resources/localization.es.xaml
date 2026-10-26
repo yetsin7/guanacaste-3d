@@ -333,6 +333,9 @@
   <sys:String x:Key="Dialog.IfcFilter">Modelo IFC4 (*.ifc)|*.ifc</sys:String>
   <sys:String x:Key="Dialog.IfcFileName">modelo-guanacaste3d.ifc</sys:String>
   <sys:String x:Key="Action.ExportDxf">Exportar plantas DXF…</sys:String>
+  <sys:String x:Key="Action.ExportPdf">Exportar planos a PDF…</sys:String>
+  <sys:String x:Key="Dialog.PdfFilter">Documento PDF (*.pdf)|*.pdf</sys:String>
+  <sys:String x:Key="Status.PdfExported">Planos exportados a PDF: una lámina por nivel, con cajetín y escala.</sys:String>
   <sys:String x:Key="Status.DxfExported">Plantas exportadas a DXF R12 en metros.</sys:String>
   <sys:String x:Key="Dialog.DxfFilter">Dibujo DXF R12 (*.dxf)|*.dxf</sys:String>
   <sys:String x:Key="Dialog.DxfFileName">plantas-guanacaste3d.dxf</sys:String>

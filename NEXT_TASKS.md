@@ -15,6 +15,6 @@ and, for UI work, a UI Automation screenshot.
    (features of the first non-glass hit).
 5. **Columns and beams** with structural types and quantity takeoff.
 6. **Wall joins** (L/T cleanup) in plan and 3D.
-7. **PDF output** for sheets.
+7. ~~**PDF output**~~ **Done** (0.14): every level's plan as a vector sheet with title block. Remaining: views placed freely on sheets, elevations and sections on sheets.
 9. ~~**SKP import**~~ **Done** through the SDK library already installed with Revit/AutoCAD.
 10. Fix the title-bar overlap (KNOWN_ISSUES #4) and localize core-created names.

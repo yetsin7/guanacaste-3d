@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Desktop;
 using Guanacaste3D.Desktop.Controls;
 
@@ -104,6 +105,7 @@ internal static class InteractionChecks
             WallLoopClosingChecks(session);
             PlantingChecks(session);
             StairToolChecks(session);
+            TexturedModelChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -213,6 +215,26 @@ internal static class InteractionChecks
         session.Undo();
         Check(session.Document.StructuralElements.Count == before, "One undo removes the stair together with its railings");
         Invoke("CancelStructuralTool");
+    }
+
+    /// <summary>Assigns the shipped brick texture to walls and checks the 3D view draws walls with that image.</summary>
+    private static void TexturedModelChecks(DocumentSession session)
+    {
+        // The grey study model ignores materials on purpose; project colors show them, like Revit's Realistic style.
+        var clay = Field<bool>("_clayMode");
+        SetField("_clayMode", false);
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, "builtin:brick-red", 1.0, 0.6);
+        Invoke("RebuildModelVisual");
+        var viewport = (System.Windows.Controls.Viewport3D)_window.FindName("ModelViewport");
+        var textured = viewport.Children.OfType<System.Windows.Media.Media3D.ModelVisual3D>()
+            .Select(visual => visual.Content).OfType<System.Windows.Media.Media3D.GeometryModel3D>()
+            .Any(model => model.Material is System.Windows.Media.Media3D.DiffuseMaterial { Brush: ImageBrush } &&
+                          model.Geometry is System.Windows.Media.Media3D.MeshGeometry3D { TextureCoordinates.Count: > 0 });
+        Check(textured, "The 3D view previews an assigned render texture on its surfaces");
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, null!, 1.0, 0.0);
+        Check(session.Document.RenderMaterials.Count == 0, "Choosing the stock material clears the assignment");
+        SetField("_clayMode", clay);
+        Invoke("RebuildModelVisual");
     }
 
     /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>

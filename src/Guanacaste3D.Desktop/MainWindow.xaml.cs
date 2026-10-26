@@ -117,6 +117,34 @@ public partial class MainWindow : Window
             () => DxfExporter.ToAscii(_session.Document), System.Text.Encoding.ASCII,
             "Status.DxfExported");
 
+    /// <summary>
+    /// Exports every level's plan as a vector PDF sheet with title block, on the paper of the project's first sheet
+    /// (A3 when there is none), as Revit's Export → PDF prints plan views.
+    /// </summary>
+    private void ExportPdf_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = GetText("Dialog.PdfFilter"),
+            FileName = _session.Document.Name + ".pdf",
+            AddExtension = true,
+            DefaultExt = ".pdf"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var paper = _session.Document.Sheets.FirstOrDefault()?.PaperSize ?? SheetPaperSize.A3;
+            System.IO.File.WriteAllBytes(dialog.FileName,
+                Guanacaste3D.Core.Interop.PdfPlanExporter.Export(_session.Document, paper, DateTimeOffset.Now));
+            StatusText.Text = GetText("Status.PdfExported");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.ExportFailed"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>Exports the BIM model as an IFC4 STEP file for exchange with other BIM tools.</summary>
     private void ExportIfc_Click(object sender, RoutedEventArgs e) =>
         ExportText("Dialog.IfcFilter", "Dialog.IfcFileName", ".ifc",

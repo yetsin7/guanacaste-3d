@@ -12,6 +12,25 @@ static class SiteRoofStairChecks
         Textures(check);
         Stairs(check);
         Roofs(check);
+        PdfSheets(check);
+    }
+
+    private static void PdfSheets(Action<bool, string> check)
+    {
+        var document = ArchitecturalShowcase.Create();
+        var bytes = Guanacaste3D.Core.Interop.PdfPlanExporter.Export(document, SheetPaperSize.A3, new DateTimeOffset(2026, 10, 26, 0, 0, 0, TimeSpan.Zero));
+        var text = System.Text.Encoding.Latin1.GetString(bytes);
+        check(text.StartsWith("%PDF-1.4", StringComparison.Ordinal) && text.TrimEnd().EndsWith("%%EOF", StringComparison.Ordinal) &&
+              text.Contains($"/Count {document.Levels.Count}", StringComparison.Ordinal),
+            "Plans export as a PDF with one sheet per level");
+        check(text.Contains("(1:", StringComparison.Ordinal) && text.Contains("Planta arquitectónica", StringComparison.Ordinal) &&
+              text.Contains("26/10/2026", StringComparison.Ordinal),
+            "Each PDF sheet carries a title block with scale, name and date");
+        var xref = int.Parse(text[(text.LastIndexOf("startxref", StringComparison.Ordinal) + 10)..].Split((char)10)[0]);
+        check(text[xref..].StartsWith("xref", StringComparison.Ordinal), "The PDF cross-reference table is where the trailer says");
+        check(Guanacaste3D.Core.Interop.PdfPlanExporter.ChooseScale(20, 12, 380, 230) == 75 &&
+              Guanacaste3D.Core.Interop.PdfPlanExporter.ChooseScale(5, 4, 380, 230) == 20,
+            "Sheets use the largest standard scale that fits");
     }
 
     private static void Terrain(Action<bool, string> check)

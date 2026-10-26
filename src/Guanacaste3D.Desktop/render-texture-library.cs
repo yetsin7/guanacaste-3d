@@ -90,6 +90,46 @@ internal static class RenderTextureLibrary
         }
     }
 
+    private static readonly ConcurrentDictionary<string, (DateTime Stamp, BitmapSource Image)> Previews = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The images of the project's assignments, reduced to 1024 pixels, for the interactive 3D view. Missing or
+    /// unreadable images are left out, so those surfaces keep their plain color.
+    /// </summary>
+    public static IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)> Previews3D(
+        IReadOnlyList<RenderMaterialAssignment> assignments, string? projectFile)
+    {
+        var result = new Dictionary<SurfaceKind, (ImageSource, double)>();
+        foreach (var assignment in assignments)
+        {
+            var path = Resolve(assignment.TexturePath, projectFile);
+            if (path is null || !File.Exists(path)) continue;
+            try
+            {
+                var stamp = File.GetLastWriteTimeUtc(path);
+                if (!Previews.TryGetValue(path, out var cached) || cached.Stamp != stamp)
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.DecodePixelWidth = 1024;
+                    image.UriSource = new Uri(path);
+                    image.EndInit();
+                    image.Freeze();
+                    cached = (stamp, image);
+                    Previews[path] = cached;
+                }
+                result[assignment.Category] = (cached.Image, assignment.TextureSize);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException
+                                                  or FileFormatException or ArgumentException or InvalidOperationException)
+            {
+                // A broken image only loses its preview; the render reports the same file by falling back as well.
+            }
+        }
+        return result;
+    }
+
     /// <summary>
     /// The material of each surface category for the render: the project's texture where one is assigned and readable,
     /// the stock material everywhere else.

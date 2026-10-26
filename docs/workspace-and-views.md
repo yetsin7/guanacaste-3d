@@ -1,6 +1,6 @@
 # Workspace, views and icons
 
-How the drawing area behaves in version 0.13. Everything here is covered by
+How the drawing area behaves in version 0.14. Everything here is covered by
 `tests/desktop-interaction-checks` and `tests/Guanacaste3D.Checks`.
 
 ## Views
@@ -63,6 +63,15 @@ How the drawing area behaves in version 0.13. Everything here is covered by
   their gables with wall up to the roof underside (switchable), and are surfaced
   with clay tiles. Plans draw the overhang dashed; elevations draw the roof's
   silhouette.
+- **Realistic 3D view**: with *Maqueta gris* off, the 3D view shows the render
+  textures assigned in *Render → Materiales*, projected exactly as the renderer
+  projects them.
+- **PDF sheets**: *Archivo → Exportar planos a PDF…* writes one vector sheet per
+  level on the paper of the project's first sheet (A3 otherwise): walls cut and
+  filled, doors with leaves and swings, windows, rooms with name and area,
+  stairs with their walking line, roofs with overhang and ridges, plantings,
+  contours, title block (project, view, scale, date, sheet number), scale bar
+  and north arrow, at the largest standard scale that fits.
 - **Default names** follow a Spanish Revit template: *Nivel 1* (its plan view
   carries the same name), *{3D}*, *Sección 1*, *Tabla de cantidades*. Older
   projects keep any name the user gave; untouched English defaults are translated.
