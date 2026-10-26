@@ -5,5 +5,26 @@
   <!-- 3D view: study-model style, edges, selection and temporary dimensions. -->
   <sys:String x:Key="View3D.Clay">Maqueta gris</sys:String>
   <sys:String x:Key="View3D.Edges">Aristas</sys:String>
+  <sys:String x:Key="View.Close">Cerrar vista</sys:String>
+  <sys:String x:Key="View.CloseAll">Cerrar todas las demás vistas</sys:String>
+  <sys:String x:Key="Status.WallChainClosed">Muro terminado contra otro muro. La herramienta sigue lista para el siguiente.</sys:String>
+  <sys:String x:Key="Transaction.FlipOpening">Girar puerta</sys:String>
+  <sys:String x:Key="Status.DoorFlipped">Puerta girada. Pulsa ESPACIO para cambiar de lado y de bisagra.</sys:String>
+  <sys:String x:Key="OpeningViews.Title">Familia: {0}</sys:String>
+  <sys:String x:Key="OpeningViews.Name">Nombre del tipo</sys:String>
+  <sys:String x:Key="OpeningViews.Width">Ancho (m)</sys:String>
+  <sys:String x:Key="OpeningViews.Height">Alto (m)</sys:String>
+  <sys:String x:Key="OpeningViews.Sill">Antepecho (m)</sys:String>
+  <sys:String x:Key="OpeningViews.Frame">Ancho del marco (m)</sys:String>
+  <sys:String x:Key="OpeningViews.Lights">Hojas de vidrio (0 = automático)</sys:String>
+  <sys:String x:Key="OpeningViews.Material">Material</sys:String>
+  <sys:String x:Key="OpeningViews.FlipHand">Girar bisagra</sys:String>
+  <sys:String x:Key="OpeningViews.FlipFacing">Girar cara</sys:String>
+  <sys:String x:Key="OpeningViews.Apply">Aplicar</sys:String>
+  <sys:String x:Key="OpeningViews.Plan">Planta</sys:String>
+  <sys:String x:Key="OpeningViews.Model">Vista 3D · rueda: acercar · derecho: mirar · izquierdo: orbitar</sys:String>
+  <sys:String x:Key="OpeningViews.Invalid">Revisa los valores: usa números y un nombre.</sys:String>
+  <sys:String x:Key="Status.OpeningTypeEdited">Familia actualizada.</sys:String>
+  <sys:String x:Key="Status.ViewsClosed">Solo queda abierta la vista actual.</sys:String>
   <sys:String x:Key="Status.View3DNoPoint">Apunta a una superficie o al suelo para colocar el elemento.</sys:String>
 </ResourceDictionary>

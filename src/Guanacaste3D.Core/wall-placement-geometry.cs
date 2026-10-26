@@ -154,6 +154,48 @@ public static class WallPlacementGeometry
         return new Point2(first.Start.X + firstX * t, first.Start.Y + firstY * t);
     }
 
+    /// <summary>
+    /// Whether a wall that was just drawn ends on another wall: its end lies on the other centerline, or it crosses it
+    /// somewhere past its own start. A wall that merely begins on another wall (it continues from it) does not count, so a
+    /// chain keeps going until it closes against the walls already there.
+    /// </summary>
+    public static bool EndsOnWall(WallCenterline drawn, IEnumerable<WallCenterline> others, double tolerance)
+    {
+        foreach (var other in others)
+        {
+            if (DistanceToSegment(drawn.End, other) <= tolerance) return true;
+            var meeting = SegmentCrossing(drawn, other);
+            if (meeting is Point2 point && point.DistanceTo(drawn.Start) > tolerance) return true;
+        }
+        return false;
+    }
+
+    private static double DistanceToSegment(Point2 point, WallCenterline segment)
+    {
+        var dx = segment.End.X - segment.Start.X;
+        var dy = segment.End.Y - segment.Start.Y;
+        var lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-18) return point.DistanceTo(segment.Start);
+        var t = Math.Clamp(((point.X - segment.Start.X) * dx + (point.Y - segment.Start.Y) * dy) / lengthSquared, 0, 1);
+        return point.DistanceTo(new Point2(segment.Start.X + dx * t, segment.Start.Y + dy * t));
+    }
+
+    private static Point2? SegmentCrossing(WallCenterline first, WallCenterline second)
+    {
+        var firstX = first.End.X - first.Start.X;
+        var firstY = first.End.Y - first.Start.Y;
+        var secondX = second.End.X - second.Start.X;
+        var secondY = second.End.Y - second.Start.Y;
+        var cross = firstX * secondY - firstY * secondX;
+        if (Math.Abs(cross) < 1e-9) return null;
+        var offsetX = second.Start.X - first.Start.X;
+        var offsetY = second.Start.Y - first.Start.Y;
+        var t = (offsetX * secondY - offsetY * secondX) / cross;
+        var u = (offsetX * firstY - offsetY * firstX) / cross;
+        if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+        return new Point2(first.Start.X + firstX * t, first.Start.Y + firstY * t);
+    }
+
     /// <summary>Creates four connected centerlines from opposite corners as one rectangular wall loop.</summary>
     public static IReadOnlyList<WallCenterline> Rectangle(
         Point2 first,

@@ -66,6 +66,13 @@ public partial class MainWindow
     /// <summary>Handles wall placement and element selection in the plan canvas.</summary>
     private void PlanCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // A double-click on an element opens its editor; its first click has just selected it.
+        if (e.ClickCount == 2 && _planPointerOverride is null && !PlanToolArmed() && CurrentSelection() is not null)
+        {
+            OpenSelectionEditor();
+            e.Handled = true;
+            return;
+        }
         if (TryPlaceOpening(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
@@ -153,12 +160,15 @@ public partial class MainWindow
         StatusText.Text = GetText("Status.DrawingCancelled");
     }
 
+    /// <summary>Pixels per meter limits of the plan: the closest zoom is four times what it used to be.</summary>
+    private const double MinimumPlanScale = 8, MaximumPlanScale = 800;
+
     /// <summary>Zooms the plan around the pointer position.</summary>
     private void PlanCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         var cursor = PlanPosition(e);
         var anchor = CanvasToWorld(cursor);
-        _scale = Math.Clamp(_scale * (e.Delta > 0 ? 1.15 : 1.0 / 1.15), 8, 200);
+        _scale = Math.Clamp(_scale * (e.Delta > 0 ? 1.15 : 1.0 / 1.15), MinimumPlanScale, MaximumPlanScale);
         _panOffset = new Point(
             cursor.X - PlanCanvas.ActualWidth / 2 - anchor.X * _scale,
             cursor.Y - PlanCanvas.ActualHeight / 2 + anchor.Y * _scale);
@@ -199,7 +209,7 @@ public partial class MainWindow
         var height = Math.Max(1, PlanCanvas.ActualHeight - 100);
         _scale = Math.Clamp(Math.Min(
             width / Math.Max(1, maximumX - minimumX),
-            height / Math.Max(1, maximumY - minimumY)), 8, 200);
+            height / Math.Max(1, maximumY - minimumY)), MinimumPlanScale, MaximumPlanScale);
         _panOffset = new Point(
             -(minimumX + maximumX) / 2 * _scale,
             (minimumY + maximumY) / 2 * _scale);

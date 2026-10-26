@@ -53,6 +53,8 @@ public static class ApplicationCommandCatalog
         yield return new("Door", "Tool.Door", "Icon.Door", "Ribbon.Architecture");
         yield return new("Window", "Tool.Window", "Icon.Window", "Ribbon.Architecture");
         yield return new("Room", "Tool.Room", "Icon.Room", "Ribbon.Architecture");
+        // The only 3D view button: it lives in the quick access toolbar beside Save, not in any ribbon, menu or status bar.
+        yield return new("Model3D", "Tool.Model3D", "Icon.Model3DEnhanced", "Menu.View");
         yield return new("ExportIfc", "Action.ExportIfc", "Icon.ExportCube", "Menu.File");
         yield return new("ExportModel3D", "Action.ExportModel3D", "Icon.Model3DEnhanced", "Menu.File");
         yield return new("CustomizeCommands", "CommandCustomization.Title", "Icon.Shortcut", "Ribbon.Manage");

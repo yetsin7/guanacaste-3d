@@ -45,7 +45,36 @@ public static class DoorPlanSymbol
 
     /// <summary>Returns the plan primitives for a door of the given rough opening inside a wall of the given thickness.</summary>
     public static DoorPlanSymbolGeometry Build(double begin, double end, double wallThickness, double leafDepth,
-        OpeningOperation operation = OpeningOperation.Standard)
+        OpeningOperation operation = OpeningOperation.Standard, bool flipHand = false, bool flipFacing = false)
+    {
+        var symbol = BuildUnflipped(begin, end, wallThickness, leafDepth, operation);
+        return flipHand || flipFacing ? Flip(symbol, begin + end, flipHand, flipFacing) : symbol;
+    }
+
+    /// <summary>
+    /// Mirrors a symbol the way the SPACE key flips a door: facing swaps the two faces of the wall (v becomes -v) and hand
+    /// swaps the two jambs (u becomes <paramref name="uSum"/> - u, where the sum is the opening's begin plus end).
+    /// </summary>
+    private static DoorPlanSymbolGeometry Flip(DoorPlanSymbolGeometry symbol, double uSum, bool hand, bool facing)
+    {
+        (double U, double V) Point((double U, double V) p) => (hand ? uSum - p.U : p.U, facing ? -p.V : p.V);
+        DoorPlanArc Arc(DoorPlanArc arc)
+        {
+            var from = arc.FromAngle;
+            var to = arc.ToAngle;
+            if (facing) (from, to) = (-to, -from);
+            if (hand) (from, to) = (Math.PI - to, Math.PI - from);
+            var (u, v) = Point((arc.CenterU, arc.CenterV));
+            return new DoorPlanArc(u, v, arc.Radius, from, to);
+        }
+        return new DoorPlanSymbolGeometry(
+            symbol.Outlines.Select(outline => new DoorPlanOutline(outline.Part, outline.Points.Select(Point).ToList())).ToList(),
+            symbol.Swings.Select(Arc).ToList(),
+            symbol.Thresholds.Select(line => new DoorPlanLine(Point(line.From), Point(line.To))).ToList());
+    }
+
+    private static DoorPlanSymbolGeometry BuildUnflipped(double begin, double end, double wallThickness, double leafDepth,
+        OpeningOperation operation)
     {
         var width = end - begin;
         if (!double.IsFinite(width) || width <= 0 || !double.IsFinite(wallThickness) || wallThickness <= 0)

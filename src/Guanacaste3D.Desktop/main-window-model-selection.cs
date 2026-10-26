@@ -36,8 +36,42 @@ public partial class MainWindow
     {
         if (_modelNavigator is null) return;
         _modelNavigator.Clicked += position => HandleViewClick(position, ModelSurface);
+        _modelNavigator.DoubleClicked += _ => OpenSelectionEditor();
         if (RenderPanelControl.Navigator is { } renderNavigator)
+        {
             renderNavigator.Clicked += position => HandleViewClick(position, RenderPanelControl.Surface);
+            renderNavigator.DoubleClicked += _ => OpenSelectionEditor();
+        }
+    }
+
+    /// <summary>
+    /// What a double-click opens, in any view: a wall, its type; a door or window, its family with an editable plan and 3D
+    /// view; any other element, its property editor. The first click of the double-click has already selected the element.
+    /// </summary>
+    private void OpenSelectionEditor()
+    {
+        if (PlanToolArmed()) return;
+        if (_selectedOpeningId is Guid openingId && _session.Document.Openings.Any(item => item.Id == openingId))
+        {
+            var views = new OpeningFamilyViewsWindow(_session, openingId) { Owner = this };
+            if (views.ShowDialog() == true)
+            {
+                StatusText.Text = GetText("Status.OpeningTypeEdited");
+                RefreshAll();
+            }
+            return;
+        }
+        if (_selectedWallId is Guid wallId && _session.Document.Walls.FirstOrDefault(item => item.Id == wallId) is { } wall)
+        {
+            var editor = new WallTypeEditorWindow(_session, wall.WallTypeId) { Owner = this };
+            if (editor.ShowDialog() == true)
+            {
+                StatusText.Text = GetText("Status.WallTypeUpdated");
+                RefreshAll();
+            }
+            return;
+        }
+        TryEditSelectedElementType();
     }
 
     /// <summary>Whether a drawing, placing or picking tool is waiting for a click.</summary>

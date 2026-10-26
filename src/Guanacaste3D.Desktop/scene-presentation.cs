@@ -136,13 +136,14 @@ internal static class ScenePresentation
     }
 
     /// <summary>
-    /// Draws edges as thin prisms of fixed size in the model, so perspective itself makes nearby edges bold and distant ones
-    /// fine, and the depth buffer hides edges behind surfaces.
+    /// Draws edges as slim octagonal tubes, so perspective makes nearby edges slightly stronger while depth testing hides
+    /// occluded edges. The round section and unlit material avoid the coarse, shaded appearance of square prisms.
     /// </summary>
     public static GeometryModel3D? ToWpfEdges(IEnumerable<EdgeSegment> edges, Matrix4x4 placement, float thickness, Color color)
     {
         var mesh = new MeshGeometry3D();
-        var half = Math.Max(0.002f, thickness / 2);
+        const int sectionSides = 8;
+        var radius = Math.Max(0.00075f, thickness / 2);
         foreach (var edge in edges)
         {
             var a = Vector3.Transform(edge.A, placement);
@@ -152,32 +153,31 @@ internal static class ScenePresentation
             if (length < 1e-5f) continue;
             direction /= length;
             var helper = MathF.Abs(direction.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX;
-            var u = Vector3.Normalize(Vector3.Cross(direction, helper)) * half;
-            var v = Vector3.Normalize(Vector3.Cross(direction, u)) * half;
+            var u = Vector3.Normalize(Vector3.Cross(direction, helper));
+            var v = Vector3.Normalize(Vector3.Cross(direction, u));
             var start = mesh.Positions.Count;
-            // Square section: four corners at each end, four side faces.
             foreach (var end in new[] { a, b })
             {
-                mesh.Positions.Add(ToWpf(end + u + v));
-                mesh.Positions.Add(ToWpf(end - u + v));
-                mesh.Positions.Add(ToWpf(end - u - v));
-                mesh.Positions.Add(ToWpf(end + u - v));
+                for (var side = 0; side < sectionSides; side++)
+                {
+                    var angle = 2 * MathF.PI * side / sectionSides;
+                    mesh.Positions.Add(ToWpf(end + radius * (MathF.Cos(angle) * u + MathF.Sin(angle) * v)));
+                }
             }
-            for (var side = 0; side < 4; side++)
+            for (var side = 0; side < sectionSides; side++)
             {
-                var next = (side + 1) % 4;
+                var next = (side + 1) % sectionSides;
                 mesh.TriangleIndices.Add(start + side);
-                mesh.TriangleIndices.Add(start + 4 + side);
-                mesh.TriangleIndices.Add(start + 4 + next);
+                mesh.TriangleIndices.Add(start + sectionSides + side);
+                mesh.TriangleIndices.Add(start + sectionSides + next);
                 mesh.TriangleIndices.Add(start + side);
-                mesh.TriangleIndices.Add(start + 4 + next);
+                mesh.TriangleIndices.Add(start + sectionSides + next);
                 mesh.TriangleIndices.Add(start + next);
             }
         }
         if (mesh.TriangleIndices.Count == 0) return null;
         mesh.Freeze();
-        // Emissive materials come out white once the scene's lights are added in, so a plain diffuse color is used instead.
-        var material = Diffuse(color);
+        var material = new EmissiveMaterial(new SolidColorBrush(color));
         var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
         model.Freeze();
         return model;

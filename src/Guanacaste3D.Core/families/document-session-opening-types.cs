@@ -10,7 +10,8 @@ public sealed partial class DocumentSession
     /// is used. The sill defaults to the type's default sill.
     /// </summary>
     public Guid AddOpening(Guid wallId, OpeningKind kind, double? offset = null,
-        double? width = null, double? sill = null, double? height = null, Guid? openingTypeId = null)
+        double? width = null, double? sill = null, double? height = null, Guid? openingTypeId = null,
+        bool flipHand = false, bool flipFacing = false)
     {
         var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
             ?? throw new InvalidDataException("The host wall does not exist.");
@@ -30,9 +31,22 @@ public sealed partial class DocumentSession
                 ? doc.OpeningTypes.Single(candidate => candidate.Id == typeId)
                 : ResolveType(doc, kind, width, height, sill);
             doc.Openings.Add(new WallOpening(id, wallId, kind, offset ?? wall.Length / 2,
-                type.Width, sill ?? type.DefaultSill, type.Height) { OpeningTypeId = type.Id });
+                type.Width, sill ?? type.DefaultSill, type.Height)
+            { OpeningTypeId = type.Id, FlipHand = flipHand, FlipFacing = flipFacing });
         });
         return id;
+    }
+
+    /// <summary>Sets which jamb a door is hinged on and which face of the wall it swings toward.</summary>
+    public void FlipOpening(Guid id, bool flipHand, bool flipFacing)
+    {
+        if (!Document.Openings.Any(candidate => candidate.Id == id))
+            throw new InvalidDataException("The opening does not exist.");
+        Commit("Transaction.FlipOpening", doc =>
+        {
+            var index = doc.Openings.FindIndex(candidate => candidate.Id == id);
+            doc.Openings[index] = doc.Openings[index] with { FlipHand = flipHand, FlipFacing = flipFacing };
+        });
     }
 
     /// <summary>

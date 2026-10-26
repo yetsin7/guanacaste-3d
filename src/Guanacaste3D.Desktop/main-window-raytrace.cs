@@ -41,6 +41,8 @@ public partial class MainWindow
         _modelNavigator.Changed += UpdateModelCamera;
         RenderPanelControl.Attach(new RenderSource(this));
         InitializeModelSelection();
+        InitializeViewTabs();
+        InitializeProjectedViewZoom();
         _links.Changed += OnLinksChanged;
         _sceneDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
         _sceneDebounce.Tick += (_, _) =>

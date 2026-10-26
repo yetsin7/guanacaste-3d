@@ -15,11 +15,8 @@ public partial class MainWindow
         if (!_drawingWall) return;
         if (_activeWallSnap is WallSnapResult snap) AddWallSnapMarker(snap);
         if (_wallPreviewPoint is not Point2 preview) return;
-        if (_pendingWallStart is not Point2 start)
-        {
-            AddWallPreviewBody(preview, new Point2(preview.X + 1, preview.Y));
-            return;
-        }
+        // Before the first click there is only the crosshair and the snap marker, no wall-shaped ghost.
+        if (_pendingWallStart is not Point2 start) return;
         if (WallRectangleMode.IsChecked == true)
         {
             var corners = new[]

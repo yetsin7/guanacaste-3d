@@ -70,6 +70,7 @@ public partial class MainWindow
             case "ExportIfc": ExportIfc_Click(this, eventArguments); return true;
             case "ExportModel3D": ExportModel3D_Click(this, eventArguments); return true;
             case "CustomizeCommands": CustomizeCommands_Click(this, eventArguments); return true;
+            case "CloseHiddenWindows": CloseInactiveViews(); return true;
             case "About": About_Click(this, eventArguments); return true;
             default: return TryExecuteStructuralCommand(commandId);
         }

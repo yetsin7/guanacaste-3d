@@ -153,7 +153,20 @@ public partial class MainWindow
         var activeViewName = tab.Header?.ToString() ?? string.Empty;
         ActiveViewText.Text = activeViewName;
         if (PropertiesActiveViewText is not null) PropertiesActiveViewText.Text = activeViewName;
+        UpdateRenderWorkspace(ViewTabs.SelectedIndex == RenderTabIndex);
         UpdateWindowTitle();
+    }
+
+    /// <summary>
+    /// Replaces the standard properties and project-browser palettes with the render controls while the Render view is
+    /// active. The render surface spans the complete workspace so its sidebar occupies the same column as the palettes.
+    /// </summary>
+    private void UpdateRenderWorkspace(bool renderIsActive)
+    {
+        var standardVisibility = renderIsActive ? Visibility.Collapsed : Visibility.Visible;
+        StandardSidebar.Visibility = standardVisibility;
+        StandardSidebarSplitter.Visibility = standardVisibility;
+        RenderPanelControl.Visibility = renderIsActive ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>Completes room placement when the plan canvas receives two corners.</summary>

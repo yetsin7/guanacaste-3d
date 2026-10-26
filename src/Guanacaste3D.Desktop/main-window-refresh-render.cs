@@ -175,13 +175,13 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Width of drawn edges in meters, in proportion to the model. Half of an edge's section lies inside the surfaces it
-    /// outlines, so it has to be thick enough for the other half to show as a few pixels at a normal viewing distance.
+    /// Width of drawn edges in meters, kept deliberately subtle so the model reads like a Revit hidden-line view.
+    /// The narrow upper bound avoids heavy outlines on large projects while the lower bound remains depth-tested.
     /// </summary>
     private float EdgeThickness()
     {
         var (min, max) = SceneBounds();
-        return Math.Clamp(0.012f * Math.Max(3, (max - min).Length() / 2), 0.02f, 0.2f);
+        return Math.Clamp(0.0012f * Math.Max(3, (max - min).Length() / 2), 0.0025f, 0.012f);
     }
 
     private bool _clayMode = true;
@@ -235,6 +235,11 @@ public partial class MainWindow
         {
             e.Handled = true;
             base.OnPreviewKeyDown(e);
+            return;
+        }
+        if (e.Key == Key.Space && TryFlipDoorWithSpace())
+        {
+            e.Handled = true;
             return;
         }
         if (Keyboard.FocusedElement is TextBox)

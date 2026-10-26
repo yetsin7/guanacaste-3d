@@ -313,7 +313,6 @@ public static partial class RibbonCatalog
             L("CloudRender", "RibbonCommand.CloudRender", "Icon.Render"),
             L("RealtimeVisualization", "RibbonCommand.RealtimeVisualization", "Icon.Cube")),
         G("RibbonGroup.CreateViews",
-            L("Model3D", "Tool.Model3D", "Icon.Model3DEnhanced"),
             L("Camera", "RibbonCommand.Camera", "Icon.Camera"),
             L("Walkthrough", "RibbonCommand.Walkthrough", "Icon.Walkthrough"),
             L("Section", "Tool.Section", "Icon.Section"),

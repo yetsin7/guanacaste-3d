@@ -90,7 +90,6 @@
               </MenuItem>
               <MenuItem Header="{DynamicResource Menu.View}">
                 <MenuItem Header="{DynamicResource Tool.Plan}" Click="ShowPlan_Click"/>
-                <MenuItem Header="{DynamicResource Tool.Model3D}" Click="ShowModel_Click"/>
                 <MenuItem Header="{DynamicResource Tool.Elevation}" Click="ShowElevation_Click"/>
                 <MenuItem Header="{DynamicResource Tool.Section}" Click="ShowSection_Click"/>
                 <MenuItem Header="{DynamicResource Tool.Schedule}" Click="ShowSchedule_Click"/>
@@ -172,7 +171,7 @@
         <ColumnDefinition Width="3"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
-      <Grid Grid.Column="0">
+      <Grid x:Name="StandardSidebar" Grid.Column="0">
         <Grid.RowDefinitions>
           <RowDefinition Height="1*" MinHeight="250"/>
           <RowDefinition Height="3"/>
@@ -304,7 +303,6 @@
           <Border DockPanel.Dock="Top" Background="{DynamicResource PanelToolbarBrush}" Height="30" Padding="3,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
               <Button ToolTip="{DynamicResource Browser.Home}" AutomationProperties.Name="{DynamicResource Browser.Home}" Click="ShowPlan_Click" Style="{StaticResource BrowserToolbarButtonStyle}"><Image Source="{StaticResource Icon.Plan}"/></Button>
-              <Button ToolTip="{DynamicResource Browser.Model}" AutomationProperties.Name="{DynamicResource Browser.Model}" Click="ShowModel_Click" Style="{StaticResource BrowserToolbarButtonStyle}"><Image Source="{StaticResource Icon.Cube}"/></Button>
               <Button ToolTip="{DynamicResource Browser.Schedules}" AutomationProperties.Name="{DynamicResource Browser.Schedules}" Click="ShowSchedule_Click" Style="{StaticResource BrowserToolbarButtonStyle}"><Image Source="{StaticResource Icon.Schedule}"/></Button>
               <Button ToolTip="{DynamicResource Browser.Sheets}" AutomationProperties.Name="{DynamicResource Browser.Sheets}" Click="ShowSheet_Click" Style="{StaticResource BrowserToolbarButtonStyle}"><Image Source="{StaticResource Icon.Sheets}"/></Button>
               <Button ToolTip="{DynamicResource Browser.AddLevel}" AutomationProperties.Name="{DynamicResource Browser.AddLevel}" Click="AddLevel_Click" Style="{StaticResource BrowserToolbarButtonStyle}"><Image Source="{StaticResource Icon.Level}"/></Button>
@@ -340,9 +338,9 @@
                     SelectedItemChanged="ProjectTree_SelectedItemChanged"/>
         </DockPanel>
       </Grid>
-      <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Background="{DynamicResource PanelBorderBrush}"
+      <GridSplitter x:Name="StandardSidebarSplitter" Grid.Column="1" HorizontalAlignment="Stretch" Background="{DynamicResource PanelBorderBrush}"
                     ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"/>
-      <Grid Grid.Column="2" Background="{DynamicResource CanvasBrush}">
+      <Grid x:Name="StandardWorkspace" Grid.Column="2" Background="{DynamicResource CanvasBrush}">
         <DockPanel>
           <!-- Options bar for the active placement tool. -->
           <Border x:Name="WallOptionsBar" DockPanel.Dock="Top" Visibility="Collapsed"
@@ -414,11 +412,6 @@
                       AutomationProperties.Name="{DynamicResource Action.Fit}">
                 <TextBlock Text="&#xE9A6;" FontFamily="{StaticResource GlyphFont}" FontSize="12"/>
               </Button>
-              <Button Click="ShowModel_Click" Style="{StaticResource BrowserToolbarButtonStyle}" Height="20" MinHeight="20"
-                      Width="22" Padding="2" ToolTip="{DynamicResource Browser.Model}"
-                      AutomationProperties.Name="{DynamicResource Browser.Model}">
-                <Image Source="{StaticResource Icon.Cube}"/>
-              </Button>
             </StackPanel>
           </Border>
           <TabControl x:Name="ViewTabs" Style="{StaticResource WorkspaceTabControlStyle}"
@@ -481,11 +474,13 @@
                       SizeChanged="OrthographicCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="{DynamicResource View.Render}" Tag="{StaticResource Icon.Render}">
-              <controls:RenderPanel x:Name="RenderPanelControl"/>
+              <Grid/>
             </TabItem>
           </TabControl>
         </DockPanel>
       </Grid>
+      <controls:RenderPanel x:Name="RenderPanelControl" Grid.Column="0" Grid.ColumnSpan="3"
+                            Panel.ZIndex="10" Visibility="Collapsed"/>
     </Grid>
   </DockPanel>
   </Border>

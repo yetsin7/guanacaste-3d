@@ -467,7 +467,7 @@
   <Style x:Key="WorkspaceTabItemStyle" TargetType="TabItem">
     <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
     <Setter Property="FontSize" Value="12"/>
-    <Setter Property="Padding" Value="6,2,14,3"/>
+    <Setter Property="Padding" Value="6,2,4,3"/>
     <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
     <Setter Property="Template">
       <Setter.Value>
@@ -478,6 +478,23 @@
               <Image Source="{TemplateBinding Tag}" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"
                      RenderOptions.BitmapScalingMode="HighQuality"/>
               <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+              <!-- Closes the view; handled by the window through the button's name. -->
+              <Button x:Name="CloseViewButton" Width="16" Height="16" Margin="8,0,0,0" Padding="0" Focusable="False"
+                      VerticalAlignment="Center" Cursor="Hand" ToolTip="{DynamicResource View.Close}">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button">
+                    <Border x:Name="CloseChip" Background="Transparent" CornerRadius="2">
+                      <TextBlock Text="&#xE711;" FontFamily="{DynamicResource GlyphFont}" FontSize="9"
+                                 Foreground="#5A5A5A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="CloseChip" Property="Background" Value="#D0D0D0"/>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Button.Template>
+              </Button>
             </StackPanel>
           </Border>
           <ControlTemplate.Triggers>

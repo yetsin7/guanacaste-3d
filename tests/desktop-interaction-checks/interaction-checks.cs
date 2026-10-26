@@ -238,7 +238,46 @@ internal static class InteractionChecks
         Check(Field<DocumentSession>("_session").Document.Walls.Count == before + 1, "Two clicks in the 3D view with the wall tool draw a wall");
         Invoke("SetWallTool", false);
         tabs.SelectedIndex = 0;
+
+        // Double-clicking a door opens its family with an editable plan view and 3D view.
+        var door = Field<DocumentSession>("_session").Document.Openings.First(item => item.Kind == OpeningKind.Door);
+        var type = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.OpeningFamilyViewsWindow")!;
+        var family = (Window)Activator.CreateInstance(type, Field<DocumentSession>("_session"), door.Id)!;
+        family.Owner = _window;
+        family.Show();
+        Pump();
+        Pump();
+        var familyViewport = FindVisual<System.Windows.Controls.Viewport3D>(family);
+        Check(familyViewport is not null && familyViewport.Children.Count >= 3, "The door family opens with a 3D view of the door in its wall");
+        var familyPlan = FindVisual<Canvas>(family, canvas => canvas.Background is not null && canvas.Children.Count > 0);
+        Check(familyPlan is not null, "The door family opens with a plan view drawn from its parameters");
+        var widthText = door.Width.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
+        var widthBox = FindVisual<TextBox>(family, box => box.Text == widthText);
+        Check(widthBox is not null, "The door family lists its width as an editable parameter");
+        widthBox!.Text = (door.Width + 0.1).ToString("0.###", System.Globalization.CultureInfo.CurrentCulture);
+        Pump();
+        SaveBitmap("artifacts/interaction-evidence/door-family-views.png");
+        var familyBitmap = new RenderTargetBitmap((int)family.ActualWidth, (int)family.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        familyBitmap.Render(family);
+        using (var stream = File.Create("artifacts/interaction-evidence/door-family-window.png"))
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(familyBitmap));
+            encoder.Save(stream);
+        }
+        family.Close();
         SetField("_dirty", false);
+    }
+
+    private static T? FindVisual<T>(DependencyObject root, Func<T, bool>? match = null) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T found && (match is null || match(found))) return found;
+            if (FindVisual(child, match) is { } nested) return nested;
+        }
+        return null;
     }
 
     /// <summary>
@@ -256,10 +295,19 @@ internal static class InteractionChecks
             Invoke("OpenSample_Click", _window, new RoutedEventArgs());
             Pump();
             var tabs = (TabControl)_window.FindName("ViewTabs");
+            var standardSidebar = (FrameworkElement)_window.FindName("StandardSidebar");
             tabs.SelectedIndex = 6;
-            var panel = (FrameworkElement)_window.FindName("RenderPanelControl");
+            Pump();
+            var panel = (Control)_window.FindName("RenderPanelControl");
             var status = (TextBlock)panel.FindName("StatusText");
             var image = (Image)panel.FindName("PreviewImage");
+            var imageHost = (FrameworkElement)panel.FindName("ImageHost");
+            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed,
+                "The Render workspace replaces the standard properties and project-browser sidebar");
+            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 323) < 2,
+                "The Render controls occupy the same 320-pixel sidebar column and divider");
+            Check(panel.Background is SolidColorBrush { Color: { R: > 240, G: > 240, B: > 240 } },
+                "The Render workspace uses the application's light theme");
             Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
             Check(WaitFor(() => status.Text.Contains("muestra") || status.Text.Contains("lista"), 20), "The preview reports its progress in Spanish");
 
@@ -271,6 +319,7 @@ internal static class InteractionChecks
                 return pixels;
             }
             WaitFor(() => status.Text.Contains("lista"), 40);
+            SaveBitmap("artifacts/interaction-evidence/render-workspace-light.png");
             var before = Snapshot();
             var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
             camera.Position = new System.Numerics.Vector3(-8, 8, 3);
@@ -295,6 +344,8 @@ internal static class InteractionChecks
             };
             accept.Start();
             tabs.SelectedIndex = 1;
+            Check(standardSidebar.Visibility == Visibility.Visible && panel.Visibility == Visibility.Collapsed,
+                "Leaving Render restores the standard application sidebar");
             var import = (Task)Invoke("ImportFilesAsync", (object)new[] { model })!;
             Check(WaitFor(() => import.IsCompleted, 60), "Importing a dropped file finishes");
             accept.Stop();

@@ -33,5 +33,31 @@ internal static class DoorPlanSymbolChecks
         var closedEnd = DoorPlanSymbol.Sample(pair.Swings[1]).Last();
         check(Math.Abs(closedBegin.U - closedEnd.U) < 1e-9 && Math.Abs(closedBegin.U - 0.75) < 1e-9,
             "Both swings of a pair close on the same meeting line at the centre of the opening");
+
+        // SPACE flips: facing moves the open leaf to the other face, hand moves the hinge to the other jamb.
+        var faceFlipped = DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04, flipFacing: true);
+        var faceLeaf = faceFlipped.Outlines.Single(item => item.Part == DoorPlanPart.Leaf);
+        check(faceLeaf.Points.All(point => point.V < 0) && single.Outlines.Single(item => item.Part == DoorPlanPart.Leaf).Points.All(point => point.V > 0),
+            "Flipping the facing swings the open leaf to the other face of the wall");
+        var handFlipped = DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04, flipHand: true);
+        // Mirroring in u reverses the arc's direction, so the open tip is now its first sample.
+        var tip = DoorPlanSymbol.Sample(handFlipped.Swings.Single()).First();
+        check(Math.Abs(handFlipped.Swings.Single().CenterU - (3 + 3.9 - single.Swings.Single().CenterU)) < 1e-9 &&
+              Math.Abs(tip.V - (single.Swings.Single().CenterV + single.Swings.Single().Radius)) < 1e-9,
+            "Flipping the hand moves the hinge to the other jamb and keeps the leaf on the same face");
+        var both = DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04, flipHand: true, flipFacing: true);
+        var bothTip = DoorPlanSymbol.Sample(both.Swings.Single()).Last();
+        check(bothTip.V < 0 && Math.Abs(both.Swings.Single().CenterU - handFlipped.Swings.Single().CenterU) < 1e-9,
+            "Flipping both mirrors the door across the opening and the wall");
+
+        var session = new DocumentSession(BuildingDocument.Create("Flip"));
+        var wall = session.AddWall(session.Document.Levels[0].Id, new Point2(0, 0), new Point2(6, 0));
+        var door = session.AddOpening(wall, OpeningKind.Door, 3, flipFacing: true);
+        check(session.Document.Openings.Single().FlipFacing && !session.Document.Openings.Single().FlipHand,
+            "A door can be placed already flipped");
+        session.FlipOpening(door, true, false);
+        check(session.Document.Openings.Single() is { FlipHand: true, FlipFacing: false }, "Flipping a placed door is one transaction");
+        session.Undo();
+        check(session.Document.Openings.Single() is { FlipHand: false, FlipFacing: true }, "Undo restores the previous hand and facing");
     }
 }

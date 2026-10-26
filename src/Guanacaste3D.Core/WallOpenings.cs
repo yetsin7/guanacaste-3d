@@ -12,6 +12,12 @@ public sealed record WallOpening(Guid Id, Guid WallId, OpeningKind Kind,
     /// <summary>The door or window type whose width and height drive this instance.</summary>
     public Guid OpeningTypeId { get; init; }
 
+    /// <summary>Hinge on the other jamb: a door drawn hinged at the start of the wall is hinged at its end instead.</summary>
+    public bool FlipHand { get; init; }
+
+    /// <summary>Swing toward the other face of the wall.</summary>
+    public bool FlipFacing { get; init; }
+
     [JsonIgnore] public double Begin => Offset - Width / 2;
     [JsonIgnore] public double End => Offset + Width / 2;
 }

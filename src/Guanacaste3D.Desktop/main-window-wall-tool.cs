@@ -110,15 +110,20 @@ public partial class MainWindow
                 start = corner;
             }
         }
+        var others = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId)
+            .Select(wall => new WallCenterline(wall.Start, wall.End)).ToList();
         var id = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
         group.Assimilate();
         _selectedWallId = id;
-        _chainTail = WallChainCheck.IsChecked == true ? (id, referenceEnd) : null;
+        // A chain ends by itself when it lands on or crosses another wall: the tool stays armed for the next wall.
+        var continuesChain = WallChainCheck.IsChecked == true &&
+            !WallPlacementGeometry.EndsOnWall(new WallCenterline(start, end), others, thickness / 2 + 1e-6);
+        _chainTail = continuesChain ? (id, referenceEnd) : null;
         _selectedViewId = null;
-        _pendingWallStart = WallChainCheck.IsChecked == true ? referenceEnd : null;
-        _wallPreviewPoint = referenceEnd;
+        _pendingWallStart = continuesChain ? referenceEnd : null;
+        _wallPreviewPoint = continuesChain ? referenceEnd : null;
         ClearDirectWallLength();
-        StatusText.Text = GetText("Status.WallCreated");
+        StatusText.Text = GetText(continuesChain ? "Status.WallCreated" : "Status.WallChainClosed");
         RefreshAll();
     }
 
@@ -332,6 +337,8 @@ public partial class MainWindow
         WallOptionsBar.Visibility = _drawingWall ? Visibility.Visible : Visibility.Collapsed;
         UpdateContextualTabs();
         WallCommandButton.FontWeight = _drawingWall ? FontWeights.Bold : FontWeights.Normal;
+        // Drawing uses the plain crosshair, as in Revit; only the snap marker and the sketch follow the pointer.
+        PlanCanvas.Cursor = _drawingWall ? Cursors.Cross : Cursors.Arrow;
         if (!_drawingWall) _activeWallSnap = null;
     }
 }

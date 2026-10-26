@@ -20,6 +20,7 @@ static class NavigationChecks
         Proxy(check);
         Edges(check);
         Picking(check);
+        WallChains(check);
         Safety(check);
         LivePreviewChecks(check).GetAwaiter().GetResult();
         Tours(check).GetAwaiter().GetResult();
@@ -250,6 +251,18 @@ static class NavigationChecks
         var pixel = camera.Project(onRay, 800, 600);
         check(pixel is { } p && Math.Abs(p.X - 300) < 0.05f && Math.Abs(p.Y - 200) < 0.05f && camera.Project(new Vector3(0, -20, 2), 800, 600) is null,
             "picking: projecting a point on a pixel's ray returns that pixel, and points behind the camera have none");
+    }
+
+    /// <summary>A chain of walls closes by itself when it ends on, or crosses, a wall that is already there.</summary>
+    private static void WallChains(Action<bool, string> check)
+    {
+        var existing = new[] { new WallCenterline(new Point2(0, 0), new Point2(6, 0)) };
+        bool Ends(Point2 from, Point2 to) => WallPlacementGeometry.EndsOnWall(new WallCenterline(from, to), existing, 0.1);
+        check(Ends(new Point2(3, 4), new Point2(3, 0)), "wall chain: ending on another wall's centerline closes the chain");
+        check(Ends(new Point2(3, 4), new Point2(3, -2)), "wall chain: crossing another wall closes the chain");
+        check(!Ends(new Point2(3, 4), new Point2(3, 1)), "wall chain: stopping short of a wall keeps the chain going");
+        check(!Ends(new Point2(3, 0), new Point2(3, 4)), "wall chain: starting on a wall and moving away does not close it");
+        check(!Ends(new Point2(8, 0), new Point2(8, 4)), "wall chain: a wall beyond the end of another does not close it");
     }
 
     private static void Safety(Action<bool, string> check)

@@ -43,7 +43,6 @@ public static partial class RibbonCatalog
             S("Array", "RibbonCommand.Array", "Icon.Grid"),
             S("Delete", "Action.Delete", "Icon.Delete")),
         G("RibbonGroup.WallView",
-            L("Model3D", "Tool.Model3D", "Icon.Model3DEnhanced"),
             S("Plan", "Tool.Plan", "Icon.Plan"),
             S("Elevation", "Tool.Elevation", "Icon.Elevation"),
             S("Section", "Tool.Section", "Icon.Section")),

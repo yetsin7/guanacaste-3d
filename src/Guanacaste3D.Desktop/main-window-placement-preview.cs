@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Guanacaste3D.Core;
@@ -10,6 +11,42 @@ public partial class MainWindow
 {
     private OpeningKind? _placingOpening;
     private Point2? _placementPointer;
+
+    /// <summary>Hinge side and swing face chosen with SPACE while a door is being placed; they carry over to the next door.</summary>
+    private bool _placingFlipHand, _placingFlipFacing;
+
+    /// <summary>The four hinge and swing combinations SPACE steps through, in order.</summary>
+    private static readonly (bool Hand, bool Facing)[] DoorFlipCycle = [(false, false), (false, true), (true, true), (true, false)];
+
+    private static (bool Hand, bool Facing) NextDoorFlip(bool hand, bool facing)
+    {
+        var index = Array.IndexOf(DoorFlipCycle, (hand, facing));
+        return DoorFlipCycle[(index + 1) % DoorFlipCycle.Length];
+    }
+
+    /// <summary>
+    /// SPACE flips a door: the one being placed (before the click) or the selected one (after it). Returns false when
+    /// there is no door to flip, so the key keeps its other meanings.
+    /// </summary>
+    private bool TryFlipDoorWithSpace()
+    {
+        if (Keyboard.FocusedElement is TextBox or ComboBox) return false;
+        if (_placingOpening == OpeningKind.Door)
+        {
+            (_placingFlipHand, _placingFlipFacing) = NextDoorFlip(_placingFlipHand, _placingFlipFacing);
+            StatusText.Text = GetText("Status.DoorFlipped");
+            RenderPlan();
+            return true;
+        }
+        if (_placingOpening is not null || _selectedOpeningId is not Guid id ||
+            _session.Document.Openings.FirstOrDefault(candidate => candidate.Id == id) is not { Kind: OpeningKind.Door } door)
+            return false;
+        var (hand, facing) = NextDoorFlip(door.FlipHand, door.FlipFacing);
+        _session.FlipOpening(id, hand, facing);
+        StatusText.Text = GetText("Status.DoorFlipped");
+        RefreshAll();
+        return true;
+    }
 
     /// <summary>Builds a transient instance and resolves its nearest host without creating history.</summary>
     private (Wall Wall, WallOpening Opening, bool Fits) OpeningPlacement(Point2 pointer)
@@ -23,7 +60,8 @@ public partial class MainWindow
         var fallback = new Wall(Guid.Empty, _activeLevelId,
             new Point2(pointer.X - type.Width, pointer.Y), new Point2(pointer.X + type.Width, pointer.Y), 0.2, 3);
         var opening = new WallOpening(Guid.Empty, walls.FirstOrDefault()?.Id ?? Guid.Empty, kind,
-            type.Width, type.Width, type.DefaultSill, type.Height) { OpeningTypeId = type.Id };
+            type.Width, type.Width, type.DefaultSill, type.Height)
+            { OpeningTypeId = type.Id, FlipHand = _placingFlipHand, FlipFacing = _placingFlipFacing };
         var host = walls.Length == 0 ? null : OpeningHosting.Resolve(opening, pointer, walls,
             _session.Document.Openings, OpeningCapturePixels / _scale);
         return host is { } candidate
@@ -56,7 +94,8 @@ public partial class MainWindow
         {
             _selectedOpeningId = _session.AddOpening(preview.Wall.Id, preview.Opening.Kind,
                 preview.Opening.Offset, openingTypeId: _session.Document.OpeningTypes.Any(type => type.Id == preview.Opening.OpeningTypeId)
-                    ? preview.Opening.OpeningTypeId : null);
+                    ? preview.Opening.OpeningTypeId : null,
+                flipHand: preview.Opening.FlipHand, flipFacing: preview.Opening.FlipFacing);
             _selectedWallId = preview.Wall.Id;
             StatusText.Text = GetText("Status.OpeningPlacement");
             RefreshAll();
