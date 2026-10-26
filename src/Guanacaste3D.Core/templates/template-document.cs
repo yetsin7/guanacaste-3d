@@ -47,7 +47,8 @@ public static class TemplateFile
     private static void RejectModelContent(BuildingDocument template)
     {
         if (template.Walls.Count + template.Openings.Count + template.Rooms.Count + template.Floors.Count +
-            template.Columns.Count + template.StructuralElements.Count + template.ParameterValues.Count > 0)
+            template.Columns.Count + template.StructuralElements.Count + template.ParameterValues.Count +
+            template.InPlaceFamilies.Count + template.Dimensions.Count > 0)
             throw new InvalidDataException("A template cannot contain model elements or parameter values.");
     }
 }
@@ -70,6 +71,7 @@ public static class TemplateRules
         template.Columns = [];
         template.StructuralElements = [];
         template.ParameterValues = [];
+        template.InPlaceFamilies = [];
         return template;
     }
 
