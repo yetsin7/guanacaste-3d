@@ -157,7 +157,7 @@ public partial class MainWindow
     {
         if (TryUpdateSketchPreview(e)) return true;
         if (_structuralTool is not { } tool) return false;
-        var pointer = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        var pointer = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         _structuralPreviewPoint = ResolveStructuralPoint(tool.Kind, pointer);
         RenderPlan();
         return true;
@@ -170,7 +170,7 @@ public partial class MainWindow
             TryHandleWorkPlanePick(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var point = ResolveStructuralPoint(tool.Kind,
-            SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas))));
+            SnapWallPoint(CanvasToWorld(PlanPosition(e))));
         if (tool.Mode == StructuralPlacementMode.Point)
         {
             if (tool.Kind == StructuralElementKind.ModelText) PlaceModelText(point);

@@ -38,7 +38,7 @@ public partial class MainWindow
         if (_placingOpening is null) return false;
         e.Handled = true;
         Keyboard.Focus(PlanCanvas);
-        return CommitOpeningPlacement(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        return CommitOpeningPlacement(CanvasToWorld(PlanPosition(e)));
     }
 
     /// <summary>Commits a model-space placement shared by pointer input and deterministic interaction checks.</summary>

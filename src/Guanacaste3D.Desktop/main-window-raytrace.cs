@@ -40,6 +40,7 @@ public partial class MainWindow
         };
         _modelNavigator.Changed += UpdateModelCamera;
         RenderPanelControl.Attach(new RenderSource(this));
+        InitializeModelSelection();
         _links.Changed += OnLinksChanged;
         _sceneDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
         _sceneDebounce.Tick += (_, _) =>
@@ -56,6 +57,7 @@ public partial class MainWindow
                 if (_modelDirty) RebuildModelVisual();
                 else UpdateModelCamera();
             }
+            UpdateModelSelection(true);
             if (ViewTabs.SelectedIndex is Model3DTabIndex or RenderTabIndex) _ = GetSceneAsync();
         };
     }

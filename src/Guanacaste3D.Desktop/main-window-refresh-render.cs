@@ -88,6 +88,7 @@ public partial class MainWindow
     /// <summary>Shows coordinated parameters for the selected element or document summary.</summary>
     private void RefreshProperties()
     {
+        UpdateModelSelection(false);
         if (TryRefreshExtendedProperties()) return;
         var selectedOpening = _session.Document.Openings.FirstOrDefault(opening => opening.Id == _selectedOpeningId);
         if (selectedOpening is not null)
@@ -134,6 +135,9 @@ public partial class MainWindow
     {
         _modelDirty = false;
         ModelViewport.Children.Clear();
+        _selectionVisuals.Clear();
+        _shownSelection = null;
+        _picker = null;
         ModelViewport.Children.Add(new ModelVisual3D
         {
             Content = new AmbientLight(Color.FromRgb(150, 160, 156))
@@ -143,8 +147,7 @@ public partial class MainWindow
             Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
         });
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
-        var (boundsMin, boundsMax) = SceneBounds();
-        var thickness = Math.Clamp(0.004f * Math.Max(3, (boundsMax - boundsMin).Length() / 2), 0.012f, 0.06f);
+        var thickness = EdgeThickness();
         foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
         if (_showEdges)
@@ -167,7 +170,18 @@ public partial class MainWindow
                 ModelViewport.Children.Add(new ModelVisual3D { Content = group });
             if (_showEdges) AddEdgeVisual(EdgesOf(link.Id, loaded), link.Placement.ToMatrix(), thickness);
         }
+        UpdateModelSelection(true);
         UpdateModelCamera();
+    }
+
+    /// <summary>
+    /// Width of drawn edges in meters, in proportion to the model. Half of an edge's section lies inside the surfaces it
+    /// outlines, so it has to be thick enough for the other half to show as a few pixels at a normal viewing distance.
+    /// </summary>
+    private float EdgeThickness()
+    {
+        var (min, max) = SceneBounds();
+        return Math.Clamp(0.012f * Math.Max(3, (max - min).Length() / 2), 0.02f, 0.2f);
     }
 
     private bool _clayMode = true;
@@ -190,8 +204,8 @@ public partial class MainWindow
     /// <summary>Switches the 3D view between the grey study model and the project's colors, and edges on or off.</summary>
     private void ViewStyle_Changed(object sender, RoutedEventArgs e)
     {
-        if (ClayRadio is null || EdgesCheck is null) return;
-        _clayMode = ClayRadio.IsChecked == true;
+        if (ClayCheck is null || EdgesCheck is null) return;
+        _clayMode = ClayCheck.IsChecked == true;
         _showEdges = EdgesCheck.IsChecked == true;
         if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
         else _modelDirty = true;
@@ -205,6 +219,7 @@ public partial class MainWindow
         var radius = Math.Max(3, (max - min).Length() / 2);
         var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
         ModelViewport.Camera = ScenePresentation.ToWpfCamera(_navigation, aspect, radius);
+        if (_dimensionChips.Count > 0) PositionDimensionChips();
     }
 
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>

@@ -103,6 +103,7 @@ internal static class InteractionChecks
                 "UI-created annotation survives native save and reopen");
             CaptureDemoToolTip();
             RenderJoinScene();
+            Model3DSelectionChecks();
             RenderPreviewAndImportChecks();
             CheckAssociatedDocumentStartup();
             Console.WriteLine("Desktop interaction checks passed.");
@@ -192,6 +193,52 @@ internal static class InteractionChecks
             if (condition()) return true;
         }
         return condition();
+    }
+
+    /// <summary>
+    /// Clicks an element in the 3D view the way the navigator reports a click: the element becomes the selection (so the plan
+    /// and properties follow), is outlined in the model and carries temporary dimension labels; clicking the sky clears it.
+    /// </summary>
+    private static void Model3DSelectionChecks()
+    {
+        SetField("_dirty", false);
+        Invoke("OpenSample_Click", _window, new RoutedEventArgs());
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        tabs.SelectedIndex = 1;
+        Pump();
+        var surface = (FrameworkElement)_window.FindName("ModelSurface");
+        var overlay = (Canvas)_window.FindName("ModelOverlay");
+        var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
+        var document = Field<DocumentSession>("_session").Document;
+        var wall = document.Walls[0];
+        var datum = (float)document.Levels.First(level => level.Id == wall.LevelId).Elevation;
+        var middle = new System.Numerics.Vector3((float)(wall.Start.X + wall.End.X) / 2, (float)(wall.Start.Y + wall.End.Y) / 2,
+            datum + (float)wall.Height / 2);
+        var pixel = camera.Project(middle, (float)surface.ActualWidth, (float)surface.ActualHeight);
+        Check(pixel is not null, "A wall of the sample is in front of the 3D camera");
+        Invoke("HandleViewClick", new Point(pixel!.Value.X, pixel.Value.Y), surface);
+        Pump();
+        Check(Field<Guid?>("_selectedWallId") is not null, "Clicking an element in the 3D view selects it");
+        Check(overlay.Children.Count >= 3, "The selected element shows its temporary dimensions in the 3D view");
+        SaveBitmap("artifacts/interaction-evidence/model-3d-selection.png");
+        Invoke("HandleViewClick", new Point(2, 2), surface);
+        Pump();
+        Check(Field<Guid?>("_selectedWallId") is null && overlay.Children.Count == 0, "Clicking empty space clears the 3D selection");
+
+        // With the wall tool armed, two clicks on the ground of the 3D view draw a wall, as two clicks in the plan do.
+        var before = Field<DocumentSession>("_session").Document.Walls.Count;
+        Invoke("SetWallTool", true);
+        foreach (var ground in new[] { new System.Numerics.Vector3(-4, -3, 0), new System.Numerics.Vector3(-1, -3, 0) })
+        {
+            var at = camera.Project(ground, (float)surface.ActualWidth, (float)surface.ActualHeight);
+            Check(at is not null, "The ground point for the new wall is on screen");
+            Invoke("HandleViewClick", new Point(at!.Value.X, at.Value.Y), surface);
+            Pump();
+        }
+        Check(Field<DocumentSession>("_session").Document.Walls.Count == before + 1, "Two clicks in the 3D view with the wall tool draw a wall");
+        Invoke("SetWallTool", false);
+        tabs.SelectedIndex = 0;
+        SetField("_dirty", false);
     }
 
     /// <summary>

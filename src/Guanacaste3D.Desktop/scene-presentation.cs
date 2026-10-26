@@ -137,7 +137,7 @@ internal static class ScenePresentation
 
     /// <summary>
     /// Draws edges as thin prisms of fixed size in the model, so perspective itself makes nearby edges bold and distant ones
-    /// fine, and the depth buffer hides edges behind surfaces. Lines are unlit, so they keep their color in shadow.
+    /// fine, and the depth buffer hides edges behind surfaces.
     /// </summary>
     public static GeometryModel3D? ToWpfEdges(IEnumerable<EdgeSegment> edges, Matrix4x4 placement, float thickness, Color color)
     {
@@ -176,7 +176,8 @@ internal static class ScenePresentation
         }
         if (mesh.TriangleIndices.Count == 0) return null;
         mesh.Freeze();
-        var material = new EmissiveMaterial(new SolidColorBrush(color));
+        // Emissive materials come out white once the scene's lights are added in, so a plain diffuse color is used instead.
+        var material = Diffuse(color);
         var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
         model.Freeze();
         return model;

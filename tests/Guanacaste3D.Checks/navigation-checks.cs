@@ -1,4 +1,5 @@
 using System.Numerics;
+using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Import;
 using Guanacaste3D.Core.Navigation;
@@ -214,6 +215,41 @@ static class NavigationChecks
         check(flat.Count == 4, "feature edges: the diagonal inside a flat quad is not an edge");
         check(FeatureEdges.Extract([], []).Count == 0 && FeatureEdges.Extract(positions, indices, maximumEdges: 5).Count == 5,
             "feature edges: empty input is empty and the edge count is capped");
+    }
+
+    /// <summary>Clicking in the 3D view: the right element is found, openings win over their wall, and measures are exact.</summary>
+    private static void Picking(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Pick"));
+        var level = session.Document.Levels[0].Id;
+        var wall = session.AddWall(level, new Point2(0, 0), new Point2(6, 0), 0.2, 3);
+        var door = session.AddOpening(wall, OpeningKind.Door, 3);
+        var column = session.AddColumn(level, new Point2(8, 0), 0.4, 0.4, 3);
+        var picker = new ElementPicker(session.Document);
+
+        var wallHit = picker.Pick(new Vector3(1, -5, 2.5f), Vector3.UnitY);
+        check(wallHit is { Kind: PickedKind.Wall } && wallHit.Value.Id == wall && Math.Abs(wallHit.Value.Distance - 4.9f) < 1e-3f,
+            "picking: a ray at a wall hits it on its near face");
+        var doorHit = picker.Pick(new Vector3(3, -5, 1), Vector3.UnitY);
+        check(doorHit is { Kind: PickedKind.Opening } && doorHit.Value.Id == door && doorHit.Value.HostId == wall,
+            "picking: a ray at a door selects the door, not the wall that hosts it");
+        check(picker.Pick(new Vector3(1, -5, 5), Vector3.UnitY) is null && picker.Pick(new Vector3(20, -5, 1), Vector3.UnitY) is null,
+            "picking: a ray above the wall or beside everything hits nothing");
+        check(picker.Pick(new Vector3(8, 0, 10), -Vector3.UnitZ) is { Kind: PickedKind.Column } top && top.Id == column &&
+              Math.Abs(top.Distance - 7) < 1e-3f, "picking: a ray from above lands on a column's top");
+
+        var measures = picker.Dimensions(PickedKind.Wall, wall).Select(line => line.Meters).OrderBy(value => value).ToArray();
+        check(measures.Length == 3 && Math.Abs(measures[0] - 0.2f) < 1e-3f && Math.Abs(measures[2] - 6) < 1e-3f,
+            "picking: a wall is measured by thickness, height and length");
+        check(picker.Dimensions(PickedKind.Opening, door).Count >= 3 && picker.Outline(PickedKind.Column, column).Count == 12,
+            "picking: openings are measured and a column outlines as 12 edges");
+
+        var camera = new NavigationCamera { Position = new Vector3(0, -8, 2), YawDegrees = 90, PitchDegrees = 0, FieldOfViewDegrees = 50 };
+        var ray = camera.PixelRay(300, 200, 800, 600);
+        var onRay = camera.Position + ray * 7;
+        var pixel = camera.Project(onRay, 800, 600);
+        check(pixel is { } p && Math.Abs(p.X - 300) < 0.05f && Math.Abs(p.Y - 200) < 0.05f && camera.Project(new Vector3(0, -20, 2), 800, 600) is null,
+            "picking: projecting a point on a pixel's ray returns that pixel, and points behind the camera have none");
     }
 
     private static void Safety(Action<bool, string> check)

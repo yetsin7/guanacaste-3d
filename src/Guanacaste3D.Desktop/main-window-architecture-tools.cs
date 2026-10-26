@@ -104,7 +104,7 @@ public partial class MainWindow
     private bool TryHandleTagClick(System.Windows.Input.MouseButtonEventArgs e)
     {
         if (_tagTarget is not { } target) return false;
-        var point = CanvasToWorld(e.GetPosition(PlanCanvas));
+        var point = CanvasToWorld(PlanPosition(e));
         Guid? id;
         string current;
         if (target == TagTarget.Room)

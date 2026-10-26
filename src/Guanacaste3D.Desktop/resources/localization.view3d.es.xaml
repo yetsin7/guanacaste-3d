@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <!-- 3D view: study-model style, edges, selection and temporary dimensions. -->
-  <sys:String x:Key="View3D.Clay">Maqueta</sys:String>
-  <sys:String x:Key="View3D.Colors">Color</sys:String>
+  <sys:String x:Key="View3D.Clay">Maqueta gris</sys:String>
   <sys:String x:Key="View3D.Edges">Aristas</sys:String>
+  <sys:String x:Key="Status.View3DNoPoint">Apunta a una superficie o al suelo para colocar el elemento.</sys:String>
 </ResourceDictionary>

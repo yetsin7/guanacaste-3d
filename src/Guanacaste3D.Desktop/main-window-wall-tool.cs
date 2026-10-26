@@ -25,7 +25,7 @@ public partial class MainWindow
     private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
     {
         if (TryPanPlan(e)) return;
-        _placementPointer = CanvasToWorld(e.GetPosition(PlanCanvas));
+        _placementPointer = CanvasToWorld(PlanPosition(e));
         if (_placingOpening is not null || _drawingColumn || _drawingRoom)
         {
             RenderPlan();
@@ -34,12 +34,12 @@ public partial class MainWindow
         TryStartElementDrag(e);
         if (_movingElement)
         {
-            UpdateMovePreview(e.GetPosition(PlanCanvas));
+            UpdateMovePreview(PlanPosition(e));
             return;
         }
         if (TryUpdateStructuralPreview(e)) return;
         if (!_drawingWall) return;
-        var pointer = CanvasToWorld(e.GetPosition(PlanCanvas));
+        var pointer = CanvasToWorld(PlanPosition(e));
         _wallPreviewPoint = SnapWallPoint(pointer);
         UpdateAlignmentGuides(pointer, null);
         RenderPlan();

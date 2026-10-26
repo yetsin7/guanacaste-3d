@@ -92,6 +92,9 @@ public partial class RenderPanel : UserControl
     /// <summary>Lets the main window reuse the navigator's collision and key handling.</summary>
     internal SceneNavigator? Navigator => _navigator;
 
+    /// <summary>The element that receives the mouse, whose size maps clicks to rays through the picture.</summary>
+    internal FrameworkElement Surface => ImageHost;
+
     private void ApplyCollision()
     {
         if (_navigator is null || _source is null) return;

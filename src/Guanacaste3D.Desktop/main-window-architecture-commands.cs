@@ -214,7 +214,7 @@ public partial class MainWindow
     private bool TryHandleGroupPlace(MouseButtonEventArgs e)
     {
         if (!_awaitingGroupPick && _groupToPlace is null) return false;
-        var point = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        var point = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         if (_groupToPlace is null)
         {
             var source = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
@@ -289,7 +289,7 @@ public partial class MainWindow
     private bool TryHandleSlabSketchClick(MouseButtonEventArgs e)
     {
         if (_slabSketch is not { } sketch) return false;
-        var point = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        var point = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         if (e.ClickCount >= 2 && sketch.Points.Count >= 3 && !sketch.Rectangle)
         {
             FinishSlabSketch();
@@ -340,7 +340,7 @@ public partial class MainWindow
     private bool TryUpdateSketchPreview(MouseEventArgs e)
     {
         if (_slabSketch is null) return false;
-        _sketchPointer = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        _sketchPointer = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         RenderPlan();
         return true;
     }

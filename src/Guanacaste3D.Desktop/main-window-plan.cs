@@ -71,7 +71,7 @@ public partial class MainWindow
         if (_movingElement)
         {
             Keyboard.Focus(PlanCanvas);
-            HandleMoveClick(e.GetPosition(PlanCanvas));
+            HandleMoveClick(PlanPosition(e));
             return;
         }
         if (TryHandleRoomPlacement(e)) return;
@@ -86,7 +86,7 @@ public partial class MainWindow
         if (_drawingWall)
         {
             Keyboard.Focus(PlanCanvas);
-            HandleWallPlacementClick(e.GetPosition(PlanCanvas));
+            HandleWallPlacementClick(PlanPosition(e));
             return;
         }
         if (!_drawingWall)
@@ -105,7 +105,7 @@ public partial class MainWindow
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(candidate => candidate.Id == wallId);
-                var clicked = CanvasToWorld(e.GetPosition(PlanCanvas));
+                var clicked = CanvasToWorld(PlanPosition(e));
                 var directionX = (wall.End.X - wall.Start.X) / wall.Length;
                 var directionY = (wall.End.Y - wall.Start.Y) / wall.Length;
                 _selectedWallOffset = Math.Clamp(
@@ -156,7 +156,7 @@ public partial class MainWindow
     /// <summary>Zooms the plan around the pointer position.</summary>
     private void PlanCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        var cursor = e.GetPosition(PlanCanvas);
+        var cursor = PlanPosition(e);
         var anchor = CanvasToWorld(cursor);
         _scale = Math.Clamp(_scale * (e.Delta > 0 ? 1.15 : 1.0 / 1.15), 8, 200);
         _panOffset = new Point(

@@ -160,7 +160,7 @@ public partial class MainWindow
     private bool TryHandleRoomPlacement(MouseButtonEventArgs e)
     {
         if (!_drawingRoom) return false;
-        var point = CanvasToWorld(e.GetPosition(PlanCanvas));
+        var point = CanvasToWorld(PlanPosition(e));
         if (SnapGridCheck.IsChecked == true)
             point = new Point2(
                 Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
@@ -196,7 +196,7 @@ public partial class MainWindow
     private bool TryHandleColumnPlacement(MouseButtonEventArgs e)
     {
         if (!_drawingColumn) return false;
-        var point = CanvasToWorld(e.GetPosition(PlanCanvas));
+        var point = CanvasToWorld(PlanPosition(e));
         if (SnapGridCheck.IsChecked == true)
             point = new Point2(
                 Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,

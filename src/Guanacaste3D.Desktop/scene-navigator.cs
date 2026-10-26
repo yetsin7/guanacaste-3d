@@ -43,6 +43,15 @@ internal sealed class SceneNavigator
     /// <summary>Raised after every change of the camera so the owner can redraw.</summary>
     public event Action? Changed;
 
+    /// <summary>A left click that did not turn into a drag, at the pointer position in the surface; used to select.</summary>
+    public event Action<Point>? Clicked;
+
+    /// <summary>A left double-click on the surface.</summary>
+    public event Action<Point>? DoubleClicked;
+
+    private Point _pressPoint;
+    private bool _dragged;
+
     /// <summary>Scene bounds, used for movement speed and for framing.</summary>
     public Func<(Vector3 Min, Vector3 Max)> Bounds { get; set; } = () => (new Vector3(-5, -5, 0), new Vector3(5, 5, 3));
 
@@ -80,7 +89,9 @@ internal sealed class SceneNavigator
         _surface.Focus();
         if (_dragButton is not null) return;
         _dragButton = e.ChangedButton;
-        _last = e.GetPosition(_surface);
+        _last = _pressPoint = e.GetPosition(_surface);
+        _dragged = false;
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2) DoubleClicked?.Invoke(_pressPoint);
         if (e.ChangedButton == MouseButton.Left)
         {
             var (width, height) = Size();
@@ -99,6 +110,7 @@ internal sealed class SceneNavigator
     {
         if (_dragButton is not { } button) return;
         var position = e.GetPosition(_surface);
+        if (!_dragged && (position - _pressPoint).Length > 4) _dragged = true;
         var dx = (float)(position.X - _last.X);
         var dy = (float)(position.Y - _last.Y);
         _last = position;
@@ -131,6 +143,7 @@ internal sealed class SceneNavigator
         _surface.ReleaseMouseCapture();
         _surface.Cursor = Cursors.Arrow;
         e.Handled = true;
+        if (e.ChangedButton == MouseButton.Left && !_dragged && e.ClickCount < 2) Clicked?.Invoke(e.GetPosition(_surface));
     }
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
