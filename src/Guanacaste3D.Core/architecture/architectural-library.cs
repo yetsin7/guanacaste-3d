@@ -29,6 +29,15 @@ public static class ArchitecturalLibrary
         return new Guid(hash);
     }
 
+    /// <summary>A new project that already holds the whole standard wall, door and window catalog.</summary>
+    public static BuildingDocument CreateProject(string name = "Untitled Project")
+    {
+        var document = BuildingDocument.Create(name);
+        document.WallTypes.AddRange(WallTypes().Where(type => document.WallTypes.All(existing => existing.Id != type.Id)));
+        document.OpeningTypes.AddRange(OpeningTypes().Where(type => document.OpeningTypes.All(existing => existing.Id != type.Id)));
+        return document;
+    }
+
     /// <summary>Wall assemblies: partitions, masonry, concrete, regional earth walls, foundations and retaining walls.</summary>
     public static IReadOnlyList<WallType> WallTypes() =>
     [

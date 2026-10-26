@@ -7,9 +7,11 @@ namespace Guanacaste3D.Desktop;
 internal static class TextPrompt
 {
     /// <summary>Returns the trimmed text, or null when the user cancels or leaves the field blank.</summary>
-    public static string? Ask(Window owner, string title, string label, string acceptText, string cancelText)
+    public static string? Ask(Window owner, string title, string label, string acceptText, string cancelText,
+        string? initialText = null)
     {
-        var input = new TextBox { MinWidth = 260 };
+        var input = new TextBox { MinWidth = 260, Text = initialText ?? string.Empty };
+        input.Loaded += (_, _) => { input.Focus(); input.SelectAll(); };
         string? result = null;
         var window = new Window
         {

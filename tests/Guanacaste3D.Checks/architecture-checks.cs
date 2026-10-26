@@ -15,6 +15,7 @@ static class ArchitectureChecks
         CheckColumnsAndMembers(check);
         CheckNewElements(check);
         CheckOperatedOpenings(check);
+        CheckDraftingAndEditing(check);
     }
 
     private static int Triangles(BuildingDocument document) => BuildingMesher.Build(document).TriangleCount;
@@ -339,5 +340,107 @@ static class ArchitectureChecks
         check(DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04).Outlines.Count ==
               DoorPlanSymbol.Build(3, 3.9, 0.2, 0.04, OpeningOperation.Standard).Outlines.Count,
             "A swing door keeps its original plan symbol");
+    }
+
+    private static void CheckDraftingAndEditing(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Drafting"));
+        var level = session.Document.Levels[0].Id;
+
+        var area = session.AddArea(level, "Area 1", new Point2(0, 0), new Point2(5, 4));
+        var areaElement = session.Document.StructuralElements.Single(item => item.Id == area);
+        check(Math.Abs(areaElement.PlanArea - 20) < 1e-9 && !areaElement.HasSolid && areaElement.Footprint.Count == 4 &&
+              ElementGeometry.Parts(areaElement).Count() == 0, "An area measures its rectangle and has no solid");
+        var thin = false;
+        try { session.AddArea(level, "Thin", new Point2(0, 0), new Point2(0.01, 5)); }
+        catch (InvalidDataException) { thin = true; }
+        check(thin, "An area thinner than 5 cm is rejected");
+
+        var plane = session.AddStructuralElement(level, StructuralElementKind.ReferencePlane, "Axis A", new(0, -1), new(10, -1));
+        var separator = session.AddStructuralElement(level, StructuralElementKind.RoomSeparator, "Separator", new(2, 0), new(2, 4));
+        var boundary = session.AddStructuralElement(level, StructuralElementKind.AreaBoundary, "Boundary", new(0, 0), new(5, 0));
+        session.Document.Validate();
+        check(new[] { plane, separator, boundary }.All(id =>
+                  session.Document.StructuralElements.Single(item => item.Id == id) is { IsDatumLine: true, HasSolid: false }) &&
+              BuildingMesher.Build(session.Document).TriangleCount == 0,
+            "Reference planes, room separators and area boundaries are datum lines that add no solids");
+
+        session.RenameStructuralElement(plane, "Axis B");
+        check(session.Document.StructuralElements.Single(item => item.Id == plane).Name == "Axis B",
+            "A drafting mark can be renamed");
+        var blank = false;
+        try { session.RenameStructuralElement(plane, "  "); }
+        catch (InvalidDataException) { blank = true; }
+        check(blank, "A blank element name is rejected");
+
+        var room = session.AddRoom(level, new Point2(0, 0), new Point2(4, 3), "Living");
+        session.RenameRoom(room, "Kitchen", "K-1");
+        var renamed = session.Document.Rooms.Single(item => item.Id == room);
+        check(renamed.Name == "Kitchen" && renamed.Number == "K-1", "A room can be renamed with a new number");
+        session.AddRoom(level, new Point2(5, 0), new Point2(8, 3), "Study");
+        var duplicate = false;
+        try { session.RenameRoom(session.Document.Rooms.Last().Id, "Study", "K-1"); }
+        catch (InvalidDataException) { duplicate = true; }
+        check(duplicate && session.Document.Rooms.Last().Number != "K-1", "Room numbers stay unique when renaming");
+
+        var floor = session.AddFloor(level, [new(0, 0), new(6, 0), new(6, 4), new(0, 4)], 0.2);
+        session.UpdateFloor(floor, "Ground slab", 0.25, 0.05);
+        var slab = session.Document.Floors.Single(item => item.Id == floor);
+        check(slab.Name == "Ground slab" && slab.Thickness == 0.25 && slab.ElevationOffset == 0.05,
+            "A floor's name, thickness and elevation can be edited");
+        var tooThick = false;
+        try { session.UpdateFloor(floor, "Bad", 9, 0); }
+        catch (InvalidDataException) { tooThick = true; }
+        check(tooThick && session.Document.Floors.Single(item => item.Id == floor).Thickness == 0.25,
+            "An out-of-range slab edit is rejected atomically");
+
+        var column = session.AddColumn(level, new Point2(1, 1));
+        session.UpdateColumn(column, 0.5, 0.3, 4, ColumnShape.Octagonal);
+        var edited = session.Document.Columns.Single(item => item.Id == column);
+        check(edited is { Width: 0.5, Depth: 0.3, Height: 4, Shape: ColumnShape.Octagonal } && edited.Outline.Count == 8,
+            "A column's section, height and outline can be edited");
+
+        var beam = session.AddStructuralElement(level, StructuralElementKind.Beam, "Beam", new(0, 0), new(5, 0));
+        session.UpdateStructuralElement(beam, "Main beam", 0.25, 0.45, -0.45, ElementStyle.IShape);
+        var main = session.Document.StructuralElements.Single(item => item.Id == beam);
+        check(main is { Name: "Main beam", Width: 0.25, Height: 0.45, Style: ElementStyle.IShape },
+            "A framing member's section and style can be edited");
+        var wrongStyle = false;
+        try { session.UpdateStructuralElement(beam, "Beam", 0.25, 0.45, -0.45, ElementStyle.Pickets); }
+        catch (InvalidDataException) { wrongStyle = true; }
+        check(wrongStyle && session.Document.StructuralElements.Single(item => item.Id == beam).Style == ElementStyle.IShape,
+            "A style that does not fit the kind is rejected atomically");
+
+        var curtain = session.AddStructuralElement(level, StructuralElementKind.CurtainWall, "Curtain", new(0, 8), new(6, 8));
+        var defaultParts = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == curtain)).Count();
+        session.UpdateCurtainGrid(curtain, 3, 1.5);
+        var wide = ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == curtain)).Count();
+        session.UpdateCurtainGrid(curtain, 0, 0);
+        check(wide < defaultParts && ElementGeometry.Parts(session.Document.StructuralElements.Single(item => item.Id == curtain)).Count() == defaultParts,
+            "A curtain wall's grid spacing changes its mullions and resets to the default");
+        var badGrid = false;
+        try { session.UpdateCurtainGrid(curtain, 0.05, 1); }
+        catch (InvalidDataException) { badGrid = true; }
+        check(badGrid, "A curtain grid tighter than 20 cm is rejected");
+        var notCurtain = false;
+        try { session.UpdateCurtainGrid(beam, 1, 1); }
+        catch (InvalidDataException) { notCurtain = true; }
+        check(notCurtain, "Only curtain walls have a grid");
+
+        session.Undo();
+        check(session.Document.StructuralElements.Single(item => item.Id == curtain).GridWidth == 3,
+            "Editing steps are undoable one by one");
+
+        var path = Path.Combine(Path.GetTempPath(), $"drafting-{Guid.NewGuid():N}.g3");
+        try
+        {
+            ProjectFile.Save(path, session.Document);
+            var reloaded = ProjectFile.Load(path);
+            check(reloaded.StructuralElements.Single(item => item.Id == beam).Style == ElementStyle.IShape &&
+                  reloaded.Columns.Single(item => item.Id == column).Shape == ColumnShape.Octagonal &&
+                  reloaded.StructuralElements.Any(item => item.Kind == StructuralElementKind.Area),
+                "Styles, shapes and areas survive a project round trip");
+        }
+        finally { File.Delete(path); }
     }
 }

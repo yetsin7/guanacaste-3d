@@ -179,6 +179,7 @@ public static partial class RibbonCatalog
             S("ExtendedProperties", "RibbonCommand.ExtendedProperties", "Icon.Parameters"),
             S("Decal", "RibbonCommand.Decal", "Icon.Import")),
         G("RibbonGroup.LoadLibrary",
+            L("ArchitecturalLibrary", "RibbonCommand.ArchitecturalLibrary", "Icon.Family"),
             L("LoadFamily", "RibbonCommand.LoadFamily", "Icon.Family"),
             L("LoadCloudFamily", "RibbonCommand.LoadCloudFamily", "Icon.Family"),
             L("LoadGroup", "RibbonCommand.LoadGroup", "Icon.Open"),

@@ -76,6 +76,19 @@ public static class ArchitecturalShapes
     public static Point2 Lerp(Point2 from, Point2 to, double fraction) =>
         new(from.X + (to.X - from.X) * fraction, from.Y + (to.Y - from.Y) * fraction);
 
+    /// <summary>The geometry variants that make sense for a kind of element; the first is always the default.</summary>
+    public static IReadOnlyList<ElementStyle> StylesFor(StructuralElementKind kind) => kind switch
+    {
+        StructuralElementKind.Beam or StructuralElementKind.Brace or StructuralElementKind.Truss =>
+            [ElementStyle.Default, ElementStyle.IShape, ElementStyle.Tee],
+        StructuralElementKind.Component or StructuralElementKind.IsolatedFoundation or StructuralElementKind.Downspout =>
+            [ElementStyle.Default, ElementStyle.Round],
+        StructuralElementKind.Railing =>
+            [ElementStyle.Default, ElementStyle.Pickets, ElementStyle.GlassPanel, ElementStyle.Cable, ElementStyle.SolidParapet],
+        StructuralElementKind.Stair => [ElementStyle.Default, ElementStyle.Open],
+        _ => [ElementStyle.Default]
+    };
+
     /// <summary>Rejects out-of-range pitch, shape, and style values and degenerate new element geometry.</summary>
     public static void Validate(BuildingDocument document)
     {
@@ -88,8 +101,16 @@ public static class ArchitecturalShapes
             throw new InvalidDataException("Invalid column shape.");
         foreach (var element in document.StructuralElements)
         {
-            if (!Enum.IsDefined(element.Style))
+            if (!Enum.IsDefined(element.Style) || !StylesFor(element.Kind).Contains(element.Style))
                 throw new InvalidDataException("Invalid element style.");
+            if (element.HasSolid && element.Kind is not (StructuralElementKind.Dormer or StructuralElementKind.Skylight) &&
+                (!double.IsFinite(element.Width) || !double.IsFinite(element.Height) || !double.IsFinite(element.Offset) ||
+                 element.Width is < 0.005 or > 50 || element.Height is <= 0 or > 100 || element.Offset is < -100 or > 1000))
+                throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
+            if (!double.IsFinite(element.GridWidth) || !double.IsFinite(element.GridHeight) ||
+                element.GridWidth != 0 && element.GridWidth is < 0.2 or > 20 ||
+                element.GridHeight != 0 && element.GridHeight is < 0.2 or > 20)
+                throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
             var lengthKind = element.Kind is StructuralElementKind.Ramp or StructuralElementKind.Gutter
                 or StructuralElementKind.CurtainWall;
             var pointKind = element.Kind is StructuralElementKind.Downspout;

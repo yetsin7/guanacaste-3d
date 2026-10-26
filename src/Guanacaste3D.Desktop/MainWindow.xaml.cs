@@ -33,7 +33,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeCommandCustomization();
         SunDatePicker.SelectedDate = DateTime.Today;
-        _session = new DocumentSession(BuildingDocument.Create(GetText("Project.Untitled")));
+        _session = new DocumentSession(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
         _session.Changed += OnDocumentChanged;
         RefreshAll();
@@ -70,7 +70,7 @@ public partial class MainWindow : Window
     private void New_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscard()) return;
-        AttachDocument(BuildingDocument.Create(GetText("Project.Untitled")), null);
+        AttachDocument(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")), null);
         StatusText.Text = GetText("Status.ProjectNew");
     }
 

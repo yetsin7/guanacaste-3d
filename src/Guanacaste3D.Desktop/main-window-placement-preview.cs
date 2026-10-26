@@ -15,7 +15,8 @@ public partial class MainWindow
     private (Wall Wall, WallOpening Opening, bool Fits) OpeningPlacement(Point2 pointer)
     {
         var kind = _placingOpening!.Value;
-        var type = _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == BuiltInOpeningTypes.DefaultFor(kind))
+        var type = _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == _placingOpeningTypeId && candidate.Kind == kind)
+            ?? _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == BuiltInOpeningTypes.DefaultFor(kind))
             ?? _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Kind == kind)
             ?? BuiltInOpeningTypes.CreateDefaults().Single(candidate => candidate.Id == BuiltInOpeningTypes.DefaultFor(kind));
         var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();

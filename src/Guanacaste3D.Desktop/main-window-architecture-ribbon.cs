@@ -66,7 +66,67 @@ public partial class MainWindow
                 BeginStructuralTool(StructuralElementKind.Railing, StructuralPlacementMode.Line);
                 break;
             case ArchitectureCommand.Component:
-                BeginStructuralTool(StructuralElementKind.Component, StructuralPlacementMode.Point);
+                OpenArchitecturalLibrary();
+                break;
+            case ArchitectureCommand.Ramp:
+                BeginKindTool(StructuralElementKind.Ramp);
+                break;
+            case ArchitectureCommand.CurtainSystem:
+                BeginKindTool(StructuralElementKind.CurtainWall);
+                break;
+            case ArchitectureCommand.CurtainGrid:
+                EditCurtainWall(gridFocus: true);
+                break;
+            case ArchitectureCommand.Mullion:
+                EditCurtainWall(gridFocus: false);
+                break;
+            case ArchitectureCommand.ModelText:
+                BeginKindTool(StructuralElementKind.ModelText);
+                break;
+            case ArchitectureCommand.ModelLine:
+                BeginKindTool(StructuralElementKind.ModelLine);
+                break;
+            case ArchitectureCommand.ModelGroup:
+                BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group);
+                break;
+            case ArchitectureCommand.RoomSeparator:
+                BeginKindTool(StructuralElementKind.RoomSeparator);
+                break;
+            case ArchitectureCommand.TagRoom:
+                BeginTagTool(TagTarget.Room);
+                break;
+            case ArchitectureCommand.Area:
+                BeginKindTool(StructuralElementKind.Area);
+                break;
+            case ArchitectureCommand.AreaBoundary:
+                BeginKindTool(StructuralElementKind.AreaBoundary);
+                break;
+            case ArchitectureCommand.TagArea:
+                BeginTagTool(TagTarget.Area);
+                break;
+            case ArchitectureCommand.FaceOpening:
+                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Point);
+                break;
+            case ArchitectureCommand.ShaftOpening:
+                BeginStructuralTool(StructuralElementKind.Shaft, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.VerticalOpening:
+                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.DormerOpening:
+                BeginStructuralTool(StructuralElementKind.Dormer, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.WallOpening:
+                Window_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.SetWorkPlane:
+                Levels_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.ShowWorkPlane:
+                ToggleGrid_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.ReferencePlane:
+                BeginKindTool(StructuralElementKind.ReferencePlane);
                 break;
             case ArchitectureCommand.Room:
                 Room_Click(this, eventArguments);
@@ -100,6 +160,7 @@ public partial class MainWindow
     /// </summary>
     private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedWallId is null && TryEditSelectedElementType()) return;
         var selectedTypeId = _selectedWallId is Guid wallId
             ? _session.Document.Walls.Single(wall => wall.Id == wallId).WallTypeId
             : (WallTypePicker.SelectedItem as ComboBoxItem)?.Tag as Guid? ?? BuiltInWallTypes.Basic200Id;

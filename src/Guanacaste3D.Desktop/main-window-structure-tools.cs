@@ -45,8 +45,19 @@ public partial class MainWindow
     private bool TryExecuteStructuralCommand(string commandId)
     {
         var eventArguments = new RoutedEventArgs();
+        // The catalog sends its own ids ("Beam"); the table below is keyed by label key ("RibbonCommand.Beam").
+        commandId = commandId switch
+        {
+            "StructColumn" => "RibbonCommand.Column",
+            "WallByFace" => "RibbonCommand.WallFoundation",
+            "ConnectionAuto" => "RibbonCommand.ConnectionAutomation",
+            _ when !commandId.StartsWith("RibbonCommand.", StringComparison.Ordinal) => "RibbonCommand." + commandId,
+            _ => commandId
+        };
         switch (commandId)
         {
+            case "RibbonCommand.LoadFamily":
+                ImportFamily_Click(this, eventArguments); return true;
             case "RibbonCommand.Beam":
                 BeginStructuralTool(StructuralElementKind.Beam, StructuralPlacementMode.Line); return true;
             case "RibbonCommand.Truss":
@@ -77,6 +88,10 @@ public partial class MainWindow
                 BeginStructuralTool(StructuralElementKind.ModelText, StructuralPlacementMode.Point); return true;
             case "RibbonCommand.DormerOpening":
                 BeginStructuralTool(StructuralElementKind.Dormer, StructuralPlacementMode.Rectangle); return true;
+            case "RibbonCommand.ReferencePlane":
+                BeginKindTool(StructuralElementKind.ReferencePlane); return true;
+            case "RibbonCommand.ArchitecturalLibrary":
+                OpenArchitecturalLibrary(); return true;
             case "RibbonCommand.ModelGroup":
                 BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group); return true;
             case "RibbonCommand.Column":
@@ -117,6 +132,8 @@ public partial class MainWindow
             {
                 StructuralElementKind.Beam => "Status.StructuralFirstCorner",
                 StructuralElementKind.Dormer => "Status.DormerFirstCorner",
+                StructuralElementKind.Skylight => "Status.SkylightFirstCorner",
+                StructuralElementKind.Area => "Status.AreaFirstCorner",
                 _ => "Status.OpeningFirstCorner"
             }),
             _ => FormatText("Status.StructuralFirstPoint", GetStructuralName(kind))
@@ -128,6 +145,8 @@ public partial class MainWindow
     private void CancelStructuralTool()
     {
         _structuralTool = null;
+        _structuralPreset = null;
+        _tagTarget = null;
         _pendingStructuralStart = null;
         _structuralPreviewPoint = null;
     }
@@ -145,6 +164,7 @@ public partial class MainWindow
     /// <summary>Places a point element at one click, or collects the two ends of a line or rectangle.</summary>
     private bool TryHandleStructuralPlacement(MouseButtonEventArgs e)
     {
+        if (TryHandleTagClick(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var point = ResolveStructuralPoint(tool.Kind,
             SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas))));
@@ -167,6 +187,10 @@ public partial class MainWindow
                     GetText("Status.StructuralSecondCorner"),
                 StructuralPlacementMode.Rectangle when tool.Kind == StructuralElementKind.Dormer =>
                     GetText("Status.DormerSecondCorner"),
+                StructuralPlacementMode.Rectangle when tool.Kind == StructuralElementKind.Skylight =>
+                    GetText("Status.SkylightSecondCorner"),
+                StructuralPlacementMode.Rectangle when tool.Kind == StructuralElementKind.Area =>
+                    GetText("Status.AreaSecondCorner"),
                 StructuralPlacementMode.Rectangle => GetText("Status.OpeningSecondCorner"),
                 _ => FormatText("Status.StructuralSecondPoint", GetStructuralName(tool.Kind))
             };
@@ -200,6 +224,16 @@ public partial class MainWindow
         else if (tool.Kind == StructuralElementKind.Dormer)
         {
             CreateDormerFromTool(start, point);
+            return true;
+        }
+        else if (tool.Kind == StructuralElementKind.Skylight)
+        {
+            CreateSkylightFromTool(start, point);
+            return true;
+        }
+        else if (tool.Kind == StructuralElementKind.Area)
+        {
+            CreateAreaFromTool(start, point);
             return true;
         }
         else
@@ -273,8 +307,9 @@ public partial class MainWindow
     {
         try
         {
-            _selectedStructuralId = _session.AddStructuralElement(_activeLevelId, kind,
-                GetStructuralName(kind), start, end);
+            _selectedStructuralId = _structuralPreset is { } preset && preset.Kind == kind
+                ? _session.AddElementFromPreset(_activeLevelId, preset, start, end)
+                : _session.AddStructuralElement(_activeLevelId, kind, GetStructuralName(kind), start, end);
         }
         catch (InvalidDataException exception)
         {
@@ -314,7 +349,7 @@ public partial class MainWindow
     }
 
     /// <summary>Resolves the localized display name used for a structural element kind.</summary>
-    private string GetStructuralName(StructuralElementKind kind) => GetText(kind switch
+    private string GetStructuralName(StructuralElementKind kind) => GetText(ArchitecturalNameKey(kind) ?? kind switch
     {
         StructuralElementKind.Stair => "Tool.Stair",
         StructuralElementKind.Railing => "Tool.Railing",

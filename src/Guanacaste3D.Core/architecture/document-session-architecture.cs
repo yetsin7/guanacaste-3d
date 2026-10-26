@@ -60,6 +60,72 @@ public sealed partial class DocumentSession
         });
     }
 
+    /// <summary>Edits the name, thickness and elevation of a floor, ceiling or roof.</summary>
+    public void UpdateFloor(Guid floorId, string name, double thickness, double elevationOffset)
+    {
+        if (!Document.Floors.Any(floor => floor.Id == floorId))
+            throw new InvalidDataException("The floor slab does not exist.");
+        Commit("Transaction.UpdateFloor", document =>
+        {
+            var index = document.Floors.FindIndex(floor => floor.Id == floorId);
+            document.Floors[index] = document.Floors[index] with
+            {
+                Name = name.Trim(), Thickness = thickness, ElevationOffset = elevationOffset
+            };
+            RaiseStructuresOnRoof(document, document.Floors[index]);
+        });
+    }
+
+    /// <summary>Edits the section, height and outline of a column.</summary>
+    public void UpdateColumn(Guid columnId, double width, double depth, double height, ColumnShape shape)
+    {
+        if (!Document.Columns.Any(column => column.Id == columnId))
+            throw new InvalidDataException("The column does not exist.");
+        Commit("Transaction.UpdateColumn", document =>
+        {
+            var index = document.Columns.FindIndex(column => column.Id == columnId);
+            document.Columns[index] = document.Columns[index] with
+            {
+                Width = width, Depth = depth, Height = height, Shape = shape
+            };
+        });
+    }
+
+    /// <summary>Edits the name, section, underside offset and geometry variant of a structural element.</summary>
+    public void UpdateStructuralElement(Guid elementId, string name, double width, double height, double offset,
+        ElementStyle style)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
+            throw new InvalidDataException("The element name is invalid.");
+        if (!Document.StructuralElements.Any(element => element.Id == elementId))
+            throw new InvalidDataException("The element does not exist.");
+        Commit("Transaction.UpdateStructuralElement", document =>
+        {
+            var index = document.StructuralElements.FindIndex(element => element.Id == elementId);
+            document.StructuralElements[index] = document.StructuralElements[index] with
+            {
+                Name = name.Trim(), Width = width, Height = height, Offset = offset, Style = style
+            };
+        });
+    }
+
+    /// <summary>Sets the mullion and transom spacing of a curtain wall; zero restores the default spacing.</summary>
+    public void UpdateCurtainGrid(Guid elementId, double gridWidth, double gridHeight)
+    {
+        var element = Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == elementId)
+            ?? throw new InvalidDataException("The element does not exist.");
+        if (element.Kind != StructuralElementKind.CurtainWall)
+            throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
+        Commit("Transaction.UpdateCurtainGrid", document =>
+        {
+            var index = document.StructuralElements.FindIndex(candidate => candidate.Id == elementId);
+            document.StructuralElements[index] = document.StructuralElements[index] with
+            {
+                GridWidth = gridWidth, GridHeight = gridHeight
+            };
+        });
+    }
+
     /// <summary>Changes the plan outline of a column.</summary>
     public void SetColumnShape(Guid columnId, ColumnShape shape)
     {
@@ -107,6 +173,45 @@ public sealed partial class DocumentSession
                 Shape = preset.Shape
             }));
         return id;
+    }
+
+    /// <summary>Adds a rectangular area of an area scheme; its name is the label drawn in plan.</summary>
+    public Guid AddArea(Guid levelId, string name, Point2 first, Point2 opposite)
+    {
+        if (Math.Abs(first.X - opposite.X) < 0.05 || Math.Abs(first.Y - opposite.Y) < 0.05)
+            throw new InvalidDataException("An area needs a width and depth of at least 5 cm.");
+        return AddStructuralElement(levelId, StructuralElementKind.Area, name, first, opposite);
+    }
+
+    /// <summary>Renames a structural element or drafting mark, such as a room separator, area or reference plane.</summary>
+    public void RenameStructuralElement(Guid elementId, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
+            throw new InvalidDataException("The element name is invalid.");
+        if (!Document.StructuralElements.Any(element => element.Id == elementId))
+            throw new InvalidDataException("The element does not exist.");
+        Commit("Transaction.RenameStructuralElement", document =>
+        {
+            var index = document.StructuralElements.FindIndex(element => element.Id == elementId);
+            document.StructuralElements[index] = document.StructuralElements[index] with { Name = name.Trim() };
+        });
+    }
+
+    /// <summary>Renames a room and, when a number is given, its number; numbers stay unique.</summary>
+    public void RenameRoom(Guid roomId, string name, string? number = null)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
+            throw new InvalidDataException("The room name is invalid.");
+        if (!Document.Rooms.Any(room => room.Id == roomId))
+            throw new InvalidDataException("The room does not exist.");
+        Commit("Transaction.RenameRoom", document =>
+        {
+            var index = document.Rooms.FindIndex(room => room.Id == roomId);
+            document.Rooms[index] = document.Rooms[index] with
+            {
+                Name = name.Trim(), Number = string.IsNullOrWhiteSpace(number) ? document.Rooms[index].Number : number.Trim()
+            };
+        });
     }
 
     /// <summary>

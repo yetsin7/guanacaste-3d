@@ -63,7 +63,8 @@ public partial class MainWindow
     {
         var type = _session.Document.OpeningTypes.FirstOrDefault(candidate => candidate.Id == opening.OpeningTypeId);
         var symbol = DoorPlanSymbol.Build(opening.Begin, opening.End, wall.Thickness,
-            type is null ? 0.04 : WallGeometry.LeafDepth(type, wall));
+            type is null ? 0.04 : WallGeometry.LeafDepth(type, wall),
+            type?.Operation ?? OpeningOperation.Standard);
         Point ToCanvas((double U, double V) point) => WorldToCanvas(at(point.U, point.V));
         foreach (var line in symbol.Thresholds)
             PlanCanvas.Children.Add(new Line

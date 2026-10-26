@@ -47,16 +47,16 @@ public partial class MainWindow
     }
 
     /// <summary>Creates a floor from the bounding rectangle of active-level walls.</summary>
-    private void Floor_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Floor);
+    private void Floor_Click(object sender, RoutedEventArgs e) => ShowSlabPresetMenu(FloorKind.Floor);
 
     /// <summary>Creates a ceiling hung at the wall top of the active level.</summary>
-    private void Ceiling_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Ceiling);
+    private void Ceiling_Click(object sender, RoutedEventArgs e) => ShowSlabPresetMenu(FloorKind.Ceiling);
 
     /// <summary>Creates a roof slab that bears on the wall top of the active level.</summary>
-    private void Roof_Click(object sender, RoutedEventArgs e) => CreateEnclosureSlab(FloorKind.Roof);
+    private void Roof_Click(object sender, RoutedEventArgs e) => ShowSlabPresetMenu(FloorKind.Roof);
 
     /// <summary>Creates a slab of the requested role from the bounding rectangle of active-level walls.</summary>
-    private void CreateEnclosureSlab(FloorKind kind)
+    private void CreateEnclosureSlab(FloorKind kind, SlabPreset? preset = null)
     {
         var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();
         if (walls.Length < 2)
@@ -74,7 +74,7 @@ public partial class MainWindow
             StatusText.Text = GetText("Status.FloorNeedsEnclosure");
             return;
         }
-        const double slabThickness = 0.20;
+        var slabThickness = preset?.Thickness ?? 0.20;
         var wallTop = walls.Max(wall => wall.Height);
         var elevationOffset = kind switch
         {
@@ -89,13 +89,16 @@ public partial class MainWindow
             _ => ("Entity.Floor", "Status.FloorCreated")
         };
         var index = _session.Document.Floors.Count + 1;
-        _selectedFloorId = _session.AddFloor(_activeLevelId,
+        Point2[] boundary =
         [
             new Point2(minimumX, minimumY),
             new Point2(maximumX, minimumY),
             new Point2(maximumX, maximumY),
             new Point2(minimumX, maximumY)
-        ], slabThickness, $"{GetText(nameKey)} {index}", kind, elevationOffset);
+        ];
+        _selectedFloorId = preset is null
+            ? _session.AddFloor(_activeLevelId, boundary, slabThickness, $"{GetText(nameKey)} {index}", kind, elevationOffset)
+            : _session.AddSlabFromPreset(_activeLevelId, boundary, preset, elevationOffset);
         StatusText.Text = GetText(statusKey);
         RefreshAll();
     }
@@ -197,8 +200,11 @@ public partial class MainWindow
             point = new Point2(
                 Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
                 Math.Round(point.Y * 10, MidpointRounding.AwayFromZero) / 10);
-        SelectExtendedElement(columnId: _session.AddColumn(_activeLevelId, point));
+        SelectExtendedElement(columnId: _columnPreset is { } preset
+            ? _session.AddColumnFromPreset(_activeLevelId, point, preset)
+            : _session.AddColumn(_activeLevelId, point));
         _drawingColumn = false;
+        _columnPreset = null;
         StatusText.Text = GetText("Status.ColumnPlaced");
         RefreshAll();
         return true;
@@ -208,6 +214,8 @@ public partial class MainWindow
     private void CancelExtendedDrawing()
     {
         _placingOpening = null;
+        _placingOpeningTypeId = null;
+        _columnPreset = null;
         _placementPointer = null;
         _drawingRoom = false;
         _drawingColumn = false;

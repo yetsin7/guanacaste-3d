@@ -45,7 +45,19 @@ public enum StructuralElementKind
     CurtainWall,
 
     /// <summary>A glazed rooflight in a rectangle of a roof; it cuts the roof and stands on its top face.</summary>
-    Skylight
+    Skylight,
+
+    /// <summary>A datum line that hosts and dimensions can refer to. It has no solid.</summary>
+    ReferencePlane,
+
+    /// <summary>A line that divides a space into rooms without a wall. It has no solid.</summary>
+    RoomSeparator,
+
+    /// <summary>A line that bounds an area of an area scheme. It has no solid.</summary>
+    AreaBoundary,
+
+    /// <summary>A rectangular area of an area scheme, measured in plan. It has no solid.</summary>
+    Area
 }
 
 /// <summary>Variant of an element's geometry. Which values apply depends on the element kind.</summary>
@@ -99,12 +111,28 @@ public sealed record StructuralElement(
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }
 
+    /// <summary>Curtain wall only: center-to-center spacing of mullions in meters; zero means the 1.5 m default.</summary>
+    public double GridWidth { get; init; }
+
+    /// <summary>Curtain wall only: center-to-center spacing of transoms in meters; zero means the 1.2 m default.</summary>
+    public double GridHeight { get; init; }
+
     /// <summary>Geometry variant: beam section, guard type, stair type, or round point elements.</summary>
     public ElementStyle Style { get; init; }
 
     /// <summary>Drafting marks and openings have no solid of their own; openings only cut floor slabs.</summary>
     [JsonIgnore] public bool HasSolid => Kind is not (StructuralElementKind.ModelLine or StructuralElementKind.Opening
-        or StructuralElementKind.Shaft or StructuralElementKind.ModelText);
+        or StructuralElementKind.Shaft or StructuralElementKind.ModelText or StructuralElementKind.ReferencePlane
+        or StructuralElementKind.RoomSeparator or StructuralElementKind.AreaBoundary or StructuralElementKind.Area);
+
+    /// <summary>Whether the kind is drafted as a single line between its two points.</summary>
+    [JsonIgnore] public bool IsDatumLine => Kind is StructuralElementKind.ReferencePlane
+        or StructuralElementKind.RoomSeparator or StructuralElementKind.AreaBoundary
+        or StructuralElementKind.ModelLine;
+
+    /// <summary>Plan area in square meters of an area rectangle; zero for every other kind.</summary>
+    [JsonIgnore] public double PlanArea => Kind == StructuralElementKind.Area
+        ? Math.Abs(End.X - Start.X) * Math.Abs(End.Y - Start.Y) : 0;
 
     /// <summary>Plan outline: a rectangle along the axis for lines, or a square around the point for points.</summary>
     [JsonIgnore]
@@ -115,7 +143,7 @@ public sealed record StructuralElement(
             var half = Width / 2;
             var length = Start.DistanceTo(End);
             if (Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft or StructuralElementKind.Dormer
-                    or StructuralElementKind.Skylight && length >= 1e-9)
+                    or StructuralElementKind.Skylight or StructuralElementKind.Area && length >= 1e-9)
                 return Geometry.SlabOpenings.Corners(PlanExtent);
             if (length < 1e-9)
                 return
@@ -169,6 +197,8 @@ public static class StructuralElementStandards
         StructuralElementKind.Downspout => (0.09, 2.85, 0),
         StructuralElementKind.CurtainWall => (0.10, 3.0, 0),
         StructuralElementKind.Skylight => (0, 0.15, 0),
+        StructuralElementKind.ReferencePlane or StructuralElementKind.RoomSeparator
+            or StructuralElementKind.AreaBoundary or StructuralElementKind.Area => (0, 0, 0),
         _ => (0.02, 0, 0)
     };
 }

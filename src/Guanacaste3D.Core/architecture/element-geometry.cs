@@ -178,7 +178,7 @@ public static class ElementGeometry
         var top = element.Offset + element.Height;
         yield return Block(element, ArchitecturalShapes.Strip(element.Start, element.End, 0, 0.012),
             bottom, top, SurfaceKind.Glass);
-        var columns = Math.Max(1, (int)Math.Ceiling(element.Length / 1.5));
+        var columns = Math.Max(1, (int)Math.Ceiling(element.Length / (element.GridWidth > 0 ? element.GridWidth : 1.5)));
         for (var index = 0; index <= columns; index++)
         {
             var fraction = (double)index / columns;
@@ -188,7 +188,7 @@ public static class ElementGeometry
                 Math.Min(1, fraction + member / 2 / element.Length));
             yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), bottom, top);
         }
-        var rows = Math.Max(1, (int)Math.Ceiling(element.Height / 1.2));
+        var rows = Math.Max(1, (int)Math.Ceiling(element.Height / (element.GridHeight > 0 ? element.GridHeight : 1.2)));
         for (var index = 0; index <= rows; index++)
         {
             var center = bottom + element.Height * index / rows;
