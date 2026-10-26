@@ -11,7 +11,7 @@ geometry, plans, elevations, sections, sheets, schedules, and cost information.
 - [x] Versioned project document, levels, straight walls, and hosted openings.
 - [x] Coordinated plan and 3D geometry.
 - [x] Generated north elevation and section views from the shared model.
-- [x] Native `.g3` project envelope and Windows file association.
+- [x] Native `.g3d` project envelope and Windows file association.
 - [x] Validated persistence with backup-before-overwrite.
 - [x] Bounded undo and redo history.
 - [x] Local Release build and executable domain checks on Windows.

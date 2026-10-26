@@ -11,13 +11,34 @@ public enum WallFunction
     Retaining
 }
 
+/// <summary>Defines the drafting pattern used to represent a wall in a coordinated view.</summary>
+public enum WallFillPattern
+{
+    Solid,
+    Diagonal,
+    Crosshatch
+}
+
 /// <summary>Defines reusable parameters shared by wall instances.</summary>
 public sealed record WallType(
     Guid Id,
     string Name,
     WallFunction Function,
     double Thickness,
-    string MaterialName);
+    string MaterialName)
+{
+    /// <summary>Hexadecimal RGB color used for the wall body in plan views.</summary>
+    public string PlanFillColor { get; init; } = "#59636B";
+
+    /// <summary>Drafting pattern used for the wall body in plan views.</summary>
+    public WallFillPattern PlanFillPattern { get; init; } = WallFillPattern.Solid;
+
+    /// <summary>Hexadecimal RGB color used for cut wall material in section views.</summary>
+    public string SectionFillColor { get; init; } = "#87928B";
+
+    /// <summary>Drafting pattern used for cut wall material in section views.</summary>
+    public WallFillPattern SectionFillPattern { get; init; } = WallFillPattern.Diagonal;
+}
 
 /// <summary>Provides stable identifiers and defaults for built-in wall types.</summary>
 public static class BuiltInWallTypes
@@ -54,6 +75,30 @@ public sealed record Room(
         (FirstCorner.Y + SecondCorner.Y) / 2);
 }
 
+/// <summary>Classifies a horizontal slab by the building role it plays.</summary>
+public enum FloorKind
+{
+    Floor,
+    Ceiling,
+    Roof
+}
+
+/// <summary>Plan shape of a roof. Pitched shapes rise from the eave toward a ridge.</summary>
+public enum RoofShape
+{
+    /// <summary>A horizontal slab.</summary>
+    Flat,
+
+    /// <summary>One plane rising across the shorter side of the boundary.</summary>
+    Shed,
+
+    /// <summary>Two planes meeting at a ridge along the longer side (gable roof).</summary>
+    Gable,
+
+    /// <summary>Four planes rising from every edge (hip roof).</summary>
+    Hip
+}
+
 /// <summary>Represents a horizontal slab with a closed polygonal boundary.</summary>
 public sealed record FloorSlab(
     Guid Id,
@@ -62,6 +107,24 @@ public sealed record FloorSlab(
     List<Point2> Boundary,
     double Thickness)
 {
+    /// <summary>Plan shape; only roofs may be pitched. The eave stays at <see cref="ElevationOffset"/>.</summary>
+    public RoofShape Shape { get; init; } = RoofShape.Flat;
+
+    /// <summary>Roof pitch in degrees from the horizontal. Ignored for flat slabs.</summary>
+    public double Pitch { get; init; }
+
+    /// <summary>Whether the slab rises above its eave (a pitched roof with a positive pitch).</summary>
+    [JsonIgnore] public bool IsPitched => Kind == FloorKind.Roof && Shape != RoofShape.Flat && Pitch > 0;
+
+    /// <summary>Finish applied to the walking surface, used for finish area takeoff.</summary>
+    public FinishKind Finish { get; init; }
+
+    /// <summary>Role of the slab; ceilings and roofs reuse the same boundary and thickness rules.</summary>
+    public FloorKind Kind { get; init; } = FloorKind.Floor;
+
+    /// <summary>Meters from the level elevation to the slab top; ceilings and roofs sit above the floor.</summary>
+    public double ElevationOffset { get; init; }
+
     /// <summary>Calculates plan area using the shoelace formula.</summary>
     public double CalculateArea()
     {
@@ -75,6 +138,33 @@ public sealed record FloorSlab(
         }
         return Math.Abs(doubledArea) / 2;
     }
+}
+
+/// <summary>Cross-section outline of a column. Width and depth give the overall extent in plan.</summary>
+public enum ColumnShape
+{
+    Rectangular,
+    Round,
+    LShaped,
+    TShaped,
+    Octagonal
+}
+
+/// <summary>Represents a structural column standing on a building level.</summary>
+public sealed record Column(
+    Guid Id,
+    Guid LevelId,
+    Point2 Position,
+    double Width,
+    double Depth,
+    double Height)
+{
+    /// <summary>Plan outline of the column; rectangular unless a catalog type says otherwise.</summary>
+    public ColumnShape Shape { get; init; } = ColumnShape.Rectangular;
+
+    /// <summary>Counter-clockwise plan outline of the column around its position.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<Point2> Outline => ArchitecturalShapes.ColumnOutline(this);
 }
 
 /// <summary>Supported physical paper sizes for drawing sheets.</summary>

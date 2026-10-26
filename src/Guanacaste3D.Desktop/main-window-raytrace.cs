@@ -1,206 +1,209 @@
-using System.Diagnostics;
-using System.IO;
 using System.Numerics;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Core.Rendering;
-using Microsoft.Win32;
+using Guanacaste3D.Desktop.Controls;
 
 namespace Guanacaste3D.Desktop;
 
+/// <summary>
+/// The camera, scene and navigation shared by the 3D view and the Render tab. Both show the same
+/// <see cref="NavigationCamera"/>; the scene is built once in the background, cached, and used by the live preview, the
+/// final render, cursor-centered zoom and collisions.
+/// </summary>
 public partial class MainWindow
 {
+    private const int Model3DTabIndex = 1;
     private const int RenderTabIndex = 6;
-    private float _orbitAzimuth = -50;
-    private float _orbitElevation = 28;
-    private float _orbitDistance = 1;
-    private Point? _orbitDragStart;
-    private CancellationTokenSource? _renderCancellation;
-    private WriteableBitmap? _renderBitmap;
 
-    /// <summary>Returns the shared orbit camera used by both the interactive view and the renderer.</summary>
-    private RenderCamera CurrentRenderCamera(Vector3 min, Vector3 max) =>
-        RenderCamera.FrameBounds(min, max, _orbitAzimuth, _orbitElevation, _orbitDistance);
+    private readonly NavigationCamera _navigation = NavigationCamera.Frame(new Vector3(-5, -5, 0), new Vector3(5, 5, 3));
+    private SceneNavigator? _modelNavigator;
+    private readonly LinkedModels _links = new();
+    private Task<RenderScene?>? _sceneTask;
+    private SceneQuery? _query;
+    private int _sceneVersion;
+    private (int Version, (Vector3 Min, Vector3 Max) Bounds)? _boundsCache;
+    private DispatcherTimer? _sceneDebounce;
+    private bool _modelDirty = true;
+    private event Action? SceneChanged;
+    private event Action? QueryChanged;
 
-    /// <summary>Returns model bounds, falling back to a 10 m site for an empty project.</summary>
-    private (Vector3 Min, Vector3 Max) ModelBounds()
+    /// <summary>Connects navigation to the 3D view and the render panel; called once from the constructor.</summary>
+    private void InitializeNavigationAndRender()
     {
-        if (_session.Document.Walls.Count == 0 && _session.Document.Floors.Count == 0)
-            return (new Vector3(-5, -5, 0), new Vector3(5, 5, 3));
-        return BuildingMesher.Build(_session.Document).Bounds();
+        _modelNavigator = new SceneNavigator(ModelSurface, _navigation)
+        {
+            Bounds = SceneBounds,
+            Pick = (origin, direction) => _query?.Pick(origin, direction)
+        };
+        _modelNavigator.Changed += UpdateModelCamera;
+        RenderPanelControl.Attach(new RenderSource(this));
+        _links.Changed += OnLinksChanged;
+        _sceneDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
+        _sceneDebounce.Tick += (_, _) =>
+        {
+            _sceneDebounce.Stop();
+            if (ViewTabs.SelectedIndex is Model3DTabIndex or RenderTabIndex) _ = GetSceneAsync();
+            SceneChanged?.Invoke();
+        };
+        ViewTabs.SelectionChanged += (_, e) =>
+        {
+            if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
+            if (ViewTabs.SelectedIndex == Model3DTabIndex)
+            {
+                if (_modelDirty) RebuildModelVisual();
+                else UpdateModelCamera();
+            }
+            if (ViewTabs.SelectedIndex is Model3DTabIndex or RenderTabIndex) _ = GetSceneAsync();
+        };
     }
 
-    /// <summary>Begins an orbit drag in the 3D view.</summary>
-    private void ModelView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    /// <summary>Adapts the window to what the render panel asks of its host.</summary>
+    private sealed class RenderSource(MainWindow window) : IRenderSource
     {
-        _orbitDragStart = e.GetPosition((IInputElement)sender);
-        ((UIElement)sender).CaptureMouse();
+        public NavigationCamera Camera => window._navigation;
+        public string ProjectName => window._session.Document.Name;
+        public (Vector3 Min, Vector3 Max) SceneBounds() => window.SceneBounds();
+        public Task<RenderScene?> GetSceneAsync() => window.GetSceneAsync();
+        public SceneQuery? Query => window._query;
+
+        public event Action? SceneChanged
+        {
+            add => window.SceneChanged += value;
+            remove => window.SceneChanged -= value;
+        }
+
+        public event Action? QueryChanged
+        {
+            add => window.QueryChanged += value;
+            remove => window.QueryChanged -= value;
+        }
     }
 
-    /// <summary>Orbits horizontally and vertically while dragging.</summary>
-    private void ModelView_MouseMove(object sender, MouseEventArgs e)
+    // ---------------------------------------------------------------- scene
+
+    /// <summary>Whether the project has anything to show: model elements or visible linked models.</summary>
+    private bool HasSceneContent()
     {
-        if (_orbitDragStart is not Point start || e.LeftButton != MouseButtonState.Pressed) return;
-        var current = e.GetPosition((IInputElement)sender);
-        _orbitAzimuth -= (float)(current.X - start.X) * 0.4f;
-        _orbitElevation = Math.Clamp(_orbitElevation + (float)(current.Y - start.Y) * 0.3f, -5, 89);
-        _orbitDragStart = current;
-        Render3D();
+        var document = _session.Document;
+        return document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0 ||
+               _links.Visible().Any();
     }
 
-    /// <summary>Ends an orbit drag.</summary>
-    private void ModelView_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    /// <summary>Bounds of the model and visible linked models, or a 10 m site for an empty project. Cached per scene version.</summary>
+    private (Vector3 Min, Vector3 Max) SceneBounds()
     {
-        _orbitDragStart = null;
-        ((UIElement)sender).ReleaseMouseCapture();
+        if (_boundsCache is { } cached && cached.Version == _sceneVersion) return cached.Bounds;
+        var document = _session.Document;
+        var hasModel = document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0;
+        var min = new Vector3(-5, -5, 0);
+        var max = new Vector3(5, 5, 3);
+        if (hasModel) (min, max) = BuildingMesher.Build(document).Bounds();
+        if (_links.Bounds() is { } linked)
+        {
+            (min, max) = hasModel ? (Vector3.Min(min, linked.Min), Vector3.Max(max, linked.Max)) : linked;
+        }
+        _boundsCache = (_sceneVersion, (min, max));
+        return (min, max);
     }
 
-    /// <summary>Dollies the orbit camera toward or away from the model.</summary>
-    private void ModelView_MouseWheel(object sender, MouseWheelEventArgs e)
+    /// <summary>Marks the cached scene stale; it is rebuilt a moment after edits stop, and only if a view needs it.</summary>
+    private void MarkSceneDirty()
     {
-        _orbitDistance = Math.Clamp(_orbitDistance * (e.Delta > 0 ? 0.88f : 1.14f), 0.15f, 8f);
-        Render3D();
-        e.Handled = true;
+        _sceneVersion++;
+        _sceneTask = null;
+        _query = null;
+        _modelDirty = true;
+        if (_modelNavigator is not null) _modelNavigator.Collision = null;
+        _sceneDebounce?.Stop();
+        _sceneDebounce?.Start();
     }
 
-    /// <summary>Restores the default three-quarter camera.</summary>
-    private void ResetOrbit_Click(object sender, RoutedEventArgs e)
+    /// <summary>The current render scene, built on a worker thread and cached until the project changes.</summary>
+    private Task<RenderScene?> GetSceneAsync()
     {
-        (_orbitAzimuth, _orbitElevation, _orbitDistance) = (-50, 28, 1);
-        Render3D();
+        if (_sceneTask is { } existing) return existing;
+        if (!HasSceneContent()) return _sceneTask = Task.FromResult<RenderScene?>(null);
+
+        // The BIM mesh is built here (it reads the live document); copying everything into one scene happens off-thread.
+        var mesh = BuildingMesher.Build(_session.Document, includeGround: true);
+        var links = _links.Visible().ToList();
+        var version = _sceneVersion;
+        var task = Task.Run<RenderScene?>(() =>
+        {
+            var builder = new RenderSceneBuilder().AddBuilding(mesh);
+            foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
+            var scene = builder.Build();
+            MemoryTrim.AfterHeavyBuild();
+            return scene.TriangleCount == 0 ? null : scene;
+        });
+        _sceneTask = task;
+        _ = task.ContinueWith(finished =>
+        {
+            if (finished.IsCompletedSuccessfully && finished.Result is { } scene && version == _sceneVersion)
+                Dispatcher.BeginInvoke(() => BuildQuery(scene, version));
+        }, TaskScheduler.Default);
+        return task;
     }
+
+    /// <summary>Builds ray queries for navigation off-thread, then publishes them on the UI thread if the scene is still current.</summary>
+    private void BuildQuery(RenderScene scene, int version)
+    {
+        _ = Task.Run(() => SceneQuery.Build(scene)).ContinueWith(finished =>
+        {
+            // Without a query (for example, out of memory) zoom falls back to the scene size and collisions stay off.
+            if (!finished.IsCompletedSuccessfully) return;
+            var query = finished.Result;
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (version != _sceneVersion) return;
+                _query = query;
+                if (_modelNavigator is not null) _modelNavigator.Collision = query.Collision();
+                QueryChanged?.Invoke();
+            });
+        }, TaskScheduler.Default);
+    }
+
+    // ---------------------------------------------------------------- 3D view
+
+    /// <summary>Places the shared camera so the whole model is in view.</summary>
+    private void FrameCameraToScene()
+    {
+        var (min, max) = SceneBounds();
+        var framed = NavigationCamera.Frame(min, max);
+        _navigation.Position = framed.Position;
+        _navigation.YawDegrees = framed.YawDegrees;
+        _navigation.PitchDegrees = framed.PitchDegrees;
+        _navigation.FieldOfViewDegrees = framed.FieldOfViewDegrees;
+        UpdateModelCamera();
+        RenderPanelControl?.Navigator?.FrameAll();
+    }
+
+    /// <summary>Restores the three-quarter view of the whole model.</summary>
+    private void ResetOrbit_Click(object sender, RoutedEventArgs e) => FrameCameraToScene();
 
     /// <summary>Shows the photorealistic render view.</summary>
     private void ShowRender_Click(object sender, RoutedEventArgs e) => ViewTabs.SelectedIndex = RenderTabIndex;
 
-    /// <summary>Starts a progressive render, or stops the one in progress.</summary>
-    private async void StartRender_Click(object sender, RoutedEventArgs e)
+    /// <summary>Opens the Render tab and starts a final render with the panel's settings.</summary>
+    private void StartRender_Click(object sender, RoutedEventArgs e)
     {
-        if (_renderCancellation is not null)
-        {
-            _renderCancellation.Cancel();
-            return;
-        }
         ViewTabs.SelectedIndex = RenderTabIndex;
-        // The denoiser reaches a clean image with far fewer samples, so the presets stay modest.
-        var quality = RenderQualityPicker.SelectedIndex switch { 0 => (0.5, 32), 2 => (1.0, 384), _ => (0.75, 128) };
-        var denoise = DenoiseCheck.IsChecked == true;
-        var hostWidth = Math.Max(320, RenderHost.ActualWidth);
-        var hostHeight = Math.Max(200, RenderHost.ActualHeight);
-        var width = Math.Max(64, (int)(hostWidth * quality.Item1));
-        var height = Math.Max(48, (int)(hostHeight * quality.Item1));
-        var maximumSamples = quality.Item2;
-
-        var document = _session.Document;
-        var (min, max) = ModelBounds();
-        var camera = CurrentRenderCamera(min, max);
-        var settings = DaylightSettings(SiteLatitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear,
-            SunHourSlider.Value);
-
-        using var cancellation = new CancellationTokenSource();
-        _renderCancellation = cancellation;
-        StartRenderButton.Content = GetText("Render.Stop");
-        RenderStatusText.Text = GetText("Render.Preparing");
-        var stopwatch = Stopwatch.StartNew();
-        try
-        {
-            var tracer = await Task.Run(() =>
-                new PathTracer(BuildingMesher.Build(document, includeGround: true), width, height, camera, settings),
-                cancellation.Token);
-            _renderBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-            RenderImage.Source = _renderBitmap;
-            var bounds = new Int32Rect(0, 0, width, height);
-            while (tracer.SampleCount < maximumSamples && !cancellation.IsCancellationRequested)
-            {
-                var pixels = await Task.Run(() =>
-                {
-                    tracer.RenderPass(cancellation.Token);
-                    return tracer.ToBgra32(denoise);
-                }, cancellation.Token);
-                _renderBitmap.WritePixels(bounds, pixels, width * 4, 0);
-                RenderStatusText.Text = FormatText("Render.Progress", tracer.SampleCount, maximumSamples,
-                    width, height, stopwatch.Elapsed.TotalSeconds);
-            }
-            RenderStatusText.Text = FormatText("Render.Completed", tracer.SampleCount, width, height,
-                stopwatch.Elapsed.TotalSeconds);
-        }
-        catch (OperationCanceledException)
-        {
-            RenderStatusText.Text = GetText("Render.Stopped");
-        }
-        finally
-        {
-            _renderCancellation = null;
-            StartRenderButton.Content = GetText("Render.Start");
-        }
+        RenderPanelControl.RequestRender();
     }
 
-    /// <summary>Saves the current render as a PNG image.</summary>
-    private void SaveRender_Click(object sender, RoutedEventArgs e)
-    {
-        if (_renderBitmap is null)
-        {
-            RenderStatusText.Text = GetText("Render.NothingToSave");
-            return;
-        }
-        var dialog = new SaveFileDialog
-        {
-            Filter = GetText("Dialog.PngFilter"),
-            FileName = _session.Document.Name + ".png",
-            AddExtension = true,
-            DefaultExt = ".png"
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(_renderBitmap.Clone()));
-            using var stream = File.Create(dialog.FileName);
-            encoder.Save(stream);
-            StatusText.Text = GetText("Render.Saved");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    /// <summary>Default site latitude: Managua, Nicaragua.</summary>
-    private const double DefaultLatitude = 12.1;
-
-    /// <summary>Reads the site latitude field, falling back to Managua when it is empty or invalid.</summary>
-    private double SiteLatitude()
-    {
-        var text = SiteLatitudeInput.Text.Replace(',', '.');
-        return double.TryParse(text, System.Globalization.NumberStyles.Float,
-                   System.Globalization.CultureInfo.InvariantCulture, out var latitude) &&
-               latitude is >= -90 and <= 90
-            ? latitude
-            : DefaultLatitude;
-    }
-
-    /// <summary>Builds lighting from the real sun position; below the horizon it renders dusk sky light only.</summary>
-    private static RenderSettings DaylightSettings(double latitude, int dayOfYear, double solarHour)
-    {
-        var sun = SolarPosition.Direction(latitude, dayOfYear, solarHour);
-        var altitude = SolarPosition.AltitudeDegrees(sun);
-        // Fade the sun over its last 3° above the horizon so sunrise and sunset do not pop.
-        var sunFactor = (float)Math.Clamp(altitude / 3, 0, 1);
-        return new RenderSettings
-        {
-            SunDirection = altitude > 0 ? sun : Vector3.Normalize(new Vector3(sun.X, sun.Y, 0.02f)),
-            SunIntensity = new RenderSettings().SunIntensity * sunFactor,
-            SkyIntensity = new RenderSettings().SkyIntensity * (altitude > 0 ? 1 : 0.15f),
-            MaxThreads = Math.Max(1, Environment.ProcessorCount - 1)
-        };
-    }
     /// <summary>Keeps the interactive camera aspect in sync with the viewport.</summary>
-    private void ModelViewport_SizeChanged(object sender, SizeChangedEventArgs e) => Render3D();
+    private void ModelViewport_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateModelCamera();
 
-    /// <summary>Cancels any running render before the window closes.</summary>
-    private void CancelRender() => _renderCancellation?.Cancel();
+    /// <summary>Stops any render or video before the window closes.</summary>
+    private void CancelRender() => RenderPanelControl.CancelAll();
+
+    /// <summary>Whether the pointer is flying through the 3D view or the render preview, so letters mean movement, not shortcuts.</summary>
+    private bool IsNavigating3D() => _modelNavigator?.IsActive == true || RenderPanelControl?.Navigator?.IsActive == true;
+
+    /// <summary>Whether a key belongs to flight navigation right now.</summary>
+    private bool NavigationOwnsKey(System.Windows.Input.Key key) =>
+        _modelNavigator?.OwnsKey(key) == true || RenderPanelControl?.Navigator?.OwnsKey(key) == true;
 }

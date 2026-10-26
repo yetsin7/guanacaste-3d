@@ -38,15 +38,8 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Moves the selected wall by the common one-meter X offset.</summary>
-    private void Move_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
-        _session.MoveWall(id, 1, 0);
-        _selectedWallOffset = null;
-        StatusText.Text = GetText("Status.WallMovedOneMeter");
-        RefreshAll();
-    }
+    /// <summary>Starts the Revit-style move tool: pick a base point, then a destination in the plan.</summary>
+    private void Move_Click(object sender, RoutedEventArgs e) => BeginMoveTool();
 
     /// <summary>Applies the metric translation entered in the properties panel.</summary>
     private void MovePrecise_Click(object sender, RoutedEventArgs e)
@@ -137,29 +130,5 @@ public partial class MainWindow
         _session.RemoveWall(id);
         _selectedWallId = null;
         RefreshAll();
-    }
-
-    /// <summary>Applies instance wall dimensions from the properties panel.</summary>
-    private void ApplyProperties_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedWallId is not Guid id)
-        {
-            StatusText.Text = GetText("Status.SelectWallToModify");
-            return;
-        }
-        if (!double.TryParse(ThicknessInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var thickness) ||
-            !double.TryParse(HeightInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var height))
-        {
-            MessageBox.Show(this, GetText("Dialog.InvalidWallDimensions"), GetText("Dialog.Parameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        try
-        {
-            _session.UpdateWall(id, thickness, height);
-        }
-        catch (InvalidDataException exception)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.InvalidParameters"), MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
     }
 }

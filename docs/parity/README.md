@@ -14,12 +14,12 @@ functional parity with professional BIM workflows. It complements the strategic
 ## Working rules
 
 1. Every increment is vertical. It covers the domain model, validation,
-   regeneration, the `.g3` schema and migration, undo/redo, the UI, the
+   regeneration, the `.g3d` schema and migration, undo/redo, the UI, the
    localization dictionary, and automated checks.
 2. Evidence is classified as Observed, Derived, Inferred, or Unknown, and an
    inference is never reported as an observation.
 3. Designs are original. Autodesk material defines requirements, never the implementation.
-4. After each increment: Release build, all checks, `.g3` round trip and
+4. After each increment: Release build, all checks, `.g3d` round trip and
    migration, publish to `artifacts/win-x64`, install with
    `scripts/install-windows.ps1`, then verify version, hash, shortcut, file
-   association, and window title against a real `.g3` file.
+   association, and window title against a real `.g3d` file.

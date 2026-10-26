@@ -21,6 +21,13 @@ public readonly record struct WallSnapResult(Point2 Point, WallSnapKind Kind);
 /// <summary>Represents the model centerline generated from a wall drawing reference.</summary>
 public readonly record struct WallCenterline(Point2 Start, Point2 End);
 
+/// <summary>Contains the four ordered plan corners of a straight wall body.</summary>
+public readonly record struct WallFootprint(Point2 StartLeft, Point2 EndLeft, Point2 EndRight, Point2 StartRight)
+{
+    /// <summary>Returns the corners in drawing order for polygon rendering.</summary>
+    public IReadOnlyList<Point2> Points => [StartLeft, EndLeft, EndRight, StartRight];
+}
+
 /// <summary>Builds precise wall centerlines from contextual placement options.</summary>
 public static class WallPlacementGeometry
 {
@@ -108,6 +115,43 @@ public static class WallPlacementGeometry
         return new WallCenterline(
             new Point2(start.X + normalX * distance, start.Y + normalY * distance),
             new Point2(end.X + normalX * distance, end.Y + normalY * distance));
+    }
+
+    /// <summary>Builds the visible wall body from the drawn reference, selected face, offset, and type thickness.</summary>
+    public static WallFootprint Footprint(
+        Point2 start,
+        Point2 end,
+        double thickness,
+        double offset,
+        WallLocationReference locationReference)
+    {
+        var centerline = OffsetLine(start, end, thickness, offset, locationReference);
+        var length = centerline.Start.DistanceTo(centerline.End);
+        var normalX = -(centerline.End.Y - centerline.Start.Y) / length * thickness / 2;
+        var normalY = (centerline.End.X - centerline.Start.X) / length * thickness / 2;
+        return new WallFootprint(
+            new Point2(centerline.Start.X + normalX, centerline.Start.Y + normalY),
+            new Point2(centerline.End.X + normalX, centerline.End.Y + normalY),
+            new Point2(centerline.End.X - normalX, centerline.End.Y - normalY),
+            new Point2(centerline.Start.X - normalX, centerline.Start.Y - normalY));
+    }
+
+    /// <summary>
+    /// Returns where two straight centerlines meet when extended, or null when they are parallel.
+    /// Chained walls drawn from a face or interior reference use this as their shared corner.
+    /// </summary>
+    public static Point2? CenterlineIntersection(WallCenterline first, WallCenterline second)
+    {
+        var firstX = first.End.X - first.Start.X;
+        var firstY = first.End.Y - first.Start.Y;
+        var secondX = second.End.X - second.Start.X;
+        var secondY = second.End.Y - second.Start.Y;
+        var cross = firstX * secondY - firstY * secondX;
+        if (Math.Abs(cross) < 1e-9) return null;
+        var offsetX = second.Start.X - first.Start.X;
+        var offsetY = second.Start.Y - first.Start.Y;
+        var t = (offsetX * secondY - offsetY * secondX) / cross;
+        return new Point2(first.Start.X + firstX * t, first.Start.Y + firstY * t);
     }
 
     /// <summary>Creates four connected centerlines from opposite corners as one rectangular wall loop.</summary>

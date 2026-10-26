@@ -23,6 +23,28 @@ public partial class MainWindow
                 Tag = floor.Id
             };
             PlanCanvas.Children.Add(polygon);
+            // A pitched roof shows its ridge and hips so its shape reads in plan.
+            foreach (var (from, to) in RoofGeometry.CreaseLines(floor))
+            {
+                var start = WorldToCanvas(from);
+                var end = WorldToCanvas(to);
+                PlanCanvas.Children.Add(new Line
+                {
+                    X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y, Stroke = Brushes.SeaGreen,
+                    StrokeThickness = 1.5, StrokeDashArray = new DoubleCollection { 6, 3 }, Tag = floor.Id
+                });
+            }
+        }
+        foreach (var column in _session.Document.Columns.Where(column => column.LevelId == _activeLevelId))
+        {
+            PlanCanvas.Children.Add(new Polygon
+            {
+                Points = new PointCollection(column.Outline.Select(WorldToCanvas)),
+                Fill = new SolidColorBrush(Color.FromArgb(170, 96, 102, 110)),
+                Stroke = column.Id == _selectedColumnId ? Brushes.DarkOrange : Brushes.DimGray,
+                StrokeThickness = column.Id == _selectedColumnId ? 2.5 : 1,
+                Tag = column.Id
+            });
         }
         foreach (var room in _session.Document.Rooms.Where(room => room.LevelId == _activeLevelId))
         {
@@ -53,6 +75,7 @@ public partial class MainWindow
             Canvas.SetTop(label, center.Y - 24);
             PlanCanvas.Children.Add(label);
         }
+        RenderStructuralPlanElements();
     }
 
     /// <summary>Renders the selected sheet with a live plan viewport and title block.</summary>

@@ -16,7 +16,7 @@ public partial class MainWindow
     private void RefreshAll()
     {
         if (_session is null) return;
-        Title = "Guanacaste 3D — " + _session.Document.Name + (_dirty ? " *" : "");
+        UpdateWindowTitle();
         if (!_session.Document.Levels.Any(level => level.Id == _activeLevelId))
             _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(wall => wall.Id == _selectedWallId)) _selectedWallId = null;
@@ -116,16 +116,23 @@ public partial class MainWindow
             _session.Document.Openings.Count(opening => opening.WallId == wall.Id),
             WallGeometry.NetVolume(wall, _session.Document.Openings.Where(opening => opening.WallId == wall.Id)),
             wall.Id.ToString()[..8]);
-        ThicknessInput.Text = wall.Thickness.ToString("0.00", CultureInfo.CurrentCulture);
-        HeightInput.Text = wall.Height.ToString("0.00", CultureInfo.CurrentCulture);
+        LoadWallDimensionFields(wall);
         WallTypePicker.SelectedItem = WallTypePicker.Items.OfType<ComboBoxItem>()
             .FirstOrDefault(item => Equals(item.Tag, wall.WallTypeId));
     }
 
-    /// <summary>Renders the shared BIM scene mesh with daylight-style lighting in the 3D view.</summary>
+    /// <summary>Marks the 3D view stale after a change; it is rebuilt only while the tab is showing.</summary>
     private void Render3D()
     {
         if (ModelViewport is null || _session is null) return;
+        MarkSceneDirty();
+        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+    }
+
+    /// <summary>Rebuilds the 3D view's models: the BIM mesh plus a light proxy of every linked model.</summary>
+    private void RebuildModelVisual()
+    {
+        _modelDirty = false;
         ModelViewport.Children.Clear();
         ModelViewport.Children.Add(new ModelVisual3D
         {
@@ -136,18 +143,85 @@ public partial class MainWindow
             Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
         });
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
-        foreach (var group in ScenePresentation.ToWpfModels(scene))
+        var (boundsMin, boundsMax) = SceneBounds();
+        var thickness = Math.Clamp(0.004f * Math.Max(3, (boundsMax - boundsMin).Length() / 2), 0.012f, 0.06f);
+        foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
-        var (min, max) = BuildingMesher.Build(_session.Document).Bounds();
-        if (_session.Document.Walls.Count == 0 && _session.Document.Floors.Count == 0)
-            (min, max) = (new System.Numerics.Vector3(-5, -5, 0), new System.Numerics.Vector3(5, 5, 3));
+        if (_showEdges)
+        {
+            // The ground plane would add four enormous lines at the horizon, so only the building contributes edges.
+            var positions = new List<System.Numerics.Vector3>(scene.Positions);
+            var indices = new List<int>();
+            for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+            {
+                if (scene.TriangleKinds[triangle] == SurfaceKind.Ground) continue;
+                indices.Add(scene.Indices[triangle * 3]);
+                indices.Add(scene.Indices[triangle * 3 + 1]);
+                indices.Add(scene.Indices[triangle * 3 + 2]);
+            }
+            AddEdgeVisual(FeatureEdges.Extract(positions, indices), System.Numerics.Matrix4x4.Identity, thickness);
+        }
+        foreach (var (link, loaded) in _links.Visible())
+        {
+            foreach (var group in ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement))
+                ModelViewport.Children.Add(new ModelVisual3D { Content = group });
+            if (_showEdges) AddEdgeVisual(EdgesOf(link.Id, loaded), link.Placement.ToMatrix(), thickness);
+        }
+        UpdateModelCamera();
+    }
+
+    private bool _clayMode = true;
+    private bool _showEdges = true;
+    private readonly Dictionary<Guid, List<EdgeSegment>> _linkEdges = [];
+
+    /// <summary>Feature edges of a linked model's proxy, computed once and kept until the links change.</summary>
+    private List<EdgeSegment> EdgesOf(Guid id, LoadedModel loaded)
+    {
+        if (_linkEdges.TryGetValue(id, out var cached)) return cached;
+        return _linkEdges[id] = FeatureEdges.Extract(loaded.Proxy.Positions, loaded.Proxy.Indices, maximumEdges: 40_000);
+    }
+
+    private void AddEdgeVisual(IEnumerable<EdgeSegment> edges, System.Numerics.Matrix4x4 placement, float thickness)
+    {
+        var lines = ScenePresentation.ToWpfEdges(edges, placement, thickness, Color.FromRgb(52, 56, 62));
+        if (lines is not null) ModelViewport.Children.Add(new ModelVisual3D { Content = lines });
+    }
+
+    /// <summary>Switches the 3D view between the grey study model and the project's colors, and edges on or off.</summary>
+    private void ViewStyle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (ClayRadio is null || EdgesCheck is null) return;
+        _clayMode = ClayRadio.IsChecked == true;
+        _showEdges = EdgesCheck.IsChecked == true;
+        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+        else _modelDirty = true;
+    }
+
+    /// <summary>Points the 3D view's camera where the shared navigation camera is.</summary>
+    private void UpdateModelCamera()
+    {
+        if (ModelViewport is null) return;
+        var (min, max) = SceneBounds();
+        var radius = Math.Max(3, (max - min).Length() / 2);
         var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
-        ModelViewport.Camera = ScenePresentation.ToWpfCamera(CurrentRenderCamera(min, max), aspect);
+        ModelViewport.Camera = ScenePresentation.ToWpfCamera(_navigation, aspect, radius);
     }
 
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        // While the pointer is over the 3D view or render preview, W A S D Q E fly the camera instead of triggering tools.
+        if (NavigationOwnsKey(e.Key))
+        {
+            base.OnPreviewKeyDown(e);
+            return;
+        }
+        if (TryHandleDirectWallLengthKey(e))
+        {
+            e.Handled = true;
+            base.OnPreviewKeyDown(e);
+            return;
+        }
         if (Keyboard.FocusedElement is TextBox)
         {
             base.OnPreviewKeyDown(e);

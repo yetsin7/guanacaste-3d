@@ -1,0 +1,249 @@
+using System.Numerics;
+
+namespace Guanacaste3D.Core.Rendering;
+
+/// <summary>
+/// Turns the renderer's linear radiance into a display image: exposure (manual or measured), bloom, tone mapping,
+/// color grading, vignette, sRGB encoding and dithering. Runs on the denoised image only, so it can be repeated
+/// cheaply while the user moves the sliders, without re-rendering anything.
+/// </summary>
+public static class ImageProcessor
+{
+    /// <summary>A neutral finish with no bloom, vignette, grading or dithering, matching the original renderer output.</summary>
+    public static ImageFinish Plain { get; } = new()
+    {
+        Saturation = 1, Contrast = 1, Bloom = 0, Vignette = 0, Dither = false, AutoExposure = false
+    };
+
+    /// <summary>Returns BGRA32 bytes for display or saving.</summary>
+    public static byte[] ToBgra32(Vector3[] linear, int width, int height, float baseExposure, ImageFinish finish,
+        Func<FeatureBuffer>? features = null)
+    {
+        ArgumentNullException.ThrowIfNull(linear);
+        ArgumentNullException.ThrowIfNull(finish);
+        if (linear.Length != width * height) throw new ArgumentException("Buffer size does not match the image size.");
+        var exposure = baseExposure * MathF.Pow(2, Math.Clamp(finish.ExposureStops, -8f, 8f));
+        if (finish.AutoExposure) exposure *= MeasureAutoExposure(linear, baseExposure, features?.Invoke());
+
+        var exposed = new Vector3[linear.Length];
+        Parallel.For(0, height, row =>
+        {
+            for (var column = 0; column < width; column++)
+            {
+                var index = row * width + column;
+                var value = linear[index] * exposure;
+                exposed[index] = float.IsFinite(value.X + value.Y + value.Z) ? Vector3.Max(value, Vector3.Zero) : Vector3.Zero;
+            }
+        });
+
+        var glow = finish.Bloom > 0.001f ? Bloom(exposed, width, height) : null;
+        var pixels = new byte[width * height * 4];
+        var bloomStrength = Math.Clamp(finish.Bloom, 0f, 1f) * 0.6f;
+        var vignette = Math.Clamp(finish.Vignette, 0f, 1f);
+        Parallel.For(0, height, row =>
+        {
+            for (var column = 0; column < width; column++)
+            {
+                var index = row * width + column;
+                var color = exposed[index];
+                if (glow is not null) color += glow[index] * bloomStrength;
+                color = ToneMap(color, finish.ToneMapper);
+                if (finish.Contrast != 1)
+                {
+                    var contrast = Math.Clamp(finish.Contrast, 0.5f, 2f);
+                    color = new Vector3(Pivot(color.X, contrast), Pivot(color.Y, contrast), Pivot(color.Z, contrast));
+                }
+                if (finish.Saturation != 1)
+                {
+                    var luminance = Sampling.Luminance(color);
+                    color = Vector3.Max(Vector3.Zero, new Vector3(luminance) + (color - new Vector3(luminance)) * finish.Saturation);
+                }
+                if (vignette > 0)
+                {
+                    var dx = (column + 0.5f) / width * 2 - 1;
+                    var dy = (row + 0.5f) / height * 2 - 1;
+                    color *= 1 - vignette * 0.55f * (dx * dx + dy * dy) * 0.5f;
+                }
+                var noise = finish.Dither ? DitherNoise(index) : 0f;
+                pixels[index * 4] = Encode(color.Z, noise);
+                pixels[index * 4 + 1] = Encode(color.Y, noise);
+                pixels[index * 4 + 2] = Encode(color.X, noise);
+                pixels[index * 4 + 3] = 255;
+            }
+        });
+        return pixels;
+    }
+
+    /// <summary>
+    /// Returns the multiplier that brings the scene's geometric-mean luminance to a pleasant mid-grey. Sky pixels are
+    /// ignored so a bright sky does not darken the building, and the correction is limited to a sane range.
+    /// </summary>
+    public static float MeasureAutoExposure(Vector3[] linear, float baseExposure, FeatureBuffer? features)
+    {
+        double sum = 0;
+        var count = 0;
+        for (var index = 0; index < linear.Length; index += 3)
+        {
+            if (features is not null && float.IsInfinity(features.Depth[index])) continue;
+            var luminance = Sampling.Luminance(linear[index]) * baseExposure;
+            if (!float.IsFinite(luminance)) continue;
+            sum += Math.Log(Math.Clamp(luminance, 0.004f, 40f));
+            count++;
+        }
+        if (count < 16) return 1;
+        var geometricMean = Math.Exp(sum / count);
+        return (float)Math.Clamp(0.19 / geometricMean, 0.4, 2.5);
+    }
+
+    private static float Pivot(float value, float contrast) => 0.4f * MathF.Pow(MathF.Max(value, 0) / 0.4f, contrast);
+
+    private static Vector3 ToneMap(Vector3 color, ToneMapper mapper) => mapper switch
+    {
+        ToneMapper.Linear => Vector3.Clamp(color, Vector3.Zero, Vector3.One),
+        ToneMapper.Soft => new Vector3(Soft(color.X), Soft(color.Y), Soft(color.Z)),
+        _ => new Vector3(Aces(color.X), Aces(color.Y), Aces(color.Z))
+    };
+
+    /// <summary>ACES filmic approximation (Narkowicz 2015).</summary>
+    private static float Aces(float x)
+    {
+        x = MathF.Max(0, x);
+        return Math.Clamp(x * (2.51f * x + 0.03f) / (x * (2.43f * x + 0.59f) + 0.14f), 0f, 1f);
+    }
+
+    /// <summary>Extended Reinhard with a white point at 6, so highlights roll off instead of clipping.</summary>
+    private static float Soft(float x)
+    {
+        x = MathF.Max(0, x);
+        return Math.Clamp(x * (1 + x / 36f) / (1 + x), 0f, 1f);
+    }
+
+    private static byte Encode(float linear, float dither)
+    {
+        var clamped = Math.Clamp(linear, 0f, 1f);
+        var srgb = clamped <= 0.0031308f ? 12.92f * clamped : 1.055f * MathF.Pow(clamped, 1 / 2.4f) - 0.055f;
+        return (byte)Math.Clamp(srgb * 255 + 0.5f + dither, 0f, 255f);
+    }
+
+    /// <summary>Triangular-distribution noise of ±1 code value, from a hash of the pixel index.</summary>
+    private static float DitherNoise(int index)
+    {
+        var h = (uint)index * 2654435761u;
+        h ^= h >> 15;
+        h *= 2246822519u;
+        h ^= h >> 13;
+        var a = (h & 0xFFFF) / 65536f;
+        var b = (h >> 16) / 65536f;
+        return a + b - 1f;
+    }
+
+    /// <summary>Soft glow of the parts brighter than 1: two blur scales at reduced resolution, upsampled bilinearly.</summary>
+    private static Vector3[] Bloom(Vector3[] image, int width, int height)
+    {
+        var small = Math.Max(1, width / 4);
+        var smallHeight = Math.Max(1, height / 4);
+        var bright = Downsample(image, width, height, small, smallHeight, threshold: true);
+        var near = BoxBlur(bright, small, smallHeight, Math.Max(2, small / 120), passes: 2);
+        var tiny = Math.Max(1, small / 4);
+        var tinyHeight = Math.Max(1, smallHeight / 4);
+        var far = BoxBlur(Downsample(near, small, smallHeight, tiny, tinyHeight, threshold: false), tiny, tinyHeight,
+            Math.Max(2, tiny / 40), passes: 2);
+        var result = new Vector3[width * height];
+        Parallel.For(0, height, row =>
+        {
+            for (var column = 0; column < width; column++)
+            {
+                var nearValue = Sample(near, small, smallHeight, (column + 0.5f) / width, (row + 0.5f) / height);
+                var farValue = Sample(far, tiny, tinyHeight, (column + 0.5f) / width, (row + 0.5f) / height);
+                result[row * width + column] = nearValue * 0.6f + farValue * 0.9f;
+            }
+        });
+        return result;
+    }
+
+    private static Vector3[] Downsample(Vector3[] source, int width, int height, int targetWidth, int targetHeight,
+        bool threshold)
+    {
+        var target = new Vector3[targetWidth * targetHeight];
+        Parallel.For(0, targetHeight, y =>
+        {
+            var y0 = y * height / targetHeight;
+            var y1 = Math.Max(y0 + 1, (y + 1) * height / targetHeight);
+            for (var x = 0; x < targetWidth; x++)
+            {
+                var x0 = x * width / targetWidth;
+                var x1 = Math.Max(x0 + 1, (x + 1) * width / targetWidth);
+                var sum = Vector3.Zero;
+                for (var yy = y0; yy < y1; yy++)
+                for (var xx = x0; xx < x1; xx++)
+                {
+                    var value = source[yy * width + xx];
+                    // Only energy above the displayable range glows; ordinary surfaces stay crisp.
+                    sum += threshold ? Vector3.Max(value - Vector3.One, Vector3.Zero) : value;
+                }
+                target[y * targetWidth + x] = sum / ((y1 - y0) * (x1 - x0));
+            }
+        });
+        return target;
+    }
+
+    private static Vector3[] BoxBlur(Vector3[] source, int width, int height, int radius, int passes)
+    {
+        var current = source;
+        for (var pass = 0; pass < passes; pass++)
+        {
+            var horizontal = new Vector3[current.Length];
+            var input = current;
+            Parallel.For(0, height, y =>
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var sum = Vector3.Zero;
+                    var count = 0;
+                    for (var k = -radius; k <= radius; k++)
+                    {
+                        var xx = x + k;
+                        if ((uint)xx >= (uint)width) continue;
+                        sum += input[y * width + xx];
+                        count++;
+                    }
+                    horizontal[y * width + x] = sum / count;
+                }
+            });
+            var vertical = new Vector3[current.Length];
+            Parallel.For(0, height, y =>
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var sum = Vector3.Zero;
+                    var count = 0;
+                    for (var k = -radius; k <= radius; k++)
+                    {
+                        var yy = y + k;
+                        if ((uint)yy >= (uint)height) continue;
+                        sum += horizontal[yy * width + x];
+                        count++;
+                    }
+                    vertical[y * width + x] = sum / count;
+                }
+            });
+            current = vertical;
+        }
+        return current;
+    }
+
+    private static Vector3 Sample(Vector3[] image, int width, int height, float u, float v)
+    {
+        var x = Math.Clamp(u * width - 0.5f, 0, width - 1);
+        var y = Math.Clamp(v * height - 0.5f, 0, height - 1);
+        var x0 = (int)x;
+        var y0 = (int)y;
+        var x1 = Math.Min(x0 + 1, width - 1);
+        var y1 = Math.Min(y0 + 1, height - 1);
+        var fx = x - x0;
+        var fy = y - y0;
+        var top = Vector3.Lerp(image[y0 * width + x0], image[y0 * width + x1], fx);
+        var bottom = Vector3.Lerp(image[y1 * width + x0], image[y1 * width + x1], fx);
+        return Vector3.Lerp(top, bottom, fy);
+    }
+}

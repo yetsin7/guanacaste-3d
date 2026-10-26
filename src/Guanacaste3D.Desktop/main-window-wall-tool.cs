@@ -15,11 +15,42 @@ public partial class MainWindow
     private Point2? _wallPreviewPoint;
     private WallSnapResult? _activeWallSnap;
 
+    /// <summary>The last wall of a chained sketch and the reference point where its sketch segment ended.</summary>
+    private (Guid WallId, Point2 ReferenceEnd)? _chainTail;
+
+    /// <summary>True while Create Similar waits for the next wall picked in the plan.</summary>
+    private bool _awaitingSimilarWallPick;
+
     /// <summary>Tracks the pointer in model space so the active wall sketch has immediate visual feedback.</summary>
     private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
     {
+        if (TryPanPlan(e)) return;
+        _placementPointer = CanvasToWorld(e.GetPosition(PlanCanvas));
+        if (_placingOpening is not null || _drawingColumn || _drawingRoom)
+        {
+            RenderPlan();
+            return;
+        }
+        TryStartElementDrag(e);
+        if (_movingElement)
+        {
+            UpdateMovePreview(e.GetPosition(PlanCanvas));
+            return;
+        }
+        if (TryUpdateStructuralPreview(e)) return;
         if (!_drawingWall) return;
-        _wallPreviewPoint = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
+        var pointer = CanvasToWorld(e.GetPosition(PlanCanvas));
+        _wallPreviewPoint = SnapWallPoint(pointer);
+        UpdateAlignmentGuides(pointer, null);
+        RenderPlan();
+    }
+
+    /// <summary>Removes cursor-attached ghosts when the pointer leaves the plan, retaining any first anchor.</summary>
+    private void PlanCanvas_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _placementPointer = null;
+        _structuralPreviewPoint = null;
+        _wallPreviewPoint = null;
         RenderPlan();
     }
 
@@ -31,6 +62,7 @@ public partial class MainWindow
         {
             _pendingWallStart = point;
             _wallPreviewPoint = point;
+            ClearDirectWallLength();
             StatusText.Text = GetText("Status.WallSecondPoint");
             RenderPlan();
             return;
@@ -61,10 +93,31 @@ public partial class MainWindow
     private void CreateWallSegment(Point2 referenceStart, Point2 referenceEnd, double height, double offset, Guid typeId)
     {
         var (start, end) = OffsetWallCenterline(referenceStart, referenceEnd, offset, typeId);
-        _selectedWallId = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
+        var thickness = _session.Document.WallTypes.Single(type => type.Id == typeId).Thickness;
+        using var group = _session.BeginGroup("Transaction.DrawWall");
+        if (FindContinuedWallEnd(referenceStart, typeId) is { } continued)
+        {
+            // Face and interior references offset each wall on its own, so a continued end only
+            // meets where the two offset lines cross. Moving the existing end there closes the corner.
+            var existing = continued.Wall;
+            var meeting = WallPlacementGeometry.CenterlineIntersection(
+                new WallCenterline(existing.Start, existing.End), new WallCenterline(start, end));
+            if (meeting is Point2 corner && corner.DistanceTo(referenceStart) <= 2 * thickness)
+            {
+                var anchor = continued.End == WallEnd.Start ? existing.Start : existing.End;
+                if (corner.DistanceTo(anchor) > WallJoinIndex.Tolerance)
+                    _session.MoveWallEnd(existing.Id, continued.End, corner);
+                start = corner;
+            }
+        }
+        var id = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
+        group.Assimilate();
+        _selectedWallId = id;
+        _chainTail = WallChainCheck.IsChecked == true ? (id, referenceEnd) : null;
         _selectedViewId = null;
         _pendingWallStart = WallChainCheck.IsChecked == true ? referenceEnd : null;
         _wallPreviewPoint = referenceEnd;
+        ClearDirectWallLength();
         StatusText.Text = GetText("Status.WallCreated");
         RefreshAll();
     }
@@ -85,6 +138,7 @@ public partial class MainWindow
         _selectedViewId = null;
         _pendingWallStart = null;
         _wallPreviewPoint = null;
+        _chainTail = null;
         StatusText.Text = GetText("Status.WallRectangleCreated");
         RefreshAll();
     }
@@ -102,6 +156,7 @@ public partial class MainWindow
             if (_activeWallSnap is WallSnapResult snap) return snap.Point;
         }
         _activeWallSnap = null;
+        if (SnapToWorkPlane(point) is Point2 onPlane) return onPlane;
         return SnapGridCheck.IsChecked == true
             ? new Point2(
                 Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,
@@ -157,7 +212,7 @@ public partial class MainWindow
             return;
         }
         if (!TryReadWallPlacementOptions(out var height, out var offset, out var typeId) ||
-            !double.TryParse(WallLengthInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var length) ||
+            !double.TryParse(CurrentWallLengthText(), NumberStyles.Float, CultureInfo.CurrentCulture, out var length) ||
             !double.IsFinite(length) || length is < 0.05 or > 100000)
         {
             StatusText.Text = GetText("Status.WallInvalidOptions");
@@ -169,8 +224,7 @@ public partial class MainWindow
             var endpoint = WallPlacementGeometry.EndpointAtLength(
                 start, directionCandidate, length, WallOrthogonalCheck.IsChecked == true);
             CreateWallSegment(start, endpoint, height, offset, typeId);
-            WallLengthInput.SelectAll();
-            WallLengthInput.Focus();
+            ClearDirectWallLength();
         }
         catch (InvalidDataException exception)
         {
@@ -185,121 +239,6 @@ public partial class MainWindow
         if (e.Key != Key.Enter) return;
         PlaceWallByLength_Click(sender, new RoutedEventArgs());
         e.Handled = true;
-    }
-
-    /// <summary>Draws the provisional line or rectangle and its live dimensions over the plan.</summary>
-    private void RenderWallSketchOverlay()
-    {
-        if (!_drawingWall) return;
-        if (_activeWallSnap is WallSnapResult snap) AddWallSnapMarker(snap);
-        if (_pendingWallStart is not Point2 start || _wallPreviewPoint is not Point2 preview) return;
-        if (WallRectangleMode.IsChecked == true)
-        {
-            var corners = new[]
-            {
-                start, new Point2(preview.X, start.Y), preview, new Point2(start.X, preview.Y)
-            };
-            for (var index = 0; index < corners.Length; index++)
-                AddWallPreviewLine(corners[index], corners[(index + 1) % corners.Length]);
-            AddWallMeasurement(start, preview, FormatText("WallOptions.RectangleMeasurement",
-                Math.Abs(preview.X - start.X), Math.Abs(preview.Y - start.Y)));
-            return;
-        }
-
-        var end = ConstrainWallEndpoint(start, preview);
-        AddWallPreviewLine(start, end);
-        var angle = Math.Atan2(end.Y - start.Y, end.X - start.X) * 180 / Math.PI;
-        var length = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
-        AddWallMeasurement(start, end, FormatText("WallOptions.Measurement", length, angle));
-    }
-
-    /// <summary>Draws the active endpoint or midpoint snap marker beside its localized label.</summary>
-    private void AddWallSnapMarker(WallSnapResult snap)
-    {
-        var center = WorldToCanvas(snap.Point);
-        Shape marker;
-        if (snap.Kind == WallSnapKind.Endpoint)
-        {
-            marker = new Rectangle
-            {
-                Width = 10,
-                Height = 10,
-                Fill = Brushes.White,
-                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-                StrokeThickness = 2
-            };
-        }
-        else
-        {
-            marker = new Polygon
-            {
-                Points = new PointCollection
-                {
-                    new(center.X, center.Y - 6), new(center.X + 6, center.Y),
-                    new(center.X, center.Y + 6), new(center.X - 6, center.Y)
-                },
-                Fill = Brushes.White,
-                Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-                StrokeThickness = 2
-            };
-        }
-        if (marker is Rectangle)
-        {
-            Canvas.SetLeft(marker, center.X - 5);
-            Canvas.SetTop(marker, center.Y - 5);
-        }
-        marker.IsHitTestVisible = false;
-        PlanCanvas.Children.Add(marker);
-
-        var label = new TextBlock
-        {
-            Text = GetText(snap.Kind == WallSnapKind.Endpoint ? "WallSnap.Endpoint" : "WallSnap.Midpoint"),
-            Foreground = new SolidColorBrush(Color.FromRgb(0, 96, 124)),
-            Background = Brushes.White,
-            FontSize = 10,
-            Padding = new Thickness(4, 1, 4, 1),
-            IsHitTestVisible = false
-        };
-        Canvas.SetLeft(label, center.X + 9);
-        Canvas.SetTop(label, center.Y + 7);
-        PlanCanvas.Children.Add(label);
-    }
-
-    /// <summary>Adds a dashed cyan reference line to the current plan canvas.</summary>
-    private void AddWallPreviewLine(Point2 start, Point2 end)
-    {
-        var from = WorldToCanvas(start);
-        var to = WorldToCanvas(end);
-        PlanCanvas.Children.Add(new Line
-        {
-            X1 = from.X,
-            Y1 = from.Y,
-            X2 = to.X,
-            Y2 = to.Y,
-            Stroke = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-            StrokeThickness = 2,
-            StrokeDashArray = new DoubleCollection { 6, 3 },
-            IsHitTestVisible = false
-        });
-    }
-
-    /// <summary>Places a compact dimension callout at the midpoint of a provisional wall sketch.</summary>
-    private void AddWallMeasurement(Point2 start, Point2 end, string text)
-    {
-        var midpoint = WorldToCanvas(new Point2((start.X + end.X) / 2, (start.Y + end.Y) / 2));
-        var label = new Border
-        {
-            Background = Brushes.White,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0, 127, 163)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
-            Padding = new Thickness(7, 3, 7, 3),
-            Child = new TextBlock { Text = text, FontSize = 11, Foreground = Brushes.DarkSlateGray },
-            IsHitTestVisible = false
-        };
-        Canvas.SetLeft(label, midpoint.X + 8);
-        Canvas.SetTop(label, midpoint.Y - 28);
-        PlanCanvas.Children.Add(label);
     }
 
     /// <summary>Refreshes the provisional sketch when a contextual placement option changes.</summary>
@@ -318,6 +257,7 @@ public partial class MainWindow
         _pendingWallStart = null;
         _wallPreviewPoint = null;
         _activeWallSnap = null;
+        ClearDirectWallLength();
         SetWallTool(false);
     }
 
@@ -329,6 +269,7 @@ public partial class MainWindow
             _pendingWallStart = null;
             _wallPreviewPoint = null;
             _activeWallSnap = null;
+            ClearDirectWallLength();
             StatusText.Text = GetText("Status.WallTool");
             RenderPlan();
             return;
@@ -339,11 +280,57 @@ public partial class MainWindow
     /// <summary>Applies Revit-like two-stage escape behavior to the active placement command.</summary>
     private void HandleWallEscape() => CancelWallPlacementStep();
 
+    /// <summary>
+    /// Returns the same-type wall end that a new wall starts from: the chained tail when it is
+    /// continued, otherwise any wall on the level whose endpoint sits on the reference point.
+    /// </summary>
+    private (Wall Wall, WallEnd End)? FindContinuedWallEnd(Point2 referenceStart, Guid typeId)
+    {
+        if (_chainTail is { } tail && tail.ReferenceEnd.DistanceTo(referenceStart) < 1e-9 &&
+            _session.Document.Walls.FirstOrDefault(candidate => candidate.Id == tail.WallId) is Wall previous &&
+            previous.WallTypeId == typeId)
+            return (previous, WallEnd.End);
+
+        foreach (var wall in _session.Document.Walls)
+        {
+            if (wall.LevelId != _activeLevelId || wall.WallTypeId != typeId) continue;
+            if (wall.End.DistanceTo(referenceStart) <= WallJoinIndex.Tolerance) return (wall, WallEnd.End);
+            if (wall.Start.DistanceTo(referenceStart) <= WallJoinIndex.Tolerance) return (wall, WallEnd.Start);
+        }
+        return null;
+    }
+
+    /// <summary>Arms Create Similar; the next wall picked in the plan supplies the type and height of the new wall.</summary>
+    private void CreateSimilar_Click(object sender, RoutedEventArgs e)
+    {
+        SetWallTool(false);
+        _awaitingSimilarWallPick = true;
+        StatusText.Text = GetText("Status.CreateSimilarPick");
+    }
+
+    /// <summary>Starts the wall tool with the type and height of the wall picked for Create Similar.</summary>
+    private void TryStartSimilarWall(object source)
+    {
+        if ((source as FrameworkElement)?.Tag is not Guid id ||
+            _session.Document.Walls.FirstOrDefault(candidate => candidate.Id == id) is not Wall picked)
+        {
+            StatusText.Text = GetText("Status.CreateSimilarPick");
+            return;
+        }
+
+        _awaitingSimilarWallPick = false;
+        SetWallTool(true);
+        WallTypePicker.SelectedItem = WallTypePicker.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is Guid typeId && typeId == picked.WallTypeId);
+        WallHeightInput.Text = picked.Height.ToString("0.00", CultureInfo.CurrentCulture);
+    }
+
     /// <summary>Shows or hides contextual placement controls so command state is always visible.</summary>
     private void UpdateWallToolVisualState()
     {
         if (WallOptionsBar is null) return;
         WallOptionsBar.Visibility = _drawingWall ? Visibility.Visible : Visibility.Collapsed;
+        UpdateContextualTabs();
         WallCommandButton.FontWeight = _drawingWall ? FontWeights.Bold : FontWeights.Normal;
         if (!_drawingWall) _activeWallSnap = null;
     }

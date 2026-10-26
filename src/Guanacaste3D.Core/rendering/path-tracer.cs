@@ -4,88 +4,258 @@ using Guanacaste3D.Core.Geometry;
 
 namespace Guanacaste3D.Core.Rendering;
 
-/// <summary>A pinhole camera in Z-up model coordinates.</summary>
-public readonly record struct RenderCamera(Vector3 Position, Vector3 Target, float VerticalFieldOfViewDegrees)
-{
-    /// <summary>Frames the mesh bounds from a south-east, elevated three-quarter viewpoint.</summary>
-    public static RenderCamera FrameBounds(Vector3 min, Vector3 max, float azimuthDegrees = -50,
-        float elevationDegrees = 28, float distanceScale = 1)
-    {
-        var center = (min + max) / 2;
-        var radius = MathF.Max(3, (max - min).Length() / 2);
-        var azimuth = azimuthDegrees * MathF.PI / 180;
-        var elevation = elevationDegrees * MathF.PI / 180;
-        var direction = new Vector3(
-            MathF.Cos(elevation) * MathF.Cos(azimuth),
-            MathF.Cos(elevation) * MathF.Sin(azimuth),
-            MathF.Sin(elevation));
-        const float fieldOfView = 45;
-        // Bounding-sphere fit is conservative for box-like buildings; 0.8 frames them more tightly.
-        var distance = radius / MathF.Sin(fieldOfView * MathF.PI / 360) * 0.8f * Math.Clamp(distanceScale, 0.05f, 20);
-        return new RenderCamera(center + direction * distance, center, fieldOfView);
-    }
-}
-
-/// <summary>Lighting and quality controls for the path tracer.</summary>
-public sealed record RenderSettings
-{
-    /// <summary>Direction pointing from the scene toward the sun (normalized internally).</summary>
-    public Vector3 SunDirection { get; init; } = new(-0.45f, -0.55f, 0.70f);
-    public float SunIntensity { get; init; } = 2.0f;
-    /// <summary>Angular radius of the sun disk in degrees; larger values give softer shadows.</summary>
-    public float SunAngularRadiusDegrees { get; init; } = 0.8f;
-    public float SkyIntensity { get; init; } = 1.2f;
-    public int MaxBounces { get; init; } = 3;
-    /// <summary>Calibrated so a 0.3-albedo sunlit ground lands near middle grey after tone mapping.</summary>
-    public float Exposure { get; init; } = 0.4f;
-    /// <summary>Worker threads per pass; zero or less uses every core.</summary>
-    public int MaxThreads { get; init; }
-    /// <summary>Random sequence selector; equal seeds reproduce identical images.</summary>
-    public uint Seed { get; init; }
-}
-
 /// <summary>
 /// Progressive, multi-threaded unidirectional path tracer for BIM scenes. Each call to
-/// <see cref="RenderPass"/> adds one sample per pixel to an accumulation buffer, so the
+/// <see cref="RenderPass"/> adds one sample per active pixel to an accumulation buffer, so the
 /// image converges while the user watches and can be stopped at any time.
 /// </summary>
+/// <remarks>
+/// Surfaces are physically based: Lambert diffuse under a GGX specular coat, metals, mirrors and thin glass.
+/// Light comes from a physical sky, the sun (sampled as a disk and combined with BSDF sampling through
+/// multiple importance sampling), explicit lights and emissive geometry. Shadow rays pass through glass, so
+/// sunlight enters through windows. Only the indirect part of the image is denoised; sun shadows, glass
+/// and mirror reflections keep their sharpness.
+/// </remarks>
 public sealed class PathTracer
 {
-    private readonly Bvh _bvh;
-    private readonly SurfaceKind[] _kinds;
-    private readonly Vector3[] _normals;
-    private readonly Vector3[] _accumulation;
-    private readonly Vector3[] _direct; // first-vertex sun light and directly seen sky: sharp, low noise
-    private readonly RenderSettings _settings;
-    private readonly Vector3 _sunDirection;
-    private readonly float _sunCosine;
+    private const int TileSize = 16;
+    private const int MaxGlassCrossings = 10;
+    private const float CameraSunRadianceLimit = 3000f;
+    /// <summary>Largest luminance stored in the radiance cache, so one rare bright path cannot taint a whole cell.</summary>
+    private const float CacheValueLimit = 30f;
+
+    private readonly RenderScene _scene;
+    private readonly Bvh _opaque;
+    private readonly Bvh? _transmissive;
+    private readonly SurfaceData[] _surfaces;
+    private readonly float _rayEpsilon;
+    private RenderSettings _settings;
+    private SkyModel _sky = null!;
+    private Vector3 _sunDirection;
+    private float _sunCosine;
+    private float _sunPdf;                    // 1 / solid angle of the sun disk
+    private Vector3 _sunRadiance;             // radiance of the sun disk; zero when the sun is off
+    private Vector3 _skyScale;
+    private readonly Vector3 _sceneMin;
+    private readonly Vector3 _sceneMax;
+    private readonly SkyPortals? _portalCandidates;   // found once from the geometry; the setting only switches them on
+    private readonly Emitters? _emitters;
+    private SkyPortals? _portals;
+    private LightSampler? _lightSampler;
+    private Vector3[] _accumulation = [];
+    private Vector3[] _direct = [];           // radiance gathered before the first diffuse bounce: sharp, low noise
+    private float[] _luminanceSquares = [];
+    private float[] _indirectSquares = [];    // squared luminance of the indirect component, for the denoiser's variance
+    private ushort[] _counts = [];
+    private bool[] _active = [];
     private RenderCamera _camera;
+    private FeatureBuffer? _features;
+    private bool _anyConverged;
+    private long _rayCount;
+    [ThreadStatic] private static long _threadRays;
+    [ThreadStatic] private static long _threadCacheLookups;
+    [ThreadStatic] private static long _threadCacheHits;
+    private long _cacheLookups;
+    private long _cacheHits;
+    private RadianceCache? _radianceCache;
+    private double _buildMilliseconds;
+    private double _lastPassMilliseconds;
+    private long _lastPassRays;
+    private double _lastDenoiseMilliseconds;
+    private PrimaryHit[]? _primary;
 
-    public int Width { get; }
-    public int Height { get; }
+    public int Width { get; private set; }
+    public int Height { get; private set; }
+    /// <summary>Number of completed passes (samples per pixel when adaptive sampling is off).</summary>
     public int SampleCount { get; private set; }
+    public int TriangleCount => _scene.TriangleCount;
+    /// <summary>Rays cast so far (camera, bounce and shadow rays), for throughput reporting.</summary>
+    public long RayCount => Interlocked.Read(ref _rayCount);
 
+    /// <summary>
+    /// The acceleration structure over the opaque triangles (triangle numbers are those of the scene). Picking, collision
+    /// and other queries can use it instead of building a second hierarchy over the same geometry. Read-only: the tracer
+    /// owns it, so do not keep it beyond the tracer's lifetime.
+    /// </summary>
+    public Bvh OpaqueAcceleration => _opaque;
+
+    /// <summary>The hierarchy over glass and other transmissive triangles, or null when the scene has none.</summary>
+    public Bvh? TransmissiveAcceleration => _transmissive;
+
+    /// <summary>
+    /// Replaces the built-in denoiser, for example with an adapter for Open Image Denoise. Null (the default) uses the
+    /// variance-guided filter configured by the render settings. Used when <see cref="RenderSettings.VarianceGuidedDenoising"/> is on.
+    /// </summary>
+    public IDenoiser? Denoiser { get; set; }
+
+    /// <summary>The world-space radiance cache in use, or null when <see cref="RenderSettings.UseRadianceCache"/> is off.</summary>
+    public RadianceCache? RadianceCache => _radianceCache;
+
+    /// <summary>Share of cache lookups that found an entry and ended a path early (0 when the cache is off or unused).</summary>
+    public double CacheHitRate => _cacheLookups == 0 ? 0 : (double)_cacheHits / _cacheLookups;
+
+    /// <summary>Number of window panes sampled as sky portals (0 when the scene has none that help).</summary>
+    public int SkyPortalCount => _portals?.Count ?? 0;
+
+    /// <summary>Fraction of pixels still receiving samples; 1 until adaptive sampling retires some.</summary>
+    public float ActiveFraction { get; private set; } = 1;
+
+    /// <summary>Builds a tracer for the BIM mesh alone, using the stock material of each surface category.</summary>
     public PathTracer(SceneMesh mesh, int width, int height, RenderCamera camera, RenderSettings? settings = null)
+        : this(new RenderSceneBuilder().AddBuilding(mesh ?? throw new ArgumentNullException(nameof(mesh))).Build(),
+            width, height, camera, settings)
     {
-        ArgumentNullException.ThrowIfNull(mesh);
-        if (width is < 1 or > 8192 || height is < 1 or > 8192)
-            throw new ArgumentOutOfRangeException(nameof(width), "Render size must be 1–8192 pixels.");
-        Width = width;
-        Height = height;
-        _bvh = new Bvh(mesh);
-        _kinds = [.. mesh.TriangleKinds];
-        _normals = new Vector3[_kinds.Length];
-        for (var triangle = 0; triangle < _kinds.Length; triangle++)
-            _normals[triangle] = _bvh.Normal(triangle);
-        _accumulation = new Vector3[width * height];
-        _direct = new Vector3[width * height];
-        _settings = settings ?? new RenderSettings();
-        _sunDirection = Vector3.Normalize(_settings.SunDirection);
-        _sunCosine = MathF.Cos(_settings.SunAngularRadiusDegrees * MathF.PI / 180);
-        _camera = camera;
     }
 
-    /// <summary>Changes the viewpoint and restarts accumulation.</summary>
+    /// <summary>Builds a tracer for a complete scene (BIM model, linked models and lights).</summary>
+    public PathTracer(RenderScene scene, int width, int height, RenderCamera camera, RenderSettings? settings = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+        if (width is < 1 or > 8192 || height is < 1 or > 8192)
+            throw new ArgumentOutOfRangeException(nameof(width), "Render size must be 1–8192 pixels.");
+        var buildClock = System.Diagnostics.Stopwatch.StartNew();
+        _scene = scene;
+        Width = width;
+        Height = height;
+        _settings = settings ?? new RenderSettings();
+        _camera = camera;
+
+        _surfaces = scene.Materials.Select(SurfaceData.From).ToArray();
+        var opaqueTriangles = new List<int>(scene.TriangleCount);
+        var glassTriangles = new List<int>();
+        for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+            (_surfaces[scene.TriangleMaterial[triangle]].Transmission > 0 ? glassTriangles : opaqueTriangles).Add(triangle);
+        _opaque = new Bvh(scene.Positions, scene.Indices, opaqueTriangles.ToArray(), cancellationToken);
+        _transmissive = glassTriangles.Count == 0
+            ? null
+            : new Bvh(scene.Positions, scene.Indices, glassTriangles.ToArray(), cancellationToken);
+
+        var (min, max) = scene.Bounds();
+        var reach = MathF.Max(MathF.Max(MathF.Abs(min.X), MathF.Abs(max.X)),
+            MathF.Max(MathF.Max(MathF.Abs(min.Y), MathF.Abs(max.Y)), MathF.Max(MathF.Abs(min.Z), MathF.Abs(max.Z))));
+        _rayEpsilon = MathF.Max(1e-3f, reach * 4e-7f);
+
+        _sceneMin = min;
+        _sceneMax = max;
+        _emitters = Emitters.TryCreate(scene, _surfaces, _opaque);
+        // Windows become light portals so an interior is lit by the sky through them instead of by luck. They are
+        // found once from the geometry; the SkyPortals setting only decides whether they are used.
+        if (glassTriangles.Count > 0)
+            _portalCandidates = SkyPortals.TryCreate(scene, glassTriangles, _opaque, _rayEpsilon);
+        ApplySettings(_settings);
+        _buildMilliseconds = buildClock.Elapsed.TotalMilliseconds;
+        AllocateImageBuffers(width, height);
+    }
+
+    /// <summary>Derives everything that depends on lighting and quality settings; geometry structures are untouched.</summary>
+    private void ApplySettings(RenderSettings settings)
+    {
+        _settings = settings;
+        _sunDirection = Vector3.Normalize(settings.SunDirection.LengthSquared() > 1e-8f ? settings.SunDirection : Vector3.UnitZ);
+        _sky = new SkyModel(settings.Sky, _sunDirection, settings.Turbidity);
+        var radius = Math.Clamp(settings.SunAngularRadiusDegrees, 0.05f, 15f) * MathF.PI / 180;
+        _sunCosine = MathF.Cos(radius);
+        var solidAngle = 2 * MathF.PI * (1 - _sunCosine);
+        _sunPdf = 1 / solidAngle;
+        var sunColor = _sky.SunColor;
+        _sunRadiance = settings.SunIntensity > 0
+            ? sunColor * (MathF.PI * settings.SunIntensity / solidAngle)
+            : Vector3.Zero;
+        _skyScale = new Vector3(Math.Max(0, settings.SkyIntensity));
+        _lightSampler = _scene.Lights.Length == 0
+            ? null
+            : new LightSampler(_scene.Lights, _sceneMin, _sceneMax,
+                settings.LightCandidates > 0 ? settings.LightCandidates : int.MaxValue,
+                settings.LightCandidates > 0 ? settings.LightCullThreshold : 0);
+        _portals = settings.SkyPortals && _skyScale.X > 0 ? _portalCandidates : null;
+        if (!settings.UseRadianceCache || settings.MaxBounces > 28)
+        {
+            _radianceCache = null;
+        }
+        else
+        {
+            var cell = settings.RadianceCacheCellSize > 0
+                ? settings.RadianceCacheCellSize
+                : Math.Clamp((_sceneMax - _sceneMin).Length() / 10f, 0.4f, 1.5f);
+            if (_radianceCache is null || MathF.Abs(_radianceCache.CellSize - cell) > 1e-6f)
+                _radianceCache = new RadianceCache(cell, CacheCapacityFor(_sceneMax - _sceneMin, cell))
+                {
+                    MinimumSamples = Math.Max(1, settings.RadianceCacheMinimumSamples),
+                    WindowSamples = Math.Clamp(settings.RadianceCacheWindow, 4, 4000)
+                };
+        }
+    }
+
+    /// <summary>Table size from the surface area to cover: about one entry per cell per orientation, at most 22 MB.</summary>
+    private static int CacheCapacityFor(Vector3 extent, float cell)
+    {
+        var area = 2 * (extent.X * extent.Y + extent.Y * extent.Z + extent.X * extent.Z);
+        var cells = Math.Max(4096.0, area / (cell * cell) * 3);
+        // Capped at 2^20 entries (22 MB): a huge ground plane would otherwise size the table for kilometers of surface nobody sees.
+        return Math.Clamp((int)Math.Ceiling(Math.Log2(cells * 2)), 16, 20);
+    }
+
+    /// <summary>
+    /// Forgets cached light inside a box, for example after an element moved or a luminaire changed, and restarts the
+    /// image. Returns the number of cache entries dropped.
+    /// </summary>
+    public int InvalidateRegion(Vector3 min, Vector3 max)
+    {
+        var removed = _radianceCache?.InvalidateBox(min, max) ?? 0;
+        Reset();
+        return removed;
+    }
+
+    private void AllocateImageBuffers(int width, int height)
+    {
+        Width = width;
+        Height = height;
+        _accumulation = new Vector3[width * height];
+        _direct = new Vector3[width * height];
+        _luminanceSquares = new float[width * height];
+        _indirectSquares = new float[width * height];
+        _counts = new ushort[width * height];
+        _active = new bool[width * height];
+        Array.Fill(_active, true);
+        SampleCount = 0;
+        ActiveFraction = 1;
+        _anyConverged = false;
+        _features = null;
+        _primary = null;
+    }
+
+    /// <summary>
+    /// Applies new lighting or quality settings (sun, sky, exposure basis, bounces, light sampling, denoiser) and restarts
+    /// accumulation. The acceleration structures, materials and image buffers are reused, so the cost is a few
+    /// milliseconds even for a very large model. Call it from the same thread that calls <see cref="RenderPass"/>, never
+    /// while a pass is running.
+    /// </summary>
+    public void UpdateSettings(RenderSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ApplySettings(settings);
+        _radianceCache?.Clear();   // light changed, so what was cached no longer describes the scene
+        Reset();
+    }
+
+    /// <summary>
+    /// Changes the image size and restarts accumulation. Only the per-pixel buffers are reallocated; geometry is kept, so
+    /// a live preview can change resolution without rebuilding anything. Not safe while a pass is running.
+    /// </summary>
+    public void Resize(int width, int height)
+    {
+        if (width is < 1 or > 8192 || height is < 1 or > 8192)
+            throw new ArgumentOutOfRangeException(nameof(width), "Render size must be 1–8192 pixels.");
+        if (width == Width && height == Height)
+        {
+            Reset();
+            return;
+        }
+        AllocateImageBuffers(width, height);
+    }
+
+    /// <summary>Changes the viewpoint and restarts accumulation (constant time apart from clearing the image buffers).</summary>
     public void SetCamera(RenderCamera camera)
     {
         _camera = camera;
@@ -97,81 +267,264 @@ public sealed class PathTracer
     {
         Array.Clear(_accumulation);
         Array.Clear(_direct);
+        Array.Clear(_luminanceSquares);
+        Array.Clear(_indirectSquares);
+        Array.Clear(_counts);
+        Array.Fill(_active, true);
         SampleCount = 0;
+        ActiveFraction = 1;
+        _anyConverged = false;
         _features = null;
     }
 
-    private FeatureBuffer? _features;
-
-    /// <summary>Returns the camera basis scaled so (x, y) in [-1, 1] spans the image plane.</summary>
-    private (Vector3 Forward, Vector3 Right, Vector3 Up) CameraBasis()
+    /// <summary>Mean samples per pixel actually taken, which differs from <see cref="SampleCount"/> under adaptive sampling.</summary>
+    public double AverageSamplesPerPixel
     {
-        var forward = Vector3.Normalize(_camera.Target - _camera.Position);
-        var worldUp = MathF.Abs(forward.Z) > 0.999f ? Vector3.UnitY : Vector3.UnitZ;
-        var right = Vector3.Normalize(Vector3.Cross(forward, worldUp));
-        var up = Vector3.Cross(right, forward);
-        var halfHeight = MathF.Tan(_camera.VerticalFieldOfViewDegrees * MathF.PI / 360);
-        return (forward, right * (halfHeight * Width / Height), up * halfHeight);
+        get
+        {
+            long total = 0;
+            foreach (var count in _counts) total += count;
+            return (double)total / _counts.Length;
+        }
     }
 
-    /// <summary>Casts one pixel-centre ray per pixel to record first-hit normal, albedo and depth.</summary>
+    // ---------------------------------------------------------------- camera
+
+    private readonly record struct CameraBasis(Vector3 Forward, Vector3 Right, Vector3 Up, float HalfWidth,
+        float HalfHeight, float VerticalShift);
+
+    /// <summary>Returns the camera frame; with vertical correction the image plane stays upright and is shifted instead.</summary>
+    private CameraBasis Basis()
+    {
+        var forward = Vector3.Normalize(_camera.Target - _camera.Position);
+        var halfHeight = MathF.Tan(Math.Clamp(_camera.VerticalFieldOfViewDegrees, 5f, 150f) * MathF.PI / 360);
+        var halfWidth = halfHeight * Width / Height;
+        if (_camera.CorrectVerticals && MathF.Abs(forward.Z) < 0.97f)
+        {
+            var horizontal = Vector3.Normalize(new Vector3(forward.X, forward.Y, 0));
+            var rightLevel = Vector3.Normalize(Vector3.Cross(horizontal, Vector3.UnitZ));
+            return new CameraBasis(horizontal, rightLevel, Vector3.UnitZ, halfWidth, halfHeight,
+                forward.Z / MathF.Sqrt(1 - forward.Z * forward.Z));
+        }
+        var worldUp = MathF.Abs(forward.Z) > 0.999f ? Vector3.UnitY : Vector3.UnitZ;
+        var right = Vector3.Normalize(Vector3.Cross(forward, worldUp));
+        return new CameraBasis(forward, right, Vector3.Cross(right, forward), halfWidth, halfHeight, 0);
+    }
+
+    /// <summary>Creates the primary ray through continuous pixel coordinates, including thin-lens blur.</summary>
+    private (Vector3 Origin, Vector3 Direction) PrimaryRay(in CameraBasis basis, float column, float row,
+        ref Sampler sampler)
+    {
+        var x = 2 * column / Width - 1;
+        var y = 1 - 2 * row / Height;
+        var unscaled = basis.Forward + basis.Right * (x * basis.HalfWidth) + basis.Up * (y * basis.HalfHeight + basis.VerticalShift);
+        if (_camera.ApertureRadius <= 0) return (_camera.Position, Vector3.Normalize(unscaled));
+        var lens = Sampling.Disk(sampler.NextFloat(), sampler.NextFloat()) * _camera.ApertureRadius;
+        var origin = _camera.Position + basis.Right * lens.X + basis.Up * lens.Y;
+        var focus = _camera.Position + unscaled * _camera.EffectiveFocusDistance;
+        return (origin, Vector3.Normalize(focus - origin));
+    }
+
+    // ---------------------------------------------------------------- features for the denoiser
+
+    /// <summary>Casts one pixel-centre ray per pixel to record first-hit normal, albedo and depth, looking through glass.</summary>
     public FeatureBuffer CaptureFeatures()
     {
         if (_features is not null) return _features;
         var features = new FeatureBuffer(Width, Height);
-        var (forward, right, up) = CameraBasis();
+        var basis = Basis();
         Parallel.For(0, Height, row =>
         {
+            var sampler = new Sampler((uint)row, 0, 0);
             for (var column = 0; column < Width; column++)
             {
                 var index = row * Width + column;
+                var camera = _camera with { ApertureRadius = 0 };
                 var x = 2 * (column + 0.5f) / Width - 1;
                 var y = 1 - 2 * (row + 0.5f) / Height;
-                var direction = Vector3.Normalize(forward + right * x + up * y);
-                var hit = new RayHit { Distance = float.MaxValue };
-                if (!_bvh.Intersect(_camera.Position, direction, 1e-4f, ref hit))
+                var direction = Vector3.Normalize(basis.Forward + basis.Right * (x * basis.HalfWidth) +
+                                                  basis.Up * (y * basis.HalfHeight + basis.VerticalShift));
+                var origin = camera.Position;
+                var found = false;
+                var travelled = 0f;
+                for (var crossing = 0; crossing < MaxGlassCrossings; crossing++)
                 {
-                    features.Depth[index] = float.PositiveInfinity;
-                    continue;
+                    if (!Closest(origin, direction, float.MaxValue, out var hit, out var bvh)) break;
+                    travelled += hit.Distance;
+                    ref readonly var surface = ref _surfaces[_scene.TriangleMaterial[hit.Triangle]];
+                    var position = origin + direction * hit.Distance;
+                    if (surface.Transmission >= 0.5f)
+                    {
+                        origin = position + direction * _rayEpsilon;
+                        continue;
+                    }
+                    var point = Shade(hit, bvh, position, direction, detailed: true);
+                    features.Normal[index] = point.Normal;
+                    features.Albedo[index] = point.Diffuse;
+                    features.Depth[index] = travelled;
+                    found = true;
+                    break;
                 }
-                var normal = _normals[hit.Triangle];
-                features.Normal[index] = Vector3.Dot(normal, direction) > 0 ? -normal : normal;
-                var kind = _kinds[hit.Triangle];
-                features.Albedo[index] = kind == SurfaceKind.Glass
-                    ? Vector3.One
-                    : Albedo(kind, _camera.Position + direction * hit.Distance);
-                features.Depth[index] = hit.Distance;
+                if (!found) features.Depth[index] = float.PositiveInfinity;
             }
         });
         return _features = features;
     }
 
-    /// <summary>Adds one jittered sample to every pixel, using all available cores.</summary>
+    // ---------------------------------------------------------------- passes
+
+    /// <summary>Adds one jittered sample to every active pixel, using all available cores.</summary>
     public void RenderPass(CancellationToken cancellationToken = default)
     {
-        var (forward, right, up) = CameraBasis();
-        const float halfWidth = 1;
-        const float halfHeight = 1;
-        var frame = SampleCount;
-
-        Parallel.For(0, Height, new ParallelOptions
+        var passClock = System.Diagnostics.Stopwatch.StartNew();
+        var raysBefore = RayCount;
+        var basis = Basis();
+        var tilesX = (Width + TileSize - 1) / TileSize;
+        var tilesY = (Height + TileSize - 1) / TileSize;
+        var seed = _settings.Seed * 2654435761u;
+        var tileCount = tilesX * tilesY;
+        Parallel.For(0, tileCount, new ParallelOptions
         {
             CancellationToken = cancellationToken,
             MaxDegreeOfParallelism = _settings.MaxThreads > 0 ? _settings.MaxThreads : -1
-        }, row =>
+        }, tile =>
         {
-            var random = new FastRandom((uint)(row * 9781 + frame * 6271 + 1) ^ (_settings.Seed * 2654435761u));
-            for (var column = 0; column < Width; column++)
+            var tileX = tile % tilesX * TileSize;
+            var tileY = tile / tilesX * TileSize;
+            var endX = Math.Min(Width, tileX + TileSize);
+            var endY = Math.Min(Height, tileY + TileSize);
+            for (var row = tileY; row < endY; row++)
+            for (var column = tileX; column < endX; column++)
             {
-                var x = (2 * (column + random.NextFloat()) / Width - 1) * halfWidth;
-                var y = (1 - 2 * (row + random.NextFloat()) / Height) * halfHeight;
-                var direction = Vector3.Normalize(forward + right * x + up * y);
-                var (direct, indirect) = Trace(_camera.Position, direction, ref random);
-                _accumulation[row * Width + column] += direct + indirect;
-                _direct[row * Width + column] += direct;
+                var index = row * Width + column;
+                if (!_active[index] || _counts[index] == ushort.MaxValue) continue;
+                var sampler = new Sampler((uint)index, _counts[index], seed);
+                var jitter = sampler.JitterPair();
+                // Tent-shaped reconstruction filter about a pixel wide in each direction: smooth edges without blur.
+                var offsetX = Tent(jitter.X);
+                var offsetY = Tent(jitter.Y);
+                var (origin, direction) = PrimaryRay(basis, column + 0.5f + offsetX, row + 0.5f + offsetY, ref sampler);
+                var (direct, indirect) = Trace(origin, direction, ref sampler);
+                var total = direct + indirect;
+                if (!float.IsFinite(total.X + total.Y + total.Z))
+                {
+                    direct = indirect = total = Vector3.Zero;
+                }
+                _accumulation[index] += total;
+                _direct[index] += direct;
+                var luminance = Sampling.Luminance(total);
+                _luminanceSquares[index] += luminance * luminance;
+                var indirectLuminance = Sampling.Luminance(indirect);
+                _indirectSquares[index] += indirectLuminance * indirectLuminance;
+                _counts[index]++;
+            }
+            Interlocked.Add(ref _rayCount, _threadRays);
+            _threadRays = 0;
+            if (_threadCacheLookups != 0)
+            {
+                Interlocked.Add(ref _cacheLookups, _threadCacheLookups);
+                Interlocked.Add(ref _cacheHits, _threadCacheHits);
+                _threadCacheLookups = _threadCacheHits = 0;
             }
         });
         SampleCount++;
+        if (_settings.AdaptiveSampling && SampleCount >= _settings.AdaptiveMinimumSamples) RetireConvergedPixels();
+        _lastPassMilliseconds = passClock.Elapsed.TotalMilliseconds;
+        _lastPassRays = RayCount - raysBefore;
+    }
+
+    /// <summary>Maps a uniform value in [0, 1) to a triangular distribution on (−0.8, 0.8) pixels.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float Tent(float u) => 0.8f * (u < 0.5f ? MathF.Sqrt(2 * u) - 1 : 1 - MathF.Sqrt(2 - 2 * u));
+
+    /// <summary>
+    /// Marks pixels converged when the relative standard error of their luminance falls below the tolerance, then
+    /// keeps every pixel next to an unconverged one active so edges between noisy and settled areas stay coherent.
+    /// </summary>
+    private void RetireConvergedPixels()
+    {
+        var converged = new bool[_counts.Length];
+        var tolerance = _settings.AdaptiveTolerance;
+        Parallel.For(0, Height, row =>
+        {
+            for (var column = 0; column < Width; column++)
+            {
+                var index = row * Width + column;
+                var count = _counts[index];
+                if (count < _settings.AdaptiveMinimumSamples) continue;
+                var mean = Sampling.Luminance(_accumulation[index]) / count;
+                var variance = MathF.Max(0, _luminanceSquares[index] / count - mean * mean);
+                // Bias toward the mean so near-black pixels do not demand endless samples.
+                var error = MathF.Sqrt(variance / count) / (mean + 0.08f);
+                converged[index] = error < tolerance;
+            }
+        });
+        var active = 0;
+        for (var row = 0; row < Height; row++)
+        for (var column = 0; column < Width; column++)
+        {
+            var index = row * Width + column;
+            var keep = !converged[index];
+            if (!keep)
+            {
+                for (var dy = -1; dy <= 1 && !keep; dy++)
+                for (var dx = -1; dx <= 1; dx++)
+                {
+                    var nx = column + dx;
+                    var ny = row + dy;
+                    if ((uint)nx < (uint)Width && (uint)ny < (uint)Height && !converged[ny * Width + nx])
+                    {
+                        keep = true;
+                        break;
+                    }
+                }
+            }
+            _active[index] = keep;
+            if (keep) active++;
+        }
+        _anyConverged = active < _counts.Length;
+        ActiveFraction = (float)active / _counts.Length;
+    }
+
+    // ---------------------------------------------------------------- image output
+
+    /// <summary>
+    /// Variance of the mean indirect luminance of each pixel (sample variance divided by the sample count). Pixels with
+    /// fewer than three samples report a large value, so a denoiser treats them as unreliable.
+    /// </summary>
+    public float[] IndirectVarianceOfMean()
+    {
+        var variance = new float[_accumulation.Length];
+        FillIndirectVariance(variance);
+        return variance;
+    }
+
+    private void FillIndirectVariance(float[] variance)
+    {
+        for (var index = 0; index < _accumulation.Length; index++)
+        {
+            var count = _counts[index];
+            if (count < 3) { variance[index] = 1e3f; continue; }
+            var mean = Sampling.Luminance(_accumulation[index] - _direct[index]) / count;
+            var perSample = MathF.Max(0, _indirectSquares[index] / count - mean * mean) * count / (count - 1);
+            variance[index] = perSample / count;
+        }
+    }
+
+    /// <summary>Average over pixels of (standard error of the indirect estimate) / (its brightness + a floor); a gauge of how noisy the image still is.</summary>
+    public float MeanRelativeNoise() => MeanRelativeNoise(LinearComponents().Indirect, IndirectVarianceOfMean());
+
+    private float MeanRelativeNoise(Vector3[] indirect, float[] variance)
+    {
+        double sum = 0;
+        var used = 0;
+        for (var index = 0; index < _counts.Length; index++)
+        {
+            if (_counts[index] < 3) continue;
+            sum += Math.Min(2.0, Math.Sqrt(variance[index]) / (Sampling.Luminance(indirect[index]) + 0.01));
+            used++;
+        }
+        return used == 0 ? 1f : (float)(sum / used);
     }
 
     /// <summary>Returns the mean direct and indirect radiance separately (render passes / AOVs).</summary>
@@ -179,11 +532,12 @@ public sealed class PathTracer
     {
         var direct = new Vector3[_accumulation.Length];
         var indirect = new Vector3[_accumulation.Length];
-        if (SampleCount == 0) return (direct, indirect);
         for (var index = 0; index < direct.Length; index++)
         {
-            direct[index] = _direct[index] / SampleCount;
-            indirect[index] = (_accumulation[index] - _direct[index]) / SampleCount;
+            var count = _counts[index];
+            if (count == 0) continue;
+            direct[index] = _direct[index] / count;
+            indirect[index] = (_accumulation[index] - _direct[index]) / count;
         }
         return (direct, indirect);
     }
@@ -194,200 +548,865 @@ public sealed class PathTracer
     /// </summary>
     public Vector3[] LinearImage(bool denoise)
     {
+        if (denoise && SampleCount > 0 && _settings.VarianceGuidedDenoising) return GuidedImage();
         var image = new Vector3[_accumulation.Length];
         if (SampleCount == 0) return image;
         if (!denoise)
         {
-            for (var index = 0; index < image.Length; index++) image[index] = _accumulation[index] / SampleCount;
+            for (var index = 0; index < image.Length; index++)
+                if (_counts[index] > 0) image[index] = _accumulation[index] / _counts[index];
             return image;
         }
         for (var index = 0; index < image.Length; index++)
-            image[index] = (_accumulation[index] - _direct[index]) / SampleCount;
+            if (_counts[index] > 0) image[index] = (_accumulation[index] - _direct[index]) / _counts[index];
+        var denoiseClock = System.Diagnostics.Stopwatch.StartNew();
         var filtered = AtrousDenoiser.Apply(image, CaptureFeatures());
-        for (var index = 0; index < image.Length; index++) filtered[index] += _direct[index] / SampleCount;
+        // Many samples need little filtering; blend back toward the raw estimate so detail is not softened for nothing.
+        var strength = DenoiseStrength();
+        for (var index = 0; index < image.Length; index++)
+        {
+            if (_counts[index] == 0) continue;
+            var raw = image[index];
+            filtered[index] = Vector3.Lerp(raw, filtered[index], strength) + _direct[index] / _counts[index];
+        }
+        _lastDenoiseMilliseconds = denoiseClock.Elapsed.TotalMilliseconds;
         return filtered;
     }
 
-    /// <summary>Returns tone-mapped, gamma-encoded pixels in BGRA32 order for display.</summary>
-    public byte[] ToBgra32(bool denoise = false)
+    /// <summary>
+    /// The variance-guided denoised image. Its working buffers come from a pool, so producing a frame allocates one
+    /// image-sized array (the result) instead of a dozen.
+    /// </summary>
+    private Vector3[] GuidedImage()
     {
-        var pixels = new byte[Width * Height * 4];
-        var image = LinearImage(denoise);
-        for (var index = 0; index < image.Length; index++)
+        var count = _accumulation.Length;
+        var denoiseClock = System.Diagnostics.Stopwatch.StartNew();
+        var image = System.Buffers.ArrayPool<Vector3>.Shared.Rent(count);
+        var variance = System.Buffers.ArrayPool<float>.Shared.Rent(count);
+        try
         {
-            var color = image[index] * _settings.Exposure;
-            pixels[index * 4] = Encode(color.Z);
-            pixels[index * 4 + 1] = Encode(color.Y);
-            pixels[index * 4 + 2] = Encode(color.X);
-            pixels[index * 4 + 3] = 255;
+            for (var index = 0; index < count; index++)
+                image[index] = _counts[index] > 0 ? (_accumulation[index] - _direct[index]) / _counts[index] : Vector3.Zero;
+            FillIndirectVariance(variance);
+            var noise = MeanRelativeNoise(image, variance);
+            var denoiser = Denoiser ?? new VarianceGuidedDenoiser(_settings.DenoiserLumaSigmaFewSamples, _settings.DenoiserLumaSigma,
+                _settings.DenoiserCleanNoise, _settings.DenoiserNoisyNoise, _settings.DenoiserIterations);
+            var guided = denoiser.Denoise(image, variance, CaptureFeatures(), noise);
+            for (var index = 0; index < count; index++)
+                if (_counts[index] > 0) guided[index] += _direct[index] / _counts[index];
+            _lastDenoiseMilliseconds = denoiseClock.Elapsed.TotalMilliseconds;
+            return guided;
         }
-        return pixels;
+        finally
+        {
+            System.Buffers.ArrayPool<Vector3>.Shared.Return(image);
+            System.Buffers.ArrayPool<float>.Shared.Return(variance);
+        }
     }
 
+    /// <summary>1 at low sample counts, easing to 0.55 once the image is already clean.</summary>
+    private float DenoiseStrength()
+    {
+        var samples = (float)AverageSamplesPerPixel;
+        return samples <= 64 ? 1f : Math.Clamp(1 - 0.45f * (samples - 64) / 448f, 0.55f, 1f);
+    }
+
+    /// <summary>Returns tone-mapped, gamma-encoded pixels in BGRA32 order for display.</summary>
+    public byte[] ToBgra32(bool denoise = false, ImageFinish? finish = null) =>
+        ImageProcessor.ToBgra32(LinearImage(denoise), Width, Height, _settings.Exposure, finish ?? ImageProcessor.Plain,
+            CaptureFeatures);
+
     /// <summary>Returns the linear (pre-tone-mapping) mean radiance for one pixel.</summary>
-    public Vector3 LinearPixel(int column, int row) =>
-        SampleCount == 0 ? Vector3.Zero : _accumulation[row * Width + column] / SampleCount;
+    public Vector3 LinearPixel(int column, int row)
+    {
+        var index = row * Width + column;
+        return _counts[index] == 0 ? Vector3.Zero : _accumulation[index] / _counts[index];
+    }
+
+    /// <summary>Base exposure multiplier from the settings, applied before <see cref="ImageFinish"/>.</summary>
+    public float BaseExposure => _settings.Exposure;
+
+    // ---------------------------------------------------------------- telemetry and diagnostics
+
+    /// <summary>A snapshot of the sizes, costs and cache state of this renderer, for the developer panel.</summary>
+    public RenderTelemetry Telemetry()
+    {
+        var imageBytes = RenderSettings.EstimateImageBytes(Width, Height);
+        return new RenderTelemetry(Width, Height, TriangleCount, _scene.Lights.Length, _emitters?.Count ?? 0, SkyPortalCount,
+            AverageSamplesPerPixel, ActiveFraction, RayCount,
+            _lastPassMilliseconds > 0 ? _lastPassRays / _lastPassMilliseconds / 1000 : 0,
+            _lastPassMilliseconds, _lastDenoiseMilliseconds, _buildMilliseconds, imageBytes, _scene.EstimatedBytes,
+            _radianceCache?.MemoryBytes ?? 0, CacheHitRate, _radianceCache?.OccupiedEntries() ?? 0, GC.GetTotalMemory(false),
+            SampleCount == 0 ? 1 : MeanRelativeNoise());
+    }
+
+    /// <summary>The first surface seen through each pixel centre, with what the diagnostic views need.</summary>
+    private struct PrimaryHit
+    {
+        public Vector3 Position;
+        public Vector3 Normal;
+        public float Depth;
+        public int Material;
+    }
+
+    private PrimaryHit[] PrimaryHits()
+    {
+        if (_primary is { } cached) return cached;
+        var hits = new PrimaryHit[Width * Height];
+        var basis = Basis();
+        Parallel.For(0, Height, row =>
+        {
+            for (var column = 0; column < Width; column++)
+            {
+                var index = row * Width + column;
+                var x = 2 * (column + 0.5f) / Width - 1;
+                var y = 1 - 2 * (row + 0.5f) / Height;
+                var direction = Vector3.Normalize(basis.Forward + basis.Right * (x * basis.HalfWidth) +
+                                                  basis.Up * (y * basis.HalfHeight + basis.VerticalShift));
+                var origin = _camera.Position;
+                var travelled = 0f;
+                hits[index].Depth = float.PositiveInfinity;
+                for (var crossing = 0; crossing < MaxGlassCrossings; crossing++)
+                {
+                    if (!Closest(origin, direction, float.MaxValue, out var hit, out var bvh)) break;
+                    travelled += hit.Distance;
+                    var position = origin + direction * hit.Distance;
+                    var material = _scene.TriangleMaterial[hit.Triangle];
+                    if (_surfaces[material].Transmission >= 0.5f)
+                    {
+                        origin = position + direction * _rayEpsilon;
+                        continue;
+                    }
+                    var point = Shade(hit, bvh, position, direction, detailed: false);
+                    hits[index] = new PrimaryHit { Position = position, Normal = point.Normal, Depth = travelled, Material = material };
+                    break;
+                }
+            }
+        });
+        return _primary = hits;
+    }
 
     /// <summary>
-    /// Follows one camera path, adding direct sun light at every diffuse vertex. Light gathered
-    /// before the first diffuse bounce is returned as Direct; everything after it as Indirect.
+    /// Renders one diagnostic view as display-ready colors in [0, 1]. Views that read the accumulated image report
+    /// zero until at least one pass has run.
     /// </summary>
-    private (Vector3 Direct, Vector3 Indirect) Trace(Vector3 origin, Vector3 direction, ref FastRandom random)
+    public Vector3[] Diagnostic(DiagnosticView view)
+    {
+        var hits = PrimaryHits();
+        var image = new Vector3[Width * Height];
+        var features = CaptureFeatures();
+        var sky = new Vector3(0.08f, 0.09f, 0.11f);
+
+        float Percentile95(Func<int, float> value, Func<int, bool> valid, float fallback)
+        {
+            var sample = new List<float>();
+            for (var i = 0; i < hits.Length; i += Math.Max(1, hits.Length / 4096)) if (valid(i)) sample.Add(value(i));
+            return sample.Count == 0 ? fallback : sample.OrderBy(x => x).ElementAt((int)((sample.Count - 1) * 0.95));
+        }
+        static Vector3 Gamma(Vector3 linear) => new(MathF.Pow(Math.Clamp(linear.X, 0, 1), 1 / 2.2f), MathF.Pow(Math.Clamp(linear.Y, 0, 1), 1 / 2.2f), MathF.Pow(Math.Clamp(linear.Z, 0, 1), 1 / 2.2f));
+        Vector3 Tone(Vector3 radiance) { var v = radiance * _settings.Exposure; return Gamma(v / (Vector3.One + v)); }
+
+        switch (view)
+        {
+            case DiagnosticView.Normals:
+                for (var i = 0; i < image.Length; i++) image[i] = float.IsInfinity(hits[i].Depth) ? sky : hits[i].Normal * 0.5f + new Vector3(0.5f);
+                break;
+            case DiagnosticView.Albedo:
+                for (var i = 0; i < image.Length; i++) image[i] = float.IsInfinity(hits[i].Depth) ? sky : Gamma(features.Albedo[i]);
+                break;
+            case DiagnosticView.Depth:
+            {
+                var near = float.MaxValue;
+                foreach (var hit in hits) if (!float.IsInfinity(hit.Depth)) near = MathF.Min(near, hit.Depth);
+                var far = Percentile95(i => hits[i].Depth, i => !float.IsInfinity(hits[i].Depth), near * 4);
+                var span = MathF.Log2(MathF.Max(far / MathF.Max(near, 1e-3f), 1.001f));
+                for (var i = 0; i < image.Length; i++)
+                    image[i] = float.IsInfinity(hits[i].Depth) ? sky : new Vector3(1 - Math.Clamp(MathF.Log2(hits[i].Depth / MathF.Max(near, 1e-3f)) / span, 0f, 1f));
+                break;
+            }
+            case DiagnosticView.WorldPosition:
+                for (var i = 0; i < image.Length; i++)
+                {
+                    var p = hits[i].Position;
+                    var q = p + new Vector3(0.37f); // offset so walls on whole-meter planes do not flicker between 0 and 1
+                    image[i] = float.IsInfinity(hits[i].Depth) ? sky : new Vector3(q.X - MathF.Floor(q.X), q.Y - MathF.Floor(q.Y), q.Z - MathF.Floor(q.Z));
+                }
+                break;
+            case DiagnosticView.MaterialId:
+                for (var i = 0; i < image.Length; i++) image[i] = float.IsInfinity(hits[i].Depth) ? sky : DiagnosticColors.Id(hits[i].Material);
+                break;
+            case DiagnosticView.Roughness:
+                for (var i = 0; i < image.Length; i++) image[i] = float.IsInfinity(hits[i].Depth) ? sky : new Vector3(_scene.Materials[hits[i].Material].Roughness);
+                break;
+            case DiagnosticView.Metallic:
+                for (var i = 0; i < image.Length; i++) image[i] = float.IsInfinity(hits[i].Depth) ? sky : new Vector3(_scene.Materials[hits[i].Material].Metallic);
+                break;
+            case DiagnosticView.SampleCount:
+            {
+                var most = (float)Math.Max(1, _counts.Max(count => (int)count));
+                for (var i = 0; i < image.Length; i++) image[i] = DiagnosticColors.Heat(_counts[i] / most);
+                break;
+            }
+            case DiagnosticView.Noise:
+            case DiagnosticView.DenoiserConfidence:
+            {
+                var (_, indirect) = LinearComponents();
+                var variance = IndirectVarianceOfMean();
+                for (var i = 0; i < image.Length; i++)
+                {
+                    var noise = _counts[i] < 3 ? 2f : MathF.Min(2f, MathF.Sqrt(variance[i]) / (Sampling.Luminance(indirect[i]) + 0.01f));
+                    image[i] = view == DiagnosticView.Noise ? DiagnosticColors.Heat(noise / 0.5f) : new Vector3(1 / (1 + noise * 4));
+                }
+                break;
+            }
+            case DiagnosticView.LightComplexity:
+            {
+                var counts = new int[image.Length];
+                for (var i = 0; i < image.Length; i++) counts[i] = _lightSampler is null || float.IsInfinity(hits[i].Depth) ? 0 : _lightSampler.LightsNear(hits[i].Position);
+                var most = (float)Math.Max(1, counts.Max());
+                for (var i = 0; i < image.Length; i++) image[i] = DiagnosticColors.Heat(counts[i] / most);
+                break;
+            }
+            case DiagnosticView.CacheResidency:
+                for (var i = 0; i < image.Length; i++)
+                    image[i] = _radianceCache is not null && !float.IsInfinity(hits[i].Depth) && _radianceCache.TryGet(hits[i].Position, hits[i].Normal, out _)
+                        ? Vector3.One : new Vector3(0.1f, 0f, 0f);
+                break;
+            case DiagnosticView.PortalReach:
+            {
+                var reach = new float[image.Length];
+                for (var i = 0; i < image.Length; i++) reach[i] = _portals is null || float.IsInfinity(hits[i].Depth) ? 0 : _portals.Reach(hits[i].Position, hits[i].Normal);
+                var most = Math.Max(reach.Max(), 1e-6f);
+                for (var i = 0; i < image.Length; i++) image[i] = DiagnosticColors.Heat(MathF.Sqrt(reach[i] / most));
+                break;
+            }
+            case DiagnosticView.DirectLight:
+            case DiagnosticView.IndirectLight:
+            {
+                var (direct, indirect) = LinearComponents();
+                var source = view == DiagnosticView.DirectLight ? direct : indirect;
+                for (var i = 0; i < image.Length; i++) image[i] = Tone(source[i]);
+                break;
+            }
+        }
+        return image;
+    }
+
+    /// <summary>The same view as <see cref="Diagnostic"/> encoded as BGRA32 for display.</summary>
+    public byte[] DiagnosticBgra32(DiagnosticView view)
+    {
+        var image = Diagnostic(view);
+        var bytes = new byte[image.Length * 4];
+        for (var i = 0; i < image.Length; i++)
+        {
+            bytes[i * 4] = (byte)(Math.Clamp(image[i].Z, 0f, 1f) * 255 + 0.5f);
+            bytes[i * 4 + 1] = (byte)(Math.Clamp(image[i].Y, 0f, 1f) * 255 + 0.5f);
+            bytes[i * 4 + 2] = (byte)(Math.Clamp(image[i].X, 0f, 1f) * 255 + 0.5f);
+            bytes[i * 4 + 3] = 255;
+        }
+        return bytes;
+    }
+
+    // ---------------------------------------------------------------- light transport
+
+    /// <summary>Finds the nearest hit among opaque and transmissive geometry.</summary>
+    private bool Closest(Vector3 origin, Vector3 direction, float maxDistance, out RayHit hit, out Bvh bvh)
+    {
+        _threadRays++;
+        hit = new RayHit { Distance = maxDistance };
+        bvh = _opaque;
+        var found = _opaque.Intersect(origin, direction, _rayEpsilon * 0.1f, ref hit);
+        if (_transmissive is not null && _transmissive.Intersect(origin, direction, _rayEpsilon * 0.1f, ref hit))
+        {
+            bvh = _transmissive;
+            found = true;
+        }
+        return found;
+    }
+
+    /// <summary>The state of a path vertex that shading needs.</summary>
+    private readonly record struct ShadePoint(Vector3 Position, Vector3 Geometric, Vector3 Normal, Vector3 Diffuse,
+        int Material);
+
+    /// <summary>Computes facing normals and the pattern-modulated diffuse color at a hit; <paramref name="detailed"/> evaluates the pattern exactly.</summary>
+    private ShadePoint Shade(in RayHit hit, Bvh bvh, Vector3 position, Vector3 direction, bool detailed)
+    {
+        var triangle = hit.Triangle;
+        var material = _scene.TriangleMaterial[triangle];
+        var geometric = bvh.Normal(in hit);
+        var normal = geometric;
+        if (_scene.Normals is { } normals)
+        {
+            var i = triangle * 3;
+            var smooth = normals[_scene.Indices[i]] * (1 - hit.U - hit.V) + normals[_scene.Indices[i + 1]] * hit.U +
+                         normals[_scene.Indices[i + 2]] * hit.V;
+            if (smooth.LengthSquared() > 1e-6f)
+            {
+                smooth = Vector3.Normalize(smooth);
+                normal = Vector3.Dot(smooth, geometric) < 0 ? -smooth : smooth;
+            }
+        }
+        if (Vector3.Dot(geometric, direction) > 0)
+        {
+            geometric = -geometric;
+            normal = -normal;
+        }
+        ref readonly var surface = ref _surfaces[material];
+        var diffuse = surface.Diffuse;
+        // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
+        // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
+        if (surface.Pattern != SurfacePattern.None)
+            diffuse *= detailed
+                ? SurfacePatterns.Modulate(surface.Pattern, surface.PatternScale, position, geometric)
+                : new Vector3(surface.PatternMean);
+        return new ShadePoint(position, geometric, normal, diffuse, material);
+    }
+
+    /// <summary>
+    /// Follows one camera path, adding direct light at every scattering vertex. Light gathered before the
+    /// first diffuse bounce is returned as Direct; everything after it as Indirect.
+    /// </summary>
+    private (Vector3 Direct, Vector3 Indirect) Trace(Vector3 origin, Vector3 direction, ref Sampler sampler)
     {
         var direct = Vector3.Zero;
         var indirect = Vector3.Zero;
         var throughput = Vector3.One;
-        var specularOrigin = true;
-        var diffuseBounced = false;
-        for (var bounce = 0; bounce <= _settings.MaxBounces; bounce++)
+        var previousDelta = true;          // the last scatter was a perfect mirror or pass-through, so light hits count in full
+        var previousPdf = 0f;
+        var scatterPosition = Vector3.Zero; // where the last non-mirror scatter happened, for portal MIS
+        var scatterNormal = Vector3.UnitZ;
+        var sinceScatter = 0f;             // distance travelled since then (a straight path through glass keeps counting)
+        var denoisable = true;             // no glossy reflection yet, so the indirect/direct split is meaningful
+        var inIndirect = false;
+        var bounce = 0;
+        var crossings = 0;
+        var clamp = _settings.FireflyClamp;
+
+        // With a radiance cache the path keeps a record of its scatter vertices so that, once it ends, the light each
+        // vertex sent back can be estimated and stored (L_i = D_i + w_i * L_{i+1}, evaluated from the last vertex down).
+        var cache = _radianceCache;
+        Span<PathVertex> vertices = cache is null ? default : stackalloc PathVertex[_settings.MaxBounces + 3];
+        var vertexCount = 0;
+        var current = -1;
+        var recorded = Vector3.Zero;   // light gathered at the current vertex, written into its record when the path moves on
+
+        while (bounce <= _settings.MaxBounces && crossings < _settings.MaxBounces + MaxGlassCrossings)
         {
-            var hit = new RayHit { Distance = float.MaxValue };
-            if (!_bvh.Intersect(origin, direction, 1e-4f, ref hit))
+            if (!Closest(origin, direction, float.MaxValue, out var hit, out var bvh))
             {
-                var skyRadiance = throughput * Sky(direction, includeSun: specularOrigin);
-                if (diffuseBounced) indirect += skyRadiance; else direct += skyRadiance;
+                // A diffuse or glossy path that leaves through a window could also have been generated by sampling
+                // the window; weight the two strategies against each other so the sky is counted exactly once.
+                var skyWeight = 1f;
+                if (!previousDelta && _portals is not null)
+                {
+                    var portalPdf = _portals.Pdf(scatterPosition, scatterNormal, direction);
+                    if (portalPdf > 0) skyWeight = Sampling.PowerHeuristic(previousPdf, portalPdf);
+                }
+                var radiance = SkyRadiance(direction) * skyWeight;
+                var alignment = Vector3.Dot(direction, _sunDirection);
+                if (alignment > _sunCosine && _sunRadiance != Vector3.Zero)
+                {
+                    var weight = previousDelta ? 1f : Sampling.PowerHeuristic(previousPdf, _sunPdf);
+                    var visible = Vector3.Min(_sunRadiance, new Vector3(CameraSunRadianceLimit));
+                    radiance += visible * weight;
+                }
+                if (cache is not null && vertexCount > 0)
+                {
+                    vertices[current].Direct += recorded;
+                    recorded = default;
+                    vertices[vertexCount++] = default;   // the sky as the final, non-scattering record of the path
+                    current = vertexCount - 1;
+                }
+                Deposit(radiance);
                 break;
             }
 
-            var kind = _kinds[hit.Triangle];
-            var normal = _normals[hit.Triangle];
-            if (Vector3.Dot(normal, direction) > 0) normal = -normal;
+            sinceScatter += hit.Distance;
             var position = origin + direction * hit.Distance;
-            var offsetOrigin = position + normal * 1e-3f;
+            var point = Shade(hit, bvh, position, direction, detailed: previousDelta);
+            ref readonly var surface = ref _surfaces[point.Material];
 
-            if (kind == SurfaceKind.Glass)
+            // Thin glass or a perforated film: a share of rays pass through, optionally reflecting at grazing angles.
+            if (surface.Transmission > 0 && (surface.Transmission >= 1 || sampler.NextFloat() < surface.Transmission))
             {
-                // Thin architectural glazing: Schlick reflection, otherwise straight transmission.
-                var cosine = MathF.Abs(Vector3.Dot(direction, normal));
-                var reflectance = 0.04f + 0.96f * MathF.Pow(1 - cosine, 5);
-                if (random.NextFloat() < reflectance)
+                var cosine = MathF.Abs(Vector3.Dot(direction, point.Geometric));
+                var reflectance = Microfacet.Fresnel(surface.DielectricF0, cosine);
+                if (sampler.NextFloat() < reflectance)
                 {
-                    direction = Vector3.Reflect(direction, normal);
-                    origin = offsetOrigin;
+                    direction = Vector3.Reflect(direction, point.Geometric);
+                    origin = position + point.Geometric * _rayEpsilon;
+                    denoisable = false;
+                    previousDelta = true;
+                    sinceScatter = 0;
                 }
                 else
                 {
-                    throughput *= new Vector3(0.86f, 0.92f, 0.94f);
-                    origin = position - normal * 1e-3f;
+                    // A straight pass keeps the light-sampling state, so what lies beyond is still weighted
+                    // against the sampling of the sun, portals and emitters done at the last real scatter.
+                    throughput *= surface.Tint;
+                    if (current >= 0) vertices[current].Weight *= surface.Tint;
+                    origin = position - point.Geometric * _rayEpsilon;
                 }
-                specularOrigin = true;
+                crossings++;
                 continue;
             }
 
-            var albedo = Albedo(kind, position);
-            var sunRadiance = throughput * albedo * DirectSun(offsetOrigin, normal, ref random);
-            if (diffuseBounced) indirect += sunRadiance; else direct += sunRadiance;
+            // A cached estimate replaces everything the path would still do from here, but only where it is safe:
+            // after a non-mirror bounce (the first visible surface is always computed exactly), on diffuse surfaces
+            // that do not emit, so no light-source sampling is skipped or counted twice.
+            var cacheable = cache is not null && surface.CacheEligible;
+            if (cacheable && bounce >= 1 && !previousDelta)
+            {
+                _threadCacheLookups++;
+                if (cache!.TryGet(point.Position, point.Normal, out var cached))
+                {
+                    _threadCacheHits++;
+                    if (current >= 0) vertices[current].Direct += recorded;
+                    recorded = default;
+                    vertices[vertexCount++] = default;
+                    current = vertexCount - 1;
+                    Deposit(cached);
+                    break;
+                }
+            }
+            if (cache is not null)
+            {
+                if (current >= 0) vertices[current].Direct += recorded;
+                recorded = default;
+                vertices[vertexCount++] = new PathVertex { Position = point.Position, Normal = point.Normal, Eligible = cacheable };
+                current = vertexCount - 1;
+            }
 
-            // Russian roulette after the first bounces keeps cost bounded without bias.
+            if (surface.IsEmissive)
+            {
+                var weight = 1f;
+                if (!previousDelta && _emitters is not null)
+                {
+                    var pdfLight = _emitters.SolidAnglePdf(hit.Triangle, sinceScatter,
+                        MathF.Abs(Vector3.Dot(point.Geometric, direction)));
+                    weight = Sampling.PowerHeuristic(previousPdf, pdfLight);
+                }
+                Deposit(surface.Emission * weight);
+            }
+
+            var viewDirection = -direction;
+            var shadowOrigin = position + point.Geometric * _rayEpsilon;
+            if (surface.HasLobes)
+                Deposit(DirectLight(in point, in surface, viewDirection, shadowOrigin, ref sampler));
+
+            if (bounce == _settings.MaxBounces) break;
+
+            if (!SampleBsdf(in point, in surface, viewDirection, ref sampler, out var next, out var weightBsdf,
+                    out var pdf, out var delta, out var diffuseLobe))
+                break;
+            // Russian roulette keeps cost bounded without bias once the path is dim.
+            var continuation = weightBsdf;
             if (bounce >= 2)
             {
                 var survival = MathF.Min(0.95f, MathF.Max(throughput.X, MathF.Max(throughput.Y, throughput.Z)));
-                if (random.NextFloat() > survival) break;
+                if (sampler.NextFloat() > survival) break;
                 throughput /= survival;
+                continuation /= survival;
             }
-            throughput *= albedo;
-            direction = CosineSampleHemisphere(normal, ref random);
-            origin = offsetOrigin;
-            specularOrigin = false;
-            diffuseBounced = true;
+            throughput *= weightBsdf;
+            if (current >= 0) vertices[current].Weight = continuation;
+            if (diffuseLobe && denoisable) inIndirect = true;
+            else if (!diffuseLobe) denoisable = false;
+            previousDelta = delta;
+            previousPdf = pdf;
+            scatterPosition = position;
+            scatterNormal = point.Normal;
+            sinceScatter = 0;
+            direction = next;
+            origin = shadowOrigin;
+            bounce++;
+        }
+
+        if (cache is not null && vertexCount > 0)
+        {
+            vertices[current].Direct += recorded;
+            // Walk back from the end of the path: what each vertex sent toward the camera is what it gathered itself
+            // plus the (weighted) light that arrived from the next one.
+            var arriving = Vector3.Zero;
+            for (var i = vertexCount - 1; i >= 0; i--)
+            {
+                ref var vertex = ref vertices[i];
+                arriving = vertex.Direct + vertex.Weight * arriving;
+                if (vertex.Eligible)
+                {
+                    var luminance = Sampling.Luminance(arriving);
+                    cache.Add(vertex.Position, vertex.Normal, luminance > CacheValueLimit ? arriving * (CacheValueLimit / luminance) : arriving);
+                }
+            }
         }
         return (direct, indirect);
+
+        void Deposit(Vector3 gathered)
+        {
+            // Light that arrives after a scatter is the usual source of white speckles. Diffuse-chain light is limited
+            // tightly, light after glossy reflections a little more loosely so mirror-like highlights survive.
+            var contribution = throughput * gathered;
+            var scale = 1f;
+            if (clamp > 0 && (inIndirect || bounce > 0 || !denoisable))
+            {
+                var limit = inIndirect ? clamp : clamp * 4;
+                var luminance = Sampling.Luminance(contribution);
+                if (luminance > limit) scale = limit / luminance;
+            }
+            contribution *= scale;
+            if (inIndirect) indirect += contribution; else direct += contribution;
+            recorded += gathered * scale;
+        }
     }
 
-    /// <summary>Samples the finite sun disk and returns its Lambertian contribution (divided by π).</summary>
-    private Vector3 DirectSun(Vector3 origin, Vector3 normal, ref FastRandom random)
+    /// <summary>Radiance of the sky dome (no sun disk) in a direction.</summary>
+    private Vector3 SkyRadiance(Vector3 direction) => _sky.Radiance(direction) * _skyScale;
+
+    /// <summary>
+    /// Samples the sun, explicit lights and emissive triangles at a vertex and returns the reflected radiance,
+    /// weighted against BSDF sampling with multiple importance sampling.
+    /// </summary>
+    private Vector3 DirectLight(in ShadePoint point, in SurfaceData surface, Vector3 view, Vector3 origin,
+        ref Sampler sampler)
     {
-        var lightDirection = SampleCone(_sunDirection, _sunCosine, ref random);
-        var cosine = Vector3.Dot(normal, lightDirection);
-        if (cosine <= 0 || _bvh.Occluded(origin, lightDirection, 1e-4f, float.MaxValue)) return Vector3.Zero;
-        return SunColor * (_settings.SunIntensity * cosine);
+        var total = Vector3.Zero;
+        var nDotV = MathF.Max(Vector3.Dot(point.Normal, view), 1e-4f);
+
+        if (_sunRadiance != Vector3.Zero)
+        {
+            var light = Sampling.Cone(_sunDirection, _sunCosine, sampler.NextFloat(), sampler.NextFloat());
+            var nDotL = Vector3.Dot(point.Normal, light);
+            if (nDotL > 0 && Vector3.Dot(point.Geometric, light) > 0)
+            {
+                var transmittance = Visibility(origin, light, float.MaxValue);
+                if (transmittance != Vector3.Zero)
+                {
+                    var f = Evaluate(in surface, point.Diffuse, point.Normal, view, light, nDotV, nDotL, out var pdf);
+                    total += transmittance * _sunRadiance * f *
+                             (nDotL / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf));
+                }
+            }
+        }
+
+        if (_lightSampler is { } lights)
+        {
+            var near = lights.All(point.Position, out var exhaustive);
+            if (exhaustive)
+            {
+                foreach (var index in near)
+                    total += LightContribution(lights, index, in point, in surface, view, origin, nDotV, ref sampler);
+            }
+            else if (lights.Resample(origin, point.Normal, point.Geometric, Sampling.Luminance(point.Diffuse), ref sampler,
+                         out var chosen, out var risWeight))
+            {
+                total += LightContribution(lights, chosen, in point, in surface, view, origin, nDotV, ref sampler) * risWeight;
+            }
+        }
+
+        if (_emitters is not null) total += _emitters.Sample(this, in point, in surface, view, origin, nDotV, ref sampler);
+
+        if (_portals is not null && _portals.TrySample(point.Position, point.Normal, sampler.NextFloat(),
+                sampler.NextFloat(), sampler.NextFloat(), out var portalDirection, out var portalPdf))
+        {
+            var nDotL = Vector3.Dot(point.Normal, portalDirection);
+            if (nDotL > 0 && Vector3.Dot(point.Geometric, portalDirection) > 0)
+            {
+                var transmittance = Visibility(origin, portalDirection, float.MaxValue);
+                if (transmittance != Vector3.Zero)
+                {
+                    var f = Evaluate(in surface, point.Diffuse, point.Normal, view, portalDirection, nDotV, nDotL, out var pdf);
+                    total += transmittance * SkyRadiance(portalDirection) * f *
+                             (nDotL / portalPdf * Sampling.PowerHeuristic(portalPdf, pdf));
+                }
+            }
+        }
+        return total;
     }
 
-    private static readonly Vector3 SunColor = new(1.0f, 0.93f, 0.82f);
-
-    /// <summary>Analytic daylight sky: horizon haze, blue zenith, and an optional visible sun disk.</summary>
-    private Vector3 Sky(Vector3 direction, bool includeSun)
+    /// <summary>Light reflected toward the viewer from one explicit light, with a shadow ray.</summary>
+    private Vector3 LightContribution(LightSampler lights, int index, in ShadePoint point, in SurfaceData surface,
+        Vector3 view, Vector3 origin, float nDotV, ref Sampler sampler)
     {
-        var altitude = MathF.Max(direction.Z, -0.2f);
-        var zenith = new Vector3(0.24f, 0.45f, 0.85f);
-        var horizon = new Vector3(0.78f, 0.84f, 0.90f);
-        var ground = new Vector3(0.32f, 0.30f, 0.27f);
-        var sky = altitude >= 0
-            ? Vector3.Lerp(horizon, zenith, MathF.Pow(altitude, 0.55f))
-            : Vector3.Lerp(horizon, ground, MathF.Min(1, -altitude * 5));
-        var sunAlignment = MathF.Max(0, Vector3.Dot(direction, _sunDirection));
-        sky += SunColor * (0.35f * MathF.Pow(sunAlignment, 24)); // forward-scattering glow
-        if (includeSun && sunAlignment > _sunCosine) sky += SunColor * 40f;
-        return sky * _settings.SkyIntensity;
+        var light = lights[index];
+        var target = light.Position;
+        if (light.Radius > 0)
+        {
+            // A point on the lamp's sphere gives soft shadows without changing the light's total power.
+            target += Sampling.Cone(Vector3.UnitZ, -1f, sampler.NextFloat(), sampler.NextFloat()) * light.Radius;
+        }
+        var toLight = target - origin;
+        var distanceSquared = MathF.Max(toLight.LengthSquared(), 1e-4f);
+        var distance = MathF.Sqrt(distanceSquared);
+        var direction = toLight / distance;
+        var nDotL = Vector3.Dot(point.Normal, direction);
+        if (nDotL <= 0 || Vector3.Dot(point.Geometric, direction) <= 0) return Vector3.Zero;
+        var intensity = lights.Intensity(index, -direction);
+        if (intensity == Vector3.Zero) return Vector3.Zero;
+        var transmittance = Visibility(origin, direction, distance * 0.999f);
+        if (transmittance == Vector3.Zero) return Vector3.Zero;
+        var f = Evaluate(in surface, point.Diffuse, point.Normal, view, direction, nDotV, nDotL, out _);
+        return transmittance * intensity * f * (nDotL / distanceSquared);
     }
 
-    /// <summary>Returns base reflectance; the ground uses a subtle procedural tile so scale is readable.</summary>
-    private static Vector3 Albedo(SurfaceKind kind, Vector3 position) => kind switch
+    /// <summary>Light transmitted along a segment: zero if opaque geometry blocks it, tinted if only glass is crossed.</summary>
+    private Vector3 Visibility(Vector3 origin, Vector3 direction, float maxDistance)
     {
-        SurfaceKind.Wall => new Vector3(0.80f, 0.78f, 0.73f),
-        SurfaceKind.Floor => new Vector3(0.56f, 0.55f, 0.52f),
-        SurfaceKind.Ground => ((int)MathF.Floor(position.X) + (int)MathF.Floor(position.Y) & 1) == 0
-            ? new Vector3(0.30f, 0.40f, 0.24f)
-            : new Vector3(0.28f, 0.37f, 0.22f),
-        _ => new Vector3(0.7f)
-    };
-
-    /// <summary>Cosine-weighted direction around a normal (pdf = cosθ/π, cancels the BRDF).</summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static Vector3 CosineSampleHemisphere(Vector3 normal, ref FastRandom random)
-    {
-        var r1 = random.NextFloat();
-        var r2 = random.NextFloat();
-        var phi = 2 * MathF.PI * r1;
-        var radius = MathF.Sqrt(r2);
-        var (tangent, bitangent) = Basis(normal);
-        return Vector3.Normalize(tangent * (radius * MathF.Cos(phi)) + bitangent * (radius * MathF.Sin(phi)) +
-                                 normal * MathF.Sqrt(MathF.Max(0, 1 - r2)));
+        _threadRays++;
+        if (_opaque.Occluded(origin, direction, _rayEpsilon * 0.1f, maxDistance)) return Vector3.Zero;
+        if (_transmissive is null) return Vector3.One;
+        var transmittance = Vector3.One;
+        var remaining = maxDistance;
+        for (var crossing = 0; crossing < MaxGlassCrossings; crossing++)
+        {
+            var hit = new RayHit { Distance = remaining };
+            if (!_transmissive.Intersect(origin, direction, _rayEpsilon * 0.1f, ref hit)) break;
+            ref readonly var surface = ref _surfaces[_scene.TriangleMaterial[hit.Triangle]];
+            var cosine = MathF.Abs(Vector3.Dot(direction, _transmissive.Normal(in hit)));
+            transmittance *= surface.Tint * (surface.Transmission * (1 - Microfacet.Fresnel(surface.DielectricF0, cosine)));
+            if (transmittance.X + transmittance.Y + transmittance.Z < 1e-3f) return Vector3.Zero;
+            origin += direction * (hit.Distance + _rayEpsilon);
+            if (remaining != float.MaxValue) remaining -= hit.Distance + _rayEpsilon;
+        }
+        return transmittance;
     }
 
-    /// <summary>Uniformly samples a direction inside a cone around an axis.</summary>
-    private static Vector3 SampleCone(Vector3 axis, float cosineMax, ref FastRandom random)
+    // ---------------------------------------------------------------- BSDF
+
+    /// <summary>
+    /// Evaluates the surface response for incoming direction <paramref name="light"/> and returns the BSDF value
+    /// (without the cosine term) plus the density with which <see cref="SampleBsdf"/> would pick that direction.
+    /// </summary>
+    private static Vector3 Evaluate(in SurfaceData surface, Vector3 diffuse, Vector3 normal, Vector3 view,
+        Vector3 light, float nDotV, float nDotL, out float pdf)
     {
-        var cosine = 1 - random.NextFloat() * (1 - cosineMax);
-        var sine = MathF.Sqrt(MathF.Max(0, 1 - cosine * cosine));
-        var phi = 2 * MathF.PI * random.NextFloat();
-        var (tangent, bitangent) = Basis(axis);
-        return tangent * (sine * MathF.Cos(phi)) + bitangent * (sine * MathF.Sin(phi)) + axis * cosine;
+        var half = Vector3.Normalize(light + view);
+        var vDotH = MathF.Max(Vector3.Dot(view, half), 0);
+        var fresnel = Microfacet.Fresnel(surface.F0, vDotH);
+        var value = diffuse * ((Vector3.One - fresnel) * (1 / MathF.PI));
+        var specularProbability = SpecularProbability(in surface, diffuse, nDotV);
+        pdf = (1 - specularProbability) * nDotL * (1 / MathF.PI);
+        if (surface.HasSpecular && !surface.Delta)
+        {
+            var nDotH = MathF.Max(Vector3.Dot(normal, half), 0);
+            var alpha = surface.Alpha;
+            value += fresnel * (Microfacet.Distribution(alpha, nDotH) * Microfacet.Visibility(alpha, nDotL, nDotV));
+            pdf += specularProbability * Microfacet.Pdf(alpha, nDotV, nDotH, vDotH);
+        }
+        return value;
     }
 
-    /// <summary>Builds an orthonormal basis (Duff et al. 2017, branchless).</summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static (Vector3 Tangent, Vector3 Bitangent) Basis(Vector3 n)
+    /// <summary>Chance of sampling the specular lobe: its Fresnel weight relative to the diffuse weight.</summary>
+    private static float SpecularProbability(in SurfaceData surface, Vector3 diffuse, float nDotV)
     {
-        var sign = MathF.CopySign(1, n.Z);
-        var a = -1 / (sign + n.Z);
-        var b = n.X * n.Y * a;
-        return (new Vector3(1 + sign * n.X * n.X * a, sign * b, -sign * n.X),
-                new Vector3(b, sign + n.Y * n.Y * a, -n.Y));
+        if (!surface.HasSpecular) return 0;
+        var specular = Sampling.Luminance(Microfacet.Fresnel(surface.F0, nDotV));
+        var body = Sampling.Luminance(diffuse) * (1 - specular);
+        if (body < 1e-4f) return 1;
+        return Math.Clamp(specular / (specular + body), 0.06f, 0.94f);
     }
 
-    /// <summary>ACES filmic approximation (Narkowicz) followed by sRGB encoding.</summary>
-    private static byte Encode(float linear)
+    /// <summary>
+    /// Chooses the next direction. Returns the throughput weight (BSDF · cosine / pdf), the pdf for MIS (0 for
+    /// perfect mirrors), and whether the lobe was diffuse.
+    /// </summary>
+    private bool SampleBsdf(in ShadePoint point, in SurfaceData surface, Vector3 view, ref Sampler sampler,
+        out Vector3 next, out Vector3 weight, out float pdf, out bool delta, out bool diffuseLobe)
     {
-        var x = MathF.Max(0, linear);
-        var mapped = x * (2.51f * x + 0.03f) / (x * (2.43f * x + 0.59f) + 0.14f);
-        mapped = Math.Clamp(mapped, 0, 1);
-        var srgb = mapped <= 0.0031308f ? 12.92f * mapped : 1.055f * MathF.Pow(mapped, 1 / 2.4f) - 0.055f;
-        return (byte)(srgb * 255 + 0.5f);
+        next = Vector3.UnitZ;
+        weight = Vector3.Zero;
+        pdf = 0;
+        delta = false;
+        diffuseLobe = false;
+        var normal = point.Normal;
+        var nDotV = MathF.Max(Vector3.Dot(normal, view), 1e-4f);
+        var specularProbability = SpecularProbability(in surface, point.Diffuse, nDotV);
+        var chooseSpecular = specularProbability > 0 && sampler.NextFloat() < specularProbability;
+
+        if (!chooseSpecular)
+        {
+            next = Sampling.CosineHemisphere(normal, sampler.NextFloat(), sampler.NextFloat());
+            var nDotL = Vector3.Dot(normal, next);
+            if (nDotL <= 1e-5f || Vector3.Dot(point.Geometric, next) <= 0) return false;
+            var f = Evaluate(in surface, point.Diffuse, normal, view, next, nDotV, nDotL, out pdf);
+            if (pdf <= 1e-9f) return false;
+            weight = f * (nDotL / pdf);
+            diffuseLobe = true;
+            return true;
+        }
+
+        if (surface.Delta)
+        {
+            next = Vector3.Reflect(-view, normal);
+            if (Vector3.Dot(point.Geometric, next) <= 0) return false;
+            weight = Microfacet.Fresnel(surface.F0, nDotV) / specularProbability;
+            delta = true;
+            return true;
+        }
+
+        var (tangent, bitangent) = Sampling.Basis(normal);
+        var localView = new Vector3(Vector3.Dot(view, tangent), Vector3.Dot(view, bitangent), nDotV);
+        var localHalf = Microfacet.SampleVisibleNormal(localView, surface.Alpha, sampler.NextFloat(), sampler.NextFloat());
+        var half = tangent * localHalf.X + bitangent * localHalf.Y + normal * localHalf.Z;
+        next = Vector3.Reflect(-view, half);
+        var cosine = Vector3.Dot(normal, next);
+        if (cosine <= 1e-5f || Vector3.Dot(point.Geometric, next) <= 0) return false;
+        var value = Evaluate(in surface, point.Diffuse, normal, view, next, nDotV, cosine, out pdf);
+        if (pdf <= 1e-9f) return false;
+        weight = value * (cosine / pdf);
+        return true;
     }
-}
 
-/// <summary>Small xorshift generator; one per worker row keeps rendering lock-free.</summary>
-internal struct FastRandom(uint seed)
-{
-    private uint _state = seed == 0 ? 0x9E3779B9u : seed * 747796405u + 2891336453u;
+    // ---------------------------------------------------------------- per-material data
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public float NextFloat()
+    /// <summary>One scatter vertex of a path, kept to estimate and cache the light it sent back.</summary>
+    private struct PathVertex
     {
-        _state ^= _state << 13;
-        _state ^= _state >> 17;
-        _state ^= _state << 5;
-        return (_state >> 8) * (1f / 16777216f);
+        public Vector3 Position;
+        public Vector3 Normal;
+        /// <summary>Light gathered here (emission, direct light, sky) per unit of path throughput.</summary>
+        public Vector3 Direct;
+        /// <summary>Factor applied to light arriving from the next vertex; zero when the path ended here.</summary>
+        public Vector3 Weight;
+        public bool Eligible;
+    }
+
+    /// <summary>Render-ready form of a <see cref="RenderMaterial"/>.</summary>
+    private readonly struct SurfaceData
+    {
+        public Vector3 Diffuse { get; init; }
+        public Vector3 F0 { get; init; }
+        public Vector3 Emission { get; init; }
+        public Vector3 Tint { get; init; }
+        public float Alpha { get; init; }
+        public float Transmission { get; init; }
+        public float DielectricF0 { get; init; }
+        public bool Delta { get; init; }
+        public bool HasSpecular { get; init; }
+        /// <summary>Diffuse enough that one cached value describes it from any side: not a mirror, metal, glass or light source.</summary>
+        public bool CacheEligible { get; init; }
+        public SurfacePattern Pattern { get; init; }
+        public float PatternScale { get; init; }
+        /// <summary>Average of the pattern's diffuse multiplier, used where its detail would be invisible.</summary>
+        public float PatternMean { get; init; }
+        public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
+        /// <summary>Whether direct light can be evaluated here (anything except a pure mirror or pure emitter).</summary>
+        public bool HasLobes { get; init; }
+
+        public static SurfaceData From(RenderMaterial material)
+        {
+            var m = material.Sanitized();
+            var f0 = Vector3.Lerp(new Vector3(m.DielectricF0), m.BaseColor, m.Metallic);
+            var delta = m.Roughness <= 0.05f;
+            var alpha = MathF.Max(m.Roughness * m.Roughness, 0.0025f);
+            // Very rough dielectrics reflect almost nothing specularly; skipping the lobe saves noise and time.
+            var hasSpecular = m.Metallic > 0.01f || m.Roughness < 0.85f;
+            var diffuse = m.BaseColor * (1 - m.Metallic);
+            return new SurfaceData
+            {
+                Diffuse = diffuse,
+                F0 = f0,
+                Emission = m.Emission,
+                Tint = m.TransmissionTint,
+                Alpha = alpha,
+                Transmission = m.Transmission,
+                DielectricF0 = m.DielectricF0,
+                Delta = delta,
+                HasSpecular = hasSpecular,
+                CacheEligible = !delta && m.Metallic <= 0.05f && m.Transmission <= 0 && !(m.Emission.X > 0 || m.Emission.Y > 0 || m.Emission.Z > 0),
+                HasLobes = Sampling.Luminance(diffuse) > 1e-4f || (hasSpecular && !delta),
+                Pattern = m.Pattern,
+                PatternScale = m.PatternScale,
+                PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale)
+            };
+        }
+    }
+
+    // ---------------------------------------------------------------- emissive triangles
+
+    /// <summary>Importance-sampling table over emissive triangles (probability ∝ area · luminance).</summary>
+    private sealed class Emitters
+    {
+        private readonly int[] _triangles;
+        private readonly float[] _cumulative;
+        private readonly float _total;
+        private readonly Dictionary<int, int> _slotOf;
+        private readonly float[] _areas;
+        public int Count => _triangles.Length;
+        private readonly Vector3[] _a;
+        private readonly Vector3[] _b;
+        private readonly Vector3[] _c;
+        private readonly Vector3[] _normal;
+        private readonly Vector3[] _emission;
+
+        private Emitters(List<int> triangles, RenderScene scene, SurfaceData[] surfaces)
+        {
+            _triangles = triangles.ToArray();
+            var count = _triangles.Length;
+            _cumulative = new float[count];
+            _areas = new float[count];
+            _a = new Vector3[count];
+            _b = new Vector3[count];
+            _c = new Vector3[count];
+            _normal = new Vector3[count];
+            _emission = new Vector3[count];
+            _slotOf = new Dictionary<int, int>(count);
+            var running = 0f;
+            for (var i = 0; i < count; i++)
+            {
+                var triangle = _triangles[i];
+                _a[i] = scene.Positions[scene.Indices[triangle * 3]];
+                _b[i] = scene.Positions[scene.Indices[triangle * 3 + 1]];
+                _c[i] = scene.Positions[scene.Indices[triangle * 3 + 2]];
+                var cross = Vector3.Cross(_b[i] - _a[i], _c[i] - _a[i]);
+                _areas[i] = 0.5f * cross.Length();
+                _normal[i] = cross / MathF.Max(cross.Length(), 1e-12f);
+                _emission[i] = surfaces[scene.TriangleMaterial[triangle]].Emission;
+                running += _areas[i] * MathF.Max(Sampling.Luminance(_emission[i]), 1e-4f);
+                _cumulative[i] = running;
+                _slotOf[triangle] = i;
+            }
+            _total = running;
+        }
+
+        public static Emitters? TryCreate(RenderScene scene, SurfaceData[] surfaces, Bvh opaque)
+        {
+            var triangles = new List<int>();
+            for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+                if (surfaces[scene.TriangleMaterial[triangle]].IsEmissive) triangles.Add(triangle);
+            // A scene full of emissive triangles (for example a glowing imported mesh) would make sampling slow; cap it.
+            return triangles.Count is > 0 and <= 200_000 ? new Emitters(triangles, scene, surfaces) : null;
+        }
+
+        /// <summary>Solid-angle density of choosing triangle <paramref name="triangle"/> from a point at the given distance.</summary>
+        public float SolidAnglePdf(int triangle, float distance, float cosine)
+        {
+            if (!_slotOf.TryGetValue(triangle, out var slot) || cosine < 1e-5f) return 0;
+            var probability = _areas[slot] * MathF.Max(Sampling.Luminance(_emission[slot]), 1e-4f) / _total;
+            return probability * distance * distance / (cosine * _areas[slot]);
+        }
+
+        public Vector3 Sample(PathTracer tracer, in ShadePoint point, in SurfaceData surface, Vector3 view,
+            Vector3 origin, float nDotV, ref Sampler sampler)
+        {
+            var pick = sampler.NextFloat() * _total;
+            var slot = Array.BinarySearch(_cumulative, pick);
+            if (slot < 0) slot = ~slot;
+            slot = Math.Min(slot, _triangles.Length - 1);
+            var target = Sampling.TrianglePoint(_a[slot], _b[slot], _c[slot], sampler.NextFloat(), sampler.NextFloat());
+            var toLight = target - origin;
+            var distanceSquared = toLight.LengthSquared();
+            if (distanceSquared < 1e-6f) return Vector3.Zero;
+            var distance = MathF.Sqrt(distanceSquared);
+            var direction = toLight / distance;
+            var nDotL = Vector3.Dot(point.Normal, direction);
+            var lightCosine = MathF.Abs(Vector3.Dot(_normal[slot], direction));
+            if (nDotL <= 0 || lightCosine < 1e-5f || Vector3.Dot(point.Geometric, direction) <= 0) return Vector3.Zero;
+            var probability = _areas[slot] * MathF.Max(Sampling.Luminance(_emission[slot]), 1e-4f) / _total;
+            var pdfLight = probability * distanceSquared / (lightCosine * _areas[slot]);
+            var transmittance = tracer.Visibility(origin, direction, distance * 0.998f - tracer._rayEpsilon);
+            if (transmittance == Vector3.Zero) return Vector3.Zero;
+            var f = Evaluate(in surface, point.Diffuse, point.Normal, view, direction, nDotV, nDotL, out var pdfBsdf);
+            return transmittance * _emission[slot] * f * (nDotL / pdfLight * Sampling.PowerHeuristic(pdfLight, pdfBsdf));
+        }
     }
 }

@@ -95,13 +95,38 @@ public sealed partial class DocumentSession
     /// <summary>Updates a wall type and propagates its thickness to every instance.</summary>
     public void UpdateWallType(Guid id, string name, WallFunction function, double thickness, string materialName)
     {
+        var existing = Document.WallTypes.FirstOrDefault(type => type.Id == id)
+            ?? throw new InvalidDataException("The wall type does not exist.");
+        UpdateWallType(id, name, function, thickness, materialName,
+            existing.PlanFillColor, existing.PlanFillPattern,
+            existing.SectionFillColor, existing.SectionFillPattern);
+    }
+
+    /// <summary>Updates type geometry and its coordinated plan and section representation.</summary>
+    public void UpdateWallType(
+        Guid id,
+        string name,
+        WallFunction function,
+        double thickness,
+        string materialName,
+        string planFillColor,
+        WallFillPattern planFillPattern,
+        string sectionFillColor,
+        WallFillPattern sectionFillPattern)
+    {
         if (!Document.WallTypes.Any(type => type.Id == id))
             throw new InvalidDataException("The wall type does not exist.");
         Commit("Transaction.UpdateWallType", document =>
         {
             var typeIndex = document.WallTypes.FindIndex(type => type.Id == id);
             document.WallTypes[typeIndex] = new WallType(
-                id, name.Trim(), function, thickness, materialName.Trim());
+                id, name.Trim(), function, thickness, materialName.Trim())
+            {
+                PlanFillColor = planFillColor.ToUpperInvariant(),
+                PlanFillPattern = planFillPattern,
+                SectionFillColor = sectionFillColor.ToUpperInvariant(),
+                SectionFillPattern = sectionFillPattern
+            };
             for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
             {
                 if (document.Walls[wallIndex].WallTypeId == id)
@@ -124,12 +149,33 @@ public sealed partial class DocumentSession
 
     /// <summary>Adds a floor slab using a caller-supplied closed plan boundary.</summary>
     public Guid AddFloor(Guid levelId, IReadOnlyCollection<Point2> boundary, double thickness = 0.20,
-        string? name = null)
+        string? name = null, FloorKind kind = FloorKind.Floor, double elevationOffset = 0)
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddFloor", document => document.Floors.Add(new FloorSlab(
-            id, levelId, name ?? $"Floor {document.Floors.Count + 1}", [.. boundary], thickness)));
+            id, levelId, name ?? $"Floor {document.Floors.Count + 1}", [.. boundary], thickness)
+        {
+            Kind = kind,
+            ElevationOffset = elevationOffset
+        }));
         return id;
+    }
+
+    /// <summary>Adds a structural column standing on a level at a plan position.</summary>
+    public Guid AddColumn(Guid levelId, Point2 position, double width = 0.40, double depth = 0.40,
+        double height = 3.00)
+    {
+        var id = Guid.NewGuid();
+        Commit("Transaction.AddColumn", document =>
+            document.Columns.Add(new Column(id, levelId, position, width, depth, height)));
+        return id;
+    }
+
+    /// <summary>Removes a structural column from the project.</summary>
+    public void RemoveColumn(Guid id)
+    {
+        if (Document.Columns.Any(column => column.Id == id))
+            Commit("Transaction.RemoveColumn", document => document.Columns.RemoveAll(column => column.Id == id));
     }
 
     /// <summary>Adds a numbered drawing sheet to the project document set.</summary>
@@ -165,7 +211,10 @@ public sealed partial class DocumentSession
             Commit("Transaction.RemoveSheet", document => document.Sheets.RemoveAll(sheet => sheet.Id == id));
     }
 
-    /// <summary>Moves a wall and its hosted openings without changing dimensions.</summary>
+    /// <summary>
+    /// Moves a wall and its hosted openings without changing dimensions. Walls meeting it at a
+    /// corner keep that corner, so their coincident endpoints travel with it.
+    /// </summary>
     public void MoveWall(Guid id, double deltaX, double deltaY)
     {
         if (!Document.Walls.Any(w => w.Id == id)) return;
@@ -173,13 +222,90 @@ public sealed partial class DocumentSession
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
+            Point2[] movedCorners = [wall.Start, wall.End];
             doc.Walls[index] = wall with
             {
-                Start = new Point2(wall.Start.X + deltaX, wall.Start.Y + deltaY),
-                End = new Point2(wall.End.X + deltaX, wall.End.Y + deltaY)
+                Start = Translate(wall.Start, deltaX, deltaY),
+                End = Translate(wall.End, deltaX, deltaY)
+            };
+            for (var other = 0; other < doc.Walls.Count; other++)
+            {
+                var neighbour = doc.Walls[other];
+                if (other == index || neighbour.LevelId != wall.LevelId) continue;
+                doc.Walls[other] = neighbour with
+                {
+                    Start = FollowCorner(neighbour.Start, movedCorners, deltaX, deltaY),
+                    End = FollowCorner(neighbour.End, movedCorners, deltaX, deltaY)
+                };
+            }
+        });
+    }
+
+    /// <summary>Moves a room annotation by a metric translation.</summary>
+    public void MoveRoom(Guid id, double deltaX, double deltaY)
+    {
+        if (!Document.Rooms.Any(room => room.Id == id)) return;
+        Commit("Transaction.MoveRoom", document =>
+        {
+            var index = document.Rooms.FindIndex(room => room.Id == id);
+            var existing = document.Rooms[index];
+            document.Rooms[index] = existing with
+            {
+                FirstCorner = Translate(existing.FirstCorner, deltaX, deltaY),
+                SecondCorner = Translate(existing.SecondCorner, deltaX, deltaY)
             };
         });
     }
+
+    /// <summary>Moves a floor slab's boundary by a metric translation.</summary>
+    public void MoveFloor(Guid id, double deltaX, double deltaY)
+    {
+        if (!Document.Floors.Any(floor => floor.Id == id)) return;
+        Commit("Transaction.MoveFloor", document =>
+        {
+            var index = document.Floors.FindIndex(floor => floor.Id == id);
+            var existing = document.Floors[index];
+            document.Floors[index] = existing with
+            {
+                Boundary = existing.Boundary.Select(point => Translate(point, deltaX, deltaY)).ToList()
+            };
+        });
+    }
+
+    /// <summary>Moves a structural column by a metric translation in plan.</summary>
+    public void MoveColumn(Guid id, double deltaX, double deltaY)
+    {
+        if (!Document.Columns.Any(column => column.Id == id)) return;
+        Commit("Transaction.MoveColumn", document =>
+        {
+            var index = document.Columns.FindIndex(column => column.Id == id);
+            var existing = document.Columns[index];
+            document.Columns[index] = existing with { Position = Translate(existing.Position, deltaX, deltaY) };
+        });
+    }
+
+    /// <summary>Moves one end of a straight wall to a new plan point, keeping its length direction tied to that end.</summary>
+    public void MoveWallEnd(Guid id, WallEnd end, Point2 point)
+    {
+        if (!Document.Walls.Any(w => w.Id == id))
+            throw new InvalidDataException("The wall does not exist.");
+        Commit("Transaction.MoveWallEnd", doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == id);
+            var wall = doc.Walls[index];
+            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point } : wall with { End = point };
+        });
+    }
+
+    /// <summary>Translates a point by a metric offset.</summary>
+    private static Point2 Translate(Point2 point, double deltaX, double deltaY) =>
+        new(point.X + deltaX, point.Y + deltaY);
+
+    /// <summary>Translates a neighbouring wall's endpoint only when it coincides with a moved corner.</summary>
+    private static Point2 FollowCorner(Point2 point, Point2[] movedCorners, double deltaX, double deltaY) =>
+        movedCorners.Any(corner => corner.DistanceTo(point) <= WallJoinIndex.Tolerance)
+            ? Translate(point, deltaX, deltaY)
+            : point;
 
     /// <summary>Duplicates a wall and all of its openings with new stable identifiers.</summary>
     public Guid DuplicateWall(Guid id, double deltaX = 1, double deltaY = 1)

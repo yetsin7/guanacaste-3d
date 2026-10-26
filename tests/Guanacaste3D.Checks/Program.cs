@@ -143,9 +143,9 @@ failed = false;
 try { session.RotateWall(hostedWallId, double.PositiveInfinity); }
 catch (InvalidDataException) { failed = true; }
 Check(failed, "Non-finite wall rotation is rejected");
-for (int i = 0; i < 100; i++) session.Rename("Proyecto " + i);
+for (int i = 0; i < 100; i++) session.Rename("Project " + i);
 for (int i = 0; i < 40; i++) session.Undo();
-Check(session.Document.Name == "Proyecto 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
+Check(session.Document.Name == "Project 59" && !session.CanUndo, "Undo is bounded to 40 snapshots");
 
 var coordinatedDocument = BuildingDocument.Create();
 var coordinatedSession = new DocumentSession(coordinatedDocument);
@@ -164,9 +164,19 @@ coordinatedSession.UpdateWallType(
     "High-performance exterior 350 mm",
     WallFunction.Exterior,
     0.35,
-    "Insulated concrete");
+    "Insulated concrete",
+    "#345678",
+    WallFillPattern.Crosshatch,
+    "#876543",
+    WallFillPattern.Diagonal);
 Check(Math.Abs(coordinatedSession.Document.Walls.Single().Thickness - 0.35) < 0.000001,
     "Wall type edits propagate to instances");
+var editedWallType = coordinatedSession.Document.WallTypes.Single(type => type.Id == BuiltInWallTypes.Exterior300Id);
+Check(editedWallType.PlanFillColor == "#345678" &&
+      editedWallType.PlanFillPattern == WallFillPattern.Crosshatch &&
+      editedWallType.SectionFillColor == "#876543" &&
+      editedWallType.SectionFillPattern == WallFillPattern.Diagonal,
+    "Wall types coordinate independent plan and section drafting appearances");
 var roomId = coordinatedSession.AddRoom(
     coordinatedDocument.Levels[0].Id,
     new Point2(0, 0),
@@ -194,8 +204,11 @@ try
 {
     ProjectFile.Save(coordinatedFilename, coordinatedSession.Document);
     var coordinatedReload = ProjectFile.Load(coordinatedFilename);
+    var reloadedWallType = coordinatedReload.WallTypes.Single(type => type.Id == BuiltInWallTypes.Exterior300Id);
     Check(coordinatedReload.Rooms.Count == 1 && coordinatedReload.Floors.Count == 1 &&
-          coordinatedReload.Sheets.Count == 1 && coordinatedReload.WallTypes.Count == 3,
+          coordinatedReload.Sheets.Count == 1 && coordinatedReload.WallTypes.Count == 3 &&
+          reloadedWallType.PlanFillColor == "#345678" &&
+          reloadedWallType.SectionFillPattern == WallFillPattern.Diagonal,
         "Coordinated BIM elements survive a project round trip");
 
     var legacyDocument = coordinatedSession.Document.Clone();
@@ -363,6 +376,13 @@ Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel 
 
 ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
+OpeningHostingChecks.Run(Check);
+WallDimensionChecks.Run(Check);
+DoorImportChecks.Run(Check);
+NavigationChecks.Run(Check);
+RevitFamilyImportChecks.Run(Check);
+NavigationChecks.Run(Check);
+OpeningFamilyChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
 ScheduleChecks.Run(Check);
@@ -375,4 +395,16 @@ WallPlacementChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 InPlaceFamilyChecks.Run(Check);
 
+WallAppearanceChecks.Run(Check);
+WallJoinChecks.Run(Check);
+PlanDimensionChecks.Run(Check);
+DoorPlanSymbolChecks.Run(Check);
+StructuralChecks.Run(Check);
+FamilyTemplateChecks.Run(Check);
+ArchitectureChecks.Run(Check);
+RenderInfrastructureChecks.Run(Check);
+RenderRegressionChecks.Run(Check);
+RenderEngineChecks.Run(Check);
+ImportChecks.Run(Check);
+NavigationChecks.Run(Check);
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

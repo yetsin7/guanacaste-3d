@@ -66,20 +66,42 @@ public partial class MainWindow
     /// <summary>Handles wall placement and element selection in the plan canvas.</summary>
     private void PlanCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (TryPlaceOpening(e)) return;
+        RecordPlanPress(e);
+        if (_movingElement)
+        {
+            Keyboard.Focus(PlanCanvas);
+            HandleMoveClick(e.GetPosition(PlanCanvas));
+            return;
+        }
         if (TryHandleRoomPlacement(e)) return;
+        if (TryHandleColumnPlacement(e)) return;
+        if (TryHandleStructuralPlacement(e)) return;
+        if (_awaitingSimilarWallPick)
+        {
+            Keyboard.Focus(PlanCanvas);
+            TryStartSimilarWall(e.OriginalSource);
+            return;
+        }
         if (_drawingWall)
         {
+            Keyboard.Focus(PlanCanvas);
             HandleWallPlacementClick(e.GetPosition(PlanCanvas));
             return;
         }
         if (!_drawingWall)
         {
+            if (TrySelectOpeningSymbol(e)) return;
             if (TrySelectExtendedPlanElement(e)) return;
             _selectedViewId = null;
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
                 && _session.Document.Walls.Any(wall => wall.Id == id) ? id : null;
             _selectedWallOffset = null;
             _selectedOpeningId = null;
+            _selectedRoomId = null;
+            _selectedFloorId = null;
+            _selectedStructuralId = null;
+            _selectedColumnId = null;
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(candidate => candidate.Id == wallId);
@@ -100,9 +122,28 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (TryFinishSlabSketch())
+        {
+            e.Handled = true;
+            return;
+        }
+        if (_movingElement)
+        {
+            CancelMoveTool();
+            e.Handled = true;
+            return;
+        }
         if (_drawingWall)
         {
             CancelWallPlacementStep();
+            e.Handled = true;
+            return;
+        }
+        if (_awaitingSimilarWallPick)
+        {
+            _awaitingSimilarWallPick = false;
+            StatusText.Text = GetText("Status.SelectionMode");
+            RenderPlan();
             e.Handled = true;
             return;
         }
@@ -196,22 +237,18 @@ public partial class MainWindow
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
         RenderExtendedPlanElements();
-        foreach (var wall in _session.Document.Walls.Where(candidate => candidate.LevelId == _activeLevelId))
+        var joins = WallJoinIndex.Build(_session.Document.Walls);
+        var levelWalls = _session.Document.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
+        // Every outline sits beneath every fill, so a neighbour covers the shared faces and miter seams.
+        var wallLayer = PlanCanvas.Children.Count;
+        foreach (var wall in levelWalls) AddWallBody(wall, joins);
+        RenderJoinedWallOutline(levelWalls, joins, wallLayer);
+        foreach (var wall in levelWalls)
         {
-            var color = wall.Id == _selectedWallId ? Brushes.DarkOrange : Brushes.DarkSlateGray;
-            AddLine(wall.Start, wall.End, Math.Max(3, wall.Thickness * _scale), color, wall.Id);
             foreach (var opening in _session.Document.Openings.Where(candidate => candidate.WallId == wall.Id))
             {
-                var directionX = (wall.End.X - wall.Start.X) / wall.Length;
-                var directionY = (wall.End.Y - wall.Start.Y) / wall.Length;
-                var from = new Point2(
-                    wall.Start.X + directionX * opening.Begin,
-                    wall.Start.Y + directionY * opening.Begin);
-                var to = new Point2(
-                    wall.Start.X + directionX * opening.End,
-                    wall.Start.Y + directionY * opening.End);
-                AddLine(from, to, Math.Max(4, wall.Thickness * _scale + 2), Brushes.White, wall.Id);
-                if (opening.Kind == OpeningKind.Window) AddLine(from, to, 2, Brushes.SteelBlue, wall.Id);
+                if (IsOpeningInMotion(opening)) continue;
+                RenderOpeningSymbol(wall, opening);
             }
         }
         if (_pendingWallStart is Point2 start)
@@ -222,7 +259,48 @@ public partial class MainWindow
             Canvas.SetTop(marker, canvasPoint.Y - 6);
             PlanCanvas.Children.Add(marker);
         }
+        RenderMovePreview();
+        RenderTemporaryDimensions();
         RenderWallSketchOverlay();
+        RenderStructuralPreview();
+        RenderSlabSketchPreview();
+        AddAlignmentGuides();
+        RenderPlacementPreview();
+        RenderPermanentDimensions();
+    }
+
+    /// <summary>Fills a wall's mitered plan footprint, drawn above every outline so joined faces disappear.</summary>
+    private void AddWallBody(Wall wall, WallJoinIndex joins)
+    {
+        var wallType = _session.Document.WallTypes.Single(type => type.Id == wall.WallTypeId);
+        var footprint = joins.Footprint(wall);
+        PlanCanvas.Children.Add(new Polygon
+        {
+            Points = new PointCollection(footprint.Points.Select(WorldToCanvas)),
+            Fill = WallAppearanceRendering.CreateBrush(wallType.PlanFillColor, wallType.PlanFillPattern),
+            SnapsToDevicePixels = true,
+            Tag = wall.Id
+        });
+    }
+
+    /// <summary>Strokes the union boundary, hiding interior seams at corners, tees and crossings.</summary>
+    private void RenderJoinedWallOutline(IReadOnlyList<Wall> walls, WallJoinIndex joins, int wallLayer)
+    {
+        Geometry outline = Geometry.Empty;
+        foreach (var wall in walls)
+        {
+            var points = joins.Footprint(wall).Points.Select(WorldToCanvas).ToArray();
+            var figure = new PathFigure { StartPoint = points[0], IsClosed = true, IsFilled = true };
+            figure.Segments.Add(new PolyLineSegment(points.Skip(1), true));
+            outline = Geometry.Combine(outline, new PathGeometry(new[] { figure }), GeometryCombineMode.Union, null);
+        }
+        PlanCanvas.Children.Insert(wallLayer, new System.Windows.Shapes.Path
+        {
+            Data = outline, Fill = Brushes.DarkSlateGray, Stroke = Brushes.DarkSlateGray, StrokeThickness = 1,
+            IsHitTestVisible = false
+        });
+        if (walls.FirstOrDefault(wall => wall.Id == _selectedWallId) is { } selected)
+            AddLine(selected.Start, selected.End, 1.5, Brushes.DarkOrange, selected.Id);
     }
 
     /// <summary>Adds a selectable model-space line to the plan canvas.</summary>

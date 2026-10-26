@@ -11,7 +11,8 @@ public static class QuantitySchedule
     {
         document.Validate();
         var csv = new StringBuilder();
-        csv.AppendLine("Level,WallId,Length_m,Thickness_m,Height_m,GrossVolume_m3,NetVolume_m3,DoorCount,WindowCount");
+        csv.AppendLine("Level,WallId,Length_m,Thickness_m,Height_m,GrossVolume_m3,NetVolume_m3,DoorCount,WindowCount," +
+            "Finish,FinishArea_m2");
         foreach (var wall in document.Walls.OrderBy(w => w.LevelId).ThenBy(w => w.Id))
         {
             var level = document.Levels.Single(l => l.Id == wall.LevelId);
@@ -24,7 +25,9 @@ public static class QuantitySchedule
                 .Append(FormatNumber(wall.Length * wall.Thickness * wall.Height)).Append(',')
                 .Append(FormatNumber(WallGeometry.NetVolume(wall, openings))).Append(',')
                 .Append(openings.Count(o => o.Kind == OpeningKind.Door)).Append(',')
-                .Append(openings.Count(o => o.Kind == OpeningKind.Window)).AppendLine();
+                .Append(openings.Count(o => o.Kind == OpeningKind.Window)).Append(',')
+                .Append(wall.Finish).Append(',')
+                .Append(FormatNumber(FinishRules.WallFinishArea(wall, openings))).AppendLine();
         }
         return csv.ToString();
     }

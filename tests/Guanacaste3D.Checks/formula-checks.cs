@@ -138,7 +138,7 @@ static class FormulaChecks
             ProjectFile.Save(path, session.Document);
             var reloaded = ProjectFile.Load(path);
             check(reloaded.SchemaVersion == BuildingDocument.CurrentSchemaVersion && reloaded.ParameterDefinitions.Single().Formula == "4 * sqrt(Area)",
-                "Formulas survive a .g3 round trip");
+                "Formulas survive a .g3d round trip");
         }
         finally
         {

@@ -31,12 +31,13 @@ public partial class MainWindow : Window
     public MainWindow(string? projectPath = null)
     {
         InitializeComponent();
-        SunDatePicker.SelectedDate = DateTime.Today;
-        _session = new DocumentSession(BuildingDocument.Create(GetText("Project.Untitled")));
+        InitializeCommandCustomization();
+        _session = new DocumentSession(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
         _session.Changed += OnDocumentChanged;
+        InitializeNavigationAndRender();
         RefreshAll();
-        if (!string.IsNullOrWhiteSpace(projectPath)) OpenProjectPath(projectPath);
+        if (!string.IsNullOrWhiteSpace(projectPath)) OpenAssociatedDocumentPath(projectPath);
     }
 
     /// <summary>Loads a project supplied by file association while preserving a usable empty document on failure.</summary>
@@ -69,7 +70,7 @@ public partial class MainWindow : Window
     private void New_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscard()) return;
-        AttachDocument(BuildingDocument.Create(GetText("Project.Untitled")), null);
+        AttachDocument(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")), null);
         StatusText.Text = GetText("Status.ProjectNew");
     }
 
@@ -205,9 +206,10 @@ public partial class MainWindow : Window
         try
         {
             ProjectFile.Save(path!, _session.Document);
+            _links.Save(path!);
             _filePath = path;
             _dirty = false;
-            Title = "Guanacaste 3D — " + _session.Document.Name;
+            UpdateWindowTitle();
             StatusText.Text = FormatText("Status.ProjectSaved", System.IO.Path.GetFileName(path));
             return true;
         }
@@ -237,16 +239,26 @@ public partial class MainWindow : Window
         _dirty = false;
         _drawingWall = false;
         UpdateWallToolVisualState();
+        RestoreLinks(filename);
         RefreshAll();
+        FrameCameraToScene();
     }
 
-    /// <summary>Asks whether unsaved changes may be discarded when a destructive navigation occurs.</summary>
+    /// <summary>
+    /// Protects unsaved work before a destructive step. Yes saves first (and continues only if saving worked), No
+    /// discards, and Cancel, or closing the dialog with its X button, stays where the user is.
+    /// </summary>
     private bool ConfirmDiscard()
     {
         if (!_dirty) return true;
-        return MessageBox.Show(this,
-            GetText("Dialog.DiscardChanges"),
-            "Guanacaste 3D", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        var answer = MessageBox.Show(this, GetText("Dialog.UnsavedChanges"), "Guanacaste 3D", MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        return answer switch
+        {
+            MessageBoxResult.Yes => SaveProject(false),
+            MessageBoxResult.No => true,
+            _ => false
+        };
     }
 
     /// <summary>Prevents window closure when the user keeps unsaved work.</summary>
@@ -280,34 +292,15 @@ public partial class MainWindow : Window
     private void Window_Click(object sender, RoutedEventArgs e) =>
         CreateHostedOpening(OpeningKind.Window);
 
-    /// <summary>Creates a parametrically hosted door or window near the selected wall position.</summary>
+    /// <summary>Arms a hosted placement preview without mutating the document.</summary>
     private void CreateHostedOpening(OpeningKind kind)
     {
-        if (_selectedWallId is not Guid wallId)
-        {
-            StatusText.Text = GetText("Status.SelectWallInPlan");
-            return;
-        }
-        var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == wallId);
-        if (wall is null) return;
-        try
-        {
-            if (kind == OpeningKind.Door)
-                _session.AddOpening(wallId, OpeningKind.Door,
-                    offset: _selectedWallOffset, width: 0.90, height: 2.10);
-            else
-                _session.AddOpening(wallId, OpeningKind.Window,
-                    offset: _selectedWallOffset, width: 1.00, sill: 0.90, height: 1.20);
-            StatusText.Text = GetText(kind == OpeningKind.Door
-                ? "Status.DoorOpeningCreated"
-                : "Status.WindowOpeningCreated");
-            RefreshAll();
-        }
-        catch (InvalidDataException ex)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.InvalidOpening"),
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        SetWallTool(false);
+        _placingOpening = kind;
+        _selectedOpeningId = _selectedWallId = null;
+        ViewTabs.SelectedIndex = 0;
+        StatusText.Text = GetText("Status.OpeningPlacement");
+        RenderPlan();
     }
     /// <summary>Shows the active architectural plan.</summary>
     private void ShowPlan_Click(object sender, RoutedEventArgs e)
@@ -329,14 +322,18 @@ public partial class MainWindow : Window
     /// <summary>Switches between wall placement and selection while cancelling competing sketches.</summary>
     private void SetWallTool(bool drawing)
     {
+        CancelMoveTool();
         CancelExtendedDrawing();
         _selectedViewId = null;
         _drawingWall = drawing;
+        _awaitingSimilarWallPick = false;
         _pendingWallStart = null;
         _wallPreviewPoint = null;
+        _chainTail = null;
+        _alignmentGuides = [];
         if (drawing)
         {
-            RibbonTabControl.SelectedIndex = 0;
+            WallContextTab.IsSelected = true;
             ViewTabs.SelectedIndex = 0;
         }
         UpdateWallToolVisualState();

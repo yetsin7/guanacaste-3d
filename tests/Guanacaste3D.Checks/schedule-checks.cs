@@ -92,7 +92,7 @@ static class ScheduleChecks
             "Text filters are case-insensitive");
     }
 
-    /// <summary>Verifies regeneration, validation, duplication, CSV, undo, and the .g3 round trip.</summary>
+    /// <summary>Verifies regeneration, validation, duplication, CSV, undo, and the .g3d round trip.</summary>
     private static void CheckMaintenanceAndPersistence(Action<bool, string> check, DocumentSession session, Guid cost)
     {
         var doors = session.Document.Schedules.Single(s => s.Name == "Doors by type");
@@ -113,7 +113,7 @@ static class ScheduleChecks
             "Evaluated schedules export to CSV with row kinds");
         session.Undo();
         check(session.Document.Schedules.All(s => s.Id != copy), "Undo removes a duplicated schedule");
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-schedules-{Guid.NewGuid():N}.g3");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-schedules-{Guid.NewGuid():N}.g3d");
         try
         {
             ProjectFile.Save(path, session.Document);
@@ -121,7 +121,7 @@ static class ScheduleChecks
             var walls = reloaded.Schedules.Single(s => s.Name == "Walls by type");
             check(reloaded.SchemaVersion == BuildingDocument.CurrentSchemaVersion && reloaded.Schedules.Count == 2 &&
                   walls.SortGroups.Count == 2 && walls.SortGroups[0].GroupFooter && walls.Filters.Single().Value == "exterior",
-                "Saved schedules survive a .g3 round trip with sorting, grouping, and filters");
+                "Saved schedules survive a .g3d round trip with sorting, grouping, and filters");
         }
         finally
         {

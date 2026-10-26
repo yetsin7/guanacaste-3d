@@ -1,0 +1,182 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <!-- Render panel, live preview, walk-through video and model import (Spanish). Keys use the RenderPanel., Import. and
+       Links. prefixes so they never collide with the older Render.* texts. -->
+
+  <!-- Panel sections -->
+  <sys:String x:Key="RenderPanel.Preview">Vista previa en vivo</sys:String>
+  <sys:String x:Key="RenderPanel.PreviewHint">Navega por el proyecto con luz y sombras reales a baja calidad. Al pulsar Renderizar, la imagen se detiene mientras se genera.</sys:String>
+  <sys:String x:Key="RenderPanel.Render">Renderizar</sys:String>
+  <sys:String x:Key="RenderPanel.Stop">Detener</sys:String>
+  <sys:String x:Key="RenderPanel.Pause">Pausar</sys:String>
+  <sys:String x:Key="RenderPanel.Resume">Reanudar</sys:String>
+  <sys:String x:Key="RenderPanel.Scene">Iluminación</sys:String>
+  <sys:String x:Key="RenderPanel.Scenario">Escenario</sys:String>
+  <sys:String x:Key="RenderPanel.Sunny">Día soleado</sys:String>
+  <sys:String x:Key="RenderPanel.Overcast">Día nublado</sys:String>
+  <sys:String x:Key="RenderPanel.GoldenHour">Hora dorada</sys:String>
+  <sys:String x:Key="RenderPanel.Dusk">Atardecer</sys:String>
+  <sys:String x:Key="RenderPanel.Date">Fecha</sys:String>
+  <sys:String x:Key="RenderPanel.Hour">Hora solar</sys:String>
+  <sys:String x:Key="RenderPanel.Latitude">Latitud</sys:String>
+  <sys:String x:Key="RenderPanel.LatitudeHint">Latitud del sitio en grados (norte positivo). Managua: 12.1</sys:String>
+  <sys:String x:Key="RenderPanel.Quality">Calidad y tamaño</sys:String>
+  <sys:String x:Key="RenderPanel.QualityLabel">Calidad</sys:String>
+  <sys:String x:Key="RenderPanel.Draft">Borrador · rápido</sys:String>
+  <sys:String x:Key="RenderPanel.Standard">Estándar · revisión</sys:String>
+  <sys:String x:Key="RenderPanel.High">Alta · presentación</sys:String>
+  <sys:String x:Key="RenderPanel.Final">Final · máxima calidad</sys:String>
+  <sys:String x:Key="RenderPanel.Size">Tamaño de imagen</sys:String>
+  <sys:String x:Key="RenderPanel.SizeView">Igual que la vista</sys:String>
+  <sys:String x:Key="RenderPanel.SizeHd">HD 1280 × 720</sys:String>
+  <sys:String x:Key="RenderPanel.SizeFullHd">Full HD 1920 × 1080</sys:String>
+  <sys:String x:Key="RenderPanel.SizeQhd">2K 2560 × 1440</sys:String>
+  <sys:String x:Key="RenderPanel.SizeUhd">4K 3840 × 2160</sys:String>
+  <sys:String x:Key="RenderPanel.Resources">Uso del equipo</sys:String>
+  <sys:String x:Key="RenderPanel.Eco">Eco · deja el equipo libre</sys:String>
+  <sys:String x:Key="RenderPanel.Balanced">Equilibrado</sys:String>
+  <sys:String x:Key="RenderPanel.Maximum">Máximo · todos los núcleos</sys:String>
+  <sys:String x:Key="RenderPanel.MemoryEstimate">Memoria estimada: {0} · disponible: {1}</sys:String>
+  <sys:String x:Key="RenderPanel.Image">Imagen</sys:String>
+  <sys:String x:Key="RenderPanel.Exposure">Exposición</sys:String>
+  <sys:String x:Key="RenderPanel.AutoExposure">Exposición automática</sys:String>
+  <sys:String x:Key="RenderPanel.Bloom">Resplandor en luces fuertes</sys:String>
+  <sys:String x:Key="RenderPanel.Vignette">Viñeta suave</sys:String>
+  <sys:String x:Key="RenderPanel.Verticals">Corregir verticales (fotografía de arquitectura)</sys:String>
+  <sys:String x:Key="RenderPanel.DepthOfField">Desenfoque de fondo</sys:String>
+  <sys:String x:Key="RenderPanel.Navigation">Navegación</sys:String>
+  <sys:String x:Key="RenderPanel.Collisions">Chocar con muros y objetos</sys:String>
+  <sys:String x:Key="RenderPanel.CollisionsHint">Apagado: la cámara atraviesa muros. Encendido: se detiene y se desliza junto a ellos.</sys:String>
+  <sys:String x:Key="RenderPanel.FrameAll">Ver todo el proyecto</sys:String>
+  <sys:String x:Key="RenderPanel.Controls">Clic derecho: mirar · Rueda: acercar al cursor · Botón central: mover · Clic izquierdo: orbitar · W A S D: volar · Q E: bajar y subir · Shift: rápido · Ctrl: lento</sys:String>
+  <sys:String x:Key="RenderPanel.Output">Resultado</sys:String>
+  <sys:String x:Key="RenderPanel.SaveImage">Guardar imagen…</sys:String>
+  <sys:String x:Key="RenderPanel.CopyImage">Copiar</sys:String>
+  <sys:String x:Key="RenderPanel.ImageFilter">Imagen PNG (*.png)|*.png|Imagen JPEG (*.jpg)|*.jpg</sys:String>
+  <sys:String x:Key="RenderPanel.Copied">Imagen copiada al portapapeles.</sys:String>
+
+  <!-- Walk-through video -->
+  <sys:String x:Key="RenderPanel.Tour">Recorrido y video</sys:String>
+  <sys:String x:Key="RenderPanel.TourHint">Navega hasta una vista y pulsa «Añadir marca». La cámara pasará suavemente por todas las marcas.</sys:String>
+  <sys:String x:Key="RenderPanel.AddMark">Añadir marca</sys:String>
+  <sys:String x:Key="RenderPanel.RemoveMark">Quitar</sys:String>
+  <sys:String x:Key="RenderPanel.GoToMark">Ir a la marca</sys:String>
+  <sys:String x:Key="RenderPanel.PlayTour">Reproducir</sys:String>
+  <sys:String x:Key="RenderPanel.StopTour">Parar</sys:String>
+  <sys:String x:Key="RenderPanel.MarkSeconds">Segundos hasta la marca</sys:String>
+  <sys:String x:Key="RenderPanel.Fps">Cuadros por segundo</sys:String>
+  <sys:String x:Key="RenderPanel.RenderVideo">Renderizar recorrido…</sys:String>
+  <sys:String x:Key="RenderPanel.MarkName">Marca {0} · {1:0.#} s</sys:String>
+  <sys:String x:Key="RenderPanel.TourNeedsMarks">Añade al menos dos marcas para crear un recorrido.</sys:String>
+  <sys:String x:Key="RenderPanel.TourFrame">Cuadro {0} de {1} · {2:0.0} s</sys:String>
+  <sys:String x:Key="RenderPanel.TourDone">Recorrido terminado: {0} cuadros guardados en {1}. Para convertirlos en video usa cualquier editor o ffmpeg.</sys:String>
+  <sys:String x:Key="RenderPanel.TourStopped">Recorrido detenido: se conservaron {0} cuadros en {1}.</sys:String>
+
+  <!-- Status -->
+  <sys:String x:Key="RenderPanel.Idle">Elige un escenario y navega, o pulsa Renderizar.</sys:String>
+  <sys:String x:Key="RenderPanel.PreparingScene">Preparando la escena…</sys:String>
+  <sys:String x:Key="RenderPanel.PreviewStatus">Vista previa · muestra {0} de {1}</sys:String>
+  <sys:String x:Key="RenderPanel.PreviewReady">Vista previa lista · {0} muestras</sys:String>
+  <sys:String x:Key="RenderPanel.Rendering">Renderizando · muestra {0} de {1} · {2}×{3} px · quedan {4}</sys:String>
+  <sys:String x:Key="RenderPanel.Rendered">Render terminado · {0} muestras · {1}×{2} px · {3} · {4:0.0} Mrayos/s</sys:String>
+  <sys:String x:Key="RenderPanel.RenderStopped">Render detenido en la muestra {0}. La imagen está lista para guardar.</sys:String>
+  <sys:String x:Key="RenderPanel.MemoryStop">Memoria casi agotada: el render se detuvo en la muestra {0} para proteger tu equipo. La imagen está lista para guardar; prueba un tamaño menor o el modo Eco.</sys:String>
+  <sys:String x:Key="RenderPanel.SizeReduced">El tamaño se redujo a {0}×{1} px para que quepa en la memoria libre.</sys:String>
+  <sys:String x:Key="RenderPanel.NoMemory">No hay memoria suficiente para este render. Cierra otros programas o elige un tamaño menor.</sys:String>
+  <sys:String x:Key="RenderPanel.Failed">El render se detuvo por un problema inesperado: {0}</sys:String>
+  <sys:String x:Key="RenderPanel.EmptyScene">No hay geometría que mostrar. Dibuja muros o importa un modelo.</sys:String>
+  <sys:String x:Key="RenderPanel.NothingToSave">Todavía no hay una imagen para guardar. Pulsa Renderizar.</sys:String>
+  <sys:String x:Key="RenderPanel.Saved">Imagen guardada: {0}</sys:String>
+  <sys:String x:Key="RenderPanel.PreviewFailed">La vista previa no pudo prepararse (memoria insuficiente). Reduce el modelo o cierra otros programas.</sys:String>
+  <sys:String x:Key="RenderPanel.Seconds">{0:0} s</sys:String>
+  <sys:String x:Key="RenderPanel.Minutes">{0} min {1} s</sys:String>
+
+  <!-- Model import -->
+  <sys:String x:Key="Import.Title">Importar modelo o dibujo</sys:String>
+  <sys:String x:Key="Import.Intro">Arrastra aquí archivos de Revit, SketchUp o AutoCAD, o usa el menú Archivo.</sys:String>
+  <sys:String x:Key="Import.File">Archivo</sys:String>
+  <sys:String x:Key="Import.Format">Formato</sys:String>
+  <sys:String x:Key="Import.Size">Tamaño</sys:String>
+  <sys:String x:Key="Import.Options">Opciones</sys:String>
+  <sys:String x:Key="Import.Units">Unidades del archivo</sys:String>
+  <sys:String x:Key="Import.UnitsAuto">Detectar automáticamente</sys:String>
+  <sys:String x:Key="Import.UnitsMeters">Metros</sys:String>
+  <sys:String x:Key="Import.UnitsCentimeters">Centímetros</sys:String>
+  <sys:String x:Key="Import.UnitsMillimeters">Milímetros</sys:String>
+  <sys:String x:Key="Import.UnitsFeet">Pies</sys:String>
+  <sys:String x:Key="Import.UnitsInches">Pulgadas</sys:String>
+  <sys:String x:Key="Import.UpAxis">Eje vertical</sys:String>
+  <sys:String x:Key="Import.UpAuto">Automático</sys:String>
+  <sys:String x:Key="Import.UpZ">Z hacia arriba (CAD, Revit, IFC)</sys:String>
+  <sys:String x:Key="Import.UpY">Y hacia arriba (SketchUp, juegos, glTF)</sys:String>
+  <sys:String x:Key="Import.Center">Centrar en el origen del proyecto</sys:String>
+  <sys:String x:Key="Import.Ground">Apoyar sobre el terreno (Z = 0)</sys:String>
+  <sys:String x:Key="Import.Import">Importar</sys:String>
+  <sys:String x:Key="Import.Cancel">Cancelar</sys:String>
+  <sys:String x:Key="Import.Close">Cerrar</sys:String>
+  <sys:String x:Key="Import.Reading">Leyendo el archivo…</sys:String>
+  <sys:String x:Key="Import.Finishing">Preparando el modelo…</sys:String>
+  <sys:String x:Key="Import.ConvertingDwg">Convirtiendo el DWG con AutoCAD…</sys:String>
+  <sys:String x:Key="Import.Done">Listo.</sys:String>
+  <sys:String x:Key="Import.Summary.Ready">Este archivo se puede importar.</sys:String>
+  <sys:String x:Key="Import.Summary.Unknown">No se reconoce este formato. Se admiten OBJ, DXF, DWG, IFC, SKP, STL, DAE y glTF.</sys:String>
+  <sys:String x:Key="Import.Summary.BinaryDxf">Este DXF es binario. Guárdalo como DXF ASCII desde AutoCAD.</sys:String>
+  <sys:String x:Key="Import.Summary.Revit">Un archivo de Revit guarda su geometría en un formato propietario, así que no se puede leer directamente. Desde Revit usa Archivo → Exportar → IFC e importa ese archivo: conserva muros, losas, puertas, ventanas, colores y huecos.</sys:String>
+  <sys:String x:Key="Import.Summary.SketchUpMissing">Este archivo de SketchUp necesita la biblioteca SketchUp SDK, que no está en este equipo. Exporta el modelo desde SketchUp a OBJ o COLLADA (DAE) e impórtalo.</sys:String>
+  <sys:String x:Key="Import.Summary.DwgMissing">Este archivo DWG necesita AutoCAD o el ODA File Converter para convertirse, y no se encontraron. Guarda el dibujo como DXF desde tu programa de CAD.</sys:String>
+  <sys:String x:Key="Import.Note.RevitVersion">Guardado con Revit {0}</sys:String>
+  <sys:String x:Key="Import.Note.RevitBuild">Compilación {0}</sys:String>
+  <sys:String x:Key="Import.Note.RevitPath">Última ruta de guardado: {0}</sys:String>
+  <sys:String x:Key="Import.Note.RevitWorksharing">Trabajo compartido: {0}</sys:String>
+  <sys:String x:Key="Import.Note.RevitUnreadable">No se pudo leer la información interna del archivo de Revit.</sys:String>
+  <sys:String x:Key="Import.Note.SketchUpVersion">Guardado con SketchUp {0}</sys:String>
+  <sys:String x:Key="Import.Note.SketchUpSdk">Se leerá con la biblioteca: {0}</sys:String>
+  <sys:String x:Key="Import.Note.SketchUpSdkMissing">No se encontró la biblioteca SketchUp SDK.</sys:String>
+  <sys:String x:Key="Import.Note.DwgVersion">Versión del dibujo: {0}</sys:String>
+  <sys:String x:Key="Import.Note.DwgConverter">Se convertirá con: {0}</sys:String>
+  <sys:String x:Key="Import.Note.DwgConverterMissing">No se encontró AutoCAD ni el ODA File Converter.</sys:String>
+  <sys:String x:Key="Import.Note.VeryLarge">Es un archivo muy grande: la importación puede tardar y usar bastante memoria.</sys:String>
+  <sys:String x:Key="Import.Warning.AcisSolids">El dibujo contiene sólidos ACIS (3DSOLID) que no se pueden leer. Expórtalos como malla (polyface) o como IFC.</sys:String>
+  <sys:String x:Key="Import.Warning.SkippedCurves">Se omitieron curvas spline y elipses del dibujo.</sys:String>
+  <sys:String x:Key="Import.Warning.MaterialFileMissing">No se encontró el archivo de materiales (.mtl); se usaron colores por defecto.</sys:String>
+  <sys:String x:Key="Import.Warning.HiddenSkipped">Se omitieron los objetos y etiquetas ocultos de SketchUp.</sys:String>
+  <sys:String x:Key="Import.Warning.IfcShifted">El IFC estaba muy lejos del origen (coordenadas de topografía); se acercó para conservar la precisión.</sys:String>
+  <sys:String x:Key="Import.Warning.IfcElementsSkipped">Algunos elementos del IFC no se pudieron convertir y se omitieron.</sys:String>
+  <sys:String x:Key="Import.Warning.IfcUnsupported">El IFC usa geometrías avanzadas (curvas B-spline, barridos) que aún no se importan.</sys:String>
+  <sys:String x:Key="Import.Warning.GltfDraco">El archivo usa compresión Draco, que no se admite; esa geometría se omitió.</sys:String>
+  <sys:String x:Key="Import.Imported">Importado «{0}»: {1:N0} triángulos en {2:0.0} s.</sys:String>
+  <sys:String x:Key="Import.Failed">No se pudo importar</sys:String>
+  <sys:String x:Key="Import.DropHint">Suelta aquí para importar</sys:String>
+  <sys:String x:Key="Import.MultipleDone">Se importaron {0} de {1} archivos.</sys:String>
+  <sys:String x:Key="Import.LinkMissing">No se encontró el archivo vinculado: {0}</sys:String>
+  <sys:String x:Key="Action.ImportModel">Importar modelo, CAD o IFC…</sys:String>
+  <sys:String x:Key="Action.LinkedModels">Modelos vinculados…</sys:String>
+
+  <!-- Linked models window -->
+  <sys:String x:Key="Links.Title">Modelos vinculados</sys:String>
+  <sys:String x:Key="Links.Name">Nombre</sys:String>
+  <sys:String x:Key="Links.Visible">Visible</sys:String>
+  <sys:String x:Key="Links.Triangles">Triángulos</sys:String>
+  <sys:String x:Key="Links.State">Estado</sys:String>
+  <sys:String x:Key="Links.Loaded">Cargado</sys:String>
+  <sys:String x:Key="Links.Missing">No se encontró el archivo</sys:String>
+  <sys:String x:Key="Links.Placement">Ubicación en el proyecto</sys:String>
+  <sys:String x:Key="Links.OffsetX">Desplazamiento X (m)</sys:String>
+  <sys:String x:Key="Links.OffsetY">Desplazamiento Y (m)</sys:String>
+  <sys:String x:Key="Links.OffsetZ">Elevación Z (m)</sys:String>
+  <sys:String x:Key="Links.Rotation">Giro (°)</sys:String>
+  <sys:String x:Key="Links.Scale">Escala</sys:String>
+  <sys:String x:Key="Links.Apply">Aplicar</sys:String>
+  <sys:String x:Key="Links.Remove">Quitar vínculo</sys:String>
+  <sys:String x:Key="Links.Reload">Recargar</sys:String>
+  <sys:String x:Key="Links.Add">Añadir…</sys:String>
+  <sys:String x:Key="Links.Empty">Todavía no hay modelos vinculados. Arrastra un archivo a la ventana o pulsa «Añadir».</sys:String>
+  <sys:String x:Key="Links.InvalidPlacement">Introduce números válidos; la escala debe ser mayor que cero.</sys:String>
+  <sys:String x:Key="Links.Path">Archivo</sys:String>
+  <sys:String x:Key="Links.Project">Proyecto con modelos vinculados</sys:String>
+
+  <!-- Unsaved changes -->
+  <sys:String x:Key="Dialog.UnsavedChanges">Hay cambios sin guardar. ¿Quieres guardarlos antes de continuar?</sys:String>
+</ResourceDictionary>

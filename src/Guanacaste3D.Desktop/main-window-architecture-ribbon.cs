@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using Guanacaste3D.Core;
 using Guanacaste3D.Desktop.Controls;
 
 namespace Guanacaste3D.Desktop;
@@ -26,10 +27,17 @@ public partial class MainWindow
         ArchitectureCommandEventArgs e)
     {
         var eventArguments = new RoutedEventArgs();
+        if (ExecuteArchitectureCommand(e.Command)) return;
         switch (e.Command)
         {
             case ArchitectureCommand.Modify:
                 Select_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Move:
+                Move_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.CreateSimilar:
+                CreateSimilar_Click(this, eventArguments);
                 break;
             case ArchitectureCommand.Wall:
                 Wall_Click(this, eventArguments);
@@ -42,6 +50,84 @@ public partial class MainWindow
                 break;
             case ArchitectureCommand.Floor:
                 Floor_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Ceiling:
+                Ceiling_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Roof:
+                Roof_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Column:
+                Column_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.Stair:
+                BeginStructuralTool(StructuralElementKind.Stair, StructuralPlacementMode.Line);
+                break;
+            case ArchitectureCommand.Railing:
+                BeginStructuralTool(StructuralElementKind.Railing, StructuralPlacementMode.Line);
+                break;
+            case ArchitectureCommand.Component:
+                OpenArchitecturalLibrary();
+                break;
+            case ArchitectureCommand.Ramp:
+                BeginKindTool(StructuralElementKind.Ramp);
+                break;
+            case ArchitectureCommand.CurtainSystem:
+                BeginKindTool(StructuralElementKind.CurtainWall);
+                break;
+            case ArchitectureCommand.CurtainGrid:
+                EditCurtainWall(gridFocus: true);
+                break;
+            case ArchitectureCommand.Mullion:
+                EditCurtainWall(gridFocus: false);
+                break;
+            case ArchitectureCommand.ModelText:
+                BeginKindTool(StructuralElementKind.ModelText);
+                break;
+            case ArchitectureCommand.ModelLine:
+                BeginKindTool(StructuralElementKind.ModelLine);
+                break;
+            case ArchitectureCommand.ModelGroup:
+                BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group);
+                break;
+            case ArchitectureCommand.RoomSeparator:
+                BeginKindTool(StructuralElementKind.RoomSeparator);
+                break;
+            case ArchitectureCommand.TagRoom:
+                BeginTagTool(TagTarget.Room);
+                break;
+            case ArchitectureCommand.Area:
+                BeginKindTool(StructuralElementKind.Area);
+                break;
+            case ArchitectureCommand.AreaBoundary:
+                BeginKindTool(StructuralElementKind.AreaBoundary);
+                break;
+            case ArchitectureCommand.TagArea:
+                BeginTagTool(TagTarget.Area);
+                break;
+            case ArchitectureCommand.FaceOpening:
+                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Point);
+                break;
+            case ArchitectureCommand.ShaftOpening:
+                BeginStructuralTool(StructuralElementKind.Shaft, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.VerticalOpening:
+                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.DormerOpening:
+                BeginStructuralTool(StructuralElementKind.Dormer, StructuralPlacementMode.Rectangle);
+                break;
+            case ArchitectureCommand.WallOpening:
+                Window_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.SetWorkPlane:
+                Levels_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.ShowWorkPlane:
+                ToggleGrid_Click(this, eventArguments);
+                break;
+            case ArchitectureCommand.ReferencePlane:
+                BeginKindTool(StructuralElementKind.ReferencePlane);
                 break;
             case ArchitectureCommand.Room:
                 Room_Click(this, eventArguments);
@@ -73,8 +159,16 @@ public partial class MainWindow
     /// <summary>
     /// Opens the available type and parameter editor from the properties palette.
     /// </summary>
-    private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e) =>
-        ProjectParameters_Click(sender, e);
+    private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedWallId is null && TryEditSelectedElementType()) return;
+        var selectedTypeId = _selectedWallId is Guid wallId
+            ? _session.Document.Walls.Single(wall => wall.Id == wallId).WallTypeId
+            : (WallTypePicker.SelectedItem as ComboBoxItem)?.Tag as Guid? ?? BuiltInWallTypes.Basic200Id;
+        var editor = new WallTypeEditorWindow(_session, selectedTypeId) { Owner = this };
+        if (editor.ShowDialog() == true)
+            StatusText.Text = GetText("Status.WallTypeUpdated");
+    }
 
     /// <summary>
     /// Reports commands that are intentionally visible for workspace completeness

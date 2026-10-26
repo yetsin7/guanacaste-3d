@@ -77,6 +77,14 @@ public static class WallGeometry
         return parts;
     }
 
+    /// <summary>
+    /// Returns the leaf thickness an opening carries inside its host wall: the type's
+    /// depth, capped at the wall thickness so a thin wall never gets a leaf thicker
+    /// than itself. Zero means the opening stays a hole.
+    /// </summary>
+    public static double LeafDepth(OpeningType type, Wall wall) =>
+        type.Depth > 0 ? Math.Min(type.Depth, wall.Thickness) : 0;
+
     /// <summary>Calculates net wall volume after subtracting hosted openings.</summary>
     public static double NetVolume(Wall wall, IEnumerable<WallOpening> openings) =>
         Solids(wall, openings).Sum(part =>

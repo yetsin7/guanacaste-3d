@@ -1,0 +1,60 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Vector twin of resources/brand/guanacaste3d-logo.svg; keep the two in sync. -->
+  <DrawingImage x:Key="Brand.Logo">
+    <DrawingImage.Drawing>
+      <DrawingGroup>
+        <GeometryDrawing>
+          <GeometryDrawing.Geometry>
+            <RectangleGeometry Rect="0,0,256,256" RadiusX="56" RadiusY="56"/>
+          </GeometryDrawing.Geometry>
+          <GeometryDrawing.Brush>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+              <GradientStop Color="#3D9BFF" Offset="0"/>
+              <GradientStop Color="#0059D1" Offset="1"/>
+            </LinearGradientBrush>
+          </GeometryDrawing.Brush>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="#FFFFFF">
+          <GeometryDrawing.Geometry>
+            <PathGeometry>
+              <PathFigure StartPoint="128,58" IsClosed="True">
+                <LineSegment Point="200,98"/>
+                <LineSegment Point="128,138"/>
+                <LineSegment Point="56,98"/>
+              </PathFigure>
+            </PathGeometry>
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="#CFE4FF">
+          <GeometryDrawing.Geometry>
+            <PathGeometry>
+              <PathFigure StartPoint="56,98" IsClosed="True">
+                <LineSegment Point="128,138"/>
+                <LineSegment Point="128,218"/>
+                <LineSegment Point="56,178"/>
+              </PathFigure>
+            </PathGeometry>
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="#8FC1FF">
+          <GeometryDrawing.Geometry>
+            <PathGeometry>
+              <PathFigure StartPoint="128,138" IsClosed="True">
+                <LineSegment Point="200,98"/>
+                <LineSegment Point="200,178"/>
+                <LineSegment Point="128,218"/>
+              </PathFigure>
+            </PathGeometry>
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="#FFB020">
+          <GeometryDrawing.Geometry>
+            <EllipseGeometry Center="196,52" RadiusX="14" RadiusY="14"/>
+          </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+      </DrawingGroup>
+    </DrawingImage.Drawing>
+  </DrawingImage>
+</ResourceDictionary>

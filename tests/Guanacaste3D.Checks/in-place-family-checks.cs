@@ -273,7 +273,7 @@ static class InPlaceFamilyChecks
             var reloaded = ProjectFile.Load(filename);
             var reloadedFamily = reloaded.InPlaceFamilies.Single();
             var reloadedOperation = OperationOf(reloadedFamily);
-            check(reloaded.SchemaVersion == 9 && reloadedFamily.Id == familyId && reloadedFamily.Name == "Persisted" &&
+            check(reloaded.SchemaVersion == BuildingDocument.CurrentSchemaVersion && reloadedFamily.Id == familyId && reloadedFamily.Name == "Persisted" &&
                   reloadedFamily.Category == FamilyCategory.GenericModels && LengthOf(reloadedFamily).DefaultNumber == 2.0 &&
                   reloadedOperation.Id == operationId && SameGeometry(FamilyGeometry.PlaneOf(reloadedFamily, reloadedOperation), tilted) &&
                   reloadedOperation.Profile.SequenceEqual(TwoByOneRectangle) &&
@@ -388,7 +388,7 @@ static class InPlaceFamilyChecks
             node.Remove("InPlaceFamilies");
             File.WriteAllText(legacyPath, "G3-PROJECT/1\n" + node.ToJsonString(), new UTF8Encoding(false));
             var migrated = ProjectFile.Load(legacyPath);
-            check(migrated.SchemaVersion == 9 && migrated.InPlaceFamilies.Count == 0,
+            check(migrated.SchemaVersion == BuildingDocument.CurrentSchemaVersion && migrated.InPlaceFamilies.Count == 0,
                 "A schema 8 project loads, migrates to schema 9 and has no in-place families");
         }
         finally

@@ -23,6 +23,9 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
     /// <summary>Distance in meters from the top level to the wall top (negative is below it).</summary>
     public double TopOffset { get; init; }
 
+    /// <summary>Finish applied to both faces of the wall, used for finish area takeoff.</summary>
+    public FinishKind Finish { get; init; }
+
     [JsonIgnore] public double Length => Start.DistanceTo(End);
 }
 
@@ -30,11 +33,12 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled Project";
+    public List<PlanDimension> Dimensions { get; set; } = [];
     public List<Level> Levels { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
     public List<WallOpening> Openings { get; set; } = [];
@@ -42,6 +46,8 @@ public sealed class BuildingDocument
     public List<OpeningType> OpeningTypes { get; set; } = [];
     public List<Room> Rooms { get; set; } = [];
     public List<FloorSlab> Floors { get; set; } = [];
+    public List<Column> Columns { get; set; } = [];
+    public List<StructuralElement> StructuralElements { get; set; } = [];
     public List<DrawingSheet> Sheets { get; set; } = [];
     public List<ProjectView> Views { get; set; } = [];
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
@@ -69,6 +75,7 @@ public sealed class BuildingDocument
         SchemaVersion = SchemaVersion,
         Id = Id,
         Name = Name,
+        Dimensions = [.. Dimensions],
         Levels = [.. Levels],
         Walls = [.. Walls],
         Openings = [.. Openings],
@@ -76,6 +83,8 @@ public sealed class BuildingDocument
         OpeningTypes = [.. OpeningTypes],
         Rooms = [.. Rooms],
         Floors = Floors.Select(floor => floor with { Boundary = [.. floor.Boundary] }).ToList(),
+        Columns = [.. Columns],
+        StructuralElements = [.. StructuralElements],
         Sheets = [.. Sheets],
         Views = [.. Views],
         ParameterDefinitions = ParameterDefinitions
@@ -94,10 +103,13 @@ public sealed class BuildingDocument
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
-        if (Levels is null || Walls is null || Openings is null || WallTypes is null ||
-            Rooms is null || Floors is null || Sheets is null || Views is null ||
+        if (Dimensions is null || Levels is null || Walls is null || Openings is null || WallTypes is null ||
+            Rooms is null || Floors is null || Columns is null || StructuralElements is null ||
+            Sheets is null || Views is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000 ||
-            Rooms.Count > 100000 || Floors.Count > 100000 || Sheets.Count > 10000 || Views.Count > 10000)
+            Rooms.Count > 100000 || Floors.Count > 100000 || Columns.Count > 100000 ||
+            StructuralElements.Count > 100000 ||
+            Sheets.Count > 10000 || Views.Count > 10000)
             throw new InvalidDataException("The document exceeds the supported element limits.");
         if (Levels.Any(l => l is null))
             throw new InvalidDataException("A level cannot be null.");
@@ -110,7 +122,9 @@ public sealed class BuildingDocument
                 type.Id == Guid.Empty || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 120 ||
                 !Enum.IsDefined(type.Function) || !double.IsFinite(type.Thickness) ||
                 type.Thickness is < 0.03 or > 5 || string.IsNullOrWhiteSpace(type.MaterialName) ||
-                type.MaterialName.Length > 120) ||
+                type.MaterialName.Length > 120 || !Enum.IsDefined(type.PlanFillPattern) ||
+                !Enum.IsDefined(type.SectionFillPattern) || !IsRgbColor(type.PlanFillColor) ||
+                !IsRgbColor(type.SectionFillColor)) ||
             WallTypes.Select(type => type.Id).Distinct().Count() != WallTypes.Count)
             throw new InvalidDataException("Invalid wall-type catalog.");
         var wallTypeIds = WallTypes.Select(type => type.Id).ToHashSet();
@@ -123,19 +137,26 @@ public sealed class BuildingDocument
                 !double.IsFinite(wall.End.X) || !double.IsFinite(wall.End.Y) ||
                 !double.IsFinite(wall.Thickness) || !double.IsFinite(wall.Height) ||
                 wall.Length < 0.05 || wall.Length > 100000 ||
-                wall.Thickness is < 0.05 or > 5 || wall.Height is < 0.1 or > 1000)
+                wall.Thickness is < 0.05 or > 5 || wall.Height is < 0.1 or > 1000 ||
+                !Enum.IsDefined(wall.Finish))
                 throw new InvalidDataException("A wall is invalid or has no associated level.");
         }
         ValidateRooms(levelIds);
         ValidateFloors(levelIds);
+        ValidateColumns(levelIds);
         ValidateSheets();
         ValidateViews(levelIds);
+        if (Dimensions.Any(item => item is null) || StructuralElements.Any(item => item is null))
+            throw new InvalidDataException("Invalid plan dimension references.");
         var allIds = Levels.Select(level => level.Id)
             .Concat(Walls.Select(wall => wall.Id))
             .Concat(Openings.Select(opening => opening.Id))
             .Concat(WallTypes.Select(type => type.Id))
             .Concat(Rooms.Select(room => room.Id))
             .Concat(Floors.Select(floor => floor.Id))
+            .Concat(Columns.Select(column => column.Id))
+            .Concat(Dimensions.Select(dimension => dimension.Id))
+            .Concat(StructuralElements.Select(element => element.Id))
             .Concat(Sheets.Select(sheet => sheet.Id))
             .Concat(Views.Select(view => view.Id))
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
@@ -146,12 +167,19 @@ public sealed class BuildingDocument
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
+        PlanDimensions.Validate(this);
+        CirculationGeometry.Validate(this);
+        ArchitecturalShapes.Validate(this);
         OpeningTypeRules.Validate(this);
         LevelConstraints.Validate(this);
         ParameterRules.Validate(this);
         ScheduleDefinitionRules.Validate(this);
         InPlaceFamilyRules.Validate(this);
     }
+
+    /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>
+    private static bool IsRgbColor(string? value) =>
+        value is { Length: 7 } && value[0] == '#' && value[1..].All(Uri.IsHexDigit);
 
     /// <summary>Validates room identity, level ownership, dimensions, and labels.</summary>
     private void ValidateRooms(IReadOnlySet<Guid> levelIds)
@@ -176,9 +204,23 @@ public sealed class BuildingDocument
                 floor.Boundary is null || floor.Boundary.Count is < 3 or > 500 ||
                 floor.Boundary.Any(point => !double.IsFinite(point.X) || !double.IsFinite(point.Y)) ||
                 !double.IsFinite(floor.Thickness) || floor.Thickness is < 0.03 or > 3 ||
-                floor.CalculateArea() is < 0.1 or > 100000000)
+                !double.IsFinite(floor.ElevationOffset) || floor.ElevationOffset is < -10 or > 1000 ||
+                !Enum.IsDefined(floor.Kind) ||
+                floor.CalculateArea() is < 0.1 or > 100000000 || !Enum.IsDefined(floor.Finish))
                 throw new InvalidDataException("Invalid floor slab.");
         }
+    }
+
+    /// <summary>Validates column identity, level ownership, plan section, and height.</summary>
+    private void ValidateColumns(IReadOnlySet<Guid> levelIds)
+    {
+        if (Columns.Any(column => column.Id == Guid.Empty || !levelIds.Contains(column.LevelId) ||
+                !double.IsFinite(column.Position.X) || !double.IsFinite(column.Position.Y) ||
+                !double.IsFinite(column.Width) || column.Width is < 0.05 or > 10 ||
+                !double.IsFinite(column.Depth) || column.Depth is < 0.05 or > 10 ||
+                !double.IsFinite(column.Height) || column.Height is < 0.1 or > 1000) ||
+            Columns.Select(column => column.Id).Distinct().Count() != Columns.Count)
+            throw new InvalidDataException("Invalid column definitions.");
     }
 
     /// <summary>Validates sheet identity, numbering, names, and paper sizes.</summary>

@@ -5,7 +5,7 @@ Publishes and installs Guanacaste 3D for the current Windows user.
 .DESCRIPTION
 Builds the framework-dependent win-x64 bundle inside the repository, copies it
 to the current user's local Programs directory, creates a Start Menu shortcut,
-and registers the official .g3d project file association plus .g3 compatibility. The script only stops a
+and registers native .g3d project, .g3df family, and .g3dt template associations. The script only stops a
 running Guanacaste 3D process when its executable path belongs to that install.
 #>
 [CmdletBinding()]
@@ -64,23 +64,31 @@ try {
     $shortcut.TargetPath = $installedExecutable
     $shortcut.WorkingDirectory = $installRoot
     $shortcut.Description = 'Guanacaste 3D BIM authoring application'
+    # The executable embeds the brand icon (ApplicationIcon); pointing at it keeps the Start menu tile in sync.
+    $shortcut.IconLocation = "$installedExecutable,0"
     $shortcut.Save()
 
-    $projectTypeKey = 'HKCU:\Software\Classes\Guanacaste3D.Project'
-    foreach ($extension in @('.g3d', '.g3')) {
-        $extensionKey = "HKCU:\Software\Classes\$extension"
+    $nativeFileTypes = @(
+        @{ Extension = '.g3d'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
+        @{ Extension = '.g3df'; Type = 'Guanacaste3D.Family'; Description = 'Guanacaste 3D Family' },
+        @{ Extension = '.g3'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
+        @{ Extension = '.g3dt'; Type = 'Guanacaste3D.Template'; Description = 'Guanacaste 3D Template' }
+    )
+    foreach ($nativeFileType in $nativeFileTypes) {
+        $extensionKey = "HKCU:\Software\Classes\$($nativeFileType.Extension)"
+        $documentTypeKey = "HKCU:\Software\Classes\$($nativeFileType.Type)"
         New-Item -Path $extensionKey -Force | Out-Null
-        Set-Item -Path $extensionKey -Value 'Guanacaste3D.Project'
+        Set-Item -Path $extensionKey -Value $nativeFileType.Type
+        New-Item -Path $documentTypeKey -Force | Out-Null
+        Set-Item -Path $documentTypeKey -Value $nativeFileType.Description
+        New-Item -Path "$documentTypeKey\DefaultIcon" -Force | Out-Null
+        Set-Item -Path "$documentTypeKey\DefaultIcon" -Value "`"$installedExecutable`",0"
+        New-Item -Path "$documentTypeKey\shell\open\command" -Force | Out-Null
+        Set-Item -Path "$documentTypeKey\shell\open\command" -Value "`"$installedExecutable`" `"%1`""
     }
-    New-Item -Path $projectTypeKey -Force | Out-Null
-    Set-Item -Path $projectTypeKey -Value 'Guanacaste 3D Project'
-    New-Item -Path "$projectTypeKey\DefaultIcon" -Force | Out-Null
-    Set-Item -Path "$projectTypeKey\DefaultIcon" -Value "`"$installedExecutable`",0"
-    New-Item -Path "$projectTypeKey\shell\open\command" -Force | Out-Null
-    Set-Item -Path "$projectTypeKey\shell\open\command" -Value "`"$installedExecutable`" `"%1`""
 
     Write-Output "Installed Guanacaste 3D at $installedExecutable"
-    Write-Output "Registered .g3d as the official project format and .g3 for compatibility."
+    Write-Output 'Registered .g3d projects, .g3df families, and .g3dt templates.'
 }
 finally {
     Set-Location -LiteralPath $startingLocation

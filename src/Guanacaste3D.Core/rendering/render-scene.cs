@@ -1,0 +1,211 @@
+using System.Numerics;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Import;
+
+namespace Guanacaste3D.Core.Rendering;
+
+/// <summary>A point or spot light. <see cref="Intensity"/> is radiant intensity per steradian (color already multiplied in).</summary>
+public sealed record RenderLight(Vector3 Position, Vector3 Intensity, float Radius = 0.05f,
+    Vector3? SpotDirection = null, float SpotInnerDegrees = 25, float SpotOuterDegrees = 40)
+{
+    /// <summary>
+    /// Measured light distribution (IES). When set, <see cref="Intensity"/> is a color and scale factor applied to the
+    /// profile's candela values (white, 1 for the file as measured) and <see cref="SpotDirection"/> is the luminaire's
+    /// downward axis (straight down by default).
+    /// </summary>
+    public IesProfile? Ies { get; init; }
+}
+
+/// <summary>
+/// Everything the path tracer needs: indexed triangles, one material per triangle, optional smooth
+/// normals and explicit lights. Build it with <see cref="RenderSceneBuilder"/> so the BIM model and any
+/// linked models share a single acceleration structure.
+/// </summary>
+public sealed class RenderScene
+{
+    internal RenderScene(Vector3[] positions, int[] indices, int[] triangleMaterial, Vector3[]? normals,
+        RenderMaterial[] materials, RenderLight[] lights, int droppedTriangles)
+    {
+        Positions = positions;
+        Indices = indices;
+        TriangleMaterial = triangleMaterial;
+        Normals = normals;
+        Materials = materials;
+        Lights = lights;
+        DroppedTriangles = droppedTriangles;
+    }
+
+    public Vector3[] Positions { get; }
+    public int[] Indices { get; }
+    public int[] TriangleMaterial { get; }
+    public Vector3[]? Normals { get; }
+    public RenderMaterial[] Materials { get; }
+    public RenderLight[] Lights { get; }
+    /// <summary>Triangles discarded for non-finite coordinates, bad indices or zero area.</summary>
+    public int DroppedTriangles { get; }
+    public int TriangleCount => Indices.Length / 3;
+
+    /// <summary>Axis-aligned bounds of all vertices used by triangles; a unit box when empty.</summary>
+    public (Vector3 Min, Vector3 Max) Bounds()
+    {
+        if (Indices.Length == 0) return (Vector3.Zero, Vector3.One);
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        foreach (var index in Indices)
+        {
+            min = Vector3.Min(min, Positions[index]);
+            max = Vector3.Max(max, Positions[index]);
+        }
+        return (min, max);
+    }
+
+    /// <summary>Approximate heap size of the geometry, used to warn before very large renders.</summary>
+    public long EstimatedBytes =>
+        Positions.Length * 12L + Indices.Length * 4L + TriangleMaterial.Length * 4L +
+        (Normals?.Length ?? 0) * 12L + TriangleCount * 40L;
+}
+
+/// <summary>Combines the BIM mesh and linked models into one <see cref="RenderScene"/>.</summary>
+public sealed class RenderSceneBuilder
+{
+    private readonly ArrayBuilderProxy<Vector3> _positions = new();
+    private readonly ArrayBuilderProxy<int> _indices = new();
+    private readonly ArrayBuilderProxy<int> _triangleMaterial = new();
+    private readonly ArrayBuilderProxy<Vector3> _normals = new();
+    private readonly List<RenderMaterial> _materials = [];
+    private readonly Dictionary<RenderMaterial, int> _materialIndex = [];
+    private readonly List<RenderLight> _lights = [];
+    private bool _anyNormals;
+    private int _dropped;
+
+    /// <summary>Adds the BIM scene mesh, mapping each surface category to its stock material.</summary>
+    public RenderSceneBuilder AddBuilding(SceneMesh mesh,
+        Func<SurfaceKind, RenderMaterial>? materialFor = null)
+    {
+        ArgumentNullException.ThrowIfNull(mesh);
+        materialFor ??= MaterialLibrary.ForKind;
+        var kinds = new Dictionary<SurfaceKind, int>();
+        var start = _positions.Count;
+        var meshPositions = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(mesh.Positions);
+        _positions.AddRange(meshPositions);
+        for (var triangle = 0; triangle < mesh.TriangleCount; triangle++)
+        {
+            var a = mesh.Indices[triangle * 3];
+            var b = mesh.Indices[triangle * 3 + 1];
+            var c = mesh.Indices[triangle * 3 + 2];
+            if (!ValidTriangle(meshPositions, a, b, c))
+            {
+                _dropped++;
+                continue;
+            }
+            var kind = mesh.TriangleKinds[triangle];
+            if (!kinds.TryGetValue(kind, out var material)) kinds[kind] = material = MaterialIndex(materialFor(kind));
+            _indices.Add(start + a);
+            _indices.Add(start + b);
+            _indices.Add(start + c);
+            _triangleMaterial.Add(material);
+        }
+        PadNormals();
+        return this;
+    }
+
+    /// <summary>Adds a linked model after applying <paramref name="placement"/>.</summary>
+    public RenderSceneBuilder AddModel(ImportedModel model, ModelPlacement? placement = null)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var matrix = (placement ?? ModelPlacement.Identity).ToMatrix();
+        var start = _positions.Count;
+        foreach (var position in model.Positions) _positions.Add(Vector3.Transform(position, matrix));
+        if (model.Normals is { } normals && normals.Length == model.Positions.Length)
+        {
+            _anyNormals = true;
+            PadNormals(start);
+            foreach (var normal in normals)
+            {
+                var rotated = Vector3.TransformNormal(normal, matrix);
+                _normals.Add(rotated.LengthSquared() > 1e-12f ? Vector3.Normalize(rotated) : Vector3.Zero);
+            }
+        }
+        var remap = new int[Math.Max(1, model.Materials.Count)];
+        for (var i = 0; i < model.Materials.Count; i++) remap[i] = MaterialIndex(model.Materials[i]);
+        if (model.Materials.Count == 0) remap[0] = MaterialIndex(MaterialLibrary.Imported);
+        var localPositions = model.Positions;
+        for (var triangle = 0; triangle < model.TriangleCount; triangle++)
+        {
+            var a = model.Indices[triangle * 3];
+            var b = model.Indices[triangle * 3 + 1];
+            var c = model.Indices[triangle * 3 + 2];
+            if (!ValidTriangle(localPositions, a, b, c))
+            {
+                _dropped++;
+                continue;
+            }
+            // Tolerate files whose triangle material list is shorter than the triangle list.
+            var material = triangle < model.TriangleMaterial.Length ? model.TriangleMaterial[triangle] : 0;
+            _indices.Add(start + a);
+            _indices.Add(start + b);
+            _indices.Add(start + c);
+            _triangleMaterial.Add(remap[(uint)material < (uint)remap.Length ? material : 0]);
+        }
+        PadNormals();
+        return this;
+    }
+
+    /// <summary>Adds an explicit light.</summary>
+    public RenderSceneBuilder AddLight(RenderLight light)
+    {
+        ArgumentNullException.ThrowIfNull(light);
+        if (float.IsFinite(light.Position.X + light.Position.Y + light.Position.Z) &&
+            float.IsFinite(light.Intensity.X + light.Intensity.Y + light.Intensity.Z))
+            _lights.Add(light);
+        return this;
+    }
+
+    /// <summary>Freezes the accumulated geometry into an immutable scene.</summary>
+    public RenderScene Build()
+    {
+        PadNormals();
+        var materials = _materials.Count == 0 ? [MaterialLibrary.Imported.Sanitized()] : _materials.ToArray();
+        return new RenderScene(_positions.ToArray(), _indices.ToArray(), _triangleMaterial.ToArray(),
+            _anyNormals ? _normals.ToArray() : null, materials, _lights.ToArray(), _dropped);
+    }
+
+    private int MaterialIndex(RenderMaterial material)
+    {
+        var clean = material.Sanitized();
+        if (_materialIndex.TryGetValue(clean, out var index)) return index;
+        index = _materials.Count;
+        _materials.Add(clean);
+        _materialIndex[clean] = index;
+        return index;
+    }
+
+    /// <summary>Keeps the normal array aligned with positions once any model supplies normals.</summary>
+    private void PadNormals(int? upTo = null)
+    {
+        if (!_anyNormals) return;
+        var target = upTo ?? _positions.Count;
+        while (_normals.Count < target) _normals.Add(Vector3.Zero);
+    }
+
+    private static bool ValidTriangle(ReadOnlySpan<Vector3> positions, int a, int b, int c)
+    {
+        var count = positions.Length;
+        if ((uint)a >= (uint)count || (uint)b >= (uint)count || (uint)c >= (uint)count) return false;
+        var p = positions[a];
+        var q = positions[b];
+        var r = positions[c];
+        if (!float.IsFinite(p.X + p.Y + p.Z + q.X + q.Y + q.Z + r.X + r.Y + r.Z)) return false;
+        return Vector3.Cross(q - p, r - p).LengthSquared() > 1e-18f;
+    }
+
+    /// <summary>Small wrapper that adds a count and bulk copy on top of the generic builder.</summary>
+    private sealed class ArrayBuilderProxy<T>
+    {
+        private readonly ArrayBuilder<T> _inner = new(1024);
+        public int Count => _inner.Count;
+        public void Add(T item) => _inner.Add(item);
+        public void AddRange(ReadOnlySpan<T> items) => _inner.AddRange(items);
+        public T[] ToArray() => _inner.ToArray();
+    }
+}

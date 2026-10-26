@@ -18,6 +18,9 @@ public static class ProjectFile
     /// <summary>Previous preview project extension, retained for compatibility.</summary>
     public const string PreviewExtension = ".g3";
 
+    /// <summary>Earlier native extension; same as <see cref="PreviewExtension"/>.</summary>
+    public const string PreviousNativeExtension = PreviewExtension;
+
     /// <summary>Old JSON-only preview extension, import-only.</summary>
     public const string LegacyExtension = ".g3d.json";
 
@@ -36,6 +39,9 @@ public static class ProjectFile
 
     public static bool IsPreviewPath(string path) =>
         string.Equals(Path.GetExtension(path), PreviewExtension, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Recognizes earlier native projects (.g3) for migration to the current extension.</summary>
+    public static bool IsPreviousNativePath(string path) => IsPreviewPath(path);
 
     /// <summary>Returns whether a path uses the import-only JSON preview extension.</summary>
     public static bool IsLegacyPath(string path) =>
@@ -79,6 +85,18 @@ public static class ProjectFile
                     throw new InvalidDataException("The required field is missing: " + required + ".");
         }
 
+        return DeserializeDocument(json);
+    }
+
+    /// <summary>Serializes a project payload with the same options the project file uses.</summary>
+    public static string SerializeDocument(BuildingDocument document) => JsonSerializer.Serialize(document, Options);
+
+    /// <summary>
+    /// Parses, migrates, and validates a project payload. Templates reuse this path so every accepted
+    /// document follows one migration chain.
+    /// </summary>
+    public static BuildingDocument DeserializeDocument(string json)
+    {
         var document = JsonSerializer.Deserialize<BuildingDocument>(json, Options)
             ?? throw new InvalidDataException("The project document is empty.");
         UpgradeLegacyDocument(document);
@@ -140,7 +158,18 @@ public static class ProjectFile
             // Schema 9 adds in-place families; earlier projects have none.
             document.SchemaVersion = 9;
             document.InPlaceFamilies ??= [];
+            // Earlier built-in doors had no leaf. Preserve custom sizes, names, and nonzero depths.
+            var defaults = BuiltInOpeningTypes.CreateDefaults().Where(type => type.Kind == OpeningKind.Door)
+                .ToDictionary(type => type.Id);
+            for (var index = 0; index < document.OpeningTypes.Count; index++)
+            {
+                var type = document.OpeningTypes[index];
+                if (type.Kind == OpeningKind.Door && type.Depth == 0 && defaults.TryGetValue(type.Id, out var standard))
+                    document.OpeningTypes[index] = type with { Depth = standard.Depth };
+            }
         }
+        // Schema 10 adds frame width and glazing layout to opening types, plus roof shapes, element styles and column shapes.
+        if (document.SchemaVersion == 9) document.SchemaVersion = 10;
 
     }
 

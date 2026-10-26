@@ -91,7 +91,7 @@ public partial class MainWindow
         foreach (var wall in walls)
         {
             DrawProjectedWall(canvas, wall, orientation, minimumCoordinate, minimumElevation,
-                horizontalOffset, scale);
+                horizontalOffset, scale, ReferenceEquals(canvas, SectionCanvas));
         }
     }
 
@@ -168,7 +168,8 @@ public partial class MainWindow
         double minimumCoordinate,
         double minimumElevation,
         double horizontalOffset,
-        double scale)
+        double scale,
+        bool useCutAppearance)
     {
         var level = _session.Document.Levels.Single(candidate => candidate.Id == wall.LevelId);
         var start = ProjectCoordinate(wall.Start, orientation);
@@ -177,11 +178,15 @@ public partial class MainWindow
         var left = horizontalOffset + (Math.Min(start, end) - minimumCoordinate) * scale;
         var top = ProjectElevation(canvas, level.Elevation + wall.Height, minimumElevation, scale);
         var wallWidth = Math.Max(4, projectedLength * scale);
+        var wallType = _session.Document.WallTypes.Single(type => type.Id == wall.WallTypeId);
         var wallShape = new Rectangle
         {
             Width = wallWidth,
             Height = wall.Height * scale,
-            Fill = new SolidColorBrush(Color.FromRgb(191, 205, 196)),
+            Fill = useCutAppearance
+                ? WallAppearanceRendering.CreateBrush(
+                    wallType.SectionFillColor, wallType.SectionFillPattern)
+                : WallAppearanceRendering.CreateBrush(wallType.PlanFillColor, WallFillPattern.Solid, 0.58),
             Stroke = Brushes.DarkSlateGray,
             StrokeThickness = 1
         };

@@ -80,6 +80,14 @@
   <sys:String x:Key="Transaction.RemoveSheet">Eliminar lámina</sys:String>
   <sys:String x:Key="Transaction.AddOpening">Insertar abertura</sys:String>
   <sys:String x:Key="Transaction.MoveWall">Mover muro</sys:String>
+  <sys:String x:Key="Transaction.MoveOpening">Mover abertura</sys:String>
+  <sys:String x:Key="Transaction.MoveWallEnd">Ajustar extremo de muro</sys:String>
+  <sys:String x:Key="Transaction.MoveRoom">Mover recinto</sys:String>
+  <sys:String x:Key="Transaction.MoveFloor">Mover piso</sys:String>
+  <sys:String x:Key="Transaction.AddColumn">Crear pilar</sys:String>
+  <sys:String x:Key="Transaction.RemoveColumn">Eliminar pilar</sys:String>
+  <sys:String x:Key="Transaction.MoveColumn">Mover pilar</sys:String>
+  <sys:String x:Key="Transaction.DrawWall">Trazar muro</sys:String>
   <sys:String x:Key="Transaction.DuplicateWall">Duplicar muro</sys:String>
   <sys:String x:Key="Transaction.UpdateOpening">Modificar abertura</sys:String>
   <sys:String x:Key="Transaction.RotateWall">Rotar muro</sys:String>
@@ -102,8 +110,16 @@
   <sys:String x:Key="OpeningTypes.Width">Ancho (m)</sys:String>
   <sys:String x:Key="OpeningTypes.Height">Alto (m)</sys:String>
   <sys:String x:Key="OpeningTypes.DefaultSill">Antepecho (m)</sys:String>
+  <sys:String x:Key="OpeningTypes.FrameWidth">Ancho del marco (m)</sys:String>
+  <sys:String x:Key="OpeningTypes.GlazingLights">Paños de vidrio (0 = automático)</sys:String>
   <sys:String x:Key="OpeningTypes.Material">Material</sys:String>
   <sys:String x:Key="OpeningTypes.Duplicate">Duplicar</sys:String>
+  <sys:String x:Key="OpeningTypes.Import">Importar dimensiones de familia…</sys:String>
+  <sys:String x:Key="OpeningTypes.ImportTitle">Importar dimensiones de puerta o ventana</sys:String>
+  <sys:String x:Key="OpeningTypes.ImportFilter">Dimensiones de familia (RFA, IFC, DXF, OBJ)|*.rfa;*.ifc;*.dxf;*.obj|Familia Revit (RFA)|*.rfa|IFC (Revit)|*.ifc|DXF (CAD)|*.dxf|OBJ (SketchUp, Revit)|*.obj</sys:String>
+  <sys:String x:Key="OpeningTypes.ImportedFamily">Importada</sys:String>
+  <sys:String x:Key="Transaction.SetWallFinish">Cambiar acabado del muro</sys:String>
+  <sys:String x:Key="Transaction.SetFloorFinish">Cambiar acabado de la losa</sys:String>
   <sys:String x:Key="OpeningTypes.Purge">Purgar tipos no usados…</sys:String>
   <sys:String x:Key="OpeningTypes.ConfirmPurge">¿Eliminar todos los tipos de puertas y ventanas que no tienen ejemplares colocados? Puedes deshacerlo.</sys:String>
   <sys:String x:Key="OpeningTypes.Purged">Tipos eliminados: {0}</sys:String>
@@ -131,6 +147,7 @@
   <sys:String x:Key="Transaction.UpdateOpeningType">Modificar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.RemoveOpeningType">Eliminar tipo de abertura</sys:String>
   <sys:String x:Key="Transaction.PurgeOpeningTypes">Purgar tipos de abertura</sys:String>
+  <sys:String x:Key="Transaction.ImportOpeningFamily">Importar familia de aberturas</sys:String>
   <!-- Parametric levels and wall top constraints (schema 7). -->
   <sys:String x:Key="Action.Levels">Niveles…</sys:String>
   <sys:String x:Key="Levels.WindowTitle">Niveles y restricciones</sys:String>
@@ -198,4 +215,9 @@
   <sys:String x:Key="Transaction.UpdateSchedule">Modificar tabla</sys:String>
   <sys:String x:Key="Transaction.DuplicateSchedule">Duplicar tabla</sys:String>
   <sys:String x:Key="Transaction.RemoveSchedule">Eliminar tabla</sys:String>
+  <sys:String x:Key="OpeningTypes.ImportPreview">{0}: ancho {1} m, alto {2} m, espesor {3} m. Se creará una familia paramétrica usando estas dimensiones; no se conservarán mallas, materiales ni parámetros de Revit/SketchUp. OBJ de ventanas: X = ancho, Y = altura, Z = espesor, en metros. DXF usa la altura del editor. ¿Crear el tipo?</sys:String>
+  <sys:String x:Key="OpeningTypes.ReadFailed">No se pudo leer el archivo. Comprueba su ubicación y permisos.</sys:String>
+  <sys:String x:Key="OpeningTypes.DoorFamily">Puerta de una hoja</sys:String>
+  <sys:String x:Key="OpeningTypes.WindowFamily">Ventana fija</sys:String>
+  <sys:String x:Key="OpeningTypes.ImportHelp">RFA (Revit): se leen la categoría y el tamaño del tipo, no la geometría. IFC: exporta la puerta o ventana desde Revit. SketchUp: exporta un componente a OBJ. RVT y SKP no se abren directamente. Selecciona la categoría en el editor antes de importar.</sys:String>
 </ResourceDictionary>
