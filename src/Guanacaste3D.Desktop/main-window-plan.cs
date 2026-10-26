@@ -122,6 +122,11 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (TryFinishSlabSketch())
+        {
+            e.Handled = true;
+            return;
+        }
         if (_movingElement)
         {
             CancelMoveTool();
@@ -258,6 +263,7 @@ public partial class MainWindow
         RenderTemporaryDimensions();
         RenderWallSketchOverlay();
         RenderStructuralPreview();
+        RenderSlabSketchPreview();
         AddAlignmentGuides();
         RenderPlacementPreview();
         RenderPermanentDimensions();

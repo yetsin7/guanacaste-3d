@@ -27,6 +27,7 @@ public partial class MainWindow
         ArchitectureCommandEventArgs e)
     {
         var eventArguments = new RoutedEventArgs();
+        if (ExecuteArchitectureCommand(e.Command)) return;
         switch (e.Command)
         {
             case ArchitectureCommand.Modify:

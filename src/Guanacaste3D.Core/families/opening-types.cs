@@ -33,7 +33,10 @@ public enum OpeningOperation
     Hung,
 
     /// <summary>Horizontal glass blades (jalousie).</summary>
-    Louvered
+    Louvered,
+
+    /// <summary>A plain hole through the wall with no frame, leaf or sill.</summary>
+    Void
 }
 
 /// <summary>
@@ -124,7 +127,7 @@ public static class OpeningTypeRules
                 !double.IsFinite(type.FrameWidth) || type.FrameWidth is < 0.02 or > 0.15 ||
                 !Enum.IsDefined(type.Operation) || (type.Kind == OpeningKind.Door && type.Operation is
                     OpeningOperation.Casement or OpeningOperation.Awning or OpeningOperation.Hung or
-                    OpeningOperation.Louvered) || (type.Kind == OpeningKind.Window && (type.GlazedLeaf || type.Operation is
+                    OpeningOperation.Louvered or OpeningOperation.Void) || (type.Kind == OpeningKind.Window && (type.GlazedLeaf || type.Operation is
                     OpeningOperation.Folding or OpeningOperation.Pocket or OpeningOperation.Overhead or
                     OpeningOperation.Revolving)) ||
                 type.GlazingLightCount is < 0 or > 4 ||

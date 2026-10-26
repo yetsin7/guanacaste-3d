@@ -124,6 +124,8 @@ public static class BuildingMesher
     private static void AddOpeningAssembly(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type,
         double elevation)
     {
+        // A wall opening is a plain hole: no lining, sash, leaf or sill.
+        if (type.Operation == OpeningOperation.Void) return;
         var bottom = elevation + opening.Sill;
         var top = bottom + opening.Height;
         var lining = Math.Min(type.FrameWidth, Math.Min(opening.Width, opening.Height) / 6);
@@ -491,12 +493,14 @@ public static class BuildingMesher
         }
         // Vertices 0 and 3 sit at the start (Top); vertices 1 and 2 at the end (EndTop).
         var bottom = (float)(datum + part.Bottom);
+        var endBottom = (float)(datum + (part.EndBottom ?? part.Bottom));
+        float[] bottoms = [bottom, endBottom, endBottom, bottom];
         float[] tops = [(float)(datum + part.Top), (float)(datum + endTop), (float)(datum + endTop), (float)(datum + part.Top)];
         var counterClockwise = PolygonTriangulator.SignedDoubleArea(
             outline.Select(point => new Point2(point.X, point.Y)).ToArray()) > 0;
         var order = counterClockwise ? new[] { 0, 1, 2, 3 } : new[] { 3, 2, 1, 0 };
         Vector3 Top(int index) => new(outline[order[index]].X, outline[order[index]].Y, tops[order[index]]);
-        Vector3 Bottom(int index) => new(outline[order[index]].X, outline[order[index]].Y, bottom);
+        Vector3 Bottom(int index) => new(outline[order[index]].X, outline[order[index]].Y, bottoms[order[index]]);
         mesh.AddQuad(Top(0), Top(1), Top(2), Top(3), part.Kind);
         mesh.AddQuad(Bottom(3), Bottom(2), Bottom(1), Bottom(0), part.Kind);
         for (var index = 0; index < 4; index++)

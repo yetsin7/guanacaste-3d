@@ -147,6 +147,7 @@ public partial class MainWindow
         _structuralTool = null;
         _structuralPreset = null;
         _tagTarget = null;
+        CancelArchitectureTools();
         _pendingStructuralStart = null;
         _structuralPreviewPoint = null;
     }
@@ -154,6 +155,7 @@ public partial class MainWindow
     /// <summary>Tracks the pointer while a structural tool is armed so its preview follows the cursor.</summary>
     private bool TryUpdateStructuralPreview(MouseEventArgs e)
     {
+        if (TryUpdateSketchPreview(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var pointer = SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas)));
         _structuralPreviewPoint = ResolveStructuralPoint(tool.Kind, pointer);
@@ -164,7 +166,8 @@ public partial class MainWindow
     /// <summary>Places a point element at one click, or collects the two ends of a line or rectangle.</summary>
     private bool TryHandleStructuralPlacement(MouseButtonEventArgs e)
     {
-        if (TryHandleTagClick(e)) return true;
+        if (TryHandleTagClick(e) || TryHandleSlabSketchClick(e) || TryHandleWallPick(e) || TryHandleGroupPlace(e) ||
+            TryHandleWorkPlanePick(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var point = ResolveStructuralPoint(tool.Kind,
             SnapWallPoint(CanvasToWorld(e.GetPosition(PlanCanvas))));

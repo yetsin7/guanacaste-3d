@@ -107,6 +107,10 @@ public static class ArchitecturalLibrary
         foreach (var width in new[] { 0.9, 1.2 }) Window("Hung Window", width, 1.5, 0.9, OpeningOperation.Hung, 1);
         foreach (var width in new[] { 0.6, 1.2 }) Window("Louvered Window", width, 1.2, 0.9, OpeningOperation.Louvered, 1, "Glass blades");
         Window("Clerestory Window", 1.8, 0.5, 2.2, OpeningOperation.Standard, 3);
+        // Plain holes in a wall: a doorway, a pass-through and a large opening.
+        Window("Wall Opening", 0.9, 2.1, 0, OpeningOperation.Void, 0, string.Empty);
+        Window("Wall Opening", 1.5, 1.2, 0.9, OpeningOperation.Void, 0, string.Empty);
+        Window("Wall Opening", 2.4, 2.4, 0, OpeningOperation.Void, 0, string.Empty);
         return types;
     }
 

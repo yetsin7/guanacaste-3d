@@ -111,6 +111,8 @@ public static class ArchitecturalShapes
                 element.GridWidth != 0 && element.GridWidth is < 0.2 or > 20 ||
                 element.GridHeight != 0 && element.GridHeight is < 0.2 or > 20)
                 throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
+            if (!double.IsFinite(element.Rise) || element.Rise is < -100 or > 100)
+                throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
             var lengthKind = element.Kind is StructuralElementKind.Ramp or StructuralElementKind.Gutter
                 or StructuralElementKind.CurtainWall;
             var pointKind = element.Kind is StructuralElementKind.Downspout;

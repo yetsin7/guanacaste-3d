@@ -156,6 +156,7 @@ public partial class MainWindow
             if (_activeWallSnap is WallSnapResult snap) return snap.Point;
         }
         _activeWallSnap = null;
+        if (SnapToWorkPlane(point) is Point2 onPlane) return onPlane;
         return SnapGridCheck.IsChecked == true
             ? new Point2(
                 Math.Round(point.X * 10, MidpointRounding.AwayFromZero) / 10,

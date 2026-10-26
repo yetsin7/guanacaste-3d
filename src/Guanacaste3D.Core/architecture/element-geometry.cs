@@ -10,6 +10,9 @@ namespace Guanacaste3D.Core;
 public sealed record ElementPart(IReadOnlyList<Point2> Footprint, double Bottom, double Top, SurfaceKind Kind)
 {
     public double? EndTop { get; init; }
+
+    /// <summary>Underside height at the end vertices; when null the underside stays level at <see cref="Bottom"/>.</summary>
+    public double? EndBottom { get; init; }
 }
 
 /// <summary>Breaks every solid structural and architectural element into the parts that the 3D model and plan draw.</summary>
@@ -26,6 +29,7 @@ public static class ElementGeometry
             StructuralElementKind.Stair => StairParts(element),
             StructuralElementKind.Railing => RailingParts(element),
             StructuralElementKind.Ramp => RampParts(element),
+            StructuralElementKind.WallSweep or StructuralElementKind.WallReveal => WallSweepParts(element),
             StructuralElementKind.Gutter => GutterParts(element),
             StructuralElementKind.CurtainWall => CurtainWallParts(element),
             StructuralElementKind.Skylight => SkylightParts(element),
@@ -70,6 +74,11 @@ public static class ElementGeometry
     private static IEnumerable<ElementPart> RailingParts(StructuralElement element)
     {
         if (element.Length < 0.05) yield break;
+        if (element.Rise != 0)
+        {
+            foreach (var part in SlopedRailingParts(element)) yield return part;
+            yield break;
+        }
         var bottom = element.Offset;
         var top = element.Offset + element.Height;
         switch (element.Style)
@@ -124,6 +133,69 @@ public static class ElementGeometry
                 }
                 break;
         }
+    }
+
+    /// <summary>A guard that follows a rising stair or ramp: level posts at the stair's height, sloped rails and infill.</summary>
+    private static IEnumerable<ElementPart> SlopedRailingParts(StructuralElement element)
+    {
+        var length = element.Length;
+        double Z(double fraction) => element.Offset + element.Rise * fraction;
+        ElementPart Sloped(double lateral, double width, double lower, double upper, SurfaceKind kind = SurfaceKind.Structure) =>
+            new(ArchitecturalShapes.Strip(element.Start, element.End, lateral, width), Z(0) + lower, Z(0) + upper, kind)
+            { EndBottom = Z(1) + lower, EndTop = Z(1) + upper };
+        var height = element.Height;
+        if (element.Style == ElementStyle.SolidParapet)
+        {
+            yield return Sloped(0, 0.15, 0, height - 0.05);
+            yield return Sloped(0, 0.21, height - 0.05, height);
+            yield break;
+        }
+        var intervals = Math.Max(1, (int)Math.Ceiling(length / (element.Style == ElementStyle.Cable ? 1.2 : 1.8)));
+        for (var index = 0; index <= intervals; index++)
+        {
+            var fraction = (double)index / intervals;
+            yield return Block(element, ArchitecturalShapes.PointFootprint(
+                ArchitecturalShapes.Lerp(element.Start, element.End, fraction), Math.Max(element.Width, RailPost), false),
+                Z(fraction), Z(fraction) + height);
+        }
+        yield return Sloped(0, element.Width + 0.02, height - 0.05, height);
+        switch (element.Style)
+        {
+            case ElementStyle.Default:
+                yield return Sloped(0, element.Width, height / 2 - 0.05, height / 2);
+                break;
+            case ElementStyle.GlassPanel:
+                yield return Sloped(0, 0.012, 0.10, height - 0.05, SurfaceKind.Glass);
+                break;
+            case ElementStyle.Cable:
+                for (var index = 0; index < 5; index++)
+                    yield return Sloped(0, 0.012, 0.12 + (height - 0.22) * index / 4.0, 0.132 + (height - 0.22) * index / 4.0);
+                break;
+            case ElementStyle.Pickets:
+                yield return Sloped(0, element.Width, 0.08, 0.13);
+                const double spacing = 0.11;
+                var count = (int)Math.Min(2000, Math.Floor(length / spacing));
+                for (var index = 1; index < count; index++)
+                {
+                    var fraction = index * spacing / length;
+                    yield return Block(element, ArchitecturalShapes.PointFootprint(
+                        ArchitecturalShapes.Lerp(element.Start, element.End, fraction), 0.02, false),
+                        Z(fraction) + 0.13, Z(fraction) + height - 0.05);
+                }
+                break;
+        }
+    }
+
+    /// <summary>A profile on both faces of the host wall: proud by 2.5 cm for a sweep, 4 mm for a reveal line.</summary>
+    private static IEnumerable<ElementPart> WallSweepParts(StructuralElement element)
+    {
+        if (element.Length < 0.05) yield break;
+        var reveal = element.Kind == StructuralElementKind.WallReveal;
+        var proud = reveal ? 0.004 : 0.025;
+        foreach (var side in new[] { -1, 1 })
+            yield return Block(element, ArchitecturalShapes.Strip(element.Start, element.End,
+                side * (element.Width / 2 + proud / 2), proud), element.Offset, element.Offset + element.Height,
+                reveal ? SurfaceKind.OpeningFrame : SurfaceKind.Wall);
     }
 
     /// <summary>A wedge rising from the start (thin) to the end (full height).</summary>

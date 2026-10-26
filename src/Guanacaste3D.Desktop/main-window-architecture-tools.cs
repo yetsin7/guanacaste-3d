@@ -77,14 +77,14 @@ public partial class MainWindow
     internal void PlaceLibrarySlab(SlabPreset preset) => CreateEnclosureSlab(preset.Kind, preset);
 
     /// <summary>Shows the catalog recipes for a slab role at the pointer, so the user picks a type before it is created.</summary>
-    private void ShowSlabPresetMenu(FloorKind kind)
+    private void ShowSlabPresetMenu(FloorKind kind, Action<SlabPreset>? onPick = null)
     {
         var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
         foreach (var preset in ArchitecturalLibrary.SlabPresets.Where(candidate => candidate.Kind == kind))
         {
             var recipe = preset;
             var item = new MenuItem { Header = preset.Name };
-            item.Click += (_, _) => CreateEnclosureSlab(kind, recipe);
+            item.Click += (_, _) => { if (onPick is null) CreateEnclosureSlab(kind, recipe); else onPick(recipe); };
             menu.Items.Add(item);
         }
         menu.IsOpen = true;
@@ -231,6 +231,11 @@ public partial class MainWindow
         StructuralElementKind.RoomSeparator => "Entity.RoomSeparator",
         StructuralElementKind.AreaBoundary => "Entity.AreaBoundary",
         StructuralElementKind.Area => "Entity.Area",
+        StructuralElementKind.WallSweep => "Entity.WallSweep",
+        StructuralElementKind.WallReveal => "Entity.WallReveal",
+        StructuralElementKind.Soffit => "Entity.Soffit",
+        StructuralElementKind.Fascia => "Entity.Fascia",
+        StructuralElementKind.SlabEdge => "Entity.SlabEdge",
         _ => null
     };
 }

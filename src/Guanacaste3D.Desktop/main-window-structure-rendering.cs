@@ -104,7 +104,7 @@ public partial class MainWindow
         {
             X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
             Stroke = selected ? Brushes.DarkOrange : brush,
-            StrokeThickness = selected ? thickness + 1.5 : thickness,
+            StrokeThickness = selected || element.Id == _activeWorkPlaneId ? thickness + 1.5 : thickness,
             StrokeDashArray = dashes,
             Tag = element.Id
         });

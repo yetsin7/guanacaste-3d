@@ -57,7 +57,22 @@ public enum StructuralElementKind
     AreaBoundary,
 
     /// <summary>A rectangular area of an area scheme, measured in plan. It has no solid.</summary>
-    Area
+    Area,
+
+    /// <summary>A profile swept along both faces of a wall, such as a skirting or cornice.</summary>
+    WallSweep,
+
+    /// <summary>A shallow groove line drafted along both faces of a wall.</summary>
+    WallReveal,
+
+    /// <summary>A flat panel under the overhang of a roof.</summary>
+    Soffit,
+
+    /// <summary>A vertical board closing the edge of a roof.</summary>
+    Fascia,
+
+    /// <summary>A band running along the edge of a floor slab.</summary>
+    SlabEdge
 }
 
 /// <summary>Variant of an element's geometry. Which values apply depends on the element kind.</summary>
@@ -116,6 +131,9 @@ public sealed record StructuralElement(
 
     /// <summary>Curtain wall only: center-to-center spacing of transoms in meters; zero means the 1.2 m default.</summary>
     public double GridHeight { get; init; }
+
+    /// <summary>Guards only: vertical rise from the start to the end, so a guard can follow a stair or ramp.</summary>
+    public double Rise { get; init; }
 
     /// <summary>Geometry variant: beam section, guard type, stair type, or round point elements.</summary>
     public ElementStyle Style { get; init; }
@@ -199,6 +217,12 @@ public static class StructuralElementStandards
         StructuralElementKind.Skylight => (0, 0.15, 0),
         StructuralElementKind.ReferencePlane or StructuralElementKind.RoomSeparator
             or StructuralElementKind.AreaBoundary or StructuralElementKind.Area => (0, 0, 0),
+        // A sweep's width is the host wall's thickness; a reveal is a 2 cm groove at 1 m.
+        StructuralElementKind.WallSweep => (0.20, 0.10, 0),
+        StructuralElementKind.WallReveal => (0.20, 0.02, 1.0),
+        StructuralElementKind.Soffit => (0.60, 0.02, 2.95),
+        StructuralElementKind.Fascia => (0.03, 0.25, 2.80),
+        StructuralElementKind.SlabEdge => (0.20, 0.30, -0.30),
         _ => (0.02, 0, 0)
     };
 }
