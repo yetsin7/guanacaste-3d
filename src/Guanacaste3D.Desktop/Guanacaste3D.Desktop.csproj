@@ -8,7 +8,7 @@
     <AssemblyName>Guanacaste3D.Desktop</AssemblyName>
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
-    <Version>0.11.0</Version>
+    <Version>0.12.0</Version>
     <!-- Embedded in the .exe so Explorer, the Start menu shortcut and the taskbar show the brand mark. -->
     <ApplicationIcon>resources\brand\guanacaste3d.ico</ApplicationIcon>
   </PropertyGroup>
@@ -23,5 +23,7 @@
   <ItemGroup>
     <!-- Window.Icon reads the same icon through a pack URI at run time. -->
     <Resource Include="resources\brand\guanacaste3d.ico" />
+    <!-- Shipped render textures, loaded from disk next to the executable by RenderTextureLibrary. -->
+    <Content Include="resources\textures\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

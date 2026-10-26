@@ -51,6 +51,15 @@ public sealed record RenderMaterial
     public SurfacePattern Pattern { get; init; }
     /// <summary>Pattern size multiplier; 1 matches real-world dimensions in meters.</summary>
     public float PatternScale { get; init; } = 1;
+    /// <summary>
+    /// An image projected in world space onto the surface; it multiplies <see cref="BaseColor"/> and replaces the
+    /// procedural pattern. Null for untextured materials.
+    /// </summary>
+    public RenderTexture? Texture { get; init; }
+    /// <summary>Meters covered by one copy of <see cref="Texture"/>.</summary>
+    public float TextureSize { get; init; } = 1;
+    /// <summary>0–1: how strongly the texture's brightness raises the surface (light parts proud, dark parts recessed).</summary>
+    public float TextureRelief { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;
@@ -75,7 +84,9 @@ public sealed record RenderMaterial
         Transmission = Clean(Transmission, 0, 1, 0),
         Emission = Clean(Emission, 0, 10000, 0),
         TransmissionTint = Clean(TransmissionTint, 0, 1, 1),
-        PatternScale = Clean(PatternScale, 0.01f, 1000, 1)
+        PatternScale = Clean(PatternScale, 0.01f, 1000, 1),
+        TextureSize = Clean(TextureSize, 0.01f, 1000, 1),
+        TextureRelief = Clean(TextureRelief, 0, 1, 0)
     };
 
     private static float Clean(float value, float low, float high, float fallback) =>
@@ -130,6 +141,11 @@ public static class MaterialLibrary
             Name = "Corteza", BaseColor = new(0.20f, 0.16f, 0.12f), Roughness = 0.95f,
             Pattern = SurfacePattern.Bark, PatternScale = 1
         },
+        SurfaceKind.Earth => new RenderMaterial
+        {
+            Name = "Tierra", BaseColor = new(0.30f, 0.22f, 0.15f), Roughness = 0.97f,
+            Pattern = SurfacePattern.Concrete, PatternScale = 0.6f
+        },
         SurfaceKind.Structure => new RenderMaterial
         {
             Name = "Estructura", BaseColor = new(0.45f, 0.42f, 0.38f), Roughness = 0.85f,
@@ -137,6 +153,21 @@ public static class MaterialLibrary
         },
         _ => new RenderMaterial { Name = "Material", BaseColor = new(0.7f), Roughness = 0.8f }
     };
+
+    /// <summary>
+    /// The stock material of a category with an image texture instead of its color and pattern: the image carries the
+    /// color, the category keeps its roughness, metalness and transparency.
+    /// </summary>
+    public static RenderMaterial Textured(SurfaceKind kind, RenderTexture texture, double size, double relief) =>
+        ForKind(kind) with
+        {
+            Name = $"{ForKind(kind).Name} (textura)",
+            BaseColor = Vector3.One,
+            Pattern = SurfacePattern.None,
+            Texture = texture,
+            TextureSize = (float)size,
+            TextureRelief = (float)relief
+        };
 
     /// <summary>Neutral material used for imported geometry that carries no material of its own.</summary>
     public static RenderMaterial Imported { get; } =

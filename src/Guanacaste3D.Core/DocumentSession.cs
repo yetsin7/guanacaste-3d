@@ -267,7 +267,9 @@ public sealed partial class DocumentSession
             var existing = document.Floors[index];
             document.Floors[index] = existing with
             {
-                Boundary = existing.Boundary.Select(point => Translate(point, deltaX, deltaY)).ToList()
+                Boundary = existing.Boundary.Select(point => Translate(point, deltaX, deltaY)).ToList(),
+                TopoPoints = existing.TopoPoints?.Select(point =>
+                    point with { X = point.X + deltaX, Y = point.Y + deltaY }).ToList()
             };
         });
     }

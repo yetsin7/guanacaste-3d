@@ -119,7 +119,7 @@ internal sealed class ArchitecturalLibraryWindow : Window
                 (type.Kind == OpeningKind.Window ? $" · {Text("Library.Sill")} {Mm(type.DefaultSill)} mm" : string.Empty),
                 openings.Contains(type.Id), () => PlaceOpening(type));
         foreach (var slab in ArchitecturalLibrary.SlabPresets)
-            yield return new Entry(slab.Kind switch { FloorKind.Floor => "Floors", FloorKind.Ceiling => "Ceilings", _ => "Roofs" },
+            yield return new Entry(slab.Kind switch { FloorKind.Floor => "Floors", FloorKind.Ceiling => "Ceilings", FloorKind.Toposolid => "Site", _ => "Roofs" },
                 slab.Name, $"{Mm(slab.Thickness)} mm" +
                 (slab.Shape == RoofShape.Flat ? string.Empty : $" · {Text($"RoofShape.{slab.Shape}")} {slab.Pitch:0}°"),
                 true, () => { _main.PlaceLibrarySlab(slab); Close(); });

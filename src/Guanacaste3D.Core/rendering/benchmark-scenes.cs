@@ -8,6 +8,9 @@ public sealed record BenchmarkScene(string Name, SceneMesh Mesh, RenderCamera Ca
 {
     /// <summary>Explicit lights added to the scene (none for daylight scenes).</summary>
     public IReadOnlyList<RenderLight> Lights { get; init; } = [];
+
+    /// <summary>Material of each surface category; null uses the stock library.</summary>
+    public Func<SurfaceKind, RenderMaterial>? Materials { get; init; }
 }
 
 /// <summary>

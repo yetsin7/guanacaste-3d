@@ -109,6 +109,12 @@ internal static class SurfacePatterns
         const float step = 0.0006f;
         var du = (Height(pattern, scale, u + step, v, fade) - Height(pattern, scale, u - step, v, fade)) / (2 * step);
         var dv = (Height(pattern, scale, u, v + step, fade) - Height(pattern, scale, u, v - step, fade)) / (2 * step);
+        return Bend(normal, du, dv);
+    }
+
+    /// <summary>Tilts a normal by the slope (in meters per meter) of a height field over the plane's u and v axes.</summary>
+    public static Vector3 Bend(Vector3 normal, float du, float dv)
+    {
         if (du == 0 && dv == 0) return normal;
         var (tangentU, tangentV) = PlaneTangents(normal);
         tangentU -= normal * Vector3.Dot(normal, tangentU);
@@ -117,6 +123,9 @@ internal static class SurfacePatterns
         var length = bent.Length();
         return length > 1e-6f ? bent / length : normal;
     }
+
+    /// <summary>World-space plane coordinates in meters, the same projection the patterns use; textures share it.</summary>
+    public static (float U, float V) PlaneUv(Vector3 position, Vector3 normal) => PlaneCoordinates(position, normal);
 
     /// <summary>Height of the relief in meters (negative is recessed) at plane coordinates in meters.</summary>
     private static float Height(SurfacePattern pattern, float scale, float worldU, float worldV, float fade)

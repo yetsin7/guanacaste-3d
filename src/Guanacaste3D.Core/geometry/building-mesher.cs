@@ -15,7 +15,9 @@ public enum SurfaceKind : byte
     /// <summary>Leaves of trees and shrubs.</summary>
     Foliage,
     /// <summary>Trunks and limbs of trees.</summary>
-    Bark
+    Bark,
+    /// <summary>Soil exposed on the sides and underside of a toposolid.</summary>
+    Earth
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -116,9 +118,22 @@ public static class BuildingMesher
             }
         }
 
+        // The ground plane meets the lowest corner of the site, so sloped terrain rises out of it like a real site.
+        double? siteEdge = null;
         foreach (var floor in document.Floors)
         {
             var slabTop = elevations[floor.LevelId] + floor.ElevationOffset;
+            if (floor.IsToposolid)
+            {
+                TopographyGeometry.AppendTo(mesh, floor, elevations[floor.LevelId]);
+                var surface = new TopoSurface(floor);
+                foreach (var corner in floor.Boundary)
+                {
+                    var z = elevations[floor.LevelId] + surface.ElevationAt(corner.X, corner.Y);
+                    siteEdge = siteEdge is { } edge ? Math.Min(edge, z) : z;
+                }
+                continue;
+            }
             if (floor.IsPitched) AddPitchedRoof(mesh, floor, slabTop);
             else AddSlab(mesh, floor.Boundary, slabTop, floor.Thickness, FloorOpenings(document, floor, elevations));
         }
@@ -131,7 +146,8 @@ public static class BuildingMesher
             var datum = elevations[element.LevelId];
             if (element.Kind == StructuralElementKind.Planting)
             {
-                PlantGeometry.AppendTo(mesh, element, datum);
+                // Like a Revit site component, a plant stands on the toposolid it is placed on.
+                PlantGeometry.AppendTo(mesh, element, datum + TerrainUnder(document, element.LevelId, element.Start));
                 continue;
             }
             foreach (var part in ElementGeometry.Parts(element))
@@ -147,13 +163,22 @@ public static class BuildingMesher
             var center = (min + max) / 2;
             // Large enough that the ground meets the sky at the horizon from typical orbit distances.
             var extent = MathF.Max(500, (max - min).Length() * 20);
-            var z = MathF.Min(0, min.Z) - 0.01f;
+            var z = siteEdge is { } site ? (float)site - 0.02f : MathF.Min(0, min.Z) - 0.01f;
             mesh.AddQuad(
                 new(center.X - extent, center.Y - extent, z), new(center.X + extent, center.Y - extent, z),
                 new(center.X + extent, center.Y + extent, z), new(center.X - extent, center.Y + extent, z),
                 SurfaceKind.Ground);
         }
         return mesh;
+    }
+
+    /// <summary>Elevation, above its level, of the toposolid surface under a plan point; zero where there is none.</summary>
+    public static double TerrainUnder(BuildingDocument document, Guid levelId, Point2 point)
+    {
+        foreach (var floor in document.Floors)
+            if (floor.IsToposolid && floor.LevelId == levelId && TopographyGeometry.Contains(floor.Boundary, point))
+                return new TopoSurface(floor).ElevationAt(point.X, point.Y);
+        return 0;
     }
 
     /// <summary>

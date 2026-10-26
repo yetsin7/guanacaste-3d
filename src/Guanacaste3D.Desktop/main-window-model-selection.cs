@@ -78,7 +78,7 @@ public partial class MainWindow
     private bool PlanToolArmed() =>
         _placingOpening is not null || _movingElement || _drawingRoom || _drawingColumn || _drawingWall ||
         _awaitingSimilarWallPick || _awaitingGroupPick || _groupToPlace is not null || _pickingWorkPlane ||
-        _pickWallAction is not null || _structuralTool is not null || _slabSketch is not null;
+        _pickWallAction is not null || _structuralTool is not null || _slabSketch is not null || _placingTopoPoints;
 
     private ElementPicker Picker => _picker ??= new ElementPicker(_session.Document);
 

@@ -82,6 +82,7 @@ public partial class MainWindow
             HandleMoveClick(PlanPosition(e));
             return;
         }
+        if (TryHandleTopoPointClick(e)) return;
         if (TryHandleRoomPlacement(e)) return;
         if (TryHandleColumnPlacement(e)) return;
         if (TryHandleStructuralPlacement(e)) return;
@@ -130,6 +131,11 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (CancelTopoPointTool())
+        {
+            e.Handled = true;
+            return;
+        }
         if (TryFinishSlabSketch())
         {
             e.Handled = true;

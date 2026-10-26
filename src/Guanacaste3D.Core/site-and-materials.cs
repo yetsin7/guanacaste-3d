@@ -1,0 +1,85 @@
+using Guanacaste3D.Core.Geometry;
+
+namespace Guanacaste3D.Core;
+
+/// <summary>
+/// The project's render appearance for one surface category: an image texture projected in world space (so BIM
+/// geometry needs no texture coordinates), the size in meters that one copy of the image covers, and how strongly the
+/// image's light and dark areas raise and lower the surface. The path may be relative to the project file.
+/// </summary>
+public sealed record RenderMaterialAssignment(SurfaceKind Category, string TexturePath)
+{
+    /// <summary>Meters covered by one tile of the image, along both directions.</summary>
+    public double TextureSize { get; init; } = 1.0;
+
+    /// <summary>0 for a flat image, 1 for a strong relief taken from the image's brightness.</summary>
+    public double Relief { get; init; } = 0.3;
+}
+
+/// <summary>Site terrain points and render materials; each public method is one undoable transaction.</summary>
+public sealed partial class DocumentSession
+{
+    /// <summary>Adds (or replaces, at the same place) an elevation point of a toposolid. The point must lie on it.</summary>
+    public void AddTopoPoint(Guid toposolidId, TopoPoint point)
+    {
+        var toposolid = Document.Floors.FirstOrDefault(floor => floor.Id == toposolidId && floor.IsToposolid)
+            ?? throw new InvalidDataException("The toposolid does not exist.");
+        Commit("Transaction.AddTopoPoint", document =>
+        {
+            var index = document.Floors.FindIndex(floor => floor.Id == toposolidId);
+            var points = (toposolid.TopoPoints ?? []).Where(existing => existing.Plan.DistanceTo(point.Plan) >= 0.01).ToList();
+            points.Add(point);
+            document.Floors[index] = document.Floors[index] with { TopoPoints = points };
+        });
+    }
+
+    /// <summary>Removes the elevation point of a toposolid nearest to <paramref name="near"/>, within the tolerance.</summary>
+    public bool RemoveTopoPoint(Guid toposolidId, Point2 near, double tolerance)
+    {
+        var toposolid = Document.Floors.FirstOrDefault(floor => floor.Id == toposolidId && floor.IsToposolid);
+        if (toposolid?.TopoPoints is not { Count: > 0 } points) return false;
+        var nearest = points.MinBy(point => point.Plan.DistanceTo(near));
+        if (nearest.Plan.DistanceTo(near) > tolerance) return false;
+        Commit("Transaction.RemoveTopoPoint", document =>
+        {
+            var index = document.Floors.FindIndex(floor => floor.Id == toposolidId);
+            document.Floors[index] = document.Floors[index] with { TopoPoints = points.Where(point => point != nearest).ToList() };
+        });
+        return true;
+    }
+
+    /// <summary>Assigns the render material of a surface category, replacing any earlier assignment for it.</summary>
+    public void SetRenderMaterial(RenderMaterialAssignment assignment)
+    {
+        ArgumentNullException.ThrowIfNull(assignment);
+        Commit("Transaction.SetRenderMaterial", document =>
+        {
+            document.RenderMaterials.RemoveAll(existing => existing.Category == assignment.Category);
+            document.RenderMaterials.Add(assignment);
+        });
+    }
+
+    /// <summary>Returns a surface category to its stock render material.</summary>
+    public void ClearRenderMaterial(SurfaceKind category)
+    {
+        if (Document.RenderMaterials.All(existing => existing.Category != category)) return;
+        Commit("Transaction.ClearRenderMaterial", document =>
+            document.RenderMaterials.RemoveAll(existing => existing.Category == category));
+    }
+}
+
+/// <summary>Rules for render material assignments.</summary>
+public static class RenderMaterialRules
+{
+    public static void Validate(BuildingDocument document)
+    {
+        if (document.RenderMaterials is null) throw new InvalidDataException("Invalid render material.");
+        if (document.RenderMaterials.Count > 64 ||
+            document.RenderMaterials.GroupBy(material => material.Category).Any(group => group.Count() > 1) ||
+            document.RenderMaterials.Any(material => !Enum.IsDefined(material.Category) ||
+                string.IsNullOrWhiteSpace(material.TexturePath) || material.TexturePath.Length > 1024 ||
+                !double.IsFinite(material.TextureSize) || material.TextureSize is < 0.01 or > 1000 ||
+                !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1))
+            throw new InvalidDataException("Invalid render material.");
+    }
+}

@@ -1,6 +1,8 @@
+using System.IO;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Threading;
+using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Core.Rendering;
@@ -73,6 +75,9 @@ public partial class MainWindow
         public (Vector3 Min, Vector3 Max) SceneBounds() => window.SceneBounds();
         public Task<RenderScene?> GetSceneAsync() => window.GetSceneAsync();
         public SceneQuery? Query => window._query;
+        public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
+        public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
+            window.AssignRenderMaterial(category, texturePath, size, relief);
 
         public event Action? SceneChanged
         {
@@ -114,6 +119,21 @@ public partial class MainWindow
         return (min, max);
     }
 
+    /// <summary>Assigns (or, with no path, clears) the render texture of a surface category as one undoable step.</summary>
+    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief)
+    {
+        try
+        {
+            if (texturePath is null) _session.ClearRenderMaterial(category);
+            else _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath) { TextureSize = size, Relief = relief });
+        }
+        catch (InvalidDataException exception)
+        {
+            StatusText.Text = LocalizedErrors.Translate(exception.Message);
+        }
+        RefreshAll();
+    }
+
     /// <summary>Marks the cached scene stale; it is rebuilt a moment after edits stop, and only if a view needs it.</summary>
     private void MarkSceneDirty()
     {
@@ -136,9 +156,11 @@ public partial class MainWindow
         var mesh = BuildingMesher.Build(_session.Document, includeGround: true);
         var links = _links.Visible().ToList();
         var version = _sceneVersion;
+        var materials = _session.Document.RenderMaterials.ToList();
+        var projectFile = _filePath;
         var task = Task.Run<RenderScene?>(() =>
         {
-            var builder = new RenderSceneBuilder().AddBuilding(mesh);
+            var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile));
             foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
             var scene = builder.Build();
             MemoryTrim.AfterHeavyBuild();

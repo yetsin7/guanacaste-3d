@@ -33,7 +33,7 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 11;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -54,6 +54,7 @@ public sealed class BuildingDocument
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
     public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
+    public List<RenderMaterialAssignment> RenderMaterials { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -82,7 +83,10 @@ public sealed class BuildingDocument
         WallTypes = [.. WallTypes],
         OpeningTypes = [.. OpeningTypes],
         Rooms = [.. Rooms],
-        Floors = Floors.Select(floor => floor with { Boundary = [.. floor.Boundary] }).ToList(),
+        Floors = Floors.Select(floor => floor with
+        {
+            Boundary = [.. floor.Boundary], TopoPoints = floor.TopoPoints is null ? null : [.. floor.TopoPoints]
+        }).ToList(),
         Columns = [.. Columns],
         StructuralElements = [.. StructuralElements],
         Sheets = [.. Sheets],
@@ -94,7 +98,8 @@ public sealed class BuildingDocument
         {
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
         }).ToList(),
-        InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList()
+        InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList(),
+        RenderMaterials = [.. RenderMaterials]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -175,6 +180,7 @@ public sealed class BuildingDocument
         ParameterRules.Validate(this);
         ScheduleDefinitionRules.Validate(this);
         InPlaceFamilyRules.Validate(this);
+        RenderMaterialRules.Validate(this);
     }
 
     /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>
@@ -208,6 +214,13 @@ public sealed class BuildingDocument
                 !Enum.IsDefined(floor.Kind) ||
                 floor.CalculateArea() is < 0.1 or > 100000000 || !Enum.IsDefined(floor.Finish))
                 throw new InvalidDataException("Invalid floor slab.");
+            if (floor.TopoPoints is { } points &&
+                (!floor.IsToposolid || points.Count > 2000 || points.Any(point =>
+                    !double.IsFinite(point.X) || !double.IsFinite(point.Y) || !double.IsFinite(point.Elevation) ||
+                    point.Elevation is < -1000 or > 5000 ||
+                    !Geometry.TopographyGeometry.Contains(floor.Boundary, point.Plan) &&
+                    floor.Boundary.All(corner => corner.DistanceTo(point.Plan) > 0.05))))
+                throw new InvalidDataException("Invalid toposolid point.");
         }
     }
 

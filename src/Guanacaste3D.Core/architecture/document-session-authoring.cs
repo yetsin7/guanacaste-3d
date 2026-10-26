@@ -106,6 +106,8 @@ public sealed partial class DocumentSession
     {
         FloorKind.Ceiling => WallTopOf(levelId),
         FloorKind.Roof => WallTopOf(levelId) + preset.Thickness,
+        // Terrain sits just under the ground floor, so a slab on the level never shares its plane.
+        FloorKind.Toposolid => -0.10,
         _ => 0
     };
 

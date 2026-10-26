@@ -6,6 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Core.Rendering;
 using Microsoft.Win32;
@@ -33,6 +35,12 @@ internal interface IRenderSource
 
     /// <summary>Raised when the scene query becomes available or changes.</summary>
     event Action? QueryChanged;
+
+    /// <summary>The project's render texture per surface category.</summary>
+    IReadOnlyList<RenderMaterialAssignment> RenderMaterials { get; }
+
+    /// <summary>Assigns a texture to a category, or returns it to its stock material when the path is null.</summary>
+    void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief);
 }
 
 /// <summary>
@@ -85,6 +93,8 @@ public partial class RenderPanel : UserControl
         };
         _navigator.Changed += OnCameraChanged;
         source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshScene);
+        source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshMaterialRows);
+        RefreshMaterialRows();
         source.QueryChanged += () => Dispatcher.BeginInvoke(ApplyCollision);
         ApplyCollision();
     }

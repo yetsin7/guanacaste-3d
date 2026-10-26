@@ -1,0 +1,167 @@
+using System.Numerics;
+
+namespace Guanacaste3D.Core.Rendering;
+
+/// <summary>
+/// An image texture for the renderer: 8-bit sRGB texels in a mip chain, so a wall seen from afar averages its texels
+/// instead of sparkling. Sampling is trilinear in linear light and wraps in both directions, because textures are
+/// projected in world space and repeat every <see cref="RenderMaterial.TextureSize"/> meters.
+/// </summary>
+public sealed class RenderTexture
+{
+    private static readonly float[] Linear = Enumerable.Range(0, 256)
+        .Select(value => MaterialLibrary.SrgbToLinear(value / 255f)).ToArray();
+
+    private readonly byte[][] _levels;
+    private readonly int[] _widths;
+    private readonly int[] _heights;
+
+    private RenderTexture(byte[][] levels, int[] widths, int[] heights)
+    {
+        _levels = levels;
+        _widths = widths;
+        _heights = heights;
+        var top = levels[^1];
+        Mean = new Vector3(Linear[top[0]], Linear[top[1]], Linear[top[2]]);
+    }
+
+    /// <summary>Name shown in the interface, usually the file name.</summary>
+    public string Name { get; init; } = "Textura";
+
+    public int Width => _widths[0];
+    public int Height => _heights[0];
+    public int LevelCount => _levels.Length;
+
+    /// <summary>Average color in linear light; used where the surface is only seen blurred, after a diffuse bounce.</summary>
+    public Vector3 Mean { get; }
+
+    /// <summary>Approximate memory held by all levels, in bytes.</summary>
+    public long Bytes => _levels.Sum(level => (long)level.Length);
+
+    /// <summary>Builds a texture from BGRA32 pixels (rows top to bottom), reduced to at most <paramref name="maximumSize"/> texels a side.</summary>
+    public static RenderTexture FromBgra32(int width, int height, ReadOnlySpan<byte> bgra, int maximumSize = 2048)
+    {
+        if (width < 1 || height < 1 || bgra.Length < width * height * 4)
+            throw new ArgumentException("The texture pixels do not match its size.");
+        var rgb = new byte[width * height * 3];
+        for (var index = 0; index < width * height; index++)
+        {
+            rgb[index * 3] = bgra[index * 4 + 2];
+            rgb[index * 3 + 1] = bgra[index * 4 + 1];
+            rgb[index * 3 + 2] = bgra[index * 4];
+        }
+        return FromRgb(width, height, rgb, maximumSize);
+    }
+
+    /// <summary>Builds a texture from a decoded PNG image.</summary>
+    public static RenderTexture FromRaster(RasterImage image, int maximumSize = 2048) =>
+        FromRgb(image.Width, image.Height, image.Rgb, maximumSize);
+
+    private static RenderTexture FromRgb(int width, int height, byte[] rgb, int maximumSize)
+    {
+        maximumSize = Math.Clamp(maximumSize, 1, 8192);
+        var levels = new List<byte[]>();
+        var widths = new List<int>();
+        var heights = new List<int>();
+        while (width > maximumSize || height > maximumSize)
+            (rgb, width, height) = Halve(rgb, width, height);
+        levels.Add(rgb);
+        widths.Add(width);
+        heights.Add(height);
+        while (width > 1 || height > 1)
+        {
+            (rgb, width, height) = Halve(rgb, width, height);
+            levels.Add(rgb);
+            widths.Add(width);
+            heights.Add(height);
+        }
+        return new RenderTexture([.. levels], [.. widths], [.. heights]);
+    }
+
+    /// <summary>
+    /// Color at texture coordinates measured in tiles (1 = one copy of the image), with <paramref name="footprint"/> the
+    /// size of a pixel on the surface, also in tiles, which chooses the detail level.
+    /// </summary>
+    public Vector3 Sample(float u, float v, float footprint)
+    {
+        var level = MathF.Log2(MathF.Max(footprint * _widths[0], 1e-6f));
+        if (level <= 0) return Bilinear(0, u, v);
+        var last = _levels.Length - 1;
+        if (level >= last) return Bilinear(last, u, v);
+        var lower = (int)level;
+        return Vector3.Lerp(Bilinear(lower, u, v), Bilinear(lower + 1, u, v), level - lower);
+    }
+
+    /// <summary>Luminance at the detail level chosen for <paramref name="footprint"/>, for relief.</summary>
+    public float Luminance(float u, float v, float footprint) => Sampling.Luminance(Sample(u, v, footprint));
+
+    /// <summary>Size in tiles of one texel at the detail level a footprint selects; the step for relief slopes.</summary>
+    public float TexelSize(float footprint)
+    {
+        var level = Math.Clamp((int)MathF.Log2(MathF.Max(footprint * _widths[0], 1e-6f)), 0, _levels.Length - 1);
+        return 1f / _widths[level];
+    }
+
+    private Vector3 Bilinear(int level, float u, float v)
+    {
+        var width = _widths[level];
+        var height = _heights[level];
+        var data = _levels[level];
+        // Rows run top to bottom in the image while v grows upward on a wall, so v is flipped.
+        var x = (u - MathF.Floor(u)) * width - 0.5f;
+        var y = (1 - (v - MathF.Floor(v))) * height - 0.5f;
+        var x0 = (int)MathF.Floor(x);
+        var y0 = (int)MathF.Floor(y);
+        var fx = x - x0;
+        var fy = y - y0;
+        var a = Texel(data, width, height, x0, y0);
+        var b = Texel(data, width, height, x0 + 1, y0);
+        var c = Texel(data, width, height, x0, y0 + 1);
+        var d = Texel(data, width, height, x0 + 1, y0 + 1);
+        return Vector3.Lerp(Vector3.Lerp(a, b, fx), Vector3.Lerp(c, d, fx), fy);
+    }
+
+    private static Vector3 Texel(byte[] data, int width, int height, int x, int y)
+    {
+        x = ((x % width) + width) % width;
+        y = ((y % height) + height) % height;
+        var index = (y * width + x) * 3;
+        return new Vector3(Linear[data[index]], Linear[data[index + 1]], Linear[data[index + 2]]);
+    }
+
+    /// <summary>Box-filters an image to half size in linear light (odd sizes round up).</summary>
+    private static (byte[] Rgb, int Width, int Height) Halve(byte[] rgb, int width, int height)
+    {
+        var halfWidth = Math.Max(1, (width + 1) / 2);
+        var halfHeight = Math.Max(1, (height + 1) / 2);
+        var result = new byte[halfWidth * halfHeight * 3];
+        for (var y = 0; y < halfHeight; y++)
+            for (var x = 0; x < halfWidth; x++)
+            {
+                var sum = Vector3.Zero;
+                var count = 0;
+                for (var dy = 0; dy < 2; dy++)
+                    for (var dx = 0; dx < 2; dx++)
+                    {
+                        var sx = Math.Min(width - 1, x * 2 + dx);
+                        var sy = Math.Min(height - 1, y * 2 + dy);
+                        var index = (sy * width + sx) * 3;
+                        sum += new Vector3(Linear[rgb[index]], Linear[rgb[index + 1]], Linear[rgb[index + 2]]);
+                        count++;
+                    }
+                var mean = sum / count;
+                var target = (y * halfWidth + x) * 3;
+                result[target] = Encode(mean.X);
+                result[target + 1] = Encode(mean.Y);
+                result[target + 2] = Encode(mean.Z);
+            }
+        return (result, halfWidth, halfHeight);
+    }
+
+    private static byte Encode(float linear)
+    {
+        var clamped = Math.Clamp(linear, 0f, 1f);
+        var srgb = clamped <= 0.0031308f ? 12.92f * clamped : 1.055f * MathF.Pow(clamped, 1 / 2.4f) - 0.055f;
+        return (byte)Math.Clamp(srgb * 255 + 0.5f, 0f, 255f);
+    }
+}

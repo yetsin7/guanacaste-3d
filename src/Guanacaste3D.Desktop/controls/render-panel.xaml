@@ -194,6 +194,14 @@
           </Border>
           <Border Style="{StaticResource SettingsCard}">
             <StackPanel>
+              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Materials}"/>
+              <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5" TextWrapping="Wrap"
+                         Text="{DynamicResource RenderPanel.MaterialsHint}"/>
+              <StackPanel x:Name="MaterialRows"/>
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource SettingsCard}">
+            <StackPanel>
               <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Output}"/>
               <WrapPanel>
                 <Button x:Name="SaveButton" Content="{DynamicResource RenderPanel.SaveImage}" Click="SaveButton_Click"

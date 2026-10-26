@@ -92,6 +92,15 @@ public partial class MainWindow
                 BeginKindTool(StructuralElementKind.ReferencePlane); return true;
             case "RibbonCommand.ArchitecturalLibrary":
                 OpenArchitecturalLibrary(); return true;
+            case "RibbonCommand.Toposolid":
+                BeginToposolidSketch(false); return true;
+            case "RibbonCommand.GradedRegion":
+                BeginTopoPointTool(); return true;
+            case "RibbonCommand.LabelContours":
+                _labelContours = !_labelContours;
+                StatusText.Text = GetText(_labelContours ? "Status.ContourLabelsOn" : "Status.ContourLabelsOff");
+                RenderPlan();
+                return true;
             case "RibbonCommand.SiteComponent":
             case "RibbonCommand.Planting":
                 BeginPlantingTool(); return true;
@@ -149,6 +158,7 @@ public partial class MainWindow
     {
         _structuralTool = null;
         _structuralPreset = null;
+        _placingTopoPoints = false;
         _tagTarget = null;
         CancelArchitectureTools();
         _pendingStructuralStart = null;

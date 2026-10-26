@@ -14,6 +14,11 @@ public partial class MainWindow
     {
         foreach (var floor in _session.Document.Floors.Where(floor => floor.LevelId == _activeLevelId))
         {
+            if (floor.IsToposolid)
+            {
+                AddToposolidPlan(floor);
+                continue;
+            }
             var polygon = new Polygon
             {
                 Points = new PointCollection(floor.Boundary.Select(WorldToCanvas)),

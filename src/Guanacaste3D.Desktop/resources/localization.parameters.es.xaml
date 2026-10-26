@@ -74,6 +74,10 @@
   <sys:String x:Key="Transaction.UpdateWallType">Modificar tipo de muro</sys:String>
   <sys:String x:Key="Transaction.AddRoom">Crear habitación</sys:String>
   <sys:String x:Key="Transaction.AddFloor">Crear suelo</sys:String>
+  <sys:String x:Key="Transaction.AddTopoPoint">Añadir punto de elevación</sys:String>
+  <sys:String x:Key="Transaction.RemoveTopoPoint">Quitar punto de elevación</sys:String>
+  <sys:String x:Key="Transaction.SetRenderMaterial">Asignar material de render</sys:String>
+  <sys:String x:Key="Transaction.ClearRenderMaterial">Restablecer material de render</sys:String>
   <sys:String x:Key="Transaction.AddSheet">Crear lámina</sys:String>
   <sys:String x:Key="Transaction.RemoveRoom">Eliminar habitación</sys:String>
   <sys:String x:Key="Transaction.RemoveFloor">Eliminar suelo</sys:String>

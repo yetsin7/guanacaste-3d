@@ -136,7 +136,8 @@ public static class ArchitecturalLibrary
         new("Gable Roof 20°", FloorKind.Roof, 0.10, RoofShape.Gable, 20, FinishKind.None),
         new("Gable Roof 30°", FloorKind.Roof, 0.10, RoofShape.Gable, 30, FinishKind.None),
         new("Hip Roof 25°", FloorKind.Roof, 0.10, RoofShape.Hip, 25, FinishKind.None),
-        new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None)
+        new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None),
+        new("Toposolid 1 m", FloorKind.Toposolid, 1.0, RoofShape.Flat, 0, FinishKind.None)
     ];
 
     /// <summary>Column sections.</summary>

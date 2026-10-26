@@ -146,6 +146,12 @@ public partial class MainWindow
         foreach (var floor in _session.Document.Floors)
         {
             var level = _session.Document.Levels.Single(candidate => candidate.Id == floor.LevelId);
+            if (floor.IsToposolid)
+            {
+                DrawToposolidProfile(canvas, floor, level.Elevation, orientation, minimumCoordinate, minimumElevation,
+                    horizontalOffset, scale);
+                continue;
+            }
             var projected = floor.Boundary.Select(point => ProjectCoordinate(point, orientation)).ToArray();
             var left = horizontalOffset + (projected.Min() - minimumCoordinate) * scale;
             var top = ProjectElevation(canvas, level.Elevation, minimumElevation, scale);

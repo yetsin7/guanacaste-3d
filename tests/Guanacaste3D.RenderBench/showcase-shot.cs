@@ -24,7 +24,7 @@ static class ShowcaseShot
             : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom() };
         foreach (var scene in scenes)
         {
-            var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh);
+            var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh, scene.Materials);
             foreach (var light in scene.Lights) builder.AddLight(light);
             var watch = System.Diagnostics.Stopwatch.StartNew();
             var tracer = new PathTracer(builder.Build(), width, height, scene.Camera, scene.Settings);
@@ -50,8 +50,33 @@ static class ShowcaseShot
         };
         foreach (var (index, x, y) in spots)
             session.AddElementFromPreset(level, species[index], new Guanacaste3D.Core.Point2(x, y), new Guanacaste3D.Core.Point2(x, y));
+        if (Environment.GetEnvironmentVariable("G3_SHOT_TERRAIN") == "1")
+        {
+            var preset = Guanacaste3D.Core.ArchitecturalLibrary.SlabPresets.Single(slab => slab.Kind == Guanacaste3D.Core.FloorKind.Toposolid);
+            var site = session.AddSlabFromPreset(level, [new(min.X - 40, min.Y - 30), new(max.X + 40, min.Y - 30),
+                new(max.X + 40, max.Y + 45), new(min.X - 40, max.Y + 45)], preset, -0.05);
+            foreach (var (x, y, z) in new[] { (min.X - 22.0, max.Y + 14, 4.0), (max.X + 25, max.Y + 30, 9.0), (max.X + 20, min.Y - 18, -2.5),
+                         (min.X - 30, min.Y - 20, 1.5), (min.X - 1.0, min.Y - 1, -0.05), (max.X + 1, max.Y + 1, -0.05),
+                         (min.X - 1.0, max.Y + 1, -0.05), (max.X + 1, min.Y - 1, -0.05) })
+                session.AddTopoPoint(site, new Guanacaste3D.Core.Geometry.TopoPoint(x, y, z));
+        }
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true);
         var center = (min + max) / 2;
+        if (Environment.GetEnvironmentVariable("G3_SHOT_TEXTURES") is { } textureFolder)
+        {
+            RenderTexture Load(string name) => RenderTexture.FromRaster(PngCodec.Load(Path.Combine(textureFolder, name + ".png")));
+            var materials = new Dictionary<Guanacaste3D.Core.Geometry.SurfaceKind, RenderMaterial>
+            {
+                [Guanacaste3D.Core.Geometry.SurfaceKind.Wall] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Wall, Load("brick-red"), 1.0, 0.6),
+                [Guanacaste3D.Core.Geometry.SurfaceKind.Floor] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Floor, Load("stone-paving"), 2.0, 0.6),
+                [Guanacaste3D.Core.Geometry.SurfaceKind.DoorLeaf] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.DoorLeaf, Load("wood-floor"), 1.0, 0.25),
+            };
+            return new BenchmarkScene("garden", mesh,
+                new RenderCamera(new Vector3(center.X - 4, min.Y - 9, 1.9f), new Vector3(center.X - 1, center.Y, 1.6f), 62)
+                {
+                    CorrectVerticals = true
+                }, new RenderSettings()) { Materials = kind => materials.TryGetValue(kind, out var material) ? material : MaterialLibrary.ForKind(kind) };
+        }
         return new BenchmarkScene("garden", mesh,
             new RenderCamera(new Vector3(center.X - 4, min.Y - 17, 2.2f), new Vector3(center.X - 2, center.Y + 2, 3.2f), 62)
             {

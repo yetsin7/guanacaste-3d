@@ -28,7 +28,7 @@ internal static class ScenePresentation
                 mesh.Positions.Add(ToWpf(scene.Positions[scene.Indices[triangle * 3 + corner]]));
             }
         }
-        foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Glass })
+        foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
             mesh.Freeze();
@@ -211,6 +211,7 @@ internal static class ScenePresentation
         SurfaceKind.Ground => Diffuse(Color.FromRgb(118, 140, 104)),
         SurfaceKind.Foliage => Diffuse(Color.FromRgb(78, 116, 58)),
         SurfaceKind.Bark => Diffuse(Color.FromRgb(104, 86, 68)),
+        SurfaceKind.Earth => Diffuse(Color.FromRgb(126, 98, 72)),
         SurfaceKind.Glass => new MaterialGroup
         {
             Children =

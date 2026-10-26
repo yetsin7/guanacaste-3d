@@ -53,7 +53,9 @@ public sealed class ElementPicker
             var top = Elevation(floor.LevelId) + (float)floor.ElevationOffset;
             var footprint = floor.Boundary.Select(p => new Vector2((float)p.X, (float)p.Y)).ToArray();
             var ridge = 0f;
-            if (floor.IsPitched)
+            if (floor.IsToposolid)
+                ridge = (float)Math.Max(0, new Geometry.TopoSurface(floor).Maximum - floor.ElevationOffset);
+            else if (floor.IsPitched)
             {
                 var span = MathF.Min(footprint.Max(p => p.X) - footprint.Min(p => p.X), footprint.Max(p => p.Y) - footprint.Min(p => p.Y));
                 ridge = span / 2 * MathF.Tan((float)floor.Pitch * MathF.PI / 180);

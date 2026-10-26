@@ -21,6 +21,9 @@
   <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
+  <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>
+  <sys:String x:Key="Error.The toposolid does not exist.">El sólido topográfico no existe.</sys:String>
+  <sys:String x:Key="Error.Invalid render material.">El material de render no es válido.</sys:String>
   <sys:String x:Key="Error.Invalid project views.">Las vistas del proyecto no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid room definitions.">Las habitaciones no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid wall-type catalog.">El catálogo de tipos de muro no es válido.</sys:String>

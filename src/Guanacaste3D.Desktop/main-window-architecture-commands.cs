@@ -329,7 +329,8 @@ public partial class MainWindow
                 _session.SlabElevation(_activeLevelId, sketch.Preset));
             StatusText.Text = GetText(sketch.Preset.Kind switch
             {
-                FloorKind.Roof => "Status.RoofCreated", FloorKind.Ceiling => "Status.CeilingCreated", _ => "Status.FloorCreated"
+                FloorKind.Roof => "Status.RoofCreated", FloorKind.Ceiling => "Status.CeilingCreated",
+                FloorKind.Toposolid => "Status.ToposolidCreated", _ => "Status.FloorCreated"
             });
         }
         catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }

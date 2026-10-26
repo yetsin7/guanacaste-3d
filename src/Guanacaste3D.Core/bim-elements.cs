@@ -80,7 +80,12 @@ public enum FloorKind
 {
     Floor,
     Ceiling,
-    Roof
+    Roof,
+    /// <summary>
+    /// A solid of site terrain: its top passes through <see cref="FloorSlab.TopoPoints"/>, its boundary corners rest at
+    /// <see cref="FloorSlab.ElevationOffset"/>, and it reaches <see cref="FloorSlab.Thickness"/> below its lowest point.
+    /// </summary>
+    Toposolid
 }
 
 /// <summary>Plan shape of a roof. Pitched shapes rise from the eave toward a ridge.</summary>
@@ -124,6 +129,12 @@ public sealed record FloorSlab(
 
     /// <summary>Meters from the level elevation to the slab top; ceilings and roofs sit above the floor.</summary>
     public double ElevationOffset { get; init; }
+
+    /// <summary>Toposolids only: surveyed points of the terrain, with elevations relative to the level.</summary>
+    public List<Geometry.TopoPoint>? TopoPoints { get; init; }
+
+    /// <summary>Whether the slab is site terrain rather than a building slab.</summary>
+    [JsonIgnore] public bool IsToposolid => Kind == FloorKind.Toposolid;
 
     /// <summary>Calculates plan area using the shoelace formula.</summary>
     public double CalculateArea()

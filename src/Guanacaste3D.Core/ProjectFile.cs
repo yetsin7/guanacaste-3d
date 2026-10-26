@@ -170,6 +170,12 @@ public static class ProjectFile
         }
         // Schema 10 adds frame width and glazing layout to opening types, plus roof shapes, element styles and column shapes.
         if (document.SchemaVersion == 9) document.SchemaVersion = 10;
+        // Schema 11 adds toposolids (a floor kind with elevation points) and render material overrides.
+        if (document.SchemaVersion == 10)
+        {
+            document.SchemaVersion = 11;
+            document.RenderMaterials ??= [];
+        }
 
     }
 

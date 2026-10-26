@@ -34,7 +34,7 @@ internal static class PlanDimensionChecks
         var legacy = session.Document.Clone();
         legacy.SchemaVersion = 9;
         legacy.Dimensions.Clear();
-        check(ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(legacy)).SchemaVersion == 10, "Schema nine migrates without losing model content");
+        check(ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(legacy)).SchemaVersion == BuildingDocument.CurrentSchemaVersion, "Schema nine migrates without losing model content");
         session.RemoveOpening(doorId);
         check(session.Document.Dimensions.Count == 0, "Deleting an owner removes dependent dimensions");
         session.Undo();

@@ -308,6 +308,10 @@ public sealed class PathTracer
     private readonly record struct CameraBasis(Vector3 Forward, Vector3 Right, Vector3 Up, float HalfWidth,
         float HalfHeight, float VerticalShift);
 
+    /// <summary>Angle one pixel spans (radians, small-angle), so distance times it is a pixel's size on a surface.</summary>
+    private float PixelAngle =>
+        2 * MathF.Tan(Math.Clamp(_camera.VerticalFieldOfViewDegrees, 5f, 150f) * MathF.PI / 360) / Height;
+
     /// <summary>Returns the camera frame; with vertical correction the image plane stays upright and is shifted instead.</summary>
     private CameraBasis Basis()
     {
@@ -870,7 +874,32 @@ public sealed class PathTracer
         var diffuse = surface.Diffuse;
         // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
         // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
-        if (surface.Pattern != SurfacePattern.None)
+        if (surface.Texture is { } texture)
+        {
+            if (detailed)
+            {
+                // Mip level from the size of a pixel on the surface: one pixel at this distance, in tiles.
+                var (u, v) = SurfacePatterns.PlaneUv(position, geometric);
+                var tiles = surface.TextureScale;
+                var footprint = MathF.Max(hit.Distance * PixelAngle, 1e-5f) * tiles;
+                diffuse *= texture.Sample(u * tiles, v * tiles, footprint);
+                if (surface.TextureDepth > 0)
+                {
+                    var step = texture.TexelSize(footprint);
+                    var dU = (texture.Luminance(u * tiles + step, v * tiles, footprint) -
+                              texture.Luminance(u * tiles - step, v * tiles, footprint)) / (2 * step) * tiles;
+                    var dV = (texture.Luminance(u * tiles, v * tiles + step, footprint) -
+                              texture.Luminance(u * tiles, v * tiles - step, footprint)) / (2 * step) * tiles;
+                    var bent = SurfacePatterns.Bend(normal, dU * surface.TextureDepth, dV * surface.TextureDepth);
+                    if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                }
+            }
+            else
+            {
+                diffuse *= texture.Mean;
+            }
+        }
+        else if (surface.Pattern != SurfacePattern.None)
         {
             if (detailed)
             {
@@ -1344,6 +1373,11 @@ public sealed class PathTracer
         public float PatternScale { get; init; }
         /// <summary>Average of the pattern's diffuse multiplier, used where its detail would be invisible.</summary>
         public float PatternMean { get; init; }
+        public RenderTexture? Texture { get; init; }
+        /// <summary>Tiles per meter: the reciprocal of the texture size.</summary>
+        public float TextureScale { get; init; }
+        /// <summary>Relief height in meters of a full white-to-black step in the texture.</summary>
+        public float TextureDepth { get; init; }
         public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
         /// <summary>Whether direct light can be evaluated here (anything except a pure mirror or pure emitter).</summary>
         public bool HasLobes { get; init; }
@@ -1372,7 +1406,11 @@ public sealed class PathTracer
                 HasLobes = Sampling.Luminance(diffuse) > 1e-4f || (hasSpecular && !delta),
                 Pattern = m.Pattern,
                 PatternScale = m.PatternScale,
-                PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale)
+                PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
+                Texture = m.Texture,
+                TextureScale = 1 / m.TextureSize,
+                // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
+                TextureDepth = m.TextureRelief * m.TextureSize * 0.01f
             };
         }
     }
