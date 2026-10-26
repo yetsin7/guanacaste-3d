@@ -51,6 +51,7 @@ public partial class MainWindow
                         Fill = PartPlanFill(element, part), Stroke = selected ? Brushes.DarkOrange : Brushes.DimGray,
                         StrokeThickness = selected ? 1.5 : 1, Tag = element.Id });
                 if (element.Kind == StructuralElementKind.Ramp) AddRampArrow(element, selected);
+                if (element.Kind == StructuralElementKind.Stair) AddStairWalkLine(element, selected);
                 continue;
             }
             var isHole = element.Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft;
@@ -91,6 +92,36 @@ public partial class MainWindow
         foreach (var side in new[] { -1, 1 })
             AddLine(ramp.End, new Point2(ramp.End.X - direction.X * head - side * direction.Y * head * 0.5,
                 ramp.End.Y - direction.Y * head + side * direction.X * head * 0.5), 1, brush, ramp.Id);
+    }
+
+    /// <summary>
+    /// Draws a stair's walking line as Revit does: a line through the middle of every flight and landing from the first
+    /// riser, ending in an arrow at the top, with "SUBE" at the foot.
+    /// </summary>
+    private void AddStairWalkLine(StructuralElement stair, bool selected)
+    {
+        var brush = selected ? Brushes.DarkOrange : Brushes.Black;
+        var path = StairGeometry.WalkLine(stair);
+        if (path.Count < 2) return;
+        for (var index = 0; index + 1 < path.Count; index++)
+            if (path[index].DistanceTo(path[index + 1]) > 1e-6) AddLine(path[index], path[index + 1], 1, brush, stair.Id);
+        var tip = path[^1];
+        var before = path.Take(path.Count - 1).Last(point => point.DistanceTo(tip) > 1e-6);
+        var length = before.DistanceTo(tip);
+        var direction = new Point2((tip.X - before.X) / length, (tip.Y - before.Y) / length);
+        var head = Math.Min(0.3, stair.Width / 3);
+        foreach (var side in new[] { -1, 1 })
+            AddLine(tip, new Point2(tip.X - direction.X * head - side * direction.Y * head * 0.5,
+                tip.Y - direction.Y * head + side * direction.X * head * 0.5), 1, brush, stair.Id);
+        var foot = WorldToCanvas(path[0]);
+        var label = new TextBlock { Text = GetText("Plan.StairUp"), FontSize = 9, Foreground = brush, Tag = stair.Id };
+        Canvas.SetLeft(label, foot.X + 3);
+        Canvas.SetTop(label, foot.Y + 2);
+        PlanCanvas.Children.Add(label);
+        var dot = new Ellipse { Width = 5, Height = 5, Fill = brush, Tag = stair.Id };
+        Canvas.SetLeft(dot, foot.X - 2.5);
+        Canvas.SetTop(dot, foot.Y - 2.5);
+        PlanCanvas.Children.Add(dot);
     }
 
     /// <summary>Draws a reference plane, room separator, area boundary or model line in its own drafting style.</summary>

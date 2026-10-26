@@ -152,6 +152,12 @@ public partial class MainWindow
                     horizontalOffset, scale);
                 continue;
             }
+            if (floor.IsPitched)
+            {
+                DrawRoofProfile(canvas, floor, level.Elevation, orientation, minimumCoordinate, minimumElevation,
+                    horizontalOffset, scale);
+                continue;
+            }
             var projected = floor.Boundary.Select(point => ProjectCoordinate(point, orientation)).ToArray();
             var left = horizontalOffset + (projected.Min() - minimumCoordinate) * scale;
             var top = ProjectElevation(canvas, level.Elevation, minimumElevation, scale);

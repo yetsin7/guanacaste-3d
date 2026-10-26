@@ -53,6 +53,18 @@ public sealed partial class DocumentSession
         var host = Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == hostId &&
                 candidate.Kind is StructuralElementKind.Stair or StructuralElementKind.Ramp)
             ?? throw new InvalidDataException("The element does not exist.");
+        if (host.Kind == StructuralElementKind.Stair)
+        {
+            // Every flight gets a guard on each side, the landing on its open sides, a spiral along its outer edge.
+            var lines = StairGeometry.GuardLines(host);
+            Commit("Transaction.AddRailingsOnHost", document =>
+            {
+                foreach (var (start, end, offset, rise) in lines)
+                    document.StructuralElements.Add(CreateStructuralElement(Guid.NewGuid(), document, host.LevelId,
+                        StructuralElementKind.Railing, "Guard", start, end) with { Rise = rise, Offset = offset });
+            });
+            return lines.Count;
+        }
         var length = host.Length;
         var normalX = -(host.End.Y - host.Start.Y) / length;
         var normalY = (host.End.X - host.Start.X) / length;

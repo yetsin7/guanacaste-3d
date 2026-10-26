@@ -61,7 +61,7 @@ public partial class MainWindow
                 Column_Click(this, eventArguments);
                 break;
             case ArchitectureCommand.Stair:
-                BeginStructuralTool(StructuralElementKind.Stair, StructuralPlacementMode.Line);
+                BeginStairTool();
                 break;
             case ArchitectureCommand.Railing:
                 BeginStructuralTool(StructuralElementKind.Railing, StructuralPlacementMode.Line);

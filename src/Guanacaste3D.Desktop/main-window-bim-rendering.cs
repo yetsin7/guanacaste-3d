@@ -28,8 +28,17 @@ public partial class MainWindow
                 Tag = floor.Id
             };
             PlanCanvas.Children.Add(polygon);
+            // The overhang reads as a dashed outline beyond the walls, as Revit draws a roof's eaves in plan.
+            var built = RoofGeometry.WithOverhang(floor);
+            if (!ReferenceEquals(built, floor))
+                PlanCanvas.Children.Add(new Polygon
+                {
+                    Points = new PointCollection(built.Boundary.Select(WorldToCanvas)),
+                    Stroke = floor.Id == _selectedFloorId ? Brushes.DarkOrange : Brushes.SeaGreen,
+                    StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 6, 3 }, IsHitTestVisible = false
+                });
             // A pitched roof shows its ridge and hips so its shape reads in plan.
-            foreach (var (from, to) in RoofGeometry.CreaseLines(floor))
+            foreach (var (from, to) in RoofGeometry.CreaseLines(built))
             {
                 var start = WorldToCanvas(from);
                 var end = WorldToCanvas(to);

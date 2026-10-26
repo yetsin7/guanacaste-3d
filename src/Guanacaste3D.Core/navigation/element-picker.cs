@@ -50,8 +50,9 @@ public sealed class ElementPicker
         foreach (var floor in document.Floors)
         {
             if (floor.Boundary.Count < 3) continue;
-            var top = Elevation(floor.LevelId) + (float)floor.ElevationOffset;
-            var footprint = floor.Boundary.Select(p => new Vector2((float)p.X, (float)p.Y)).ToArray();
+            var built = RoofGeometry.WithOverhang(floor);
+            var top = Elevation(floor.LevelId) + (float)built.ElevationOffset;
+            var footprint = built.Boundary.Select(p => new Vector2((float)p.X, (float)p.Y)).ToArray();
             var ridge = 0f;
             if (floor.IsToposolid)
                 ridge = (float)Math.Max(0, new Geometry.TopoSurface(floor).Maximum - floor.ElevationOffset);

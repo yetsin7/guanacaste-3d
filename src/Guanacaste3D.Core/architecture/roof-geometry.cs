@@ -128,6 +128,70 @@ public static class RoofGeometry
         return lines.Where(line => line.From.DistanceTo(line.To) > Epsilon).ToArray();
     }
 
+    /// <summary>
+    /// The roof as built: its boundary pushed out by the overhang and, when pitched, its eave lowered so the roof plane
+    /// still crosses the original boundary at the original height. A roof without overhang is returned unchanged.
+    /// </summary>
+    public static FloorSlab WithOverhang(FloorSlab roof)
+    {
+        if (roof.Kind != FloorKind.Roof || roof.Overhang <= 0) return roof;
+        var grown = Grow(roof.Boundary, roof.Overhang);
+        if (grown is null) return roof;
+        var drop = roof.IsPitched ? roof.Overhang * Math.Tan(roof.Pitch * Math.PI / 180) : 0;
+        return roof with { Boundary = [.. grown], ElevationOffset = roof.ElevationOffset - drop, Overhang = 0 };
+    }
+
+    /// <summary>
+    /// The vertical outline closing the space between a wall top (the roof's eave underside) and the underside of a
+    /// pitched roof along one boundary edge: a gable triangle, or the high wall of a shed. Null where the roof does not
+    /// rise along the edge (the eaves of a gable, every side of a hip roof).
+    /// </summary>
+    public static IReadOnlyList<(Point2 Point, double Rise)>? GableProfile(FloorSlab roof, Point2 from, Point2 to)
+    {
+        if (!roof.IsPitched) return null;
+        const int samples = 24;
+        var profile = new List<(Point2, double)>(samples + 1);
+        var highest = 0d;
+        for (var index = 0; index <= samples; index++)
+        {
+            var point = new Point2(from.X + (to.X - from.X) * index / samples, from.Y + (to.Y - from.Y) * index / samples);
+            var rise = RiseAt(roof, point);
+            highest = Math.Max(highest, rise);
+            profile.Add((point, rise));
+        }
+        return highest < 0.05 ? null : profile;
+    }
+
+    /// <summary>Offsets a simple polygon outward by a distance (mitred corners); null when it degenerates.</summary>
+    private static IReadOnlyList<Point2>? Grow(IReadOnlyList<Point2> polygon, double distance)
+    {
+        var ordered = PolygonTriangulator.SignedDoubleArea(polygon) > 0 ? polygon.ToArray() : polygon.Reverse().ToArray();
+        var count = ordered.Length;
+        var result = new Point2[count];
+        for (var index = 0; index < count; index++)
+        {
+            var previous = ordered[(index + count - 1) % count];
+            var current = ordered[index];
+            var next = ordered[(index + 1) % count];
+            var (n1x, n1y) = OutwardNormal(previous, current);
+            var (n2x, n2y) = OutwardNormal(current, next);
+            var bisectorX = n1x + n2x;
+            var bisectorY = n1y + n2y;
+            var dot = 1 + n1x * n2x + n1y * n2y;
+            if (dot < 0.1) return null;
+            // A mitred corner moves along the bisector by distance / cos(half angle) = 2·distance / |n1 + n2|².
+            var scale = distance * 2 / (bisectorX * bisectorX + bisectorY * bisectorY);
+            result[index] = new Point2(current.X + bisectorX * scale, current.Y + bisectorY * scale);
+        }
+        return result;
+
+        static (double X, double Y) OutwardNormal(Point2 a, Point2 b)
+        {
+            var length = Math.Max(a.DistanceTo(b), 1e-12);
+            return ((b.Y - a.Y) / length, -(b.X - a.X) / length);
+        }
+    }
+
     /// <summary>Axis-aligned bounding box of a polygon.</summary>
     public static (double MinX, double MaxX, double MinY, double MaxY) Extent(IReadOnlyList<Point2> polygon) =>
         (polygon.Min(point => point.X), polygon.Max(point => point.X),

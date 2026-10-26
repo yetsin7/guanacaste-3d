@@ -41,7 +41,8 @@ public sealed partial class DocumentSession
             ElevationOffset = elevationOffset,
             Finish = preset.Finish,
             Shape = preset.Shape,
-            Pitch = preset.Pitch
+            Pitch = preset.Pitch,
+            Overhang = preset.Kind == FloorKind.Roof ? preset.Overhang : 0
         }));
         return id;
     }
@@ -57,6 +58,18 @@ public sealed partial class DocumentSession
             var index = document.Floors.FindIndex(floor => floor.Id == roofId);
             document.Floors[index] = document.Floors[index] with { Shape = shape, Pitch = shape == RoofShape.Flat ? 0 : pitch };
             RaiseStructuresOnRoof(document, document.Floors[index]);
+        });
+    }
+
+    /// <summary>Sets a roof's overhang and whether its gables are closed with wall.</summary>
+    public void SetRoofEdges(Guid roofId, double overhang, bool gableWalls)
+    {
+        var roof = Document.Floors.FirstOrDefault(floor => floor.Id == roofId && floor.Kind == FloorKind.Roof)
+            ?? throw new InvalidDataException("The floor slab does not exist.");
+        Commit("Transaction.SetRoofEdges", document =>
+        {
+            var index = document.Floors.FindIndex(floor => floor.Id == roof.Id);
+            document.Floors[index] = document.Floors[index] with { Overhang = overhang, GableWalls = gableWalls };
         });
     }
 

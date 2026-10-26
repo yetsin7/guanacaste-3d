@@ -56,6 +56,11 @@
   <sys:String x:Key="Editor.Finish">Acabado</sys:String>
   <sys:String x:Key="Editor.RoofShape">Forma de la cubierta</sys:String>
   <sys:String x:Key="Editor.Pitch">Pendiente (grados)</sys:String>
+  <sys:String x:Key="Editor.Overhang">Alero (m)</sys:String>
+  <sys:String x:Key="Editor.GableWalls">Cerrar hastiales con muro</sys:String>
+  <sys:String x:Key="Editor.Yes">Sí</sys:String>
+  <sys:String x:Key="Editor.No">No</sys:String>
+  <sys:String x:Key="Transaction.SetRoofEdges">Cambiar alero y hastiales</sys:String>
   <sys:String x:Key="Editor.ColumnShape">Sección</sys:String>
   <sys:String x:Key="Editor.Width">Ancho o sección (m)</sys:String>
   <sys:String x:Key="Editor.Depth">Fondo (m)</sys:String>
@@ -113,6 +118,15 @@
   <sys:String x:Key="Library.Category.Drainage">Canales y bajantes</sys:String>
   <sys:String x:Key="Library.Category.Vegetation">Vegetación</sys:String>
   <sys:String x:Key="Library.Category.Site">Emplazamiento</sys:String>
+  <sys:String x:Key="Stair.LShaped">Escalera en L 1100 mm</sys:String>
+  <sys:String x:Key="Stair.UShaped">Escalera en U 1100 mm</sys:String>
+  <sys:String x:Key="Stair.Spiral">Escalera helicoidal Ø2000 mm</sys:String>
+  <sys:String x:Key="ElementStyle.LShaped">En L con descanso</sys:String>
+  <sys:String x:Key="ElementStyle.UShaped">En U (ida y vuelta)</sys:String>
+  <sys:String x:Key="ElementStyle.Spiral">Helicoidal</sys:String>
+  <sys:String x:Key="Status.StairTool">Escalera recta: clic en el arranque y en el final del tramo. Espacio cambia a escalera en L, en U o helicoidal.</sys:String>
+  <sys:String x:Key="Plan.StairUp">SUBE</sys:String>
+  <sys:String x:Key="Transaction.AddStair">Crear escalera</sys:String>
   <sys:String x:Key="Entity.Toposolid">Sólido topográfico</sys:String>
   <sys:String x:Key="Status.ToposolidSketch">Dibuja el contorno del terreno; doble clic o clic derecho para terminar.</sys:String>
   <sys:String x:Key="Status.ToposolidRectangle">Indica dos esquinas opuestas del terreno.</sys:String>

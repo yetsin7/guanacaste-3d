@@ -51,6 +51,7 @@
   <sys:String x:Key="RenderPanel.TextureSizeHint">Metros que cubre una copia de la imagen (por ejemplo 1 para un paño de ladrillo de 1 m).</sys:String>
   <sys:String x:Key="Material.Walls">Muros</sys:String>
   <sys:String x:Key="Material.Floors">Pisos y losas</sys:String>
+  <sys:String x:Key="Material.Roof">Cubiertas inclinadas</sys:String>
   <sys:String x:Key="Material.Ground">Terreno (césped)</sys:String>
   <sys:String x:Key="Material.Structure">Estructura y elementos</sys:String>
   <sys:String x:Key="Material.Wood">Puertas y muebles</sys:String>

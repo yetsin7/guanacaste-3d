@@ -51,6 +51,11 @@ public static class ElementGeometry
     /// <summary>Straight stairs: solid steps by default, or treads on stepped stringers when open.</summary>
     private static IEnumerable<ElementPart> StairParts(StructuralElement element)
     {
+        if (StairGeometry.IsComposite(element))
+        {
+            foreach (var part in StairGeometry.Parts(element)) yield return part;
+            yield break;
+        }
         if (element.Length < 0.05) yield break;
         if (element.Style != ElementStyle.Open)
         {

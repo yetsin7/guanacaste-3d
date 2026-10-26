@@ -22,7 +22,9 @@ public enum SurfacePattern : byte
     /// <summary>Clusters of leaves: light and dark clumps with a strong, lumpy relief.</summary>
     Foliage,
     /// <summary>Furrowed bark running up a trunk.</summary>
-    Bark
+    Bark,
+    /// <summary>Clay barrel tiles in overlapping courses, laid down the slope of the surface.</summary>
+    RoofTiles
 }
 
 /// <summary>
@@ -140,6 +142,11 @@ public static class MaterialLibrary
         {
             Name = "Corteza", BaseColor = new(0.20f, 0.16f, 0.12f), Roughness = 0.95f,
             Pattern = SurfacePattern.Bark, PatternScale = 1
+        },
+        SurfaceKind.Roof => new RenderMaterial
+        {
+            Name = "Teja", BaseColor = new(0.50f, 0.22f, 0.12f), Roughness = 0.72f,
+            Pattern = SurfacePattern.RoofTiles, PatternScale = 1
         },
         SurfaceKind.Earth => new RenderMaterial
         {

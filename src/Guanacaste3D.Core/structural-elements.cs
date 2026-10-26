@@ -121,7 +121,16 @@ public enum ElementStyle
     Conifer,
 
     /// <summary>Planting: a low shrub of a few rounded clumps, without a visible trunk.</summary>
-    Shrub
+    Shrub,
+
+    /// <summary>Stair: two flights turning a quarter left around a square landing.</summary>
+    LShaped,
+
+    /// <summary>Stair: two flights side by side, turning back around a half landing (switchback).</summary>
+    UShaped,
+
+    /// <summary>Stair: wedge treads winding counter-clockwise around a central column.</summary>
+    Spiral
 }
 
 /// <summary>

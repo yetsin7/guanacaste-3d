@@ -130,6 +130,15 @@ public sealed record FloorSlab(
     /// <summary>Meters from the level elevation to the slab top; ceilings and roofs sit above the floor.</summary>
     public double ElevationOffset { get; init; }
 
+    /// <summary>
+    /// Roofs only: how far the roof reaches past its boundary (the eaves and verges), in meters. The roof plane keeps
+    /// passing over the boundary at the same height, so a pitched eave drops below the wall top by the overhang's rise.
+    /// </summary>
+    public double Overhang { get; init; }
+
+    /// <summary>Pitched roofs only: whether the triangles between the wall tops and the roof (gables) are closed with wall.</summary>
+    public bool GableWalls { get; init; } = true;
+
     /// <summary>Toposolids only: surveyed points of the terrain, with elevations relative to the level.</summary>
     public List<Geometry.TopoPoint>? TopoPoints { get; init; }
 

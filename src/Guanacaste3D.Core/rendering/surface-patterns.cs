@@ -14,6 +14,20 @@ internal static class SurfacePatterns
     /// <summary>Returns the diffuse multiplier at <paramref name="position"/> on a face with the given normal.</summary>
     public static Vector3 Modulate(SurfacePattern pattern, float scale, Vector3 position, Vector3 normal)
     {
+        if (pattern == SurfacePattern.RoofTiles)
+        {
+            var (s, t) = RoofCoordinates(position, normal);
+            var course = MathF.Floor(s / (CourseLength * scale));
+            var column = MathF.Floor(t / (TileWidth * scale) + ((int)course & 1) * 0.5f);
+            var across = t / (TileWidth * scale) + ((int)course & 1) * 0.5f;
+            var barrel = MathF.Sin(MathF.PI * (across - MathF.Floor(across)));
+            var tone = 0.80f + 0.35f * Hash01((int)column, (int)course);
+            var weathered = Hash01((int)column + 7, (int)course * 3) > 0.9f ? 0.72f : 1f;
+            // Troughs between barrels and the shadowed overlap under each course read darker.
+            var overlap = s / (CourseLength * scale) - course;
+            var shade = (0.62f + 0.38f * barrel) * (0.82f + 0.18f * overlap);
+            return new Vector3(tone * weathered * shade * 1.05f, tone * weathered * shade, tone * weathered * shade * 0.95f);
+        }
         var (u, v) = PlaneCoordinates(position, normal);
         u /= scale;
         v /= scale;
@@ -104,6 +118,7 @@ internal static class SurfacePatterns
     public static Vector3 Relief(SurfacePattern pattern, float scale, Vector3 position, Vector3 normal, float distance)
     {
         if (pattern is SurfacePattern.None or SurfacePattern.Checker) return normal;
+        if (pattern == SurfacePattern.RoofTiles) return RoofTileRelief(scale, position, normal);
         var fade = 1 / (1 + distance * distance * (1f / 900f));   // half strength at 30 m
         var (u, v) = PlaneCoordinates(position, normal);
         const float step = 0.0006f;
@@ -120,6 +135,48 @@ internal static class SurfacePatterns
         tangentU -= normal * Vector3.Dot(normal, tangentU);
         tangentV -= normal * Vector3.Dot(normal, tangentV);
         var bent = normal - tangentU * du - tangentV * dv;
+        var length = bent.Length();
+        return length > 1e-6f ? bent / length : normal;
+    }
+
+    private const float TileWidth = 0.22f;
+    private const float CourseLength = 0.33f;
+
+    /// <summary>
+    /// Coordinates for roofing: along the fall of the slope (horizontal distance downhill) and across it, so tiles run
+    /// down every facet whatever its orientation. A flat surface falls back to plan axes.
+    /// </summary>
+    private static (float Along, float Across) RoofCoordinates(Vector3 position, Vector3 normal)
+    {
+        var fall = new Vector2(normal.X, normal.Y);
+        if (fall.LengthSquared() < 1e-4f) return (position.Y, position.X);
+        fall = Vector2.Normalize(fall);
+        return (position.X * fall.X + position.Y * fall.Y, -position.X * fall.Y + position.Y * fall.X);
+    }
+
+    /// <summary>Barrel tiles 2.5 cm high across the slope, each course stepping 1.2 cm proud of the one above it.</summary>
+    private static Vector3 RoofTileRelief(float scale, Vector3 position, Vector3 normal)
+    {
+        var fall = new Vector2(normal.X, normal.Y);
+        if (fall.LengthSquared() < 1e-4f) return normal;
+        fall = Vector2.Normalize(fall);
+        float Height(float s, float t)
+        {
+            var course = MathF.Floor(s / (CourseLength * scale));
+            var across = t / (TileWidth * scale) + ((int)course & 1) * 0.5f;
+            var barrel = MathF.Sin(MathF.PI * (across - MathF.Floor(across))) * 0.025f * scale;
+            var step = (s / (CourseLength * scale) - course) * 0.012f * scale;
+            return barrel + step;
+        }
+        var (s0, t0) = RoofCoordinates(position, normal);
+        const float delta = 0.003f;
+        var dS = (Height(s0 + delta, t0) - Height(s0 - delta, t0)) / (2 * delta);
+        var dT = (Height(s0, t0 + delta) - Height(s0, t0 - delta)) / (2 * delta);
+        var along = new Vector3(fall.X, fall.Y, 0);
+        var across3 = new Vector3(-fall.Y, fall.X, 0);
+        along -= normal * Vector3.Dot(normal, along);
+        across3 -= normal * Vector3.Dot(normal, across3);
+        var bent = normal - along * dS - across3 * dT;
         var length = bent.Length();
         return length > 1e-6f ? bent / length : normal;
     }

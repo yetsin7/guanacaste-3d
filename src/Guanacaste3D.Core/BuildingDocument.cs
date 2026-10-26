@@ -212,7 +212,9 @@ public sealed class BuildingDocument
                 !double.IsFinite(floor.Thickness) || floor.Thickness is < 0.03 or > 3 ||
                 !double.IsFinite(floor.ElevationOffset) || floor.ElevationOffset is < -10 or > 1000 ||
                 !Enum.IsDefined(floor.Kind) ||
-                floor.CalculateArea() is < 0.1 or > 100000000 || !Enum.IsDefined(floor.Finish))
+                floor.CalculateArea() is < 0.1 or > 100000000 || !Enum.IsDefined(floor.Finish) ||
+                !double.IsFinite(floor.Overhang) || floor.Overhang is < 0 or > 5 ||
+                (floor.Overhang > 0 && floor.Kind != FloorKind.Roof))
                 throw new InvalidDataException("Invalid floor slab.");
             if (floor.TopoPoints is { } points &&
                 (!floor.IsToposolid || points.Count > 2000 || points.Any(point =>

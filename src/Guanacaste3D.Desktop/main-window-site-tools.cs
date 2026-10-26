@@ -186,6 +186,46 @@ public partial class MainWindow
     }
 
     /// <summary>
+    /// Draws a pitched roof in an elevation or section as its silhouette from that side: from the eaves, with the
+    /// overhang, up to the ridge, filled with the roof's thickness below the surface.
+    /// </summary>
+    private void DrawRoofProfile(Canvas canvas, FloorSlab roof, double levelElevation, ViewOrientation orientation,
+        double minimumCoordinate, double minimumElevation, double horizontalOffset, double scale)
+    {
+        var built = RoofGeometry.WithOverhang(roof);
+        var eave = levelElevation + built.ElevationOffset;
+        var (minX, maxX, minY, maxY) = RoofGeometry.Extent(built.Boundary);
+        var spacing = Math.Max(0.05, Math.Max(maxX - minX, maxY - minY) / 120);
+        var top = new SortedDictionary<int, double>();
+        var bottom = new SortedDictionary<int, double>();
+        for (var x = minX; x <= maxX + 1e-9; x += spacing)
+            for (var y = minY; y <= maxY + 1e-9; y += spacing)
+            {
+                var point = new Point2(x, y);
+                if (!TopographyGeometry.Contains(built.Boundary, point)) continue;
+                var surface = eave + RoofGeometry.RiseAt(built, point);
+                var bin = (int)Math.Round(ProjectCoordinate(point, orientation) / spacing);
+                top[bin] = top.TryGetValue(bin, out var high) ? Math.Max(high, surface) : surface;
+                bottom[bin] = bottom.TryGetValue(bin, out var low) ? Math.Min(low, surface - roof.Thickness) : surface - roof.Thickness;
+            }
+        if (top.Count < 2) return;
+        var outline = new PointCollection();
+        foreach (var (bin, elevation) in top)
+            outline.Add(new Point(horizontalOffset + (bin * spacing - minimumCoordinate) * scale,
+                ProjectElevation(canvas, elevation, minimumElevation, scale)));
+        foreach (var (bin, elevation) in bottom.Reverse())
+            outline.Add(new Point(horizontalOffset + (bin * spacing - minimumCoordinate) * scale,
+                ProjectElevation(canvas, Math.Min(elevation, top[bin] - roof.Thickness), minimumElevation, scale)));
+        canvas.Children.Add(new Polygon
+        {
+            Points = outline,
+            Fill = new SolidColorBrush(Color.FromRgb(176, 98, 70)),
+            Stroke = Brushes.DarkSlateGray,
+            StrokeThickness = 1
+        });
+    }
+
+    /// <summary>
     /// Draws a toposolid in an elevation or section: the skyline of its surface seen from that side, filled down to its
     /// flat bottom, so hills and slopes read as they do in Revit's elevations.
     /// </summary>

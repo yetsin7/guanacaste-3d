@@ -36,6 +36,7 @@ internal static class RenderTextureLibrary
     [
         (SurfaceKind.Wall, "Material.Walls"),
         (SurfaceKind.Floor, "Material.Floors"),
+        (SurfaceKind.Roof, "Material.Roof"),
         (SurfaceKind.Ground, "Material.Ground"),
         (SurfaceKind.Structure, "Material.Structure"),
         (SurfaceKind.DoorLeaf, "Material.Wood"),

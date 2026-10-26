@@ -85,7 +85,8 @@ public static class ArchitecturalShapes
             [ElementStyle.Default, ElementStyle.Round],
         StructuralElementKind.Railing =>
             [ElementStyle.Default, ElementStyle.Pickets, ElementStyle.GlassPanel, ElementStyle.Cable, ElementStyle.SolidParapet],
-        StructuralElementKind.Stair => [ElementStyle.Default, ElementStyle.Open],
+        StructuralElementKind.Stair =>
+            [ElementStyle.Default, ElementStyle.Open, ElementStyle.LShaped, ElementStyle.UShaped, ElementStyle.Spiral],
         StructuralElementKind.Planting =>
             [ElementStyle.Default, ElementStyle.Guanacaste, ElementStyle.Palm, ElementStyle.Conifer, ElementStyle.Shrub],
         _ => [ElementStyle.Default]

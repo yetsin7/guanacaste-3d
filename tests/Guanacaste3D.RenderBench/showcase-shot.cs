@@ -60,6 +60,19 @@ static class ShowcaseShot
                          (min.X - 1.0, max.Y + 1, -0.05), (max.X + 1, min.Y - 1, -0.05) })
                 session.AddTopoPoint(site, new Guanacaste3D.Core.Geometry.TopoPoint(x, y, z));
         }
+        if (Environment.GetEnvironmentVariable("G3_SHOT_ROOF") == "1")
+        {
+            var gable = Guanacaste3D.Core.ArchitecturalLibrary.SlabPresets.Single(slab => slab.Name == "Gable Roof 30°");
+            var walls = session.Document.Walls;
+            var (wx0, wx1) = (walls.Min(w => Math.Min(w.Start.X, w.End.X)), walls.Max(w => Math.Max(w.Start.X, w.End.X)));
+            var (wy0, wy1) = (walls.Min(w => Math.Min(w.Start.Y, w.End.Y)), walls.Max(w => Math.Max(w.Start.Y, w.End.Y)));
+            session.AddSlabFromPreset(level, [new(wx0, wy0), new(wx1, wy0), new(wx1, wy1), new(wx0, wy1)], gable,
+                session.SlabElevation(level, gable));
+            var spiral = Guanacaste3D.Core.ArchitecturalLibrary.PresetsFor(Guanacaste3D.Core.StructuralElementKind.Stair)
+                .Single(stair => stair.Style == Guanacaste3D.Core.ElementStyle.Spiral);
+            var stairId = session.AddElementFromPreset(level, spiral, new(wx1 + 2.5, wy0 - 1.5), new(wx1 + 3.5, wy0 - 1.5));
+            session.AddRailingsOnHost(stairId);
+        }
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true);
         var center = (min + max) / 2;
         if (Environment.GetEnvironmentVariable("G3_SHOT_TEXTURES") is { } textureFolder)

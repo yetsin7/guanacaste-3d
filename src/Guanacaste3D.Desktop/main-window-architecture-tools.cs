@@ -49,16 +49,27 @@ public partial class MainWindow
     /// <summary>Growth style of the last planting placed or chosen, so the command resumes with it.</summary>
     private ElementStyle _lastPlantingStyle = ElementStyle.Default;
 
-    /// <summary>While planting, Space steps to the next species of the catalog, like door swing flipping.</summary>
+    /// <summary>
+    /// While planting or placing a stair, Space steps to the next type of the catalog (species; straight, L, U or spiral
+    /// stair), like door swing flipping.
+    /// </summary>
     private bool TryCyclePlantingSpecies()
     {
-        if (_structuralTool is not { Kind: StructuralElementKind.Planting }) return false;
-        var species = ArchitecturalLibrary.PresetsFor(StructuralElementKind.Planting).ToArray();
-        var current = Array.FindIndex(species, candidate => candidate.Style == (_structuralPreset?.Style ?? ElementStyle.Default));
-        var next = species[(current + 1) % species.Length];
-        _lastPlantingStyle = next.Style;
+        if (_structuralTool is not { Kind: StructuralElementKind.Planting or StructuralElementKind.Stair } tool) return false;
+        var types = ArchitecturalLibrary.PresetsFor(tool.Kind).ToArray();
+        var current = Array.FindIndex(types, candidate => candidate.Style == (_structuralPreset?.Style ?? ElementStyle.Default));
+        var next = types[(current + 1) % types.Length];
+        if (tool.Kind == StructuralElementKind.Planting) _lastPlantingStyle = next.Style;
         BeginPresetTool(next with { Name = LocalizedPresetName(next) });
         return true;
+    }
+
+    /// <summary>Arms the stair tool with the straight stair; Space chooses an L, U or spiral stair instead.</summary>
+    private void BeginStairTool()
+    {
+        var straight = ArchitecturalLibrary.PresetsFor(StructuralElementKind.Stair).First();
+        BeginPresetTool(straight with { Name = LocalizedPresetName(straight) });
+        StatusText.Text = GetText("Status.StairTool");
     }
 
     /// <summary>The display name of a catalog entry in the interface language.</summary>

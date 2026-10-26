@@ -6,7 +6,7 @@ namespace Guanacaste3D.Core;
 
 /// <summary>A named slab recipe: a floor, ceiling or roof with its thickness, shape, pitch and finish.</summary>
 public sealed record SlabPreset(string Name, FloorKind Kind, double Thickness, RoofShape Shape, double Pitch,
-    FinishKind Finish);
+    FinishKind Finish, double Overhang = 0);
 
 /// <summary>A named column section.</summary>
 public sealed record ColumnPreset(string Name, ColumnShape Shape, double Width, double Depth);
@@ -132,11 +132,11 @@ public static class ArchitecturalLibrary
         new("Suspended Tile Ceiling 20 mm", FloorKind.Ceiling, 0.02, RoofShape.Flat, 0, FinishKind.None),
         new("Timber Plank Ceiling 20 mm", FloorKind.Ceiling, 0.02, RoofShape.Flat, 0, FinishKind.None),
         new("Flat Concrete Roof 150 mm", FloorKind.Roof, 0.15, RoofShape.Flat, 0, FinishKind.None),
-        new("Shed Roof 10°", FloorKind.Roof, 0.10, RoofShape.Shed, 10, FinishKind.None),
-        new("Gable Roof 20°", FloorKind.Roof, 0.10, RoofShape.Gable, 20, FinishKind.None),
-        new("Gable Roof 30°", FloorKind.Roof, 0.10, RoofShape.Gable, 30, FinishKind.None),
-        new("Hip Roof 25°", FloorKind.Roof, 0.10, RoofShape.Hip, 25, FinishKind.None),
-        new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None),
+        new("Shed Roof 10°", FloorKind.Roof, 0.10, RoofShape.Shed, 10, FinishKind.None, 0.6),
+        new("Gable Roof 20°", FloorKind.Roof, 0.10, RoofShape.Gable, 20, FinishKind.None, 0.6),
+        new("Gable Roof 30°", FloorKind.Roof, 0.10, RoofShape.Gable, 30, FinishKind.None, 0.6),
+        new("Hip Roof 25°", FloorKind.Roof, 0.10, RoofShape.Hip, 25, FinishKind.None, 0.6),
+        new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None, 0.6),
         new("Toposolid 1 m", FloorKind.Toposolid, 1.0, RoofShape.Flat, 0, FinishKind.None)
     ];
 
@@ -170,6 +170,12 @@ public static class ArchitecturalLibrary
         new("Solid Parapet 1000 mm", StructuralElementKind.Railing, ElementStyle.SolidParapet, 0.15, 1.00, 0),
         new("Straight Stair 1200 mm", StructuralElementKind.Stair, ElementStyle.Default, 1.20, 3.00, 0),
         new("Open Stair 1000 mm", StructuralElementKind.Stair, ElementStyle.Open, 1.00, 3.00, 0),
+        new("L-Shaped Stair 1100 mm", StructuralElementKind.Stair, ElementStyle.LShaped, 1.10, 3.00, 0,
+            LocalizationKey: "Stair.LShaped"),
+        new("U-Shaped Stair 1100 mm", StructuralElementKind.Stair, ElementStyle.UShaped, 1.10, 3.00, 0,
+            LocalizationKey: "Stair.UShaped"),
+        new("Spiral Stair Ø2000 mm", StructuralElementKind.Stair, ElementStyle.Spiral, 2.00, 3.00, 0,
+            LocalizationKey: "Stair.Spiral"),
         new("Ramp 1:12", StructuralElementKind.Ramp, ElementStyle.Default, 1.50, 0.60, 0),
         new("Box Gutter 120 × 100 mm", StructuralElementKind.Gutter, ElementStyle.Default, 0.12, 0.10, 2.85),
         new("Wide Gutter 200 × 120 mm", StructuralElementKind.Gutter, ElementStyle.Default, 0.20, 0.12, 2.85),

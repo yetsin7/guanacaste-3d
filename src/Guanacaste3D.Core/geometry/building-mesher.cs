@@ -17,7 +17,9 @@ public enum SurfaceKind : byte
     /// <summary>Trunks and limbs of trees.</summary>
     Bark,
     /// <summary>Soil exposed on the sides and underside of a toposolid.</summary>
-    Earth
+    Earth,
+    /// <summary>The weathering surface of a pitched roof (tiles by default).</summary>
+    Roof
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -134,8 +136,17 @@ public static class BuildingMesher
                 }
                 continue;
             }
-            if (floor.IsPitched) AddPitchedRoof(mesh, floor, slabTop);
-            else AddSlab(mesh, floor.Boundary, slabTop, floor.Thickness, FloorOpenings(document, floor, elevations));
+            if (floor.IsPitched)
+            {
+                var built = RoofGeometry.WithOverhang(floor);
+                AddPitchedRoof(mesh, built, elevations[floor.LevelId] + built.ElevationOffset);
+                if (floor.GableWalls) AddGableWalls(mesh, floor, slabTop);
+            }
+            else
+            {
+                AddSlab(mesh, RoofGeometry.WithOverhang(floor).Boundary, slabTop, floor.Thickness,
+                    FloorOpenings(document, floor, elevations));
+            }
         }
 
         foreach (var column in document.Columns)
@@ -592,7 +603,7 @@ public static class BuildingMesher
             foreach (var (a, b, c) in triangles)
             {
                 mesh.AddTriangle(Surface(facet.Outline[a], 0), Surface(facet.Outline[b], 0), Surface(facet.Outline[c], 0),
-                    SurfaceKind.Floor);
+                    SurfaceKind.Roof);
                 mesh.AddTriangle(Surface(facet.Outline[c], roof.Thickness), Surface(facet.Outline[b], roof.Thickness),
                     Surface(facet.Outline[a], roof.Thickness), SurfaceKind.Floor);
             }
@@ -603,6 +614,40 @@ public static class BuildingMesher
                 if (!LiesOnBoundary(boundary, new Point2((current.X + next.X) / 2, (current.Y + next.Y) / 2))) continue;
                 mesh.AddQuad(Surface(current, roof.Thickness), Surface(next, roof.Thickness), Surface(next, 0),
                     Surface(current, 0), SurfaceKind.Floor);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Closes the gables of a pitched roof: along every boundary edge where the roof rises, a wall 20 cm thick fills the
+    /// space from the wall top (the eave underside) up to the roof's underside, as Revit's walls attached to a roof do.
+    /// </summary>
+    private static void AddGableWalls(SceneMesh mesh, FloorSlab roof, double eaveTop)
+    {
+        const double thickness = 0.20;
+        var boundary = PolygonTriangulator.SignedDoubleArea(roof.Boundary) > 0 ? roof.Boundary : [.. roof.Boundary.AsEnumerable().Reverse()];
+        var bottom = (float)(eaveTop - roof.Thickness);
+        for (var index = 0; index < boundary.Count; index++)
+        {
+            var from = boundary[index];
+            var to = boundary[(index + 1) % boundary.Count];
+            if (RoofGeometry.GableProfile(roof, from, to) is not { } profile) continue;
+            var length = from.DistanceTo(to);
+            if (length < 1e-6) continue;
+            // Counter-clockwise boundary: the inside is to the left of each edge.
+            var inward = new Point2(-(to.Y - from.Y) / length * thickness, (to.X - from.X) / length * thickness);
+            for (var sample = 0; sample + 1 < profile.Count; sample++)
+            {
+                var (a, riseA) = profile[sample];
+                var (b, riseB) = profile[sample + 1];
+                var topA = (float)(eaveTop + riseA - roof.Thickness);
+                var topB = (float)(eaveTop + riseB - roof.Thickness);
+                if (topA - bottom < 1e-4 && topB - bottom < 1e-4) continue;
+                var innerA = new Point2(a.X + inward.X, a.Y + inward.Y);
+                var innerB = new Point2(b.X + inward.X, b.Y + inward.Y);
+                mesh.AddQuad(LiftPoint(a, bottom), LiftPoint(b, bottom), LiftPoint(b, topB), LiftPoint(a, topA), SurfaceKind.Wall);
+                mesh.AddQuad(LiftPoint(innerB, bottom), LiftPoint(innerA, bottom), LiftPoint(innerA, topA), LiftPoint(innerB, topB), SurfaceKind.Wall);
+                mesh.AddQuad(LiftPoint(a, topA), LiftPoint(b, topB), LiftPoint(innerB, topB), LiftPoint(innerA, topA), SurfaceKind.Wall);
             }
         }
     }

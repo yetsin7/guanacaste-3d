@@ -116,10 +116,15 @@ internal sealed class ElementEditorWindow : Window
         var finish = window.AddChoice("Editor.Finish", Enum.GetValues<FinishKind>(), floor.Finish, kind => Text($"Finish.{kind}"));
         ComboBox? shape = null;
         TextBox? pitch = null;
+        TextBox? overhang = null;
+        ComboBox? gables = null;
         if (floor.Kind == FloorKind.Roof)
         {
             shape = window.AddChoice("Editor.RoofShape", Enum.GetValues<RoofShape>(), floor.Shape, value => Text($"RoofShape.{value}"));
             pitch = window.AddNumber("Editor.Pitch", floor.Pitch);
+            overhang = window.AddNumber("Editor.Overhang", floor.Overhang);
+            gables = window.AddChoice("Editor.GableWalls", new[] { true, false }, floor.GableWalls,
+                value => Text(value ? "Editor.Yes" : "Editor.No"));
         }
         window._apply = () =>
         {
@@ -131,6 +136,13 @@ internal sealed class ElementEditorWindow : Window
                 var chosenPitch = Number(pitch);
                 if (chosenShape != floor.Shape || Math.Abs(chosenPitch - floor.Pitch) > 1e-9)
                     session.SetRoofShape(floorId, chosenShape, chosenPitch);
+            }
+            if (overhang is not null && gables is not null)
+            {
+                var chosenOverhang = Number(overhang);
+                var chosenGables = Chosen<bool>(gables);
+                if (Math.Abs(chosenOverhang - floor.Overhang) > 1e-9 || chosenGables != floor.GableWalls)
+                    session.SetRoofEdges(floorId, chosenOverhang, chosenGables);
             }
         };
         return window;

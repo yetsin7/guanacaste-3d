@@ -103,6 +103,7 @@ internal static class InteractionChecks
                 "UI-created annotation survives native save and reopen");
             WallLoopClosingChecks(session);
             PlantingChecks(session);
+            StairToolChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -195,6 +196,23 @@ internal static class InteractionChecks
         SetField("_panOffset", pan);
         Invoke("RefreshAll");
         Pump();
+    }
+
+    /// <summary>Arms the stair tool, switches to the L stair with Space, places it and checks its automatic railings.</summary>
+    private static void StairToolChecks(DocumentSession session)
+    {
+        Invoke("BeginStairTool");
+        Check(Invoke("TryCyclePlantingSpecies") is true && Invoke("TryCyclePlantingSpecies") is true,
+            "Space steps through the stair types while the stair tool is armed");
+        var before = session.Document.StructuralElements.Count;
+        Invoke("CreateStructuralFromTool", StructuralElementKind.Stair, new Point2(-30, -20), new Point2(-26, -20));
+        var added = session.Document.StructuralElements.Skip(before).ToArray();
+        Check(added.Count(element => element.Kind == StructuralElementKind.Stair && element.Style == ElementStyle.LShaped) == 1 &&
+              added.Count(element => element.Kind == StructuralElementKind.Railing) >= 4,
+            "Placing an L stair adds it with railings on its flights and landing in one step");
+        session.Undo();
+        Check(session.Document.StructuralElements.Count == before, "One undo removes the stair together with its railings");
+        Invoke("CancelStructuralTool");
     }
 
     /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>

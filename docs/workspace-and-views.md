@@ -1,6 +1,6 @@
 # Workspace, views and icons
 
-How the drawing area behaves in version 0.11. Everything here is covered by
+How the drawing area behaves in version 0.13. Everything here is covered by
 `tests/desktop-interaction-checks` and `tests/Guanacaste3D.Checks`.
 
 ## Views
@@ -46,6 +46,23 @@ How the drawing area behaves in version 0.11. Everything here is covered by
   shrub. Plans show a translucent canopy with a scalloped edge (spiked for palms
   and conifers) and the trunk; width is the canopy spread, height the overall
   height, both editable like any element.
+- **Terrain**: *Sólido topográfico* sketches a site boundary like a floor
+  (double click or right click closes it); *Región graduada* adds elevation
+  points (click asks the height, Ctrl+click removes, Esc ends). The surface is a
+  thin-plate spline through the points, the corners rest at the toposolid's
+  elevation. Plans show contours every 0.5 m (labelled every 2.5 m, *Etiquetar
+  curvas de nivel* toggles the labels) and spot elevations; elevations show the
+  terrain profile; plantings stand on the terrain.
+- **Stairs**: the stair command starts with a straight run; SPACE steps through
+  L-shaped (quarter landing), U-shaped (switchback) and spiral stairs. Risers
+  never exceed 17.5 cm, the stair rises to the level above when there is one,
+  and railings are added on every flight and open landing side in the same undo
+  step. Plans show the walking line with its arrow and *SUBE*.
+- **Roofs**: pitched roofs have an overhang (0.6 m for the catalog roofs, edited
+  with the roof) that keeps the ridge where it was and drops the eave, close
+  their gables with wall up to the roof underside (switchable), and are surfaced
+  with clay tiles. Plans draw the overhang dashed; elevations draw the roof's
+  silhouette.
 - **Default names** follow a Spanish Revit template: *Nivel 1* (its plan view
   carries the same name), *{3D}*, *Sección 1*, *Tabla de cantidades*. Older
   projects keep any name the user gave; untouched English defaults are translated.
