@@ -17,6 +17,8 @@ static class NavigationChecks
         Paths(check);
         Links(check);
         Proxy(check);
+        Edges(check);
+        Picking(check);
         Safety(check);
         LivePreviewChecks(check).GetAwaiter().GetResult();
         Tours(check).GetAwaiter().GetResult();
@@ -185,6 +187,33 @@ static class NavigationChecks
         check(Vector3.Distance(proxyMin, low) < 1.5f && Vector3.Distance(proxyMax, high) < 1.5f, "The proxy keeps the footprint of the original");
         check(small.Indices.All(i => (uint)i < (uint)small.Positions.Length) && small.TriangleMaterial.Length == small.TriangleCount, "Every proxy triangle references a valid vertex and has a material");
         check(!MeshProxy.Build(model, 200_000).IsReduced, "A light model is shown as it is");
+    }
+
+    /// <summary>The outline drawn over the 3D view: a box has 12 edges; a flat quad split in two has 4, not 5.</summary>
+    private static void Edges(Action<bool, string> check)
+    {
+        // Each corner is repeated per face, as real meshes do, so the weld has to join them.
+        var positions = new List<Vector3>();
+        var indices = new List<int>();
+        void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        {
+            var start = positions.Count;
+            positions.AddRange([a, b, c, d]);
+            indices.AddRange([start, start + 1, start + 2, start, start + 2, start + 3]);
+        }
+        Vector3 P(int x, int y, int z) => new(x, y, z);
+        Quad(P(0, 0, 0), P(0, 1, 0), P(1, 1, 0), P(1, 0, 0));
+        Quad(P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(0, 1, 1));
+        Quad(P(0, 0, 0), P(1, 0, 0), P(1, 0, 1), P(0, 0, 1));
+        Quad(P(0, 1, 0), P(0, 1, 1), P(1, 1, 1), P(1, 1, 0));
+        Quad(P(0, 0, 0), P(0, 0, 1), P(0, 1, 1), P(0, 1, 0));
+        Quad(P(1, 0, 0), P(1, 1, 0), P(1, 1, 1), P(1, 0, 1));
+        check(FeatureEdges.Extract(positions, indices).Count == 12, "feature edges: a closed box has exactly its 12 edges");
+
+        var flat = FeatureEdges.Extract([P(0, 0, 0), P(1, 0, 0), P(1, 1, 0), P(0, 1, 0)], [0, 1, 2, 0, 2, 3]);
+        check(flat.Count == 4, "feature edges: the diagonal inside a flat quad is not an edge");
+        check(FeatureEdges.Extract([], []).Count == 0 && FeatureEdges.Extract(positions, indices, maximumEdges: 5).Count == 5,
+            "feature edges: empty input is empty and the edge count is capped");
     }
 
     private static void Safety(Action<bool, string> check)

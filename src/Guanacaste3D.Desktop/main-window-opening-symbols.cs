@@ -34,18 +34,33 @@ public partial class MainWindow
         var axisX = (wall.End.X - wall.Start.X) / wall.Length;
         var axisY = (wall.End.Y - wall.Start.Y) / wall.Length;
         // u runs along the wall from its start; v runs across it, toward the left-hand normal.
+        /// <summary>Maps symbol coordinates onto the host axis.</summary>
         Point2 At(double u, double v) =>
             new(wall.Start.X + axisX * u - axisY * v, wall.Start.Y + axisY * u + axisX * v);
         var half = wall.Thickness / 2;
 
-        AddLine(At(opening.Begin, 0), At(opening.End, 0), Math.Max(4, wall.Thickness * _scale + 2), Brushes.White, tag);
-        AddLine(At(opening.Begin, -half), At(opening.Begin, half), 2, OpeningFrameBrush, tag);
-        AddLine(At(opening.End, -half), At(opening.End, half), 2, OpeningFrameBrush, tag);
-
+        PlanCanvas.Children.Add(new Polygon
+        {
+            Points = new PointCollection(new[] { At(opening.Begin, -half), At(opening.End, -half),
+                At(opening.End, half), At(opening.Begin, half) }.Select(WorldToCanvas)),
+            Fill = Brushes.White, Tag = tag
+        });
         if (opening.Kind == OpeningKind.Door)
         {
             DrawDoorSymbol(wall, opening, At, brush, leafFill, tag);
             return;
+        }
+        const double jamb = 0.06;
+        foreach (var station in new[] { opening.Begin, opening.End - jamb })
+        {
+            PlanCanvas.Children.Add(new Polygon
+            {
+                Points = new PointCollection(new[] { At(station, -half), At(station + jamb, -half),
+                    At(station + jamb, half), At(station, half) }.Select(WorldToCanvas)),
+                Fill = leafFill, Stroke = brush, StrokeThickness = 1, Tag = tag
+            });
+            AddLine(At(station, -half - 0.025), At(station + jamb, -half - 0.025), 1, brush, tag);
+            AddLine(At(station, half + 0.025), At(station + jamb, half + 0.025), 1, brush, tag);
         }
 
         // Two glazing lines sit a third of the way from the centreline to each face of the frame.

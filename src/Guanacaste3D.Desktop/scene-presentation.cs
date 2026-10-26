@@ -91,6 +91,97 @@ internal static class ScenePresentation
         }
     }
 
+    /// <summary>
+    /// The BIM scene as a study model: every solid surface the same soft grey, glass left see-through so openings still read.
+    /// </summary>
+    public static IEnumerable<GeometryModel3D> ToWpfClay(SceneMesh scene)
+    {
+        var solid = new MeshGeometry3D();
+        var glass = new MeshGeometry3D();
+        var ground = new MeshGeometry3D();
+        for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+        {
+            var kind = scene.TriangleKinds[triangle];
+            var target = kind == SurfaceKind.Glass ? glass : kind == SurfaceKind.Ground ? ground : solid;
+            for (var corner = 0; corner < 3; corner++)
+            {
+                target.TriangleIndices.Add(target.Positions.Count);
+                target.Positions.Add(ToWpf(scene.Positions[scene.Indices[triangle * 3 + corner]]));
+            }
+        }
+        if (solid.TriangleIndices.Count > 0)
+        {
+            solid.Freeze();
+            var material = Diffuse(Color.FromRgb(214, 214, 218));
+            var model = new GeometryModel3D(solid, material) { BackMaterial = material };
+            model.Freeze();
+            yield return model;
+        }
+        if (ground.TriangleIndices.Count > 0)
+        {
+            ground.Freeze();
+            var material = Diffuse(Color.FromRgb(232, 233, 231));
+            var model = new GeometryModel3D(ground, material) { BackMaterial = material };
+            model.Freeze();
+            yield return model;
+        }
+        if (glass.TriangleIndices.Count > 0)
+        {
+            glass.Freeze();
+            var material = Diffuse(Color.FromArgb(70, 170, 195, 215));
+            var model = new GeometryModel3D(glass, material) { BackMaterial = material };
+            model.Freeze();
+            yield return model;
+        }
+    }
+
+    /// <summary>
+    /// Draws edges as thin prisms of fixed size in the model, so perspective itself makes nearby edges bold and distant ones
+    /// fine, and the depth buffer hides edges behind surfaces. Lines are unlit, so they keep their color in shadow.
+    /// </summary>
+    public static GeometryModel3D? ToWpfEdges(IEnumerable<EdgeSegment> edges, Matrix4x4 placement, float thickness, Color color)
+    {
+        var mesh = new MeshGeometry3D();
+        var half = Math.Max(0.002f, thickness / 2);
+        foreach (var edge in edges)
+        {
+            var a = Vector3.Transform(edge.A, placement);
+            var b = Vector3.Transform(edge.B, placement);
+            var direction = b - a;
+            var length = direction.Length();
+            if (length < 1e-5f) continue;
+            direction /= length;
+            var helper = MathF.Abs(direction.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX;
+            var u = Vector3.Normalize(Vector3.Cross(direction, helper)) * half;
+            var v = Vector3.Normalize(Vector3.Cross(direction, u)) * half;
+            var start = mesh.Positions.Count;
+            // Square section: four corners at each end, four side faces.
+            foreach (var end in new[] { a, b })
+            {
+                mesh.Positions.Add(ToWpf(end + u + v));
+                mesh.Positions.Add(ToWpf(end - u + v));
+                mesh.Positions.Add(ToWpf(end - u - v));
+                mesh.Positions.Add(ToWpf(end + u - v));
+            }
+            for (var side = 0; side < 4; side++)
+            {
+                var next = (side + 1) % 4;
+                mesh.TriangleIndices.Add(start + side);
+                mesh.TriangleIndices.Add(start + 4 + side);
+                mesh.TriangleIndices.Add(start + 4 + next);
+                mesh.TriangleIndices.Add(start + side);
+                mesh.TriangleIndices.Add(start + 4 + next);
+                mesh.TriangleIndices.Add(start + next);
+            }
+        }
+        if (mesh.TriangleIndices.Count == 0) return null;
+        mesh.Freeze();
+        var material = new EmissiveMaterial(new SolidColorBrush(color));
+        var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
+        model.Freeze();
+        return model;
+    }
+
     /// <summary>Linear 0–1 to an 8-bit sRGB channel, for display colors.</summary>
     private static byte ToByte(float linear)
     {

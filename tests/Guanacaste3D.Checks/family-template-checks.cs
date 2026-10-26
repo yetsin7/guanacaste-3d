@@ -62,7 +62,7 @@ static class FamilyTemplateChecks
         check(tampered != text && (ErrorOf(() => FamilyFile.Load(tamperedPath)) ?? "").Contains("checksum"),
             "A family whose content changed after saving fails its checksum");
 
-        var projectPath = Path.Combine(folder, "identity.g3");
+        var projectPath = Path.Combine(folder, "identity.g3d");
         ProjectFile.Save(projectPath, BuildingDocument.Create("Identidad"));
         var projectAsFamily = Path.Combine(folder, "project-renamed.G3Df");
         File.Copy(projectPath, projectAsFamily, overwrite: true);
@@ -79,10 +79,10 @@ static class FamilyTemplateChecks
         File.Copy(path, familyAsTemplate, overwrite: true);
         check((ErrorOf(() => TemplateFile.Load(familyAsTemplate)) ?? "").Contains("not a Guanacaste 3D template"),
             "A family renamed to .G3Dt is rejected as a template");
-        var familyAsProject = Path.Combine(folder, "family-renamed.g3");
+        var familyAsProject = Path.Combine(folder, "family-renamed.g3d");
         File.Copy(path, familyAsProject, overwrite: true);
         check((ErrorOf(() => ProjectFile.Load(familyAsProject)) ?? "").Contains("header"),
-            "A family renamed to .g3 is rejected as a project because its header is not the project header");
+            "A family renamed to .g3d is rejected as a project because its header is not the project header");
 
         var futurePath = Path.Combine(folder, "future.G3Df");
         var futureJson = JsonSerializer.Serialize(family, new JsonSerializerOptions { WriteIndented = true });

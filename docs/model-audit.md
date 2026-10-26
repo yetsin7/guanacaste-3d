@@ -1,6 +1,6 @@
 # Model audit
 
-`ModelAudit.Analyze` performs a read-only review of a validated `.g3` document.
+`ModelAudit.Analyze` performs a read-only review of a validated `.g3d` document.
 It reports stable element and level identifiers, a finding code, and a metric
 measurement. The model remains editable even when findings exist; these are
 designer review items rather than file-validation failures.
@@ -32,7 +32,7 @@ native round-trip stability, and clearing a finding by fixing the geometry.
 To inspect a saved project from a terminal, run:
 
 ```powershell
-dotnet run --project tools/project-audit -c Release -- path/to/project.g3
+dotnet run --project tools/project-audit -c Release -- path/to/project.g3d
 ```
 
 The command prints a JSON report with the project identity, finding count,

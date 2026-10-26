@@ -5,9 +5,41 @@ using Microsoft.Win32;
 
 namespace Guanacaste3D.Desktop;
 
-/// <summary>File commands for project templates (.G3Dt) and door or window families (.G3Df).</summary>
+/// <summary>File commands for project templates (.g3dt) and door or window families (.g3df).</summary>
 public partial class MainWindow
 {
+    /// <summary>Routes an associated file to its native workflow and reports whether it opened successfully.</summary>
+    private bool OpenAssociatedDocumentPath(string path)
+    {
+        try
+        {
+            if (FamilyFile.IsFamilyPath(path))
+            {
+                var family = FamilyFile.Load(path);
+                _session.ImportOpeningFamily(family);
+                StatusText.Text = FormatText("Status.FamilyImported", family.Name);
+            }
+            else if (TemplateFile.IsTemplatePath(path))
+            {
+                var template = TemplateFile.Load(path);
+                AttachDocument(TemplateRules.CreateProject(template, GetText("Project.Untitled")), null);
+                StatusText.Text = GetText("Status.ProjectFromTemplate");
+            }
+            else
+            {
+                OpenProjectPath(path);
+            }
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            System.Text.Json.JsonException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.OpenFailed"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+    }
+
     /// <summary>Starts a project from the bundled metric architecture template after protecting unsaved edits.</summary>
     private void NewArchitecturalMetric_Click(object sender, RoutedEventArgs e)
     {
@@ -17,7 +49,7 @@ public partial class MainWindow
         StatusText.Text = GetText("Status.ProjectFromTemplate");
     }
 
-    /// <summary>Starts a project from a .G3Dt file. The template is only read, so it never changes.</summary>
+    /// <summary>Starts a project from a .g3dt file. The template is only read, so it never changes.</summary>
     private void NewFromTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscard()) return;
@@ -61,7 +93,7 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Merges a .G3Df family into the project's door and window catalog as one undoable step.</summary>
+    /// <summary>Merges a .g3df family into the project's door and window catalog as one undoable step.</summary>
     private void ImportFamily_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog

@@ -4,6 +4,7 @@
     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <sys:String x:Key="Demo.Caption">Demostración</sys:String>
   <sys:String x:Key="Demo.Hint">Clic para usar · Esc para cancelar</sys:String>
+  <sys:String x:Key="Demo.Show">Ver demostración de la herramienta</sys:String>
   <sys:String x:Key="Demo.Wall">Haz clic para fijar el inicio y otra vez para el final. Los muros se encadenan y sus esquinas se unen solas. Escribe un número para dar la longitud exacta.</sys:String>
   <sys:String x:Key="Demo.Door">La puerta queda pegada al cursor. Acércala a un muro: se aloja sola, abre su vano y se coloca al hacer clic.</sys:String>
   <sys:String x:Key="Demo.Window">La ventana sigue al cursor y se aloja en el muro más cercano con su antepecho. Clic para colocarla.</sys:String>

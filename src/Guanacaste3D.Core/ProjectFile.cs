@@ -9,7 +9,8 @@ public static class ProjectFile
     private const long MaximumBytes = 20L * 1024 * 1024;
     private const string NativeHeader = "G3-PROJECT/1\n";
     private static readonly string[] RequiredFields = ["SchemaVersion", "Id", "Name", "Levels", "Walls"];
-    public const string NativeExtension = ".g3";
+    public const string NativeExtension = ".g3d";
+    public const string PreviousNativeExtension = ".g3";
     public const string LegacyExtension = ".g3d.json";
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -21,6 +22,10 @@ public static class ProjectFile
     public static bool IsNativePath(string path) =>
         string.Equals(Path.GetExtension(path), NativeExtension, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Recognizes earlier native projects for read-only migration to the current extension.</summary>
+    public static bool IsPreviousNativePath(string path) =>
+        string.Equals(Path.GetExtension(path), PreviousNativeExtension, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Returns whether a path uses the import-only preview extension.</summary>
     public static bool IsLegacyPath(string path) =>
         path.EndsWith(LegacyExtension, StringComparison.OrdinalIgnoreCase);
@@ -28,14 +33,15 @@ public static class ProjectFile
     /// <summary>Loads, migrates, and validates a native or legacy project document.</summary>
     public static BuildingDocument Load(string path)
     {
-        if (!IsNativePath(path) && !IsLegacyPath(path))
-            throw new InvalidDataException("Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.");
+        if (!IsNativePath(path) && !IsPreviousNativePath(path) && !IsLegacyPath(path))
+            throw new InvalidDataException("Guanacaste 3D projects must use .g3d, previous .g3, or legacy .g3d.json extension.");
         if (new FileInfo(path).Length > MaximumBytes)
             throw new InvalidDataException("The project file exceeds 20 MB.");
         var content = File.ReadAllText(path, Encoding.UTF8);
-        if (IsNativePath(path) && !content.StartsWith(NativeHeader, StringComparison.Ordinal))
-            throw new InvalidDataException("The .g3 project header is missing or unsupported.");
-        var json = IsNativePath(path) ? content[NativeHeader.Length..] : content;
+        var hasNativeHeader = IsNativePath(path) || IsPreviousNativePath(path);
+        if (hasNativeHeader && !content.StartsWith(NativeHeader, StringComparison.Ordinal))
+            throw new InvalidDataException("The native project header is missing or unsupported.");
+        var json = hasNativeHeader ? content[NativeHeader.Length..] : content;
         return DeserializeDocument(json);
     }
 
@@ -140,7 +146,7 @@ public static class ProjectFile
     public static void Save(string path, BuildingDocument document)
     {
         if (!IsNativePath(path))
-            throw new InvalidDataException("Native Guanacaste 3D projects must use the .g3 extension.");
+            throw new InvalidDataException("Native Guanacaste 3D projects must use the .g3d extension.");
         document.Validate();
         var content = NativeHeader + SerializeDocument(document);
         NativeContainer.WriteAtomically(path, content);

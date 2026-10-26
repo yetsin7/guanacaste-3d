@@ -104,13 +104,13 @@ static class LevelChecks
         check(CategoryScheduleService.Build(session.Document, ElementCategory.Walls).Rows
                 .All(row => row.Values[parapet].Number == 1),
             "Formulas can read the top offset of constrained walls");
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-levels-{Guid.NewGuid():N}.g3");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-levels-{Guid.NewGuid():N}.g3d");
         try
         {
             ProjectFile.Save(path, session.Document);
             var reloaded = ProjectFile.Load(path);
             check(reloaded.Walls.All(wall => wall.TopLevelId == upper && wall.TopOffset == 0.5 && wall.Height == 3.5),
-                "Top constraints survive a .g3 round trip");
+                "Top constraints survive a .g3d round trip");
             var node = JsonNode.Parse(JsonSerializer.Serialize(SampleProjects.CreateDemonstrationHouse()))!.AsObject();
             node["SchemaVersion"] = 6;
             foreach (var wall in node["Walls"]!.AsArray()) { wall!.AsObject().Remove("TopLevelId"); wall.AsObject().Remove("TopOffset"); }

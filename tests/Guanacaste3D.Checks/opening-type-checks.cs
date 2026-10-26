@@ -127,7 +127,7 @@ static class OpeningTypeChecks
     private static void CheckMigrationAndRoundTrip(Action<bool, string> check)
     {
         var house = SampleProjects.CreateDemonstrationHouse();
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-opening-types-{Guid.NewGuid():N}.g3");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-opening-types-{Guid.NewGuid():N}.g3d");
         try
         {
             var node = JsonNode.Parse(JsonSerializer.Serialize(house))!.AsObject();

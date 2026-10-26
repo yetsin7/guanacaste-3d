@@ -22,10 +22,10 @@ public static class NativeContainer
     /// <summary>Largest accepted file, shared with the project limit.</summary>
     public const long MaximumBytes = 20L * 1024 * 1024;
 
-    /// <summary>Signature of a family document (.G3Df).</summary>
+    /// <summary>Signature of a family document (.g3df).</summary>
     public const string FamilySignature = "G3-FAMILY";
 
-    /// <summary>Signature of a project template (.G3Dt).</summary>
+    /// <summary>Signature of a project template (.g3dt).</summary>
     public const string TemplateSignature = "G3-TEMPLATE";
 
     private static readonly System.Text.RegularExpressions.Regex HeaderPattern =

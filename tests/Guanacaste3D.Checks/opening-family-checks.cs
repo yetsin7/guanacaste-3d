@@ -70,7 +70,7 @@ internal static class OpeningFamilyChecks
             catch (InvalidDataException) { }
             check(ReferenceEquals(beforeInvalidType, session.Document),
                 "Invalid frame width rejects the edit atomically");
-            var projectPath = Path.Combine(directory, "families.g3");
+            var projectPath = Path.Combine(directory, "families.g3d");
             ProjectFile.Save(projectPath, session.Document);
             var loaded = ProjectFile.Load(projectPath);
             check(BuildingMesher.Build(loaded).TriangleCount == customMesh.TriangleCount,

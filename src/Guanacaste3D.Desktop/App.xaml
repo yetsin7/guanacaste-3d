@@ -19,6 +19,7 @@
         <ResourceDictionary Source="resources/localization.render-engine.es.xaml"/>
         <ResourceDictionary Source="resources/localization.import.es.xaml"/>
         <ResourceDictionary Source="resources/localization.render.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.view3d.es.xaml"/>
         <ResourceDictionary Source="resources/localization.architecture.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>

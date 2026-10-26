@@ -143,12 +143,58 @@ public partial class MainWindow
             Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
         });
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
-        foreach (var group in ScenePresentation.ToWpfModels(scene))
+        var (boundsMin, boundsMax) = SceneBounds();
+        var thickness = Math.Clamp(0.004f * Math.Max(3, (boundsMax - boundsMin).Length() / 2), 0.012f, 0.06f);
+        foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
+        if (_showEdges)
+        {
+            // The ground plane would add four enormous lines at the horizon, so only the building contributes edges.
+            var positions = new List<System.Numerics.Vector3>(scene.Positions);
+            var indices = new List<int>();
+            for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+            {
+                if (scene.TriangleKinds[triangle] == SurfaceKind.Ground) continue;
+                indices.Add(scene.Indices[triangle * 3]);
+                indices.Add(scene.Indices[triangle * 3 + 1]);
+                indices.Add(scene.Indices[triangle * 3 + 2]);
+            }
+            AddEdgeVisual(FeatureEdges.Extract(positions, indices), System.Numerics.Matrix4x4.Identity, thickness);
+        }
         foreach (var (link, loaded) in _links.Visible())
+        {
             foreach (var group in ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement))
                 ModelViewport.Children.Add(new ModelVisual3D { Content = group });
+            if (_showEdges) AddEdgeVisual(EdgesOf(link.Id, loaded), link.Placement.ToMatrix(), thickness);
+        }
         UpdateModelCamera();
+    }
+
+    private bool _clayMode = true;
+    private bool _showEdges = true;
+    private readonly Dictionary<Guid, List<EdgeSegment>> _linkEdges = [];
+
+    /// <summary>Feature edges of a linked model's proxy, computed once and kept until the links change.</summary>
+    private List<EdgeSegment> EdgesOf(Guid id, LoadedModel loaded)
+    {
+        if (_linkEdges.TryGetValue(id, out var cached)) return cached;
+        return _linkEdges[id] = FeatureEdges.Extract(loaded.Proxy.Positions, loaded.Proxy.Indices, maximumEdges: 40_000);
+    }
+
+    private void AddEdgeVisual(IEnumerable<EdgeSegment> edges, System.Numerics.Matrix4x4 placement, float thickness)
+    {
+        var lines = ScenePresentation.ToWpfEdges(edges, placement, thickness, Color.FromRgb(52, 56, 62));
+        if (lines is not null) ModelViewport.Children.Add(new ModelVisual3D { Content = lines });
+    }
+
+    /// <summary>Switches the 3D view between the grey study model and the project's colors, and edges on or off.</summary>
+    private void ViewStyle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (ClayRadio is null || EdgesCheck is null) return;
+        _clayMode = ClayRadio.IsChecked == true;
+        _showEdges = EdgesCheck.IsChecked == true;
+        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+        else _modelDirty = true;
     }
 
     /// <summary>Points the 3D view's camera where the shared navigation camera is.</summary>

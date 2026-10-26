@@ -22,9 +22,9 @@ public enum CommandDemoKind
 }
 
 /// <summary>
-/// Builds rich ribbon tooltips: the command name, a short explanation and, for commands whose
-/// workflow is implemented, an animated vector demonstration that loops while the tooltip is open.
-/// Scenes are drawn and animated in code, so they follow the app's look and cost nothing when closed.
+/// Provides ordinary ribbon tooltips and opt-in animated demonstrations for implemented workflows.
+/// Demonstrations open only through an explicit context-menu command, preventing incidental pointer
+/// movement from covering the workspace with animated content.
 /// </summary>
 public static class CommandDemoToolTip
 {
@@ -44,8 +44,32 @@ public static class CommandDemoToolTip
         _ => CommandDemoKind.None
     };
 
-    /// <summary>Gives a button a rich tooltip whose scene animates only while it is visible.</summary>
+    /// <summary>Adds a plain hover label and an explicit context-menu action for available demonstrations.</summary>
     public static void Attach(FrameworkElement button, string commandId, string title)
+    {
+        var kind = KindFor(commandId);
+        button.ToolTip = title;
+        ToolTipService.SetInitialShowDelay(button, 700);
+        ToolTipService.SetShowDuration(button, 8000);
+        ToolTipService.SetBetweenShowDelay(button, 400);
+        if (kind == CommandDemoKind.None) return;
+
+        EnsureStrings();
+        var demonstrationMenu = new MenuItem { Header = Text("Demo.Show") ?? title };
+        demonstrationMenu.Click += (_, _) => ShowDemo(button, commandId, title);
+        button.ContextMenu = new ContextMenu { Items = { demonstrationMenu } };
+    }
+
+    /// <summary>Builds and opens a demonstration after the user explicitly requests it.</summary>
+    private static void ShowDemo(FrameworkElement placementTarget, string commandId, string title)
+    {
+        var tip = CreateDemo(commandId, title);
+        tip.PlacementTarget = placementTarget;
+        tip.IsOpen = true;
+    }
+
+    /// <summary>Creates a localized demonstration tooltip for explicit display and UI verification.</summary>
+    public static ToolTip CreateDemo(string commandId, string title)
     {
         EnsureStrings();
         var kind = KindFor(commandId);
@@ -75,16 +99,19 @@ public static class CommandDemoToolTip
                 Foreground = new SolidColorBrush(Color.FromRgb(110, 118, 128))
             });
         }
-        var tip = new ToolTip { Content = layout, Padding = new Thickness(10), Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var tip = new ToolTip
+        {
+            Content = layout,
+            Padding = new Thickness(10),
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            StaysOpen = false
+        };
         if (scene is not null)
         {
             tip.Opened += (_, _) => scene.Start();
             tip.Closed += (_, _) => scene.Stop();
         }
-        button.ToolTip = tip;
-        ToolTipService.SetInitialShowDelay(button, 450);
-        ToolTipService.SetShowDuration(button, 120000);
-        ToolTipService.SetBetweenShowDelay(button, 150);
+        return tip;
     }
 
     /// <summary>Maps a scene to its explanation; line, point and rectangle tools share one text each.</summary>

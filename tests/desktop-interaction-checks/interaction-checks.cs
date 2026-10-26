@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Guanacaste3D.Core;
 using Guanacaste3D.Desktop;
+using Guanacaste3D.Desktop.Controls;
 
 /// <summary>Runs real WPF controls and routed events in an isolated test window; never opens user documents.</summary>
 internal static class InteractionChecks
@@ -15,6 +16,7 @@ internal static class InteractionChecks
     private const BindingFlags PrivateInstance = BindingFlags.Instance | BindingFlags.NonPublic;
     private static MainWindow _window = null!;
     private static Canvas _canvas = null!;
+    private static Point2 _lastPointer;
 
     /// <summary>Builds a throwaway project, exercises controls, writes a real WPF bitmap, and exits.</summary>
     [STAThread]
@@ -102,6 +104,7 @@ internal static class InteractionChecks
             CaptureDemoToolTip();
             RenderJoinScene();
             RenderPreviewAndImportChecks();
+            CheckAssociatedDocumentStartup();
             Console.WriteLine("Desktop interaction checks passed.");
             return 0;
         }
@@ -120,12 +123,50 @@ internal static class InteractionChecks
         }
     }
 
-    /// <summary>Opens the Door button's rich tooltip, lets its scene play, and captures it mid-animation.</summary>
+    /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>
+    private static void CheckAssociatedDocumentStartup()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"g3d-startup-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var projectPath = Path.Combine(folder, "startup.g3d");
+            ProjectFile.Save(projectPath, BuildingDocument.Create("StartupProject"));
+            var familyPath = Path.Combine(folder, "startup.g3df");
+            FamilyFile.Save(familyPath, FamilyDocument.CreateStandard(OpeningKind.Door, "StartupFamily"));
+            var templatePath = Path.Combine(folder, "startup.g3dt");
+            TemplateFile.Save(templatePath, OfficialTemplates.CreateArchitecturalMetric());
+
+            foreach (var path in new[] { projectPath, familyPath, templatePath })
+            {
+                var opened = new MainWindow(path);
+                var loaded = (DocumentSession)typeof(MainWindow).GetField("_session", PrivateInstance)!.GetValue(opened)!;
+                if (path == projectPath)
+                    Check(loaded.Document.Name == "StartupProject", "Associated .g3d loads the project");
+                else if (path == familyPath)
+                    Check(loaded.Document.OpeningTypes.Any(type => type.FamilyName == "StartupFamily"),
+                        "Associated .g3df imports the family");
+                else
+                    Check(loaded.Document.Levels.Count > 0 &&
+                        typeof(MainWindow).GetField("_filePath", PrivateInstance)!.GetValue(opened) is null,
+                        "Associated .g3dt creates an unsaved project");
+                typeof(MainWindow).GetField("_dirty", PrivateInstance)!.SetValue(opened, false);
+                opened.Close();
+            }
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    /// <summary>Verifies that demonstrations require an explicit request, then captures the Door scene.</summary>
     private static void CaptureDemoToolTip()
     {
         var door = FindButtons(_window).First(button => button.Tag as string == "Door");
-        Check(door.ToolTip is ToolTip { Content: StackPanel }, "Door button carries a rich tooltip with a demonstration");
-        var tip = (ToolTip)door.ToolTip;
+        Check(door.ToolTip is string && door.ContextMenu is { Items.Count: 1 },
+            "Door hover remains a plain label and its demonstration requires the context menu");
+        var tip = CommandDemoToolTip.CreateDemo("Door", door.ToolTip.ToString()!);
         tip.PlacementTarget = door;
         tip.IsOpen = true;
         for (var frame = 0; frame < 30; frame++) Pump();
@@ -288,6 +329,7 @@ internal static class InteractionChecks
     /// <summary>Injects model coordinates into preview state; OS pointer automation is deliberately excluded.</summary>
     private static void Move(Point2 world)
     {
+        _lastPointer = world;
         SetField("_placementPointer", (Point2?)world);
         Invoke("RenderPlan");
         Pump();
@@ -296,7 +338,7 @@ internal static class InteractionChecks
     /// <summary>Calls the same placement transaction used by the mouse handler with deterministic coordinates.</summary>
     private static void ClickPlan()
     {
-        Invoke("CommitOpeningPlacement", Field<Point2?>("_placementPointer")!.Value);
+        Invoke("CommitOpeningPlacement", _lastPointer);
         Pump();
     }
 

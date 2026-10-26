@@ -1,7 +1,7 @@
 namespace Guanacaste3D.Core;
 
 /// <summary>
-/// Reads and writes .G3Dt project templates. A template is a project document that
+/// Reads and writes .g3dt project templates. A template is a project document that
 /// holds only setup: levels, wall and opening types, parameter definitions, views,
 /// schedules, and sheets. It never holds model elements or parameter values, so a
 /// project created from it cannot inherit geometry, and editing that project cannot
@@ -10,7 +10,7 @@ namespace Guanacaste3D.Core;
 public static class TemplateFile
 {
     /// <summary>File extension of project templates.</summary>
-    public const string Extension = ".G3Dt";
+    public const string Extension = ".g3dt";
 
     /// <summary>Returns whether a path uses the template extension. The file signature is still checked on load.</summary>
     public static bool IsTemplatePath(string path) =>
@@ -20,7 +20,7 @@ public static class TemplateFile
     public static BuildingDocument Load(string path)
     {
         if (!IsTemplatePath(path))
-            throw new InvalidDataException("Guanacaste 3D templates must use the .G3Dt extension.");
+            throw new InvalidDataException("Guanacaste 3D templates must use the .g3dt extension.");
         var payload = NativeContainer.Open(NativeContainer.ReadText(path));
         if (payload.Signature != NativeContainer.TemplateSignature)
             throw new InvalidDataException("The file is not a Guanacaste 3D template.");
@@ -35,7 +35,7 @@ public static class TemplateFile
     public static void Save(string path, BuildingDocument document)
     {
         if (!IsTemplatePath(path))
-            throw new InvalidDataException("Guanacaste 3D templates must use the .G3Dt extension.");
+            throw new InvalidDataException("Guanacaste 3D templates must use the .g3dt extension.");
         document.Validate();
         var template = TemplateRules.StripModelContent(document);
         var json = ProjectFile.SerializeDocument(template);

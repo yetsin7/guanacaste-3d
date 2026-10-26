@@ -96,6 +96,7 @@ public partial class MainWindow
     /// <summary>Redraws views and marks the project as changed when links are added, moved, hidden or removed.</summary>
     private void OnLinksChanged()
     {
+        _linkEdges.Clear();
         MarkSceneDirty();
         if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
         if (_restoringLinks) return;

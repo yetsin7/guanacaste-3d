@@ -1,20 +1,20 @@
-# Capability card: family (.G3Df) and template (.G3Dt) containers
+# Capability card: family (.g3df) and template (.g3dt) containers
 
 ## User-visible workflow
 
 1. **Archivo → Nuevo proyecto con plantilla métrica** starts a project from the
    official metric architecture template. Its levels, wall types, opening
    types, views, and sheets are copied; no walls or openings are.
-2. **Archivo → Nuevo proyecto desde plantilla…** does the same from a `.G3Dt`
+2. **Archivo → Nuevo proyecto desde plantilla…** does the same from a `.g3dt`
    file. The template is only read.
 3. **Archivo → Guardar como plantilla…** writes the open project's setup
    (levels, types, parameter definitions, views, schedules, sheets) to a
-   `.G3Dt` file. Walls, openings, rooms, floors, columns, structural elements,
+   `.g3dt` file. Walls, openings, rooms, floors, columns, structural elements,
    and parameter values are left out. The open project keeps its path and edits.
 4. **Archivo → Guardar familia de la selección…** saves the family of the
-   selected door or window as a `.G3Df` file, with every type of that family
+   selected door or window as a `.g3df` file, with every type of that family
    used in the project. Types keep their identifiers.
-5. **Archivo → Importar familia de puertas o ventanas…** merges a `.G3Df`
+5. **Archivo → Importar familia de puertas o ventanas…** merges a `.g3df`
    family into the project catalog. One **Deshacer** removes the whole import.
 
 ## Container format
@@ -26,7 +26,7 @@ G3-FAMILY/1 sha256=<64 lowercase hex>
 { …family JSON… }
 ```
 
-`G3-TEMPLATE/9 …` marks a template. The checksum covers exactly the bytes after
+`G3-TEMPLATE/10 …` marks a template. The checksum covers exactly the bytes after
 the first newline. The project format is unchanged (`G3-PROJECT/1` header, no
 checksum). Identity comes from the signature, so renaming a file to another
 extension does not change its kind. Each file kind is checked before its payload
@@ -34,9 +34,9 @@ is parsed.
 
 | Kind | Extension | Signature | Payload | Schema |
 |------|-----------|-----------|---------|--------|
-| Project | `.g3` (unchanged) | `G3-PROJECT/1` | `BuildingDocument` | 9 |
-| Family | `.G3Df` | `G3-FAMILY/1` | `FamilyDocument` (Id, Name, Category, Types) | 1 |
-| Template | `.G3Dt` | `G3-TEMPLATE/9` | `BuildingDocument` without model content | 9 (shared with projects) |
+| Project | `.g3d` | `G3-PROJECT/1` | `BuildingDocument` | 10 |
+| Family | `.g3df` | `G3-FAMILY/1` | `FamilyDocument` (Id, Name, Category, Types) | 1 |
+| Template | `.g3dt` | `G3-TEMPLATE/10` | `BuildingDocument` without model content | 10 (shared with projects) |
 
 ## Validation rules
 
@@ -60,16 +60,13 @@ migration chain as projects.
 
 ## Known limits
 
-- The project extension is still `.g3`. Renaming it to `.G3D` needs a
-  migration of existing files and of the Windows association; that decision
-  belongs to the owner.
+- Projects now save as `.g3d`. Previous `.g3` projects and `.g3d.json` previews remain readable and require Save As to migrate.
 - Family files hold type tables only (size, sill, depth, material). They do not
   yet hold a parametric geometry tree, formulas, reference planes, or nested
   families, so the door and window geometry still comes from the shared mesher.
-- Windows file association and icons for `.G3Df` and `.G3Dt` are not
-  registered yet (`scripts/install-windows.ps1` handles `.g3` only).
+- The Windows installer registers `.g3d`, `.g3df`, and `.g3dt` with file associations.
 - The official template is defined in code (`OfficialTemplates`); it is not
-  shipped as a `.G3Dt` file.
+  shipped as a `.g3dt` file.
 
 ## Verification
 

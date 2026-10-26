@@ -13,7 +13,7 @@
   <sys:String x:Key="Error.An opening references a missing or mismatched type.">Una abertura usa un tipo inexistente o de otra clase.</sys:String>
   <sys:String x:Key="Error.Door and window type identifiers and names must be unique.">Los nombres de tipo deben ser únicos dentro de cada familia.</sys:String>
   <sys:String x:Key="Error.Element identifiers must be unique.">Los identificadores de elementos deben ser únicos.</sys:String>
-  <sys:String x:Key="Error.Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3 o la heredada .g3d.json.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D projects must use .g3d, previous .g3, or legacy .g3d.json extension.">Los proyectos deben usar .g3d; también se pueden abrir archivos anteriores .g3 y .g3d.json.</sys:String>
   <sys:String x:Key="Error.Hosted openings cannot overlap.">Las aberturas de un mismo muro no pueden solaparse.</sys:String>
   <sys:String x:Key="Error.The opening can only move to a wall on its level.">La abertura solo puede pasar a un muro del mismo nivel.</sys:String>
   <sys:String x:Key="Error.Invalid column definitions.">Las columnas no son válidas.</sys:String>
@@ -23,9 +23,9 @@
   <sys:String x:Key="Error.Invalid project views.">Las vistas del proyecto no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid room definitions.">Las habitaciones no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid wall-type catalog.">El catálogo de tipos de muro no es válido.</sys:String>
-  <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3 extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3.</sys:String>
+  <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3d extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3d.</sys:String>
   <sys:String x:Key="Error.Project parameter identifiers and names must be unique.">Ya existe un parámetro con ese nombre.</sys:String>
-  <sys:String x:Key="Error.The .g3 project header is missing or unsupported.">El encabezado del proyecto .g3 falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.The native project header is missing or unsupported.">El encabezado del proyecto nativo falta o no es compatible.</sys:String>
   <sys:String x:Key="Error.The document exceeds the supported element limits.">El documento supera los límites de elementos admitidos.</sys:String>
   <sys:String x:Key="Error.The door or window type does not exist.">El tipo de puerta o ventana no existe.</sys:String>
   <sys:String x:Key="Error.The door or window type is still used by placed openings.">El tipo está en uso por aberturas colocadas; cámbialas de tipo antes de eliminarlo.</sys:String>
@@ -121,7 +121,7 @@
   <sys:String x:Key="Error.Unsupported family schema version.">La versión del formato de familia no es compatible.</sys:String>
   <sys:String x:Key="Error.The family identity, name, or category is invalid.">La identidad, el nombre o la categoría de la familia no son válidos.</sys:String>
   <sys:String x:Key="Error.A family must contain at least one type of its own category and name.">Una familia debe tener al menos un tipo de su misma categoría y nombre.</sys:String>
-  <sys:String x:Key="Error.Guanacaste 3D families must use the .G3Df extension.">Las familias de Guanacaste 3D deben usar la extensión .G3Df.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D families must use the .g3df extension.">Las familias de Guanacaste 3D deben usar la extensión .g3df.</sys:String>
   <sys:String x:Key="Error.The file is not a Guanacaste 3D family.">El archivo no es una familia de Guanacaste 3D.</sys:String>
   <sys:String x:Key="Error.The family document is empty.">El documento de familia está vacío.</sys:String>
   <sys:String x:Key="Error.The document exceeds the 20 MB limit.">El documento supera el límite de 20 MB.</sys:String>
@@ -133,7 +133,7 @@
   <sys:String x:Key="Error.The document contains duplicate fields.">El documento contiene campos duplicados.</sys:String>
   <sys:String x:Key="Error.The file exceeds 20 MB.">El archivo supera los 20 MB.</sys:String>
   <sys:String x:Key="Error.The file exceeds the 20 MB limit.">El archivo supera el límite de 20 MB.</sys:String>
-  <sys:String x:Key="Error.Guanacaste 3D templates must use the .G3Dt extension.">Las plantillas de Guanacaste 3D deben usar la extensión .G3Dt.</sys:String>
+  <sys:String x:Key="Error.Guanacaste 3D templates must use the .g3dt extension.">Las plantillas de Guanacaste 3D deben usar la extensión .g3dt.</sys:String>
   <sys:String x:Key="Error.The file is not a Guanacaste 3D template.">El archivo no es una plantilla de Guanacaste 3D.</sys:String>
   <sys:String x:Key="Error.Unsupported template schema version.">La versión del formato de plantilla no es compatible.</sys:String>
   <sys:String x:Key="Error.A template cannot contain model elements or parameter values.">Una plantilla no puede contener elementos del modelo ni valores de parámetros.</sys:String>

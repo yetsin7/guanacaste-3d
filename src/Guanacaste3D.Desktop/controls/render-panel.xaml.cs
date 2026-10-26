@@ -162,10 +162,27 @@ public partial class RenderPanel : UserControl
         _preview.SetCamera(CurrentCamera());
     }
 
+    /// <summary>Refreshes the preview scene on the UI dispatcher because scene notifications may arrive on worker threads.</summary>
     private async void RefreshScene()
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            if (!Dispatcher.HasShutdownStarted) _ = Dispatcher.BeginInvoke((Action)RefreshScene);
+            return;
+        }
         if (_source is null || !IsVisible) return;
         var scene = await _source.GetSceneAsync();
+        if (!Dispatcher.CheckAccess())
+        {
+            if (!Dispatcher.HasShutdownStarted) _ = Dispatcher.BeginInvoke((Action)(() => ApplyPreviewScene(scene)));
+            return;
+        }
+        ApplyPreviewScene(scene);
+    }
+
+    /// <summary>Applies an asynchronously built scene only after returning to its owning UI dispatcher.</summary>
+    private void ApplyPreviewScene(RenderScene? scene)
+    {
         if (scene is null)
         {
             _sceneTriangles = 0;

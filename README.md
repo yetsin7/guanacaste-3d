@@ -62,7 +62,7 @@ dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj `
 ```
 
 The publish output is `artifacts/win-x64/Guanacaste3D.Desktop.exe`. Install it
-for the current user and register `.g3` by running:
+for the current user and register `.g3d`, `.g3df`, and `.g3dt` by running:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
 - `tests/Guanacaste3D.Checks/`: UI-independent executable checks.
 - `docs/revit-functional-parity-roadmap.md`: lawful functional-parity plan.
 
-Native projects use the `.g3` extension and a versioned `G3-PROJECT/1` envelope.
-The application can import the earlier `.g3d.json` preview format and prompts the
-user to save it as `.g3`. Keep independent project backups before using preview
-software on important work.
+Native projects use `.g3d` and a versioned `G3-PROJECT/1` envelope. Families
+use `.g3df`; templates use `.g3dt`. Earlier `.g3` projects and `.g3d.json`
+preview files remain readable and are saved as new `.g3d` projects. Keep
+independent project backups before using preview software on important work.

@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace Guanacaste3D.Core;
 
 /// <summary>
-/// A reusable door or window family saved as a .G3Df file. It groups the types of
+/// A reusable door or window family saved as a .g3df file. It groups the types of
 /// one category under one name, so the same family can be loaded into any project.
 /// Every type obeys the project catalog rules, because the family is validated with
 /// <see cref="OpeningTypeRules"/> rather than a second set of limits.
@@ -71,11 +71,11 @@ public sealed class FamilyDocument
         string.Create(CultureInfo.InvariantCulture, $"{width * 1000:0} × {height * 1000:0} mm");
 }
 
-/// <summary>Reads and writes .G3Df family files. Identity comes from the signature line.</summary>
+/// <summary>Reads and writes .g3df family files. Identity comes from the signature line.</summary>
 public static class FamilyFile
 {
     /// <summary>File extension of family documents.</summary>
-    public const string Extension = ".G3Df";
+    public const string Extension = ".g3df";
 
     /// <summary>Returns whether a path uses the family extension. The file signature is still checked on load.</summary>
     public static bool IsFamilyPath(string path) =>
@@ -88,7 +88,7 @@ public static class FamilyFile
     public static FamilyDocument Load(string path)
     {
         if (!IsFamilyPath(path))
-            throw new InvalidDataException("Guanacaste 3D families must use the .G3Df extension.");
+            throw new InvalidDataException("Guanacaste 3D families must use the .g3df extension.");
         var payload = NativeContainer.Open(NativeContainer.ReadText(path));
         if (payload.Signature != NativeContainer.FamilySignature)
             throw new InvalidDataException("The file is not a Guanacaste 3D family.");
@@ -105,7 +105,7 @@ public static class FamilyFile
     public static void Save(string path, FamilyDocument family)
     {
         if (!IsFamilyPath(path))
-            throw new InvalidDataException("Guanacaste 3D families must use the .G3Df extension.");
+            throw new InvalidDataException("Guanacaste 3D families must use the .g3df extension.");
         family.Validate();
         var json = JsonSerializer.Serialize(family, Options);
         NativeContainer.WriteAtomically(path,

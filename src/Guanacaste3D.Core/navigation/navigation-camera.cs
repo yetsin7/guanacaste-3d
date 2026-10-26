@@ -105,6 +105,19 @@ public sealed class NavigationCamera
         return Vector3.Normalize(Forward + Right * u + Up * v);
     }
 
+    /// <summary>The pixel a model point appears at (the inverse of <see cref="PixelRay"/>), or null when it is behind the camera.</summary>
+    public (float X, float Y)? Project(Vector3 point, float width, float height)
+    {
+        var relative = point - Position;
+        var depth = Vector3.Dot(relative, Forward);
+        if (depth < 0.05f) return null;
+        var halfHeight = MathF.Tan(Math.Clamp(FieldOfViewDegrees, 5f, 150f) * MathF.PI / 360);
+        var halfWidth = halfHeight * width / MathF.Max(1, height);
+        var u = Vector3.Dot(relative, Right) / depth;
+        var v = Vector3.Dot(relative, Up) / depth;
+        return ((u / halfWidth + 1) * 0.5f * width, (1 - v / halfHeight) * 0.5f * height);
+    }
+
     /// <summary>Frames a bounding box from a three-quarter view, like the original orbit camera.</summary>
     public static NavigationCamera Frame(Vector3 min, Vector3 max, float azimuthDegrees = -50, float elevationDegrees = 28,
         float distanceScale = 1) =>

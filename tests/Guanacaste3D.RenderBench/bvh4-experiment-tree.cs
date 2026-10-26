@@ -6,7 +6,7 @@ using Guanacaste3D.Core.Geometry;
 namespace Guanacaste3D.Core.Rendering;
 
 /// <summary>
-/// Four-wide bounding-volume hierarchy. It is built as a binned-SAH binary tree and then collapsed so each
+/// EXPERIMENT, not used by the renderer (see docs/render/ADR-002). Four-wide bounding-volume hierarchy. It is built as a binned-SAH binary tree and then collapsed so each
 /// node tests four child boxes with one SIMD slab test. Triangle data is stored in leaf order, so a leaf is
 /// one contiguous cache-friendly read instead of a gather through an index array.
 /// </summary>

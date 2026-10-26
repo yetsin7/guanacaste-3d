@@ -441,6 +441,12 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8">
                   <TextBlock Text="{DynamicResource Model.OrbitHint}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11"
                              VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <RadioButton x:Name="ClayRadio" GroupName="ViewStyle" Content="{DynamicResource View3D.Clay}" IsChecked="True"
+                               VerticalAlignment="Center" Margin="0,0,8,0" Checked="ViewStyle_Changed"/>
+                  <RadioButton x:Name="ColorRadio" GroupName="ViewStyle" Content="{DynamicResource View3D.Colors}"
+                               VerticalAlignment="Center" Margin="0,0,10,0" Checked="ViewStyle_Changed"/>
+                  <CheckBox x:Name="EdgesCheck" Content="{DynamicResource View3D.Edges}" IsChecked="True" VerticalAlignment="Center"
+                            Margin="0,0,12,0" Checked="ViewStyle_Changed" Unchecked="ViewStyle_Changed"/>
                   <Button Content="{DynamicResource Model.ResetCamera}" Click="ResetOrbit_Click"/>
                   <Button Content="{DynamicResource Render.Start}" Click="StartRender_Click"/>
                 </StackPanel>
