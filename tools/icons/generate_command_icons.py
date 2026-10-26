@@ -8,6 +8,7 @@ Run:  python tools/icons/generate_command_icons.py
 """
 
 import os
+import runpy
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -138,12 +139,16 @@ HEAD = """<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xam
   <Pen x:Key="CmdBadgeAccent" Brush="#007C9F" Thickness="1.4" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
   <Pen x:Key="CmdBadgeOrange" Brush="#C26A00" Thickness="1.4" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
   <Pen x:Key="CmdBadgeInk" Brush="#263746" Thickness="1.3" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+  <Pen x:Key="CadOutlinePen" Brush="#808080" Thickness="0.9" StartLineCap="Square" EndLineCap="Square" LineJoin="Miter"/>
+  <Pen x:Key="CadAccentPen" Brush="#3298D3" Thickness="1.05" StartLineCap="Square" EndLineCap="Square" LineJoin="Miter"/>
+  <Pen x:Key="CadDangerPen" Brush="#E53935" Thickness="2.4" StartLineCap="Square" EndLineCap="Square" LineJoin="Miter"/>
 """
 
 BADGE_PENS = {"G": "CmdBadgeGreen", "R": "CmdBadgeRed", "A": "CmdBadgeAccent", "O": "CmdBadgeOrange", "I": "CmdBadgeInk"}
 
 
 def drawing(geometry, fill, pen):
+    """Serializes a vector primitive using the shared CAD palette and pen resources."""
     attributes = []
     if fill:
         attributes.append(f'Brush="{FILLS[fill]}"')
@@ -152,8 +157,10 @@ def drawing(geometry, fill, pen):
     return f'    <GeometryDrawing {" ".join(attributes)} Geometry="{geometry}"/>'
 
 
-def icon_xml(name, base_name, badge_name):
-    lines = [f'  <DrawingImage x:Key="CmdIcon.{name}"><DrawingImage.Drawing><DrawingGroup>']
+def icon_xml(name, base_name, badge_name, prefix="CmdIcon"):
+    """Emits a fixed-grid icon so compact and large buttons preserve identical visual scale."""
+    lines = [f'  <DrawingImage x:Key="{prefix}.{name}"><DrawingImage.Drawing><DrawingGroup>',
+             '    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>']
     for geometry, fill, pen in BASES[base_name]:
         lines.append(drawing(geometry, fill, pen))
     if badge_name:
@@ -166,6 +173,11 @@ def icon_xml(name, base_name, badge_name):
 
 
 def main():
+    """Regenerates command icons and legacy aliases from the same reference-driven artwork."""
+    theme = runpy.run_path(os.path.join(os.path.dirname(__file__), "cad-icon-theme.py"))
+    FILLS.update(theme["PALETTE"])
+    PENS.update(theme["PEN_NAMES"])
+    BASES.update(theme["SHAPES"])
     target = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Guanacaste3D.Desktop", "resources", "icons.commands.xaml")
     missing = [pair for pair in MAP.values() if pair[0] not in BASES]
     if missing:
@@ -174,6 +186,9 @@ def main():
     for name in sorted(MAP):
         base_name, badge_name = MAP[name]
         body.append(icon_xml(name, base_name, badge_name))
+    for name, command_id in sorted(theme["SHARED_COMMANDS"].items()):
+        base_name, badge_name = MAP[command_id]
+        body.append(icon_xml(name, base_name, badge_name, "Icon"))
     body.append("</ResourceDictionary>\n")
     with open(target, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(body))

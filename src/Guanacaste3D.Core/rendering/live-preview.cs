@@ -25,11 +25,12 @@ public sealed class LivePreview : IDisposable
     private bool _sizeDirty;
     private bool _finishDirty;
     private bool _suspended;
+    private long _suspensionRevision;
 
     /// <summary>Samples per pixel at which refinement stops and the preview goes idle.</summary>
     public int MaximumSamples { get; set; } = 40;
 
-    /// <summary>Raised on the worker thread with each new picture; handlers must copy what they keep.</summary>
+    /// <summary>Raised on the worker thread; handlers must copy retained pixels and dispatch UI work asynchronously.</summary>
     public event Action<RenderFrame>? FrameReady;
 
     /// <summary>Raised with "Render.Preparing" while the hierarchy is built and "Render.Preview" once pictures flow.</summary>
@@ -38,6 +39,7 @@ public sealed class LivePreview : IDisposable
     /// <summary>Raised when preparing the scene fails (for example, not enough memory); the preview stays idle.</summary>
     public event Action<Exception>? Failed;
 
+    /// <summary>Starts the background worker once; subsequent calls preserve the current preview.</summary>
     public void Start()
     {
         lock (_gate)
@@ -46,6 +48,7 @@ public sealed class LivePreview : IDisposable
         }
     }
 
+    /// <summary>Queues a geometry rebuild without blocking the caller on scene preparation.</summary>
     public void SetScene(RenderScene scene)
     {
         lock (_gate)
@@ -56,6 +59,7 @@ public sealed class LivePreview : IDisposable
         _wake.Release();
     }
 
+    /// <summary>Queues a camera update and resets accumulated samples on the next pass.</summary>
     public void SetCamera(RenderCamera camera)
     {
         lock (_gate)
@@ -66,6 +70,7 @@ public sealed class LivePreview : IDisposable
         _wake.Release();
     }
 
+    /// <summary>Queues lighting changes while retaining the scene acceleration structure.</summary>
     public void SetSettings(RenderSettings settings)
     {
         lock (_gate)
@@ -87,6 +92,7 @@ public sealed class LivePreview : IDisposable
         _wake.Release();
     }
 
+    /// <summary>Queues a bounded preview resolution without rebuilding the geometry hierarchy.</summary>
     public void SetSize(int width, int height)
     {
         lock (_gate)
@@ -103,10 +109,15 @@ public sealed class LivePreview : IDisposable
     /// <summary>Stops rendering and releases the scene's working memory until <see cref="Resume"/>.</summary>
     public void Suspend()
     {
-        lock (_gate) _suspended = true;
+        lock (_gate)
+        {
+            _suspended = true;
+            _suspensionRevision++;
+        }
         _wake.Release();
     }
 
+    /// <summary>Wakes the preview using the latest scene, camera, and image settings.</summary>
     public void Resume()
     {
         lock (_gate)
@@ -117,6 +128,7 @@ public sealed class LivePreview : IDisposable
         _wake.Release();
     }
 
+    /// <summary>Coalesces input into progressive passes and sleeps while suspended or converged.</summary>
     private void Loop()
     {
         var token = _lifetime.Token;
@@ -133,6 +145,7 @@ public sealed class LivePreview : IDisposable
                 RenderSettings settings;
                 ImageFinish finish;
                 int width, height;
+                long suspensionRevision;
                 lock (_gate)
                 {
                     if (_suspended)
@@ -146,6 +159,7 @@ public sealed class LivePreview : IDisposable
                     finish = _finish;
                     width = _width;
                     height = _height;
+                    suspensionRevision = _suspensionRevision;
                     // Only new geometry needs a new hierarchy; lighting and size changes reuse the existing one.
                     needsTracer = !_suspended && scene is not null && (tracer is null || _sceneDirty);
                     settingsChanged = _settingsDirty;
@@ -212,8 +226,8 @@ public sealed class LivePreview : IDisposable
                     var bytes = ImageProcessor.ToBgra32(tracer.LinearImage(denoise: true), tracer.Width, tracer.Height,
                         tracer.BaseExposure, finish, tracer.CaptureFeatures);
                     lastFrame = DateTime.UtcNow;
-                    FrameReady?.Invoke(new RenderFrame(bytes, tracer.Width, tracer.Height, tracer.SampleCount, MaximumSamples,
-                        TimeSpan.Zero, null, 1, false));
+                    PublishFrame(new RenderFrame(bytes, tracer.Width, tracer.Height, tracer.SampleCount, MaximumSamples,
+                        TimeSpan.Zero, null, 1, false), suspensionRevision);
                 }
                 // Drain extra wake signals so one burst of input does not cause a burst of idle loops.
                 while (_wake.CurrentCount > 1) _wake.Wait(0);
@@ -224,10 +238,24 @@ public sealed class LivePreview : IDisposable
         }
     }
 
+    /// <summary>
+    /// Serializes delivery with suspension and drops work started before a suspend/resume cycle.
+    /// Event handlers must not synchronously wait on a thread that changes preview state.
+    /// </summary>
+    private void PublishFrame(RenderFrame frame, long suspensionRevision)
+    {
+        lock (_gate)
+        {
+            if (!_suspended && !_lifetime.IsCancellationRequested && suspensionRevision == _suspensionRevision)
+                FrameReady?.Invoke(frame);
+        }
+    }
+
     /// <summary>A preview should leave the computer comfortable: half the cores, at least one.</summary>
     private static int ThreadsFor(RenderSettings settings) =>
         settings.MaxThreads > 0 ? settings.MaxThreads : RenderPresets.Threads(ResourceMode.Eco);
 
+    /// <summary>Cancels the worker and releases its synchronization resources after a bounded wait.</summary>
     public void Dispose()
     {
         _lifetime.Cancel();

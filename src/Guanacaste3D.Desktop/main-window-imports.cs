@@ -152,6 +152,7 @@ public partial class MainWindow
     private bool HasModelElements()
     {
         var document = _session.Document;
-        return document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0;
+        return document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count +
+               document.InPlaceFamilies.Count > 0;
     }
 }
