@@ -40,6 +40,7 @@ internal static class ArchitectureUiChecks
             CheckEveryCommandResponds();
             CheckFaceAndHostCommands();
             CheckShowcaseRenders();
+            CheckInPlaceFamilyPlans();
             Console.WriteLine("Architecture UI checks passed.");
             Environment.ExitCode = 0;
             return 0;
@@ -215,6 +216,25 @@ internal static class ArchitectureUiChecks
         Check(canvas.Children.OfType<System.Windows.Shapes.Polygon>().Count() > 40 &&
               canvas.Children.OfType<System.Windows.Shapes.Line>().Count() > 5,
             "The showcase house draws roofs, columns, guards, curtain wall and annotations in plan");
+    }
+
+    /// <summary>Checks that a family alone is drawn in the interactive plan and on a drawing sheet.</summary>
+    private static void CheckInPlaceFamilyPlans()
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Family views"));
+        var familyId = session.CreateInPlaceFamily(BimCategoryCatalog.GenericModelsId, "Model block");
+        session.AddInPlaceExtrusion(familyId, InPlaceFamilyRules.HorizontalPlane(0),
+            [new Point2(0, 0), new Point2(2, 0), new Point2(2, 1), new Point2(0, 1)], 0, 2);
+        SetField("_session", session);
+        SetField("_activeLevelId", session.Document.Levels[0].Id);
+        Invoke("RenderPlan");
+        var plan = (Canvas)_window.FindName("PlanCanvas");
+        Check(plan.Children.OfType<System.Windows.Shapes.Line>().Any(line => Equals(line.Tag, familyId)),
+            "An in-place family appears in the interactive floor plan");
+        Invoke("RenderPlanOnSheet", 45d, 55d, 780d, 610d);
+        var sheet = (Canvas)_window.FindName("SheetCanvas");
+        Check(sheet.Children.OfType<System.Windows.Shapes.Line>().Any(line => Equals(line.Tag, familyId)),
+            "A family-only project appears in the drawing sheet viewport");
     }
 
     private static void Execute(ArchitectureCommand command)

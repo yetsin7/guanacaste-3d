@@ -262,6 +262,7 @@ public partial class MainWindow
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
         RenderExtendedPlanElements();
+        RenderInPlaceFamilies();
         var joins = WallJoinIndex.Build(_session.Document.Walls);
         var levelWalls = _session.Document.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
         // Every outline sits beneath every fill, so a neighbour covers the shared faces and miter seams.

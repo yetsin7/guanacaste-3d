@@ -107,12 +107,14 @@ public partial class MainWindow
         AddSheetText($"{GetText("Sheet.Title")}: {sheet.Name}", 850, 665, 12, FontWeights.Normal);
     }
 
-    /// <summary>Draws active-level wall centerlines into the sheet viewport.</summary>
+    /// <summary>Draws active-level wall centerlines and family sections into the sheet viewport.</summary>
     private void RenderPlanOnSheet(double left, double top, double width, double height)
     {
         var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();
-        if (walls.Length == 0) return;
-        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End }).ToArray();
+        var families = ActiveFamilyPlanSegments();
+        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End })
+            .Concat(families.SelectMany(family => new[] { family.Segment.Start, family.Segment.End })).ToArray();
+        if (points.Length == 0) return;
         var minimumX = points.Min(point => point.X);
         var maximumX = points.Max(point => point.X);
         var minimumY = points.Min(point => point.Y);
@@ -132,6 +134,19 @@ public partial class MainWindow
                 StrokeThickness = Math.Max(2, wall.Thickness * scale)
             };
             SheetCanvas.Children.Add(line);
+        }
+        foreach (var (familyId, segment) in families)
+        {
+            SheetCanvas.Children.Add(new Line
+            {
+                X1 = left + 40 + (segment.Start.X - minimumX) * scale,
+                Y1 = top + height - 40 - (segment.Start.Y - minimumY) * scale,
+                X2 = left + 40 + (segment.End.X - minimumX) * scale,
+                Y2 = top + height - 40 - (segment.End.Y - minimumY) * scale,
+                Stroke = Brushes.DarkSlateGray,
+                StrokeThickness = 1.5,
+                Tag = familyId
+            });
         }
     }
 
