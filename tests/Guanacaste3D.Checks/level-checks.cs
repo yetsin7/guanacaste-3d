@@ -104,7 +104,7 @@ static class LevelChecks
         check(CategoryScheduleService.Build(session.Document, ElementCategory.Walls).Rows
                 .All(row => row.Values[parapet].Number == 1),
             "Formulas can read the top offset of constrained walls");
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-levels-{Guid.NewGuid():N}.g3d");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-levels-{Guid.NewGuid():N}.g3");
         try
         {
             ProjectFile.Save(path, session.Document);

@@ -130,7 +130,7 @@ public partial class MainWindow
         }
         try
         {
-            var family = FamilyDocument.FromProject(_session.Document, type.FamilyName);
+            var family = OpeningFamilyDocument.FromProject(_session.Document, type.FamilyName);
             var dialog = new SaveFileDialog
             {
                 Filter = GetText("Dialog.FamilyFilter"),

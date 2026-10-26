@@ -21,7 +21,8 @@ Implemented capabilities include:
   transformation, deletion, and bounded undo and redo.
 - Net wall volume with opening subtraction and overlap rejection.
 - Live project schedule and CSV wall-quantity export.
-- Validated JSON persistence with schema migration and backup before overwrite.
+- Official compressed `.g3d` project container with signature, schema metadata, SHA-256 integrity checking, atomic save and backup; `.g3` and `.g3d.json` remain compatible.
+- Versioned `.g3df` family and `.g3dt` template persistence APIs, including a validated universal family operation graph and metric architecture template foundation.
 - Automated checks for domain rules, migrations, persistence, and coordinated
   BIM elements.
 
@@ -75,6 +76,8 @@ powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
 - `src/Guanacaste3D.Desktop/`: WPF presentation and interaction.
 - `tests/Guanacaste3D.Checks/`: UI-independent executable checks.
 - `docs/revit-functional-parity-roadmap.md`: lawful functional-parity plan.
+
+New projects use the official `.g3d` binary container. The application still opens and can explicitly save the earlier `.g3` preview envelope, and it can import `.g3d.json`. Family definitions use `.g3df`; project templates use `.g3dt`. The new containers are identified by their internal signature rather than extension alone and verify payload integrity before deserialization. Keep independent backups while the product remains a technical preview.
 
 Native projects use `.g3d` and a versioned `G3-PROJECT/1` envelope. Families
 use `.g3df`; templates use `.g3dt`. Earlier `.g3` projects and `.g3d.json`

@@ -38,7 +38,7 @@ internal static class OpeningFamilyChecks
                 customMesh.TriangleCount > mesh.TriangleCount,
                 "Family light-count parameter regenerates three distinct glass solids");
             var familyPath = Path.Combine(directory, "custom-window.G3Df");
-            FamilyFile.Save(familyPath, FamilyDocument.FromProject(session.Document, customWindowType.FamilyName));
+            FamilyFile.Save(familyPath, OpeningFamilyDocument.FromProject(session.Document, customWindowType.FamilyName));
             var reloadedFamily = FamilyFile.Load(familyPath);
             var reloadedType = reloadedFamily.Types.Single(type => type.Id == windowTypeId);
             check(reloadedType.FrameWidth == 0.08 && reloadedType.GlazingLightCount == 3,
@@ -70,7 +70,7 @@ internal static class OpeningFamilyChecks
             catch (InvalidDataException) { }
             check(ReferenceEquals(beforeInvalidType, session.Document),
                 "Invalid frame width rejects the edit atomically");
-            var projectPath = Path.Combine(directory, "families.g3d");
+            var projectPath = Path.Combine(directory, "families.g3");
             ProjectFile.Save(projectPath, session.Document);
             var loaded = ProjectFile.Load(projectPath);
             check(BuildingMesher.Build(loaded).TriangleCount == customMesh.TriangleCount,

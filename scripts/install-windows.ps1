@@ -71,6 +71,7 @@ try {
     $nativeFileTypes = @(
         @{ Extension = '.g3d'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
         @{ Extension = '.g3df'; Type = 'Guanacaste3D.Family'; Description = 'Guanacaste 3D Family' },
+        @{ Extension = '.g3'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
         @{ Extension = '.g3dt'; Type = 'Guanacaste3D.Template'; Description = 'Guanacaste 3D Template' }
     )
     foreach ($nativeFileType in $nativeFileTypes) {

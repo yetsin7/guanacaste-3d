@@ -51,22 +51,14 @@ Check(session.Document.Openings.Count == 1, "Undo removes second opening");
 session.Redo();
 Check(session.Document.Openings.Count == 2, "Redo restores hosted opening");
 
-var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-tests-{Guid.NewGuid():N}.g3d");
-var previousNativeFilename = Path.ChangeExtension(filename, ProjectFile.PreviousNativeExtension);
+var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-tests-{Guid.NewGuid():N}.g3");
 try
 {
     ProjectFile.Save(filename, session.Document);
     Check(ProjectFile.IsNativePath(filename) && File.ReadLines(filename).First() == "G3-PROJECT/1",
-        "Native projects use the .g3d extension and format header");
+        "Native projects use the .g3 extension and format header");
     Check(ProjectFile.Load(filename).Walls[0].Length == 5, "Save/load versioned project");
     Check(ProjectFile.Load(filename).Openings.Count == 2, "Save/load hosted openings");
-    File.Copy(filename, previousNativeFilename);
-    Check(ProjectFile.IsPreviousNativePath(previousNativeFilename) &&
-        ProjectFile.Load(previousNativeFilename).Openings.Count == 2,
-        "Previous .g3 projects remain readable for migration");
-    failed = false;
-    try { ProjectFile.Save(previousNativeFilename, session.Document); } catch (InvalidDataException) { failed = true; }
-    Check(failed, "New project saves require the .g3d extension");
     ProjectFile.Save(filename, session.Document);
     Check(File.Exists(filename + ".bak"), "Preserve previous file backup");
     var unsupported = session.Document.Clone();
@@ -85,7 +77,6 @@ finally
 {
     if (File.Exists(filename)) File.Delete(filename);
     if (File.Exists(filename + ".bak")) File.Delete(filename + ".bak");
-    if (File.Exists(previousNativeFilename)) File.Delete(previousNativeFilename);
 }
 session.RemoveWall(hostedWallId);
 Check(session.Document.Openings.Count == 0, "Wall deletion cascades to its openings");
@@ -206,7 +197,7 @@ Check(projectRows.Count(row => row.Category is "Wall" or "Room" or "Floor" or "S
     "Project schedule coordinates modeled and documented elements");
 
 var coordinatedFilename = Path.Combine(
-    Path.GetTempPath(), $"guanacaste-coordinated-{Guid.NewGuid():N}.g3d");
+    Path.GetTempPath(), $"guanacaste-coordinated-{Guid.NewGuid():N}.g3");
 var legacyFilename = Path.Combine(
     Path.GetTempPath(), $"guanacaste-legacy-{Guid.NewGuid():N}.g3d.json");
 try
@@ -362,7 +353,7 @@ Check(house.Walls.Count == 6 && house.Openings.Count == 11 && house.Rooms.Count 
     "Demonstration house is complete and valid");
 Check(Math.Abs(house.Floors[0].CalculateArea() - (12.3 * 8.3 + 6.15 * 2.35)) < 1e-6,
     "Demonstration terrace slab area is exact");
-var sampleFile = Path.Combine(Path.GetTempPath(), $"guanacaste-sample-{Guid.NewGuid():N}.g3d");
+var sampleFile = Path.Combine(Path.GetTempPath(), $"guanacaste-sample-{Guid.NewGuid():N}.g3");
 try
 {
     ProjectFile.Save(sampleFile, house);
@@ -401,6 +392,9 @@ MeshExportChecks.Run(Check);
 DenoiserChecks.Run(Check);
 SolarChecks.Run(Check);
 WallPlacementChecks.Run(Check);
+NativeDocumentChecks.Run(Check);
+InPlaceFamilyChecks.Run(Check);
+
 WallAppearanceChecks.Run(Check);
 WallJoinChecks.Run(Check);
 PlanDimensionChecks.Run(Check);

@@ -44,7 +44,7 @@ static class FamilyTemplateChecks
     /// <summary>Verifies the family file envelope, checksum, schema version, and kind identity.</summary>
     private static void CheckFamilyContainer(Action<bool, string> check, string folder)
     {
-        var family = FamilyDocument.CreateStandard(OpeningKind.Door, "Puerta de prueba");
+        var family = OpeningFamilyDocument.CreateStandard(OpeningKind.Door, "Puerta de prueba");
         check(family.Types.Count == 1 && family.Types[0].Width == 0.9 && family.Types[0].Depth == 0.04,
             "A new family starts with one standard 900 mm door type that has a leaf");
         var path = Path.Combine(folder, "door.G3Df");
@@ -81,8 +81,8 @@ static class FamilyTemplateChecks
             "A family renamed to .G3Dt is rejected as a template");
         var familyAsProject = Path.Combine(folder, "family-renamed.g3d");
         File.Copy(path, familyAsProject, overwrite: true);
-        check((ErrorOf(() => ProjectFile.Load(familyAsProject)) ?? "").Contains("header"),
-            "A family renamed to .g3d is rejected as a project because its header is not the project header");
+        check((ErrorOf(() => ProjectFile.Load(familyAsProject)) ?? "").Contains("signature"),
+            "A family renamed to .g3d is rejected as a project because its signature is not the project container's");
 
         var futurePath = Path.Combine(folder, "future.G3Df");
         var futureJson = JsonSerializer.Serialize(family, new JsonSerializerOptions { WriteIndented = true });
@@ -102,11 +102,11 @@ static class FamilyTemplateChecks
         var source = new DocumentSession(BuildingDocument.Create("Origen"));
         source.AddOpeningType(OpeningKind.Window, "Ventana de taller", "Corrediza 1000", 1.0, 1.1, 0.9, "Aluminio");
         source.AddOpeningType(OpeningKind.Window, "Ventana de taller", "Corrediza 1200", 1.2, 1.1, 0.9);
-        var extracted = FamilyDocument.FromProject(source.Document, "Ventana de taller");
+        var extracted = OpeningFamilyDocument.FromProject(source.Document, "Ventana de taller");
         check(extracted.Category == OpeningKind.Window && extracted.Types.Count == 2 &&
               extracted.Types.All(type => source.Document.OpeningTypes.Any(existing => existing.Id == type.Id)),
             "A family extracted from a project keeps the identifiers of its types");
-        check(ErrorOf(() => FamilyDocument.FromProject(source.Document, "Inexistente")) is not null,
+        check(ErrorOf(() => OpeningFamilyDocument.FromProject(source.Document, "Inexistente")) is not null,
             "Extracting a family that the project does not contain is rejected");
 
         var target = new DocumentSession(BuildingDocument.Create("Destino"));
@@ -139,7 +139,7 @@ static class FamilyTemplateChecks
 
         var collision = new DocumentSession(BuildingDocument.Create("Identificador"));
         var builtInId = BuiltInOpeningTypes.FixedWindow1200Id;
-        var foreignFamily = new FamilyDocument
+        var foreignFamily = new OpeningFamilyDocument
         {
             Name = "Familia ajena",
             Category = OpeningKind.Window,
@@ -151,7 +151,7 @@ static class FamilyTemplateChecks
             "An imported type whose identifier is already used receives a new identifier");
 
         var countBeforeBad = target.Document.OpeningTypes.Count;
-        var badFamily = new FamilyDocument
+        var badFamily = new OpeningFamilyDocument
         {
             Name = "Mezcla",
             Category = OpeningKind.Window,
@@ -202,7 +202,7 @@ static class FamilyTemplateChecks
             "The official metric template keeps its identity and built-in catalogs through a round trip");
 
         var familyCopy = Path.Combine(folder, "familia-como-plantilla.G3Dt");
-        FamilyFile.Save(Path.Combine(folder, "familia.G3Df"), FamilyDocument.CreateStandard(OpeningKind.Door, "Familia"));
+        FamilyFile.Save(Path.Combine(folder, "familia.G3Df"), OpeningFamilyDocument.CreateStandard(OpeningKind.Door, "Familia"));
         File.Copy(Path.Combine(folder, "familia.G3Df"), familyCopy, overwrite: true);
         check((ErrorOf(() => TemplateFile.Load(familyCopy)) ?? "").Contains("not a Guanacaste 3D template"),
             "A family file renamed to .G3Dt is rejected as a template");

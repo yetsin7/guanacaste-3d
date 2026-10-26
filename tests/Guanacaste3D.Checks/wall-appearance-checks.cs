@@ -19,7 +19,7 @@ static class WallAppearanceChecks
             wallType.Remove("SectionFillPattern");
         }
 
-        var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-appearance-{Guid.NewGuid():N}.g3d");
+        var filename = Path.Combine(Path.GetTempPath(), $"guanacaste-appearance-{Guid.NewGuid():N}.g3");
         try
         {
             File.WriteAllText(filename, "G3-PROJECT/1\n" + root.ToJsonString());

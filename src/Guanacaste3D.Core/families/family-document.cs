@@ -1,167 +1,515 @@
-using System.Globalization;
-using System.Text.Json;
-
 namespace Guanacaste3D.Core;
 
-/// <summary>
-/// A reusable door or window family saved as a .g3df file. It groups the types of
-/// one category under one name, so the same family can be loaded into any project.
-/// Every type obeys the project catalog rules, because the family is validated with
-/// <see cref="OpeningTypeRules"/> rather than a second set of limits.
-/// </summary>
+public enum FamilyCategory
+{
+    Doors, Windows, Furniture, Casework, PlumbingFixtures, LightingFixtures,
+    ElectricalEquipment, MechanicalEquipment, StructuralElements, FacadeComponents,
+    RoofComponents, Profiles, GenericModels, DecorativeComponents, FabricationComponents,
+    Hardware, Custom
+}
+
+public enum FamilyHostingBehavior { Unhosted, Wall, Face, WorkPlane, InPlace }
+public enum FamilyParameterKind
+{
+    Length, Area, Volume, Angle, Radius, Diameter, Integer, Number, Boolean, Text,
+    Material, ElementReference, Enumeration, Visibility
+}
+public enum FamilyParameterScope { Instance, Type, Shared, Calculated }
+public enum FamilyOperationKind
+{
+    SolidExtrusion, VoidExtrusion, SolidRevolution, VoidRevolution, SolidSweep, VoidSweep,
+    VariableSweep, SolidLoft, VoidLoft, PrimitiveBox, PrimitiveCylinder, Union, Difference,
+    Intersection, Array, Mirror
+}
+
+public readonly record struct FamilyPoint3(double X, double Y, double Z)
+{
+    public bool IsFinite => double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Z);
+    public double Length => Math.Sqrt(X * X + Y * Y + Z * Z);
+    public static double Dot(FamilyPoint3 a, FamilyPoint3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+    public static FamilyPoint3 Cross(FamilyPoint3 a, FamilyPoint3 b) =>
+        new(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X);
+}
+
+public sealed record FamilyParameterDefinition(Guid Id, string Name, FamilyParameterKind Kind, FamilyParameterScope Scope)
+{
+    public double? DefaultNumber { get; init; }
+    public string? DefaultText { get; init; }
+    public double? Minimum { get; init; }
+    public double? Maximum { get; init; }
+    public string Formula { get; init; } = string.Empty;
+    public string Group { get; init; } = "Dimensions";
+    public string Description { get; init; } = string.Empty;
+}
+
+public sealed record FamilyParameterValue(Guid ParameterId, double? Number, string? Text);
+
+public sealed record FamilyTypeDefinition(Guid Id, string Name, List<FamilyParameterValue> Values);
+
+public sealed record FamilyWorkPlane(
+    Guid Id,
+    string Name,
+    FamilyPoint3 Origin,
+    FamilyPoint3 Normal,
+    FamilyPoint3 XAxis)
+{
+    public double Offset { get; init; }
+}
+
+public sealed record FamilyOperation(Guid Id, string Name, FamilyOperationKind Kind)
+{
+    public Guid? WorkPlaneId { get; init; }
+    public List<Guid> DependsOn { get; init; } = [];
+    public Dictionary<string, string> Expressions { get; init; } = new(StringComparer.Ordinal);
+    public Guid? MaterialParameterId { get; init; }
+    public string ComponentRole { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Closed profile of an extrusion, in its work plane's coordinates and meters. Empty when the operation has
+    /// no profile; such operations have no geometry to regenerate yet.
+    /// </summary>
+    public List<Point2> Profile { get; init; } = [];
+}
+
+public sealed record NestedFamilyReference(Guid Id, Guid FamilyId, string Name, string Role)
+{
+    public Dictionary<Guid, Guid> ParameterLinks { get; init; } = [];
+    public bool Shared { get; init; }
+}
+
 public sealed class FamilyDocument
 {
-    /// <summary>Current family payload schema.</summary>
     public const int CurrentSchemaVersion = 1;
-
-    /// <summary>Largest number of types one family may hold.</summary>
-    public const int MaximumTypes = 500;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string Name { get; set; } = string.Empty;
-    public OpeningKind Category { get; set; }
-    public List<OpeningType> Types { get; set; } = [];
+    public string Name { get; set; } = "Untitled Family";
+    public FamilyCategory Category { get; set; } = FamilyCategory.GenericModels;
+    public FamilyHostingBehavior Hosting { get; set; } = FamilyHostingBehavior.Unhosted;
+    public List<FamilyParameterDefinition> Parameters { get; set; } = [];
+    public List<FamilyTypeDefinition> Types { get; set; } = [];
+    public List<FamilyWorkPlane> WorkPlanes { get; set; } = [];
+    public List<FamilyOperation> Operations { get; set; } = [];
+    public List<NestedFamilyReference> NestedFamilies { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 
-    /// <summary>Creates a family with one standard type of the category, ready to be edited.</summary>
-    public static FamilyDocument CreateStandard(OpeningKind category, string name)
+    /// <summary>Returns a copy whose lists and dictionaries can be edited without changing this instance.</summary>
+    public FamilyDocument Clone() => new()
     {
-        var trimmed = name.Trim();
-        var type = category == OpeningKind.Door
-            ? new OpeningType(Guid.NewGuid(), category, trimmed, SizeName(0.9, 2.1), 0.9, 2.1, 0) { Depth = 0.04 }
-            : new OpeningType(Guid.NewGuid(), category, trimmed, SizeName(1.2, 1.2), 1.2, 1.2, 0.9);
-        return new FamilyDocument { Name = trimmed, Category = category, Types = [type] };
-    }
-
-    /// <summary>
-    /// Extracts the project types of one family into a new family document. The
-    /// types keep their identifiers, so importing the file back into the same
-    /// project recognizes them instead of creating duplicates.
-    /// </summary>
-    public static FamilyDocument FromProject(BuildingDocument document, string familyName)
-    {
-        var types = document.OpeningTypes.Where(type => type.FamilyName == familyName).ToList();
-        if (types.Count == 0)
-            throw new InvalidDataException("The family has no types in this project.");
-        if (types.Select(type => type.Kind).Distinct().Count() != 1)
-            throw new InvalidDataException("A family cannot mix doors and windows.");
-        return new FamilyDocument
+        SchemaVersion = SchemaVersion,
+        Id = Id,
+        Name = Name,
+        Category = Category,
+        Hosting = Hosting,
+        Parameters = [.. Parameters],
+        Types = Types.Select(type => type with { Values = [.. type.Values] }).ToList(),
+        WorkPlanes = [.. WorkPlanes],
+        Operations = Operations.Select(operation => operation with
         {
-            Name = familyName,
-            Category = types[0].Kind,
-            Types = types
-        };
-    }
+            DependsOn = [.. operation.DependsOn],
+            Expressions = new Dictionary<string, string>(operation.Expressions, StringComparer.Ordinal),
+            Profile = [.. operation.Profile]
+        }).ToList(),
+        NestedFamilies = NestedFamilies.Select(nested => nested with
+        {
+            ParameterLinks = new Dictionary<Guid, Guid>(nested.ParameterLinks)
+        }).ToList(),
+        Metadata = new Dictionary<string, string>(Metadata)
+    };
 
-    /// <summary>Rejects an invalid family before it is saved, imported, or shown.</summary>
     public void Validate()
     {
         if (SchemaVersion != CurrentSchemaVersion)
             throw new InvalidDataException("Unsupported family schema version.");
-        if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120 || !Enum.IsDefined(Category))
-            throw new InvalidDataException("The family identity, name, or category is invalid.");
-        if (Types is null || Types.Count is < 1 or > MaximumTypes || Types.Any(type =>
-                type is null || type.Kind != Category || type.FamilyName != Name))
-            throw new InvalidDataException("A family must contain at least one type of its own category and name.");
-        OpeningTypeRules.Validate(new BuildingDocument { OpeningTypes = Types });
+        if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 160)
+            throw new InvalidDataException("The family identity or name is invalid.");
+        if (!Enum.IsDefined(Category) || !Enum.IsDefined(Hosting))
+            throw new InvalidDataException("The family category or hosting behavior is invalid.");
+        if (Parameters is null || Types is null || WorkPlanes is null || Operations is null ||
+            NestedFamilies is null || Metadata is null ||
+            Parameters.Count > 10000 || Types.Count > 10000 || WorkPlanes.Count > 2000 ||
+            Operations.Count > 100000 || NestedFamilies.Count > 10000 || Metadata.Count > 1000)
+            throw new InvalidDataException("The family exceeds supported collection limits.");
+
+        ValidateParameters();
+        ValidateTypes();
+        ValidateWorkPlanes();
+        ValidateOperations();
+        ValidateNestedFamilies();
+        FamilyGeometry.ValidateSolids(this);
+
+        if (Metadata.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Length > 120 ||
+                                 pair.Value is null || pair.Value.Length > 4000))
+            throw new InvalidDataException("Family metadata contains an invalid entry.");
+
+        var ids = Parameters.Select(item => item.Id)
+            .Concat(Types.Select(item => item.Id))
+            .Concat(WorkPlanes.Select(item => item.Id))
+            .Concat(Operations.Select(item => item.Id))
+            .Concat(NestedFamilies.Select(item => item.Id))
+            .ToArray();
+        if (ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+            throw new InvalidDataException("Family object identifiers must be non-empty and unique.");
     }
 
-    /// <summary>Formats a size as the catalog does, for example "900 × 2100 mm".</summary>
-    private static string SizeName(double width, double height) =>
-        string.Create(CultureInfo.InvariantCulture, $"{width * 1000:0} × {height * 1000:0} mm");
+    private void ValidateParameters()
+    {
+        if (Parameters.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Parameters.Count)
+            throw new InvalidDataException("Family parameter names must be unique.");
+
+        foreach (var parameter in Parameters)
+        {
+            if (parameter.Id == Guid.Empty || string.IsNullOrWhiteSpace(parameter.Name) || parameter.Name.Length > 120 ||
+                !Enum.IsDefined(parameter.Kind) || !Enum.IsDefined(parameter.Scope) ||
+                parameter.Group is null || parameter.Group.Length > 120 ||
+                parameter.Description is null || parameter.Description.Length > 1000 ||
+                parameter.Formula is null || parameter.Formula.Length > 2000 ||
+                (parameter.DefaultNumber is double number && !double.IsFinite(number)) ||
+                (parameter.Minimum is double minimum && !double.IsFinite(minimum)) ||
+                (parameter.Maximum is double maximum && !double.IsFinite(maximum)) ||
+                (parameter.Minimum is double min && parameter.Maximum is double max && min > max) ||
+                (parameter.DefaultText is not null && parameter.DefaultText.Length > 4000) ||
+                (parameter.Scope == FamilyParameterScope.Calculated && string.IsNullOrWhiteSpace(parameter.Formula)))
+                throw new InvalidDataException("A family parameter definition is invalid.");
+        }
+
+        FamilyFormulaRules.Validate(Parameters);
+    }
+
+    private void ValidateTypes()
+    {
+        if (Types.Count < 1 ||
+            Types.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Types.Count)
+            throw new InvalidDataException("A family must contain at least one uniquely named type.");
+
+        var parameterIds = Parameters.Select(item => item.Id).ToHashSet();
+        foreach (var type in Types)
+        {
+            if (type.Id == Guid.Empty || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 120 ||
+                type.Values is null || type.Values.Count > Parameters.Count ||
+                type.Values.Select(item => item.ParameterId).Distinct().Count() != type.Values.Count)
+                throw new InvalidDataException("A family type is invalid.");
+            foreach (var value in type.Values)
+            {
+                if (!parameterIds.Contains(value.ParameterId) ||
+                    (value.Number is null) == (value.Text is null) ||
+                    (value.Number is double number && !double.IsFinite(number)) ||
+                    (value.Text is not null && value.Text.Length > 4000))
+                    throw new InvalidDataException("A family type contains an invalid parameter value.");
+            }
+        }
+    }
+
+    private void ValidateWorkPlanes()
+    {
+        if (WorkPlanes.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != WorkPlanes.Count)
+            throw new InvalidDataException("Family work-plane names must be unique.");
+
+        foreach (var plane in WorkPlanes)
+        {
+            if (plane.Id == Guid.Empty || string.IsNullOrWhiteSpace(plane.Name) || plane.Name.Length > 120 ||
+                !plane.Origin.IsFinite || !plane.Normal.IsFinite || !plane.XAxis.IsFinite ||
+                !double.IsFinite(plane.Offset) || plane.Normal.Length < 1e-9 || plane.XAxis.Length < 1e-9 ||
+                FamilyPoint3.Cross(plane.Normal, plane.XAxis).Length < 1e-9)
+                throw new InvalidDataException("A family work plane is invalid.");
+        }
+    }
+
+    private void ValidateOperations()
+    {
+        var planeIds = WorkPlanes.Select(item => item.Id).ToHashSet();
+        var operationIds = Operations.Select(item => item.Id).ToHashSet();
+        var parameterIds = Parameters.Select(item => item.Id).ToHashSet();
+
+        foreach (var operation in Operations)
+        {
+            if (operation.Id == Guid.Empty || string.IsNullOrWhiteSpace(operation.Name) || operation.Name.Length > 160 ||
+                !Enum.IsDefined(operation.Kind) ||
+                (operation.WorkPlaneId is Guid planeId && !planeIds.Contains(planeId)) ||
+                (operation.MaterialParameterId is Guid materialId && !parameterIds.Contains(materialId)) ||
+                operation.DependsOn is null || operation.DependsOn.Distinct().Count() != operation.DependsOn.Count ||
+                operation.DependsOn.Any(id => id == operation.Id || !operationIds.Contains(id)) ||
+                operation.Expressions is null || operation.Expressions.Count > 100 ||
+                operation.Expressions.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Length > 80 ||
+                                                  string.IsNullOrWhiteSpace(pair.Value) || pair.Value.Length > 2000) ||
+                operation.ComponentRole is null || operation.ComponentRole.Length > 120 ||
+                operation.Profile is null || operation.Profile.Count > InPlaceProfileRules.MaximumVertices)
+                throw new InvalidDataException("A family geometry operation is invalid.");
+        }
+
+        FamilyDependencyGraph.TopologicalSort(Operations);
+    }
+
+    private void ValidateNestedFamilies()
+    {
+        foreach (var nested in NestedFamilies)
+        {
+            if (nested.Id == Guid.Empty || nested.FamilyId == Guid.Empty || nested.FamilyId == Id ||
+                string.IsNullOrWhiteSpace(nested.Name) || nested.Name.Length > 160 ||
+                string.IsNullOrWhiteSpace(nested.Role) || nested.Role.Length > 120 ||
+                nested.ParameterLinks is null)
+                throw new InvalidDataException("A nested-family reference is invalid.");
+        }
+    }
 }
 
-/// <summary>Reads and writes .g3df family files. Identity comes from the signature line.</summary>
-public static class FamilyFile
+public static class FamilyFormulaRules
 {
-    /// <summary>File extension of family documents.</summary>
-    public const string Extension = ".g3df";
-
-    /// <summary>Returns whether a path uses the family extension. The file signature is still checked on load.</summary>
-    public static bool IsFamilyPath(string path) =>
-        string.Equals(Path.GetExtension(path), Extension, StringComparison.OrdinalIgnoreCase);
-
-    private static readonly string[] RequiredFields = ["SchemaVersion", "Id", "Name", "Category", "Types"];
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true, PropertyNameCaseInsensitive = false };
-
-    /// <summary>Loads and validates a family, rejecting files of any other kind or a damaged payload.</summary>
-    public static FamilyDocument Load(string path)
+    public static void Validate(IReadOnlyCollection<FamilyParameterDefinition> parameters)
     {
-        if (!IsFamilyPath(path))
-            throw new InvalidDataException("Guanacaste 3D families must use the .g3df extension.");
-        var payload = NativeContainer.Open(NativeContainer.ReadText(path));
-        if (payload.Signature != NativeContainer.FamilySignature)
-            throw new InvalidDataException("The file is not a Guanacaste 3D family.");
-        if (payload.SchemaVersion != FamilyDocument.CurrentSchemaVersion)
-            throw new InvalidDataException("Unsupported family schema version.");
-        NativeContainer.RequireObject(payload.Json, RequiredFields);
-        var family = JsonSerializer.Deserialize<FamilyDocument>(payload.Json, Options)
-            ?? throw new InvalidDataException("The family document is empty.");
+        var byName = parameters.ToDictionary(parameter => parameter.Name, StringComparer.OrdinalIgnoreCase);
+        var calculated = parameters.Where(parameter => !string.IsNullOrWhiteSpace(parameter.Formula)).ToArray();
+        if (calculated.Length == 0) return;
+
+        var parsed = calculated.ToDictionary(parameter => parameter.Id,
+            parameter => FormulaParser.Parse(parameter.Formula));
+
+        foreach (var parameter in calculated)
+        {
+            var actual = FormulaTypeChecker.Check(parsed[parameter.Id], name =>
+                byName.TryGetValue(name, out var referenced) ? TypeFor(referenced.Kind) : null);
+            var expected = TypeFor(parameter.Kind);
+            if (actual != expected)
+                throw new InvalidDataException("Formula error: '" + parameter.Name +
+                    "' produces " + actual.Describe() + " but the parameter is " + expected.Describe() + ".");
+        }
+
+        var calculatedByName = calculated.ToDictionary(parameter => parameter.Name, StringComparer.OrdinalIgnoreCase);
+        var state = new Dictionary<Guid, int>();
+        void Visit(FamilyParameterDefinition parameter)
+        {
+            if (state.GetValueOrDefault(parameter.Id) == 2) return;
+            if (state.GetValueOrDefault(parameter.Id) == 1)
+                throw new InvalidDataException("Formula error: '" + parameter.Name +
+                    "' depends on itself through other formulas.");
+            state[parameter.Id] = 1;
+            foreach (var reference in FormulaParser.References(parsed[parameter.Id]))
+                if (calculatedByName.TryGetValue(reference, out var dependency))
+                    Visit(dependency);
+            state[parameter.Id] = 2;
+        }
+
+        foreach (var parameter in calculated)
+            Visit(parameter);
+    }
+
+    private static FormulaType TypeFor(FamilyParameterKind kind) => kind switch
+    {
+        FamilyParameterKind.Length or FamilyParameterKind.Radius or FamilyParameterKind.Diameter =>
+            new FormulaType(FormulaKind.Number, 1),
+        FamilyParameterKind.Area => new FormulaType(FormulaKind.Number, 2),
+        FamilyParameterKind.Volume => new FormulaType(FormulaKind.Number, 3),
+        FamilyParameterKind.Boolean or FamilyParameterKind.Visibility => FormulaType.Boolean,
+        FamilyParameterKind.Text or FamilyParameterKind.Material or FamilyParameterKind.ElementReference or
+            FamilyParameterKind.Enumeration => FormulaType.Text,
+        _ => FormulaType.Scalar
+    };
+}
+
+public static class FamilyDependencyGraph
+{
+    public static IReadOnlyList<Guid> TopologicalSort(IEnumerable<FamilyOperation> operations)
+    {
+        var list = operations.ToList();
+        var byId = list.ToDictionary(item => item.Id);
+        var indegree = list.ToDictionary(item => item.Id, item => item.DependsOn.Count);
+        var dependents = list.ToDictionary(item => item.Id, _ => new List<Guid>());
+
+        foreach (var operation in list)
+            foreach (var dependency in operation.DependsOn)
+            {
+                if (!byId.ContainsKey(dependency))
+                    throw new InvalidDataException("A family operation references a missing dependency.");
+                dependents[dependency].Add(operation.Id);
+            }
+
+        var queue = new Queue<Guid>(list.Where(item => indegree[item.Id] == 0).Select(item => item.Id));
+        var ordered = new List<Guid>(list.Count);
+        while (queue.Count > 0)
+        {
+            var id = queue.Dequeue();
+            ordered.Add(id);
+            foreach (var dependent in dependents[id])
+                if (--indegree[dependent] == 0)
+                    queue.Enqueue(dependent);
+        }
+
+        if (ordered.Count != list.Count)
+            throw new InvalidDataException("The family operation graph contains a circular dependency.");
+        return ordered;
+    }
+}
+
+public static class BuiltInFamilyLibrary
+{
+    public static readonly Guid ArchitecturalDoorId = Guid.Parse("10b54e34-f88c-42af-bc6e-44bb8965c10a");
+    public static readonly Guid MortiseLockId = Guid.Parse("3238fb16-28df-428d-b5dd-71f1cf479b70");
+    public static readonly Guid HingeId = Guid.Parse("407a5f80-746c-4da8-a7f7-3211710ce4d4");
+    public static readonly Guid ArchitecturalWindowId = Guid.Parse("68729f17-339d-45ec-96fc-e4330d6b23da");
+
+    public static FamilyDocument CreateArchitecturalDoor()
+    {
+        var width = NumberParameter("Ancho nominal", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.9, 0.4, 4);
+        var height = NumberParameter("Alto nominal", FamilyParameterKind.Length, FamilyParameterScope.Type, 2.1, 0.8, 6);
+        var leafThickness = NumberParameter("Espesor de hoja", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.045, 0.02, 0.15);
+        var frameDepth = NumberParameter("Profundidad de marco", FamilyParameterKind.Length, FamilyParameterScope.Instance, 0.20, 0.05, 1);
+        var handleHeight = NumberParameter("Altura del eje de manija", FamilyParameterKind.Length, FamilyParameterScope.Instance, 1.0, 0.5, 1.5);
+        var lockBackset = NumberParameter("Distancia de entrada de cerradura", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.06, 0.03, 0.15);
+        var hingeCount = NumberParameter("Bisagras", FamilyParameterKind.Integer, FamilyParameterScope.Type, 3, 2, 8);
+        var openingAngle = NumberParameter("Apertura de demostración", FamilyParameterKind.Angle, FamilyParameterScope.Instance, 90, 0, 180);
+        var grilleVisible = NumberParameter("Rejilla visible", FamilyParameterKind.Visibility, FamilyParameterScope.Instance, 1, 0, 1);
+        var grilleWidth = NumberParameter("Ancho rejilla", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.45, 0.10, 1.5);
+        var grilleHeight = NumberParameter("Alto rejilla", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.35, 0.10, 1.5);
+        var grilleBottom = NumberParameter("Altura inferior rejilla", FamilyParameterKind.Length, FamilyParameterScope.Instance, 0.25, 0.05, 1.5);
+        var louverCount = NumberParameter("Número de lamas", FamilyParameterKind.Integer, FamilyParameterScope.Type, 8, 1, 50);
+        var louverAngle = NumberParameter("Ángulo de lamas", FamilyParameterKind.Angle, FamilyParameterScope.Type, 35, -80, 80);
+        var material = TextParameter("Material hoja", FamilyParameterKind.Material, FamilyParameterScope.Type, "Madera");
+
+        var plane = new FamilyWorkPlane(Guid.NewGuid(), "Plano central", new(0, 0, 0), new(0, 0, 1), new(1, 0, 0));
+        var leaf = Operation("Hoja", FamilyOperationKind.SolidExtrusion, plane.Id, "Hoja",
+            ("Ancho", "Ancho nominal"), ("Alto", "Alto nominal"), ("Profundidad", "Espesor de hoja"));
+        var frameLeft = Operation("Jamba izquierda", FamilyOperationKind.SolidExtrusion, plane.Id, "Marco",
+            ("Alto", "Alto nominal"), ("Profundidad", "Profundidad de marco"));
+        var frameRight = Operation("Jamba derecha", FamilyOperationKind.SolidExtrusion, plane.Id, "Marco",
+            ("Alto", "Alto nominal"), ("Profundidad", "Profundidad de marco"));
+        var head = Operation("Dintel", FamilyOperationKind.SolidExtrusion, plane.Id, "Marco",
+            ("Ancho", "Ancho nominal"), ("Profundidad", "Profundidad de marco"));
+        var grilleVoid = Operation("Hueco de rejilla", FamilyOperationKind.VoidExtrusion, plane.Id, "Rejilla",
+            ("Ancho", "Ancho rejilla"), ("Alto", "Alto rejilla"), ("PosiciónZ", "Altura inferior rejilla"),
+            ("Visible", "Rejilla visible"));
+        grilleVoid = grilleVoid with { DependsOn = [leaf.Id] };
+        var grilleFrame = Operation("Bastidor de rejilla", FamilyOperationKind.SolidExtrusion, plane.Id, "Rejilla",
+            ("Ancho", "Ancho rejilla"), ("Alto", "Alto rejilla"), ("Visible", "Rejilla visible"));
+        grilleFrame = grilleFrame with { DependsOn = [grilleVoid.Id] };
+        var louvers = Operation("Matriz de lamas", FamilyOperationKind.Array, plane.Id, "Rejilla",
+            ("Cantidad", "Número de lamas"), ("Ángulo", "Ángulo de lamas"), ("Visible", "Rejilla visible"));
+        louvers = louvers with { DependsOn = [grilleFrame.Id] };
+        var lockMortise = Operation("Alojamiento de cerradura", FamilyOperationKind.VoidExtrusion, plane.Id, "Cerradura",
+            ("Altura", "Altura del eje de manija"), ("Entrada", "Distancia de entrada de cerradura"));
+        lockMortise = lockMortise with { DependsOn = [leaf.Id] };
+        var spindleBore = Operation("Perforación de eje de manija", FamilyOperationKind.PrimitiveCylinder, plane.Id, "Cerradura",
+            ("Altura", "Altura del eje de manija"), ("Entrada", "Distancia de entrada de cerradura"),
+            ("Operación", "Diferencia"));
+        spindleBore = spindleBore with { DependsOn = [leaf.Id] };
+        var hingeMortises = Operation("Alojamientos de bisagras", FamilyOperationKind.Array, plane.Id, "Bisagras",
+            ("Cantidad", "Bisagras"), ("Alto", "Alto nominal"));
+        hingeMortises = hingeMortises with { DependsOn = [leaf.Id] };
+
+        var family = new FamilyDocument
+        {
+            Id = ArchitecturalDoorId,
+            Name = "Puerta Arquitectónica Paramétrica — Guanacaste 3D",
+            Category = FamilyCategory.Doors,
+            Hosting = FamilyHostingBehavior.Wall,
+            Parameters = [width, height, leafThickness, frameDepth, handleHeight, lockBackset, hingeCount,
+                openingAngle, grilleVisible, grilleWidth, grilleHeight, grilleBottom, louverCount, louverAngle, material],
+            Types =
+            [
+                new(Guid.NewGuid(), "900 × 2100 mm",
+                [
+                    new(width.Id, 0.9, null),
+                    new(height.Id, 2.1, null),
+                    new(leafThickness.Id, 0.045, null)
+                ])
+            ],
+            WorkPlanes = [plane],
+            Operations = [leaf, frameLeft, frameRight, head, grilleVoid, grilleFrame, louvers, lockMortise, spindleBore, hingeMortises],
+            NestedFamilies =
+            [
+                new(Guid.NewGuid(), MortiseLockId, "Cerradura embutida paramétrica", "Cerradura"),
+                new(Guid.NewGuid(), HingeId, "Bisagra arquitectónica paramétrica", "Bisagra")
+            ],
+            Metadata = new()
+            {
+                ["Manufacturer"] = "Guanacaste 3D",
+                ["FamilyStandard"] = "G3D Architectural Door v1",
+                ["GeometryStatus"] = "Operation tree ready for exact-kernel evaluation"
+            }
+        };
         family.Validate();
         return family;
     }
 
-    /// <summary>Validates and atomically writes a family, keeping the previous file as a backup.</summary>
-    public static void Save(string path, FamilyDocument family)
+    public static FamilyDocument CreateMortiseLock()
     {
-        if (!IsFamilyPath(path))
-            throw new InvalidDataException("Guanacaste 3D families must use the .g3df extension.");
-        family.Validate();
-        var json = JsonSerializer.Serialize(family, Options);
-        NativeContainer.WriteAtomically(path,
-            NativeContainer.Seal(NativeContainer.FamilySignature, FamilyDocument.CurrentSchemaVersion, json));
-    }
-}
+        var backset = NumberParameter("Entrada", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.06, 0.03, 0.15);
+        var bodyHeight = NumberParameter("Alto cuerpo", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.17, 0.08, 0.35);
+        var bodyDepth = NumberParameter("Profundidad cuerpo", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.08, 0.04, 0.20);
+        var spindleDiameter = NumberParameter("Diámetro eje", FamilyParameterKind.Diameter, FamilyParameterScope.Type, 0.008, 0.005, 0.02);
+        var cylinderDiameter = NumberParameter("Diámetro cilindro", FamilyParameterKind.Diameter, FamilyParameterScope.Type, 0.032, 0.015, 0.07);
+        var plane = new FamilyWorkPlane(Guid.NewGuid(), "Plano de montaje", new(0, 0, 0), new(0, 0, 1), new(1, 0, 0));
+        var body = Operation("Cuerpo", FamilyOperationKind.SolidExtrusion, plane.Id, "Cerradura",
+            ("Alto", "Alto cuerpo"), ("Profundidad", "Profundidad cuerpo"));
+        var spindle = Operation("Eje", FamilyOperationKind.PrimitiveCylinder, plane.Id, "Cerradura",
+            ("Diámetro", "Diámetro eje"), ("Entrada", "Entrada"));
+        var cylinder = Operation("Cilindro", FamilyOperationKind.PrimitiveCylinder, plane.Id, "Cerradura",
+            ("Diámetro", "Diámetro cilindro"), ("Entrada", "Entrada"));
 
-/// <summary>Adds a family's types to a project catalog. The result is validated as a whole.</summary>
-public static class OpeningFamilyImport
-{
-    /// <summary>
-    /// Merges a family into a project catalog. A type with the same family, name, kind,
-    /// and size as one already present is reused. A new type keeps its identifier when
-    /// that identifier is free; otherwise it receives a new one. A name clash with a
-    /// different size is resolved by suffixing the name, following the catalog's rule.
-    /// </summary>
-    public static void Apply(BuildingDocument document, FamilyDocument family)
-    {
-        family.Validate();
-        foreach (var incoming in family.Types)
+        var family = new FamilyDocument
         {
-            var existing = document.OpeningTypes.FirstOrDefault(type =>
-                type.Kind == incoming.Kind && type.FamilyName == family.Name &&
-                MatchesImportedName(type.Name, incoming.Name) &&
-                Math.Abs(type.Width - incoming.Width) <= OpeningTypeRules.SizeTolerance &&
-                Math.Abs(type.Height - incoming.Height) <= OpeningTypeRules.SizeTolerance &&
-                Math.Abs(type.DefaultSill - incoming.DefaultSill) <= OpeningTypeRules.SizeTolerance &&
-                Math.Abs(type.Depth - incoming.Depth) <= OpeningTypeRules.SizeTolerance &&
-                Math.Abs(type.FrameWidth - incoming.FrameWidth) <= OpeningTypeRules.SizeTolerance &&
-                type.GlazingLightCount == incoming.GlazingLightCount &&
-                type.MaterialName == incoming.MaterialName);
-            if (existing is not null) continue;
-            var id = document.OpeningTypes.Any(type => type.Id == incoming.Id) ? Guid.NewGuid() : incoming.Id;
-            var name = UniqueName(document.OpeningTypes, family.Name, incoming.Name);
-            document.OpeningTypes.Add(incoming with { Id = id, Name = name });
-        }
+            Id = MortiseLockId,
+            Name = "Cerradura embutida paramétrica",
+            Category = FamilyCategory.Hardware,
+            Hosting = FamilyHostingBehavior.Face,
+            Parameters = [backset, bodyHeight, bodyDepth, spindleDiameter, cylinderDiameter],
+            Types = [new(Guid.NewGuid(), "60 mm entrada", [new(backset.Id, 0.06, null)])],
+            WorkPlanes = [plane],
+            Operations = [body, spindle, cylinder]
+        };
+        family.Validate();
+        return family;
     }
 
-    /// <summary>Recognizes an earlier collision suffix so importing the same family is idempotent.</summary>
-    private static bool MatchesImportedName(string existingName, string incomingName)
+    public static FamilyDocument CreateArchitecturalWindow()
     {
-        if (existingName == incomingName) return true;
-        var prefix = incomingName + " (";
-        return existingName.StartsWith(prefix, StringComparison.Ordinal) &&
-            existingName.EndsWith(')') &&
-            int.TryParse(existingName[prefix.Length..^1], out var suffix) && suffix >= 2;
+        var width = NumberParameter("Ancho", FamilyParameterKind.Length, FamilyParameterScope.Type, 1.2, 0.3, 8);
+        var height = NumberParameter("Alto", FamilyParameterKind.Length, FamilyParameterScope.Type, 1.2, 0.3, 6);
+        var sill = NumberParameter("Antepecho", FamilyParameterKind.Length, FamilyParameterScope.Instance, 0.9, 0, 20);
+        var leafCount = NumberParameter("Número de hojas", FamilyParameterKind.Integer, FamilyParameterScope.Type, 2, 1, 8);
+        var glassThickness = NumberParameter("Espesor vidrio", FamilyParameterKind.Length, FamilyParameterScope.Type, 0.006, 0.003, 0.05);
+        var plane = new FamilyWorkPlane(Guid.NewGuid(), "Plano central", new(0, 0, 0), new(0, 0, 1), new(1, 0, 0));
+        var frame = Operation("Marco", FamilyOperationKind.SolidExtrusion, plane.Id, "Marco",
+            ("Ancho", "Ancho"), ("Alto", "Alto"));
+        var glazing = Operation("Vidrio", FamilyOperationKind.SolidExtrusion, plane.Id, "Vidrio",
+            ("Ancho", "Ancho"), ("Alto", "Alto"), ("Espesor", "Espesor vidrio"));
+        glazing = glazing with { DependsOn = [frame.Id] };
+        var slidingLeaves = Operation("Hojas corredizas", FamilyOperationKind.Array, plane.Id, "Hojas",
+            ("Cantidad", "Número de hojas"), ("Ancho total", "Ancho"));
+
+        var family = new FamilyDocument
+        {
+            Id = ArchitecturalWindowId,
+            Name = "Ventana Arquitectónica Paramétrica — Guanacaste 3D",
+            Category = FamilyCategory.Windows,
+            Hosting = FamilyHostingBehavior.Wall,
+            Parameters = [width, height, sill, leafCount, glassThickness],
+            Types = [new(Guid.NewGuid(), "1200 × 1200 mm — Corrediza", [new(width.Id, 1.2, null), new(height.Id, 1.2, null)])],
+            WorkPlanes = [plane],
+            Operations = [frame, glazing, slidingLeaves]
+        };
+        family.Validate();
+        return family;
     }
 
-    /// <summary>Returns the type name, or the name with a numeric suffix when the family already uses it.</summary>
-    private static string UniqueName(IEnumerable<OpeningType> types, string familyName, string name)
-    {
-        var taken = types.Where(type => type.FamilyName == familyName)
-            .Select(type => type.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!taken.Contains(name)) return name;
-        var suffix = 2;
-        while (taken.Contains($"{name} ({suffix})")) suffix++;
-        return $"{name} ({suffix})";
-    }
+    private static FamilyParameterDefinition NumberParameter(string name, FamilyParameterKind kind,
+        FamilyParameterScope scope, double value, double minimum, double maximum) =>
+        new(Guid.NewGuid(), name, kind, scope)
+        {
+            DefaultNumber = value,
+            Minimum = minimum,
+            Maximum = maximum
+        };
+
+    private static FamilyParameterDefinition TextParameter(string name, FamilyParameterKind kind,
+        FamilyParameterScope scope, string value) =>
+        new(Guid.NewGuid(), name, kind, scope) { DefaultText = value };
+
+    private static FamilyOperation Operation(string name, FamilyOperationKind kind, Guid planeId, string role,
+        params (string Key, string Value)[] expressions) =>
+        new(Guid.NewGuid(), name, kind)
+        {
+            WorkPlaneId = planeId,
+            ComponentRole = role,
+            Expressions = expressions.ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal)
+        };
 }

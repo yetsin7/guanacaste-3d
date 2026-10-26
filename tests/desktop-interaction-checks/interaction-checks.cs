@@ -134,7 +134,7 @@ internal static class InteractionChecks
             var projectPath = Path.Combine(folder, "startup.g3d");
             ProjectFile.Save(projectPath, BuildingDocument.Create("StartupProject"));
             var familyPath = Path.Combine(folder, "startup.g3df");
-            FamilyFile.Save(familyPath, FamilyDocument.CreateStandard(OpeningKind.Door, "StartupFamily"));
+            FamilyFile.Save(familyPath, OpeningFamilyDocument.CreateStandard(OpeningKind.Door, "StartupFamily"));
             var templatePath = Path.Combine(folder, "startup.g3dt");
             TemplateFile.Save(templatePath, OfficialTemplates.CreateArchitecturalMetric());
 

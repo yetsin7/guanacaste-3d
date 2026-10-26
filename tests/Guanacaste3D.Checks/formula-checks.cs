@@ -132,7 +132,7 @@ static class FormulaChecks
         var session = new DocumentSession(BuildingDocument.Create("Formula persistence"));
         session.AddParameter("Room perimeter", ParameterSpec.Length, ParameterBinding.Instance,
             [ElementCategory.Rooms], formula: "4 * sqrt(Area)");
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-formulas-{Guid.NewGuid():N}.g3d");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-formulas-{Guid.NewGuid():N}.g3");
         try
         {
             ProjectFile.Save(path, session.Document);

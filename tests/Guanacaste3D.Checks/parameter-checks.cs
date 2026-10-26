@@ -162,7 +162,7 @@ static class ParameterChecks
             [ElementCategory.Levels]);
         session.SetParameterValue(sheetId, drawnBy, null, "YG");
         session.SetParameterValue(levelId, elevation, 0.15, null);
-        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-parameters-{Guid.NewGuid():N}.g3d");
+        var path = Path.Combine(Path.GetTempPath(), $"guanacaste-parameters-{Guid.NewGuid():N}.g3");
         try
         {
             ProjectFile.Save(path, session.Document);

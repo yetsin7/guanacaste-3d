@@ -53,6 +53,7 @@ public sealed class BuildingDocument
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
+    public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -92,7 +93,8 @@ public sealed class BuildingDocument
         Schedules = Schedules.Select(schedule => schedule with
         {
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
-        }).ToList()
+        }).ToList(),
+        InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList()
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -160,6 +162,7 @@ public sealed class BuildingDocument
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
             .Concat((OpeningTypes ?? []).Select(type => type.Id))
             .Concat((Schedules ?? []).Select(schedule => schedule.Id))
+            .Concat((InPlaceFamilies ?? []).Where(family => family is not null).Select(family => family.Id))
             .ToArray();
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
@@ -171,6 +174,7 @@ public sealed class BuildingDocument
         LevelConstraints.Validate(this);
         ParameterRules.Validate(this);
         ScheduleDefinitionRules.Validate(this);
+        InPlaceFamilyRules.Validate(this);
     }
 
     /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>

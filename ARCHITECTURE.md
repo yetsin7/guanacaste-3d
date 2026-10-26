@@ -69,3 +69,9 @@ is proprietary; IFC is the supported route). Readers produce an `ImportedModel`
 in meters, Z up. Imported models are **linked** (`ModelLink`, saved in
 `<project>.g3.links.json`), never embedded in the `.g3` file, so the project
 schema is unchanged. See `docs/rendering-and-import.md`.
+
+## Native document and family layer
+
+The original `.g3` preview envelope remains a compatibility format. New project saves use `NativeDocumentStore`, which writes `.g3d` with the `G3DNATV1` signature, container/schema metadata, document GUID, compressed JSON payload and SHA-256 verification. The same container protocol carries `.g3df` family documents and `.g3dt` project templates.
+
+`FamilyDocument` is deliberately independent of WPF. It models category/hosting, typed parameters, family types, work planes, ordered geometry-operation descriptors and nested-family references. `FamilyDependencyGraph` rejects cycles before persistence. Operation descriptors are the semantic regeneration tree; exact CAD/B-Rep evaluation is a separate geometry-kernel stage and is not represented as complete yet.

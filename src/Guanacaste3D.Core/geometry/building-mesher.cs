@@ -101,6 +101,9 @@ public static class BuildingMesher
                 AddPart(mesh, part, datum);
         }
 
+        foreach (var family in document.InPlaceFamilies)
+            FamilyGeometry.AppendTo(mesh, family);
+
         if (includeGround)
         {
             var (min, max) = mesh.Bounds();
