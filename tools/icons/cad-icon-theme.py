@@ -1,0 +1,82 @@
+"""Reference-driven CAD pictograms and palette shared by all application command surfaces."""
+
+from icon_kit import C, L, P, R
+
+PALETTE = {
+    "blue": "#A9D9F5", "orange": "#D7D7D7", "green": "#B7DFBF", "purple": "#D6D6D6",
+    "yellow": "#FFE19A", "red": "#DE9292", "slate": "#ECECEC", "white": "#FFFFFF",
+    "ink": "#737373", "accent": "#3298D3", "redsolid": "#E53935",
+    "greensolid": "#25A85A", "orangesolid": "#F2A900", "shade": "#B8B8B8",
+}
+
+PEN_NAMES = {"I": "CadOutlinePen", "A": "CadAccentPen", "R": "CadDangerPen", "G": "CmdGreenPen", "O": "CmdOrangePen"}
+
+SHAPES = {
+    "wall": [
+        ("M3,3 Q11,8 21,7 V21 Q10,22 3,16 Z", "slate", "I"),
+        ("M3,3 Q11,8 21,7 L19,9 Q11,10 5,6 V17 L3,16 Z", "white", None),
+        ("M19,9 L21,7 V21 L19,20 Z", "shade", None)],
+    "door": [(P((5,3),(16,2),(16,22),(5,20)), "slate", "I"),
+             (P((8,5),(16,2),(16,22),(8,19)), "shade", "I"), (C(13,12,0.65), "ink", None)],
+    "window": [(R(5,3,14,17), "slate", "I"), (R(7,5,10,12), "white", "I"),
+               (L((12,5),(12,17))+" "+L((7,11),(17,11)), None, "I"), (R(3,20,18,2), "shade", "I")],
+    "column": [(R(8,4,9,17), "slate", "I"), (C(12.5,4,4.5), "white", "I"),
+               ("M8,20 Q12.5,23 17,20", None, "I")],
+    "column_round": [("M8,4 V20 Q12,23 16,20 V4", "slate", "I"),
+                     ("M8,4 C8,1 16,1 16,4 C16,7 8,7 8,4 Z", "white", "I")],
+    "floor": [(P((3,10),(16,5),(22,8),(9,14)), "slate", "I"),
+              (P((3,10),(9,14),(22,8),(22,12),(9,18),(3,14)), "shade", "I"),
+              (P((7,15),(15,11),(21,11),(12,16)), "blue", "A")],
+    "roof": [(P((2,12),(11,5),(22,7),(13,14)), "slate", "I"),
+             (P((2,12),(13,14),(22,7),(22,10),(13,17),(2,15)), "shade", "I")],
+    "ceiling": [(P((3,11),(16,5),(22,8),(9,14)), "slate", "I"),
+                (P((3,11),(9,14),(22,8),(22,12),(9,18),(3,15)), "blue", "A")],
+    "beam": [(P((3,8),(17,2),(22,3),(8,9),(6,12),(11,12),(8,16),(3,16),(1,20),(7,20),(21,13),(23,9),(17,9),(19,6),(22,6),(22,3)), "slate", "I")],
+    "brace": [(R(4,2,15,20), None, "I"), (L((4,2),(19,12),(4,22),(19,2)), None, "A")],
+    "beam_system": [(R(3,2,18,20), "white", "I"),
+                    (L((7,3),(7,21))+" "+L((12,3),(12,21))+" "+L((17,3),(17,21)), None, "A")],
+    "curtain": [(P((3,5),(21,2),(21,19),(3,22)), "blue", "I"),
+                (L((8,4),(8,21))+" "+L((14,3),(14,20))+" "+L((3,11),(21,8))+" "+L((3,17),(21,14)), None, "A")],
+    "railing": [(L((2,5),(22,5))+" "+L((2,10),(22,10))+" "+L((2,20),(22,20)), None, "I"),
+                (L((4,5),(4,20))+" "+L((9,5),(9,20))+" "+L((15,5),(15,20))+" "+L((20,5),(20,20)), None, "A")],
+    "ramp": [(P((3,16),(19,8),(22,11),(6,20)), "slate", "I"), (L((6,20),(6,17),(22,9)), None, "I")],
+    "stair": [(P((2,17),(7,17),(7,12),(12,12),(12,7),(17,7),(17,3),(22,6),(22,11),(17,11),(17,16),(12,16),(12,21),(7,21)), "slate", "I")],
+    "family": [(P((3,8),(8,3),(15,3),(15,8),(20,3),(22,4),(22,19),(17,22),(3,22)), "slate", "I"),
+               (P((3,8),(10,8),(15,3),(15,15),(10,20),(10,8)), "white", "I")],
+    "work_plane": [(P((3,7),(21,2),(21,17),(3,22)), "blue", "A"),
+                   (L((9,5),(9,20))+" "+L((15,4),(15,19))+" "+L((3,12),(21,7))+" "+L((3,17),(21,12)), None, "A")],
+    "ref_plane": [(L((4,19),(10,3))+" "+L((16,21),(22,5))+" "+L((3,17),(22,17))+" "+L((7,5),(23,5)), None, "I"),
+                  (P((14,20),(20,14),(22,16),(16,22),(13,23)), "yellow", "O")],
+    "view_plan": [(R(4,2,15,19), "white", "I"), (R(7,6,14,17), "slate", "I"),
+                  (L((7,9),(13,9),(13,14),(21,14))+" "+L((16,6),(16,10)), None, "I")],
+    "cube": [(P((3,10),(12,2),(22,10),(19,11),(12,5),(6,11)), "shade", "I"),
+             (P((6,11),(12,5),(19,11),(19,22),(6,22)), "slate", "I"), (R(9,14,4,8), "yellow", "I")],
+    "properties": [(R(3,2,18,20), "slate", "I"), (R(6,5,12,8), "blue", "I"),
+                   (L((6,16),(18,16))+" "+L((6,19),(13,19)), None, "I")],
+    "materials": [(C(12,12,10), "white", "I"),
+                  ("M7,3 H12 V7 H17 V3 L21,7 H17 V12 H22 V17 H17 V21 H12 V17 H7 V21 L3,17 H7 V12 H2 V7 H7 Z M7,7 V12 H12 V7 Z M12,12 V17 H17 V12 Z", "ink", None)],
+    "thin_lines": [(R(3,2,18,20), "white", "A"),
+                   (L((5,6),(19,6))+" "+L((5,10),(19,10))+" "+L((5,14),(19,14))+" "+L((5,18),(19,18)), None, "A"),
+                   (L((7,22),(16,2)), None, "I")],
+    "move": [(P((12,1),(15,5),(13,5),(13,11),(19,11),(19,9),(23,12),(19,15),(19,13),(13,13),(13,19),(15,19),(12,23),(9,19),(11,19),(11,13),(5,13),(5,15),(1,12),(5,9),(5,11),(11,11),(11,5),(9,5)), "ink", None)],
+    "delete": [(L((4,4),(20,20))+" "+L((20,4),(4,20)), None, "R")],
+    "render": [("M4,10 H8 L10,7 H16 L17,10 H21 V15 Q20,20 13,20 H9 Q4,18 4,13 Z M2,9 Q3,5 6,9 M21,11 Q25,9 24,14 Q23,17 21,16", "slate", "I")],
+}
+
+SHARED_COMMANDS = {
+    "Wall": "Wall", "WallEnhanced": "Wall", "Door": "Door", "Window": "Window", "OpeningTypes": "OpeningTypes",
+    "Floor": "Floor", "Room": "Room", "Level": "Level", "Levels": "Levels", "Apply": "ApplyWallType",
+    "WallProfile": "EditProfile", "Plan": "Plan", "Cube": "Model3D", "Model3DEnhanced": "Model3D",
+    "Elevation": "Elevation", "Section": "Section", "Sheet": "Sheet", "Sheets": "Sheet",
+    "Schedule": "Schedule", "Schedules": "Schedules", "Camera": "Camera", "Render": "Render", "Fit": "Zoom",
+    "New": "NewProject", "Open": "OpenProject", "Save": "Save", "ExportTable": "Schedule", "ExportDxf": "ImportCad",
+    "ExportCube": "ExportModel3D", "Import": "InsertFromFile", "Link": "ManageLinks", "Beam": "Beam", "Column": "Column",
+    "Connection": "Connection", "Rebar": "Rebar", "Duct": "Duct", "Pipe": "Pipe", "Wire": "Wire", "Mass": "InPlaceMass",
+    "Site": "Toposolid", "Dimension": "LinearDimension", "Text": "Text", "Tag": "TagByCategory", "Material": "Materials",
+    "Parameters": "ProjectParameters", "Analysis": "StructuralAnalysis", "Grid": "Grid", "Family": "LoadFamily",
+    "Phase": "Phases", "Dynamo": "Automation", "Move": "Move", "Rotate": "Rotate", "Align": "Align",
+    "Offset": "Offset", "Paste": "Paste", "Flip": "FlipWall", "Join": "JoinGeometry", "DisallowJoin": "DisallowJoin",
+    "Attach": "AttachTopBase", "Detach": "DetachTopBase", "Delete": "Delete", "Orbit": "Orbit", "Pan": "Pan",
+    "Zoom": "Zoom", "SectionBox": "SectionBox", "VisualStyle": "VisualStyle", "Shadows": "Shadows", "SunPath": "SunPath",
+    "LockView": "LockView", "Walkthrough": "Walkthrough", "Undo": "Undo", "Redo": "Redo", "Shortcut": "CustomizeCommands",
+}

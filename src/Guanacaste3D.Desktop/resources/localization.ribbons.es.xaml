@@ -118,6 +118,7 @@
   <sys:String x:Key="RibbonCommand.Conduit">Conducto eléctrico</sys:String>
   <sys:String x:Key="RibbonCommand.Connection">Conexión</sys:String>
   <sys:String x:Key="RibbonCommand.ConnectionAutomation">Automatización de conexión</sys:String>
+  <sys:String x:Key="RibbonCommand.Brace">Tornapunta</sys:String>
   <sys:String x:Key="RibbonCommand.ContextualData">Datos contextuales</sys:String>
   <sys:String x:Key="RibbonCommand.ContourCut">Corte de contorno</sys:String>
   <sys:String x:Key="RibbonCommand.Coordinate">Coordinar</sys:String>

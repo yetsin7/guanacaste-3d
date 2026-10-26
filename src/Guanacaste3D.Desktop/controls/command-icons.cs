@@ -9,10 +9,10 @@ namespace Guanacaste3D.Desktop.Controls;
 /// </summary>
 public static class CommandIcons
 {
+    /// <summary>Resolves a command icon without throwing when a newly added command has no generated resource yet.</summary>
     public static ImageSource? For(string commandId, string? fallbackKey = null)
     {
-        var resources = Application.Current?.Resources;
-        if (resources?["CmdIcon." + commandId] is ImageSource own) return own;
+        if (Application.Current?.TryFindResource("CmdIcon." + commandId) is ImageSource own) return own;
         return fallbackKey is null ? null : Application.Current?.TryFindResource(fallbackKey) as ImageSource;
     }
 }

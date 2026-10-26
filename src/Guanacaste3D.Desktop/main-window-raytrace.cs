@@ -97,9 +97,7 @@ public partial class MainWindow
     /// <summary>Whether the project has anything to show: model elements or visible linked models.</summary>
     private bool HasSceneContent()
     {
-        var document = _session.Document;
-        return document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0 ||
-               _links.Visible().Any();
+        return HasModelElements() || _links.Visible().Any();
     }
 
     /// <summary>Bounds of the model and visible linked models, or a 10 m site for an empty project. Cached per scene version.</summary>
@@ -107,7 +105,7 @@ public partial class MainWindow
     {
         if (_boundsCache is { } cached && cached.Version == _sceneVersion) return cached.Bounds;
         var document = _session.Document;
-        var hasModel = document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0;
+        var hasModel = HasModelElements();
         var min = new Vector3(-5, -5, 0);
         var max = new Vector3(5, 5, 3);
         if (hasModel) (min, max) = BuildingMesher.Build(document).Bounds();

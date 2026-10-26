@@ -163,7 +163,7 @@
                         Checked="Collision_Changed" Unchecked="Collision_Changed"/>
               <Button Content="{DynamicResource RenderPanel.FrameAll}" Click="FrameAll_Click"
                       Style="{StaticResource PanelButton}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
-              <Expander Header="{DynamicResource RenderPanel.Tour}" Foreground="{DynamicResource PrimaryTextBrush}"
+              <Expander x:Name="TourExpander" Header="{DynamicResource RenderPanel.Tour}" Foreground="{DynamicResource PrimaryTextBrush}"
                         FontWeight="SemiBold" Margin="0,12,0,0" IsExpanded="False">
                 <StackPanel Margin="0,7,0,0">
                   <TextBlock Text="{DynamicResource RenderPanel.TourHint}" Foreground="{DynamicResource SecondaryTextBrush}"

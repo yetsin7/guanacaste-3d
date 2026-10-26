@@ -35,12 +35,14 @@ internal static class ArchitectureUiChecks
         {
             _window.Show();
             Pump();
+            IconResourceChecks.Run(Check);
             CheckLayout();
             CheckCompactWindowLayout();
             CheckEveryCommandResponds();
             CheckFaceAndHostCommands();
             CheckShowcaseRenders();
             CheckInPlaceFamilyPlans();
+            CheckPresentationCommands();
             Console.WriteLine("Architecture UI checks passed.");
             Environment.ExitCode = 0;
             return 0;
@@ -235,6 +237,32 @@ internal static class ArchitectureUiChecks
         var sheet = (Canvas)_window.FindName("SheetCanvas");
         Check(sheet.Children.OfType<System.Windows.Shapes.Line>().Any(line => Equals(line.Tag, familyId)),
             "A family-only project appears in the drawing sheet viewport");
+    }
+
+    /// <summary>Exercises presentation commands against a project whose only geometry belongs to a family.</summary>
+    private static void CheckPresentationCommands()
+    {
+        Invoke("MarkSceneDirty");
+        Check(Invoke("HasSceneContent") is true, "A family-only project is recognized as a renderable scene");
+        var sceneTask = (Task<Guanacaste3D.Core.Rendering.RenderScene?>)Invoke("GetSceneAsync")!;
+        var timeout = DateTime.UtcNow.AddSeconds(10);
+        while (!sceneTask.IsCompleted && DateTime.UtcNow < timeout) Pump();
+        Check(sceneTask.IsCompletedSuccessfully && sceneTask.Result is { TriangleCount: > 0 },
+            "A family-only project builds the live and final render scene");
+        Check(Invoke("ExecuteApplicationCommand", "Materials") is true, "Materials routes to the project material editor");
+        Pump();
+        var panel = (RenderPanel)_window.FindName("RenderPanelControl");
+        Check(((StackPanel)panel.FindName("MaterialRows")).Children.Count > 0,
+            "The material command reveals the populated project material controls");
+        Check(Invoke("ExecuteApplicationCommand", "Walkthrough") is true, "Walkthrough routes to camera marks");
+        Pump();
+        Check(((Expander)panel.FindName("TourExpander")).IsExpanded, "The walkthrough command expands its camera editor");
+        Check(Invoke("ExecuteApplicationCommand", "Camera") is true, "Camera opens the navigable model view");
+        Check(Invoke("ExecuteApplicationCommand", "ResetCamera") is true, "Reset camera frames the current project");
+        var clay = (CheckBox)_window.FindName("ClayCheck");
+        var previous = clay.IsChecked;
+        Check(Invoke("ExecuteApplicationCommand", "VisualStyle") is true && clay.IsChecked != previous,
+            "Visual style switches between the study model and project colors");
     }
 
     private static void Execute(ArchitectureCommand command)
