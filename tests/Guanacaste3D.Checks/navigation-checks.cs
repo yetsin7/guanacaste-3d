@@ -21,6 +21,7 @@ static class NavigationChecks
         Edges(check);
         Picking(check);
         WallChains(check);
+        Elevations(check);
         Safety(check);
         LivePreviewChecks(check).GetAwaiter().GetResult();
         Tours(check).GetAwaiter().GetResult();
@@ -251,6 +252,40 @@ static class NavigationChecks
         var pixel = camera.Project(onRay, 800, 600);
         check(pixel is { } p && Math.Abs(p.X - 300) < 0.05f && Math.Abs(p.Y - 200) < 0.05f && camera.Project(new Vector3(0, -20, 2), 800, 600) is null,
             "picking: projecting a point on a pixel's ray returns that pixel, and points behind the camera have none");
+    }
+
+    /// <summary>The four elevations exist in every project, keep names the user chose, and can be renamed with undo.</summary>
+    private static void Elevations(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Views"));
+        var elevations = session.Document.Views.Where(view => view.Kind == ProjectViewKind.Elevation).ToList();
+        check(elevations.Count == 4 && Enum.GetValues<ViewOrientation>().Where(o => o != ViewOrientation.None).All(o => elevations.Any(v => v.Orientation == o)) &&
+              elevations.Select(view => view.Name).Distinct().Count() == 4 && elevations.Any(view => view.Name == "Vista Norte"),
+            "views: a new project has four elevations named Vista Norte, Sur, Este and Oeste");
+
+        var old = new List<ProjectView>
+        {
+            new(BuiltInProjectViews.NorthElevationId, "North Elevation", ProjectViewKind.Elevation, null, ViewOrientation.North),
+            new(BuiltInProjectViews.SouthElevationId, "Fachada principal", ProjectViewKind.Elevation, null, ViewOrientation.South)
+        };
+        BuiltInProjectViews.EnsureElevations(old);
+        check(old.Count == 4 && old.Single(view => view.Id == BuiltInProjectViews.NorthElevationId).Name == "Vista Norte" &&
+              old.Single(view => view.Id == BuiltInProjectViews.SouthElevationId).Name == "Fachada principal",
+            "views: an older project gains the missing elevations and keeps names the user chose");
+
+        session.RenameView(BuiltInProjectViews.NorthElevationId, "  Fachada norte  ");
+        check(session.Document.Views.Single(view => view.Id == BuiltInProjectViews.NorthElevationId).Name == "Fachada norte",
+            "views: renaming an elevation trims the name");
+        session.Undo();
+        check(session.Document.Views.Single(view => view.Id == BuiltInProjectViews.NorthElevationId).Name == "Vista Norte",
+            "views: undo restores the previous name");
+        var duplicate = false;
+        try { session.RenameView(BuiltInProjectViews.NorthElevationId, "vista sur"); }
+        catch (InvalidDataException) { duplicate = true; }
+        var empty = false;
+        try { session.RenameView(BuiltInProjectViews.NorthElevationId, "   "); }
+        catch (InvalidDataException) { empty = true; }
+        check(duplicate && empty, "views: a name already in use, or an empty one, is refused");
     }
 
     /// <summary>A chain of walls closes by itself when it ends on, or crosses, a wall that is already there.</summary>

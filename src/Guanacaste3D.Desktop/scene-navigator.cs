@@ -9,8 +9,8 @@ namespace Guanacaste3D.Desktop;
 
 /// <summary>
 /// Walk-through navigation for a surface that shows the model (the 3D view or the render preview), in the manner of
-/// Lumion: right mouse button looks around, middle button pans, the wheel zooms toward the point under the cursor, left
-/// drag orbits the model, W A S D fly, Q and E go down and up, Shift is fast and Ctrl is slow. Both views share one
+/// Revit: the wheel zooms toward the point under the cursor, the middle button pans, Shift plus the middle button
+/// orbits the model, the right button looks around, the left button only selects, W A S D fly, Q and E go down and up, Shift is fast and Ctrl is slow. Both views share one
 /// <see cref="NavigationCamera"/>, so moving in either keeps the other in step.
 /// </summary>
 internal sealed class SceneNavigator
@@ -51,6 +51,7 @@ internal sealed class SceneNavigator
 
     private Point _pressPoint;
     private bool _dragged;
+    private bool _orbiting;
 
     /// <summary>Scene bounds, used for movement speed and for framing.</summary>
     public Func<(Vector3 Min, Vector3 Max)> Bounds { get; set; } = () => (new Vector3(-5, -5, 0), new Vector3(5, 5, 3));
@@ -92,7 +93,8 @@ internal sealed class SceneNavigator
         _last = _pressPoint = e.GetPosition(_surface);
         _dragged = false;
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2) DoubleClicked?.Invoke(_pressPoint);
-        if (e.ChangedButton == MouseButton.Left)
+        _orbiting = e.ChangedButton == MouseButton.Middle && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        if (_orbiting)
         {
             var (width, height) = Size();
             var ray = Camera.PixelRay((float)_last.X, (float)_last.Y, width, height);
@@ -101,7 +103,12 @@ internal sealed class SceneNavigator
         if (e.ChangedButton is MouseButton.Right or MouseButton.Middle or MouseButton.Left)
         {
             _surface.CaptureMouse();
-            _surface.Cursor = e.ChangedButton == MouseButton.Middle ? Cursors.SizeAll : Cursors.Cross;
+            _surface.Cursor = e.ChangedButton switch
+            {
+                MouseButton.Middle => _orbiting ? Cursors.Hand : Cursors.SizeAll,
+                MouseButton.Right => Cursors.Cross,
+                _ => Cursors.Arrow
+            };
         }
         e.Handled = true;
     }
@@ -119,6 +126,9 @@ internal sealed class SceneNavigator
             case MouseButton.Right:
                 Camera.Look(dx, dy);
                 break;
+            case MouseButton.Middle when _orbiting:
+                Camera.OrbitAround(_orbitPivot, dx, dy);
+                break;
             case MouseButton.Middle:
             {
                 // Pan so the point under the cursor follows the cursor: world units per pixel at that depth.
@@ -128,11 +138,8 @@ internal sealed class SceneNavigator
                 MoveCamera(Camera.PanDelta(dx, dy, unitsPerPixel));
                 break;
             }
-            case MouseButton.Left:
-                Camera.OrbitAround(_orbitPivot, dx, dy);
-                break;
         }
-        Changed?.Invoke();
+        if (button != MouseButton.Left) Changed?.Invoke();
         e.Handled = true;
     }
 

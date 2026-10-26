@@ -95,7 +95,8 @@ internal sealed class ArchitecturalLibraryWindow : Window
     private void BuildCategories()
     {
         foreach (var key in new[] { "All", "Walls", "Doors", "Windows", "Floors", "Ceilings", "Roofs", "Columns", "Framing",
-                     "Guards", "Stairs", "Ramps", "Drainage", "CurtainWalls" })
+                     "Guards", "Stairs", "Ramps", "Drainage", "CurtainWalls", "Seating", "Tables", "Bedroom",
+                     "Storage", "Kitchen", "Bathroom", "Appliances", "Lighting", "Decor", "Outdoor" })
             _categoryKeys.Add((key, Text($"Library.Category.{key}")));
         foreach (var (_, label) in _categoryKeys) _categories.Items.Add(label);
         _categories.SelectedIndex = 0;
@@ -130,7 +131,9 @@ internal sealed class ArchitecturalLibraryWindow : Window
                 () => { _main.PlaceLibraryColumn(column); Close(); });
         foreach (var preset in ArchitecturalLibrary.ElementPresets)
         {
-            var category = preset.Kind switch
+            var category = preset.ComponentCategory != ResidentialComponentCategory.None
+                ? preset.ComponentCategory.ToString()
+                : preset.Kind switch
             {
                 StructuralElementKind.Railing => "Guards",
                 StructuralElementKind.Stair => "Stairs",
@@ -139,12 +142,20 @@ internal sealed class ArchitecturalLibraryWindow : Window
                 StructuralElementKind.CurtainWall => "CurtainWalls",
                 _ => "Framing"
             };
-            yield return new Entry(category, preset.Name,
-                $"{Mm(preset.Width)} × {Mm(preset.Height)} mm" +
+            var displayName = PresetName(preset);
+            var dimensions = preset.Kind == StructuralElementKind.Component && preset.Depth > 0
+                ? $"{Mm(preset.Width)} × {Mm(preset.Depth)} × {Mm(preset.Height)} mm"
+                : $"{Mm(preset.Width)} × {Mm(preset.Height)} mm";
+            yield return new Entry(category, displayName,
+                dimensions +
                 (preset.Style == ElementStyle.Default ? string.Empty : $" · {Text($"ElementStyle.{preset.Style}")}"),
-                true, () => { _main.BeginPresetTool(preset); Close(); });
+                true, () => { _main.BeginPresetTool(preset with { Name = displayName }); Close(); });
         }
     }
+
+    /// <summary>Resolves a component family's localized display name while retaining canonical names in the core catalog.</summary>
+    private static string PresetName(ElementPreset preset) =>
+        string.IsNullOrWhiteSpace(preset.LocalizationKey) ? preset.Name : Text(preset.LocalizationKey);
 
     private void Refresh()
     {

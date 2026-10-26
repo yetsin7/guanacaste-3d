@@ -98,7 +98,7 @@ public partial class MainWindow
     {
         var canvas = (Canvas)sender;
         var current = ((MatrixTransform)canvas.RenderTransform).Matrix;
-        var factor = e.Delta > 0 ? 1.2 : 1 / 1.2;
+        var factor = e.Delta > 0 ? 1.15 : 1 / 1.15;
         factor = Math.Clamp(current.M11 * factor, 0.4, 16) / current.M11;
         var at = e.GetPosition(canvas);
         // Zoom about the point under the cursor in the canvas's own coordinates, then apply the existing transform.

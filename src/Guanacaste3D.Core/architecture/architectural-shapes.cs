@@ -103,6 +103,12 @@ public static class ArchitecturalShapes
         {
             if (!Enum.IsDefined(element.Style) || !StylesFor(element.Kind).Contains(element.Style))
                 throw new InvalidDataException("Invalid element style.");
+            if (!Enum.IsDefined(element.ComponentShape) || !Enum.IsDefined(element.ComponentCategory) ||
+                !double.IsFinite(element.Depth) || element.Depth is < 0 or > 50 ||
+                (element.Kind != StructuralElementKind.Component &&
+                    (element.Depth != 0 || element.ComponentShape != ResidentialComponentShape.Box ||
+                     element.ComponentCategory != ResidentialComponentCategory.None)))
+                throw new InvalidDataException("Invalid component family geometry.");
             if (element.HasSolid && element.Kind is not (StructuralElementKind.Dormer or StructuralElementKind.Skylight) &&
                 (!double.IsFinite(element.Width) || !double.IsFinite(element.Height) || !double.IsFinite(element.Offset) ||
                  element.Width is < 0.005 or > 50 || element.Height is <= 0 or > 100 || element.Offset is < -100 or > 1000))

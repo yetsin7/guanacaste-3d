@@ -50,7 +50,7 @@ public partial class MainWindow
         var project = new TreeViewItem { Header = _session.Document.Name, IsExpanded = true };
         var views = new TreeViewItem { Header = GetText("Tree.Views"), IsExpanded = true };
         foreach (var view in _session.Document.Views.Where(view => MatchesProjectSearch(view.Name)))
-            views.Items.Add(new TreeViewItem { Header = view.Name, Tag = view.Id });
+            views.Items.Add(new TreeViewItem { Header = view.Name, Tag = view.Id, ContextMenu = CreateViewMenu(view.Id) });
         project.Items.Add(views);
         var levels = new TreeViewItem { Header = GetText("Tree.Levels"), IsExpanded = true };
         foreach (var level in _session.Document.Levels)
@@ -255,6 +255,7 @@ public partial class MainWindow
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.Escape && _drawingWall) { HandleWallEscape(); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
+        else if (e.Key == Key.F2 && _selectedViewId is Guid viewId) { RenameView(viewId); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }
         base.OnPreviewKeyDown(e);
     }

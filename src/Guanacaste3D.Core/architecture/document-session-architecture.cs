@@ -158,7 +158,9 @@ public sealed partial class DocumentSession
             document.StructuralElements.Add(CreateStructuralElement(id, document, levelId, preset.Kind, preset.Name,
                 start, end) with
             {
-                Style = preset.Style, Width = preset.Width, Height = preset.Height, Offset = preset.Offset
+                Style = preset.Style, Width = preset.Width, Height = preset.Height, Offset = preset.Offset,
+                Depth = preset.Depth, ComponentShape = preset.ComponentShape,
+                ComponentCategory = preset.ComponentCategory
             }));
         return id;
     }

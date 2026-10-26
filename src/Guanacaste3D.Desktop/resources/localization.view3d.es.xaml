@@ -25,6 +25,16 @@
   <sys:String x:Key="OpeningViews.Model">Vista 3D · rueda: acercar · derecho: mirar · izquierdo: orbitar</sys:String>
   <sys:String x:Key="OpeningViews.Invalid">Revisa los valores: usa números y un nombre.</sys:String>
   <sys:String x:Key="Status.OpeningTypeEdited">Familia actualizada.</sys:String>
+  <sys:String x:Key="Transaction.RenameView">Renombrar vista</sys:String>
+  <sys:String x:Key="Error.The view does not exist.">La vista no existe.</sys:String>
+  <sys:String x:Key="Error.The view name is not valid.">El nombre de la vista no es válido.</sys:String>
+  <sys:String x:Key="Error.The view name is already in use.">Ya existe una vista con ese nombre.</sys:String>
+  <sys:String x:Key="Elevation.Rename">Cambiar nombre…</sys:String>
+  <sys:String x:Key="Elevation.Open">Abrir vista</sys:String>
+  <sys:String x:Key="Elevation.RenameTitle">Nombre de la vista</sys:String>
+  <sys:String x:Key="Dialog.Accept">Aceptar</sys:String>
+  <sys:String x:Key="Dialog.Cancel">Cancelar</sys:String>
+  <sys:String x:Key="Status.ViewRenamed">Vista renombrada.</sys:String>
   <sys:String x:Key="Status.ViewsClosed">Solo queda abierta la vista actual.</sys:String>
   <sys:String x:Key="Status.View3DNoPoint">Apunta a una superficie o al suelo para colocar el elemento.</sys:String>
 </ResourceDictionary>

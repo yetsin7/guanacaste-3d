@@ -424,7 +424,7 @@
                       MouseLeftButtonUp="PlanCanvas_MouseLeftButtonUp"
                       MouseRightButtonDown="PlanCanvas_MouseRightButtonDown"
                       MouseMove="PlanCanvas_MouseMove" MouseLeave="PlanCanvas_MouseLeave"
-                      MouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
+                      PreviewMouseWheel="PlanCanvas_MouseWheel" SizeChanged="PlanCanvas_SizeChanged"/>
             </TabItem>
             <TabItem Header="{DynamicResource View.Model3D}" Tag="{StaticResource Icon.Cube}">
               <Grid>

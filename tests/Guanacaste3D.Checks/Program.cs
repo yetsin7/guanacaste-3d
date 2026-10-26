@@ -402,6 +402,7 @@ DoorPlanSymbolChecks.Run(Check);
 StructuralChecks.Run(Check);
 FamilyTemplateChecks.Run(Check);
 ArchitectureChecks.Run(Check);
+ResidentialComponentChecks.Run(Check);
 RenderInfrastructureChecks.Run(Check);
 RenderRegressionChecks.Run(Check);
 RenderEngineChecks.Run(Check);

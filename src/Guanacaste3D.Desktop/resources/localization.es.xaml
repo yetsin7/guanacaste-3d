@@ -298,7 +298,7 @@
   <sys:String x:Key="Status.SampleOpened">Casa demostrativa abierta. Guárdala con Ctrl+S para conservar cambios.</sys:String>
   <sys:String x:Key="View.Render">Render</sys:String>
   <sys:String x:Key="Tool.Render">Render fotorrealista</sys:String>
-  <sys:String x:Key="Model.OrbitHint">Clic derecho: mirar · rueda: acercar al cursor · botón central: mover · W A S D: volar</sys:String>
+  <sys:String x:Key="Model.OrbitHint">Rueda: zoom al cursor · botón central: mover · Shift + botón central: órbita · clic derecho: mirar · W A S D: volar</sys:String>
   <sys:String x:Key="Model.ResetCamera">Restablecer cámara</sys:String>
   <sys:String x:Key="Render.Start">Renderizar</sys:String>
   <sys:String x:Key="Render.Stop">Detener</sys:String>

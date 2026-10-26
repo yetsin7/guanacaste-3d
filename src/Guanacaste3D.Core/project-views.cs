@@ -10,12 +10,17 @@ public enum ProjectViewKind
     Schedule
 }
 
-/// <summary>Defines the model axis used to project elevation and section geometry.</summary>
+/// <summary>
+/// The direction an elevation or section looks toward. A north elevation shows the north face of the building, seen
+/// from the south; its symbol in the plan sits south of the building and points north.
+/// </summary>
 public enum ViewOrientation
 {
     None,
     North,
-    East
+    East,
+    South,
+    West
 }
 
 /// <summary>Represents a persistent view generated from the shared building document.</summary>
@@ -34,15 +39,47 @@ public static class BuiltInProjectViews
     public static readonly Guid SectionAId = Guid.Parse("26870a61-1d20-4f66-918a-6138d5370687");
     public static readonly Guid ProjectScheduleId = Guid.Parse("54af0a0e-63f6-4fd8-9ff3-aa27947758e8");
 
+    public static readonly Guid SouthElevationId = Guid.Parse("7a1f0c52-5d4b-4f0e-8a9c-2b6e1d3f4a05");
+    public static readonly Guid EastElevationId = Guid.Parse("c3d8e1b7-92a4-4c6f-b5e0-0f7a2d9c4b16");
+    public static readonly Guid WestElevationId = Guid.Parse("e5b9a0d4-1c37-48fa-9d62-6a3c8f1e7b27");
+
+    /// <summary>Names the four standard elevations carry in a new project; the user may rename any of them.</summary>
+    public static readonly IReadOnlyDictionary<ViewOrientation, string> ElevationNames = new Dictionary<ViewOrientation, string>
+    {
+        [ViewOrientation.North] = "Vista Norte", [ViewOrientation.South] = "Vista Sur",
+        [ViewOrientation.East] = "Vista Este", [ViewOrientation.West] = "Vista Oeste"
+    };
+
     /// <summary>Creates plan views for all levels and the standard project-wide views.</summary>
     public static List<ProjectView> CreateDefaults(IReadOnlyCollection<Level> levels)
     {
         var views = levels.Select(CreatePlan).ToList();
         views.Add(new ProjectView(Model3DId, "Coordinated 3D", ProjectViewKind.Model3D, null, ViewOrientation.None));
-        views.Add(new ProjectView(NorthElevationId, "North Elevation", ProjectViewKind.Elevation, null, ViewOrientation.North));
         views.Add(new ProjectView(SectionAId, "Section A", ProjectViewKind.Section, null, ViewOrientation.East));
         views.Add(new ProjectView(ProjectScheduleId, "Project Schedule", ProjectViewKind.Schedule, null, ViewOrientation.None));
+        EnsureElevations(views);
         return views;
+    }
+
+    /// <summary>
+    /// Makes sure the four elevations exist. Projects made before south, east and west elevations were offered get them;
+    /// the old, unrenamed "North Elevation" takes its new name. A name the user chose is never touched.
+    /// </summary>
+    public static void EnsureElevations(List<ProjectView> views)
+    {
+        var ids = new Dictionary<ViewOrientation, Guid>
+        {
+            [ViewOrientation.North] = NorthElevationId, [ViewOrientation.South] = SouthElevationId,
+            [ViewOrientation.East] = EastElevationId, [ViewOrientation.West] = WestElevationId
+        };
+        foreach (var (orientation, id) in ids)
+        {
+            var index = views.FindIndex(view => view.Id == id);
+            if (index < 0)
+                views.Add(new ProjectView(id, ElevationNames[orientation], ProjectViewKind.Elevation, null, orientation));
+            else if (views[index].Name == "North Elevation")
+                views[index] = views[index] with { Name = ElevationNames[orientation] };
+        }
     }
 
     /// <summary>Creates the coordinated plan view owned by one level.</summary>

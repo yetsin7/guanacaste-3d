@@ -238,6 +238,30 @@ internal static class InteractionChecks
         Check(Field<DocumentSession>("_session").Document.Walls.Count == before + 1, "Two clicks in the 3D view with the wall tool draw a wall");
         Invoke("SetWallTool", false);
         tabs.SelectedIndex = 0;
+        Pump();
+
+        // The plan carries one symbol per elevation; clicking one selects it, and a rename shows on the plan and the tab.
+        var symbols = _canvas.Children.OfType<System.Windows.Shapes.Ellipse>()
+            .Where(shape => shape.Tag is Guid id && document.Views.Any(view => view.Id == id && view.Kind == ProjectViewKind.Elevation)).ToList();
+        Check(symbols.Count == 4, "The plan shows four elevation symbols");
+        Invoke("FitPlan_Click", _window, new RoutedEventArgs());
+        Pump();
+        SaveBitmap("artifacts/interaction-evidence/plan-elevation-symbols.png");
+        var north = (Guid)symbols.Select(shape => (Guid)shape.Tag).First(id => id == BuiltInProjectViews.NorthElevationId);
+        var clickArgs = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        {
+            RoutedEvent = UIElement.MouseLeftButtonDownEvent, Source = symbols.First(shape => (Guid)shape.Tag == north)
+        };
+        Invoke("TrySelectElevationSymbol", clickArgs);
+        Check(Field<Guid?>("_selectedViewId") == north, "Clicking an elevation symbol selects its view");
+        Field<DocumentSession>("_session").RenameView(north, "Fachada principal");
+        Invoke("RefreshAll");
+        Invoke("RenderOrthographicViews");
+        Pump();
+        Check(_canvas.Children.OfType<TextBlock>().Any(label => label.Text == "Fachada principal") &&
+              ((TabItem)tabs.Items[4]).Header as string == "Fachada principal", "A renamed elevation is renamed on the plan symbol and the tab");
+        Field<DocumentSession>("_session").Undo();
+        Invoke("RefreshAll");
 
         // Double-clicking a door opens its family with an editable plan view and 3D view.
         var door = Field<DocumentSession>("_session").Document.Openings.First(item => item.Kind == OpeningKind.Door);

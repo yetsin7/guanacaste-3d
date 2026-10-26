@@ -11,8 +11,7 @@ public partial class MainWindow
     private Guid? _selectedViewId;
 
     /// <summary>Displays the generated north elevation.</summary>
-    private void ShowElevation_Click(object sender, RoutedEventArgs e) =>
-        SelectProjectView(BuiltInProjectViews.NorthElevationId);
+    private void ShowElevation_Click(object sender, RoutedEventArgs e) => SelectProjectView(_elevationViewId);
 
     /// <summary>Displays the generated section view.</summary>
     private void ShowSection_Click(object sender, RoutedEventArgs e) =>
@@ -28,6 +27,7 @@ public partial class MainWindow
         var view = _session.Document.Views.FirstOrDefault(candidate => candidate.Id == viewId);
         if (view is null) return;
         _selectedViewId = view.Id;
+        if (view.Kind == ProjectViewKind.Elevation) _elevationViewId = view.Id;
         _selectedWallId = null;
         _selectedOpeningId = null;
         _selectedRoomId = null;
@@ -55,7 +55,10 @@ public partial class MainWindow
     private void RenderOrthographicViews()
     {
         if (ElevationCanvas is null || SectionCanvas is null || _session is null) return;
-        RenderProjectedView(ElevationCanvas, ViewOrientation.North);
+        var (elevation, name) = CurrentElevation();
+        // The Elevation tab carries the name of the elevation it shows, so a renamed view is renamed everywhere.
+        if (ViewTabs.Items.Count > 4 && ViewTabs.Items[4] is TabItem elevationTab) elevationTab.Header = name;
+        RenderProjectedView(ElevationCanvas, elevation);
         RenderProjectedView(SectionCanvas, ViewOrientation.East);
     }
 
@@ -218,8 +221,14 @@ public partial class MainWindow
     }
 
     /// <summary>Projects a plan coordinate onto the horizontal axis of a generated view.</summary>
-    private static double ProjectCoordinate(Point2 point, ViewOrientation orientation) =>
-        orientation == ViewOrientation.East ? point.Y : point.X;
+    private static double ProjectCoordinate(Point2 point, ViewOrientation orientation) => orientation switch
+    {
+        // Seen from the opposite side the left-to-right axis runs backwards, so south and west mirror north and east.
+        ViewOrientation.East => point.Y,
+        ViewOrientation.South => -point.X,
+        ViewOrientation.West => -point.Y,
+        _ => point.X
+    };
 
     /// <summary>Converts a model elevation into a canvas Y coordinate.</summary>
     private static double ProjectElevation(

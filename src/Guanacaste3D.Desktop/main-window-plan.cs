@@ -73,6 +73,7 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
+        if (!PlanToolArmed() && TrySelectElevationSymbol(e)) return;
         if (TryPlaceOpening(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
@@ -172,7 +173,10 @@ public partial class MainWindow
         _panOffset = new Point(
             cursor.X - PlanCanvas.ActualWidth / 2 - anchor.X * _scale,
             cursor.Y - PlanCanvas.ActualHeight / 2 + anchor.Y * _scale);
+        // The pointer keeps its world position under zoom, so an active sketch keeps tracking it without a mouse move.
+        if (_drawingWall && _pendingWallStart is not null) _wallPreviewPoint = SnapWallPoint(CanvasToWorld(cursor));
         RenderPlan();
+        e.Handled = true;
     }
 
     /// <summary>Redraws the plan after the viewport size changes.</summary>
@@ -200,7 +204,12 @@ public partial class MainWindow
             StatusText.Text = GetText("Status.PlanCentered");
             return;
         }
-        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End }).ToArray();
+        // The elevation symbols sit just outside the building, so framing the walls alone would cut them off.
+        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End })
+            .Concat(ElevationSymbols().SelectMany(symbol => new[]
+            {
+                new Point2(symbol.Position.X - 1.4, symbol.Position.Y - 1.4), new Point2(symbol.Position.X + 1.4, symbol.Position.Y + 1.4)
+            })).ToArray();
         var minimumX = points.Min(point => point.X);
         var maximumX = points.Max(point => point.X);
         var minimumY = points.Min(point => point.Y);
@@ -277,6 +286,7 @@ public partial class MainWindow
         AddAlignmentGuides();
         RenderPlacementPreview();
         RenderPermanentDimensions();
+        RenderElevationSymbols();
     }
 
     /// <summary>Fills a wall's mitered plan footprint, drawn above every outline so joined faces disappear.</summary>

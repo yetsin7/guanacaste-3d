@@ -123,6 +123,18 @@ public sealed record StructuralElement(
     double Height,
     double Offset)
 {
+    /// <summary>
+    /// Plan depth for point-hosted components. Zero preserves the legacy square footprint whose depth equals
+    /// <see cref="Width"/>.
+    /// </summary>
+    public double Depth { get; init; }
+
+    /// <summary>Parametric residential geometry used by component instances; other element kinds keep the box default.</summary>
+    public ResidentialComponentShape ComponentShape { get; init; }
+
+    /// <summary>Residential library group retained on component instances for schedules and future type browsing.</summary>
+    public ResidentialComponentCategory ComponentCategory { get; init; }
+
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }
 
@@ -159,6 +171,7 @@ public sealed record StructuralElement(
         get
         {
             var half = Width / 2;
+            var halfDepth = (Depth > 0 ? Depth : Width) / 2;
             var length = Start.DistanceTo(End);
             if (Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft or StructuralElementKind.Dormer
                     or StructuralElementKind.Skylight or StructuralElementKind.Area && length >= 1e-9)
@@ -166,8 +179,8 @@ public sealed record StructuralElement(
             if (length < 1e-9)
                 return
                 [
-                    new(Start.X - half, Start.Y - half), new(Start.X + half, Start.Y - half),
-                    new(Start.X + half, Start.Y + half), new(Start.X - half, Start.Y + half)
+                    new(Start.X - half, Start.Y - halfDepth), new(Start.X + half, Start.Y - halfDepth),
+                    new(Start.X + half, Start.Y + halfDepth), new(Start.X - half, Start.Y + halfDepth)
                 ];
 
             var normalX = -(End.Y - Start.Y) / length * half;

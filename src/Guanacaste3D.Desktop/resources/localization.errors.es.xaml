@@ -17,6 +17,7 @@
   <sys:String x:Key="Error.Hosted openings cannot overlap.">Las aberturas de un mismo muro no pueden solaparse.</sys:String>
   <sys:String x:Key="Error.The opening can only move to a wall on its level.">La abertura solo puede pasar a un muro del mismo nivel.</sys:String>
   <sys:String x:Key="Error.Invalid column definitions.">Las columnas no son válidas.</sys:String>
+  <sys:String x:Key="Error.Invalid component family geometry.">La geometría de la familia de componente no es válida.</sys:String>
   <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>

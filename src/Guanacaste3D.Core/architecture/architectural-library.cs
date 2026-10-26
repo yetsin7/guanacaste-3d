@@ -13,7 +13,10 @@ public sealed record ColumnPreset(string Name, ColumnShape Shape, double Width, 
 
 /// <summary>A named structural or architectural element section, with the style that shapes its geometry.</summary>
 public sealed record ElementPreset(string Name, StructuralElementKind Kind, ElementStyle Style, double Width,
-    double Height, double Offset);
+    double Height, double Offset, double Depth = 0,
+    ResidentialComponentShape ComponentShape = ResidentialComponentShape.Box,
+    ResidentialComponentCategory ComponentCategory = ResidentialComponentCategory.None,
+    string? LocalizationKey = null);
 
 /// <summary>
 /// The standard catalog of architectural types that ships with Guanacaste 3D: wall assemblies, door and window
@@ -171,7 +174,8 @@ public static class ArchitecturalLibrary
         new("Wide Gutter 200 × 120 mm", StructuralElementKind.Gutter, ElementStyle.Default, 0.20, 0.12, 2.85),
         new("Square Downspout 90 mm", StructuralElementKind.Downspout, ElementStyle.Default, 0.09, 2.85, 0),
         new("Round Downspout Ø100 mm", StructuralElementKind.Downspout, ElementStyle.Round, 0.10, 2.85, 0),
-        new("Curtain Wall 100 mm", StructuralElementKind.CurtainWall, ElementStyle.Default, 0.10, 3.00, 0)
+        new("Curtain Wall 100 mm", StructuralElementKind.CurtainWall, ElementStyle.Default, 0.10, 3.00, 0),
+        .. ResidentialComponentCatalog.Presets
     ];
 
     /// <summary>Presets that apply to one kind of element, in catalog order.</summary>
