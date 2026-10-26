@@ -16,6 +16,18 @@ static class ArchitectureChecks
         CheckNewElements(check);
         CheckOperatedOpenings(check);
         CheckDraftingAndEditing(check);
+        CheckShowcase(check);
+    }
+
+    private static void CheckShowcase(Action<bool, string> check)
+    {
+        var house = ArchitecturalShowcase.Create();
+        house.Validate();
+        var kinds = house.StructuralElements.Select(item => item.Kind).Distinct().Count();
+        check(Triangles(house) > 2000 && kinds >= 8 && house.Floors.Any(floor => floor.IsPitched) &&
+              house.OpeningTypes.Where(type => house.Openings.Any(o => o.OpeningTypeId == type.Id))
+                  .Select(type => type.Operation).Distinct().Count() >= 6,
+            "The architectural showcase house validates and exercises roofs, 8+ element kinds and 6+ opening operations");
     }
 
     private static int Triangles(BuildingDocument document) => BuildingMesher.Build(document).TriangleCount;
