@@ -104,6 +104,11 @@ public sealed record RenderSettings
     /// hundreds of meters, so the ground meets the sky softly. 1 is clear air (scaled by turbidity), 0 turns it off.
     /// </summary>
     public float AerialPerspective { get; init; } = 1f;
+    /// <summary>
+    /// Share of a clear sky covered by procedural cumulus, 0–1. Clouds brighten the sky light around them and keep clear
+    /// of the sun's disk, so sunlight and shadows are unchanged. Ignored by the overcast sky, which is already cloud.
+    /// </summary>
+    public float CloudCover { get; init; } = 0.3f;
     /// <summary>Reflectance of the ground seen below the horizon when the scene has none.</summary>
     public Vector3 GroundColor { get; init; } = new(0.30f, 0.29f, 0.27f);
 

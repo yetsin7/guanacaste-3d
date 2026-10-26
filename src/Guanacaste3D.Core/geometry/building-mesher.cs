@@ -11,7 +11,11 @@ public enum SurfaceKind : byte
     Ground,
     DoorLeaf,
     OpeningFrame,
-    Structure
+    Structure,
+    /// <summary>Leaves of trees and shrubs.</summary>
+    Foliage,
+    /// <summary>Trunks and limbs of trees.</summary>
+    Bark
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -21,12 +25,24 @@ public sealed class SceneMesh
     public List<int> Indices { get; } = [];
     public List<SurfaceKind> TriangleKinds { get; } = [];
 
+    /// <summary>
+    /// Per-vertex shading normals, aligned with <see cref="Positions"/>, or null when every triangle is flat. A zero
+    /// normal marks a flat vertex. Created by the first <see cref="AddSmoothTriangle"/>.
+    /// </summary>
+    public List<Vector3>? Normals { get; private set; }
+
     public int TriangleCount => TriangleKinds.Count;
 
     /// <summary>Appends one triangle with its own three vertices.</summary>
     public void AddTriangle(Vector3 a, Vector3 b, Vector3 c, SurfaceKind kind)
     {
         var start = Positions.Count;
+        if (Normals is { } normals)
+        {
+            normals.Add(Vector3.Zero);
+            normals.Add(Vector3.Zero);
+            normals.Add(Vector3.Zero);
+        }
         Positions.Add(a);
         Positions.Add(b);
         Positions.Add(c);
@@ -34,6 +50,22 @@ public sealed class SceneMesh
         Indices.Add(start + 1);
         Indices.Add(start + 2);
         TriangleKinds.Add(kind);
+    }
+
+    /// <summary>Appends a triangle shaded with interpolated vertex normals, for curved surfaces such as foliage.</summary>
+    public void AddSmoothTriangle(Vector3 a, Vector3 b, Vector3 c, Vector3 normalA, Vector3 normalB, Vector3 normalC,
+        SurfaceKind kind)
+    {
+        if (Normals is null)
+        {
+            Normals = new List<Vector3>(Positions.Count + 3);
+            for (var index = 0; index < Positions.Count; index++) Normals.Add(Vector3.Zero);
+        }
+        AddTriangle(a, b, c, kind);
+        var start = Positions.Count - 3;
+        Normals[start] = normalA;
+        Normals[start + 1] = normalB;
+        Normals[start + 2] = normalC;
     }
 
     /// <summary>Appends a planar quad given in counter-clockwise order seen from its front side.</summary>
@@ -97,6 +129,11 @@ public static class BuildingMesher
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
             var datum = elevations[element.LevelId];
+            if (element.Kind == StructuralElementKind.Planting)
+            {
+                PlantGeometry.AppendTo(mesh, element, datum);
+                continue;
+            }
             foreach (var part in ElementGeometry.Parts(element))
                 AddPart(mesh, part, datum);
         }

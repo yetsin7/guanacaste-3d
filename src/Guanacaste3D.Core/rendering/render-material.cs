@@ -18,7 +18,11 @@ public enum SurfacePattern : byte
     /// <summary>Masonry blocks in running bond.</summary>
     Blocks,
     /// <summary>Fine mottling for poured concrete and plaster.</summary>
-    Concrete
+    Concrete,
+    /// <summary>Clusters of leaves: light and dark clumps with a strong, lumpy relief.</summary>
+    Foliage,
+    /// <summary>Furrowed bark running up a trunk.</summary>
+    Bark
 }
 
 /// <summary>
@@ -115,6 +119,16 @@ public static class MaterialLibrary
         SurfaceKind.OpeningFrame => new RenderMaterial
         {
             Name = "Marco", BaseColor = new(0.25f, 0.27f, 0.29f), Roughness = 0.45f, Metallic = 0.35f
+        },
+        SurfaceKind.Foliage => new RenderMaterial
+        {
+            Name = "Follaje", BaseColor = new(0.085f, 0.17f, 0.045f), Roughness = 0.62f,
+            Pattern = SurfacePattern.Foliage, PatternScale = 1
+        },
+        SurfaceKind.Bark => new RenderMaterial
+        {
+            Name = "Corteza", BaseColor = new(0.20f, 0.16f, 0.12f), Roughness = 0.95f,
+            Pattern = SurfacePattern.Bark, PatternScale = 1
         },
         SurfaceKind.Structure => new RenderMaterial
         {

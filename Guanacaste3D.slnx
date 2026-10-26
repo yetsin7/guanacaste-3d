@@ -3,4 +3,7 @@
   <Project Path="src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj" />
   <Project Path="tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj" />
   <Project Path="tests/Guanacaste3D.RenderBench/Guanacaste3D.RenderBench.csproj" />
+  <Project Path="tests/architecture-ui-checks/architecture-ui-checks.csproj" />
+  <Project Path="tests/desktop-interaction-checks/desktop-interaction-checks.csproj" />
+  <Project Path="tests/model-audit-checks/model-audit-checks.csproj" />
 </Solution>

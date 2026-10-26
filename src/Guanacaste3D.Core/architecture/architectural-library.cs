@@ -175,6 +175,17 @@ public static class ArchitecturalLibrary
         new("Square Downspout 90 mm", StructuralElementKind.Downspout, ElementStyle.Default, 0.09, 2.85, 0),
         new("Round Downspout Ø100 mm", StructuralElementKind.Downspout, ElementStyle.Round, 0.10, 2.85, 0),
         new("Curtain Wall 100 mm", StructuralElementKind.CurtainWall, ElementStyle.Default, 0.10, 3.00, 0),
+        // Site planting: Width is the canopy spread, Height the overall height.
+        new("Broadleaf Tree 8 m", StructuralElementKind.Planting, ElementStyle.Default, 6.0, 8.0, 0,
+            LocalizationKey: "Planting.Broadleaf"),
+        new("Guanacaste Tree 15 m", StructuralElementKind.Planting, ElementStyle.Guanacaste, 22.0, 15.0, 0,
+            LocalizationKey: "Planting.Guanacaste"),
+        new("Coconut Palm 9 m", StructuralElementKind.Planting, ElementStyle.Palm, 6.0, 9.0, 0,
+            LocalizationKey: "Planting.Palm"),
+        new("Cypress 12 m", StructuralElementKind.Planting, ElementStyle.Conifer, 4.5, 12.0, 0,
+            LocalizationKey: "Planting.Conifer"),
+        new("Shrub 1.5 m", StructuralElementKind.Planting, ElementStyle.Shrub, 2.0, 1.5, 0,
+            LocalizationKey: "Planting.Shrub"),
         .. ResidentialComponentCatalog.Presets
     ];
 

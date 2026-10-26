@@ -72,7 +72,13 @@ public enum StructuralElementKind
     Fascia,
 
     /// <summary>A band running along the edge of a floor slab.</summary>
-    SlabEdge
+    SlabEdge,
+
+    /// <summary>
+    /// A tree or shrub of the site, at a point. <see cref="StructuralElement.Width"/> is the canopy spread and
+    /// <see cref="StructuralElement.Height"/> the overall height; the style is the kind of growth.
+    /// </summary>
+    Planting
 }
 
 /// <summary>Variant of an element's geometry. Which values apply depends on the element kind.</summary>
@@ -103,7 +109,19 @@ public enum ElementStyle
     SolidParapet,
 
     /// <summary>A stair of treads on stringers, without risers.</summary>
-    Open
+    Open,
+
+    /// <summary>Planting: the guanacaste tree, with a short massive trunk under a very wide, flat umbrella crown.</summary>
+    Guanacaste,
+
+    /// <summary>Planting: a palm with a slender leaning trunk and a crown of arching fronds.</summary>
+    Palm,
+
+    /// <summary>Planting: a conifer of stacked, tapering tiers.</summary>
+    Conifer,
+
+    /// <summary>Planting: a low shrub of a few rounded clumps, without a visible trunk.</summary>
+    Shrub
 }
 
 /// <summary>
@@ -236,6 +254,8 @@ public static class StructuralElementStandards
         StructuralElementKind.Soffit => (0.60, 0.02, 2.95),
         StructuralElementKind.Fascia => (0.03, 0.25, 2.80),
         StructuralElementKind.SlabEdge => (0.20, 0.30, -0.30),
+        // A broadleaf tree 8 m tall with a 6 m canopy, standing on the level.
+        StructuralElementKind.Planting => (6.0, 8.0, 0),
         _ => (0.02, 0, 0)
     };
 }

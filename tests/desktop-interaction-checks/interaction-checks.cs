@@ -102,6 +102,7 @@ internal static class InteractionChecks
             Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3d").Dimensions.Count == 1,
                 "UI-created annotation survives native save and reopen");
             WallLoopClosingChecks(session);
+            PlantingChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -162,6 +163,38 @@ internal static class InteractionChecks
                 "Closing the loop ends the chain and leaves the wall tool armed for a new wall");
         }
         Invoke("SetWallTool", false);
+    }
+
+    /// <summary>
+    /// Arms the site component command, places a tree, steps to the next species with Space and places it, then checks
+    /// both plantings and their plan symbols.
+    /// </summary>
+    private static void PlantingChecks(DocumentSession session)
+    {
+        Invoke("ExecuteApplicationCommand", "SiteComponent");
+        var before = session.Document.StructuralElements.Count(element => element.Kind == StructuralElementKind.Planting);
+        Invoke("CreateStructuralFromTool", StructuralElementKind.Planting, new Point2(-20, 20), new Point2(-20, 20));
+        Check(Invoke("TryCyclePlantingSpecies") is true, "Space steps to the next planting species while the tool is armed");
+        Invoke("CreateStructuralFromTool", StructuralElementKind.Planting, new Point2(-10, 20), new Point2(-10, 20));
+        var plants = session.Document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Planting).ToArray();
+        Check(plants.Length == before + 2 && plants[^2].Style == ElementStyle.Default &&
+              plants[^1].Style == ElementStyle.Guanacaste,
+            "The site component command plants a broadleaf tree, then a guanacaste tree after Space");
+        var (scale, pan) = (Field<double>("_scale"), Field<Point>("_panOffset"));
+        SetField("_scale", 20.0);
+        SetField("_panOffset", new Point(300, -400));
+        Invoke("RenderPlan");
+        Pump();
+        Check(plants.TakeLast(2).All(plant => _canvas.Children.OfType<System.Windows.Shapes.Polygon>()
+                .Any(shape => shape.Tag is Guid id && id == plant.Id)),
+            "Each planting is drawn in plan with its canopy symbol and can be picked");
+        Invoke("CancelStructuralTool");
+        // The later render checks time their scene; leave it as it was.
+        foreach (var plant in plants.TakeLast(2)) session.RemoveStructuralElement(plant.Id);
+        SetField("_scale", scale);
+        SetField("_panOffset", pan);
+        Invoke("RefreshAll");
+        Pump();
     }
 
     /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>

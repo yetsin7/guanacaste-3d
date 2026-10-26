@@ -92,6 +92,9 @@ public partial class MainWindow
                 BeginKindTool(StructuralElementKind.ReferencePlane); return true;
             case "RibbonCommand.ArchitecturalLibrary":
                 OpenArchitecturalLibrary(); return true;
+            case "RibbonCommand.SiteComponent":
+            case "RibbonCommand.Planting":
+                BeginPlantingTool(); return true;
             case "RibbonCommand.ModelGroup":
                 BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group); return true;
             case "RibbonCommand.Column":

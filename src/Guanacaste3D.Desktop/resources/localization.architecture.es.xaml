@@ -111,6 +111,17 @@
   <sys:String x:Key="Library.Category.Stairs">Escaleras</sys:String>
   <sys:String x:Key="Library.Category.Ramps">Rampas</sys:String>
   <sys:String x:Key="Library.Category.Drainage">Canales y bajantes</sys:String>
+  <sys:String x:Key="Library.Category.Vegetation">Vegetación</sys:String>
+  <sys:String x:Key="Entity.Planting">Vegetación</sys:String>
+  <sys:String x:Key="Planting.Broadleaf">Árbol de hoja ancha 8 m</sys:String>
+  <sys:String x:Key="Planting.Guanacaste">Árbol de Guanacaste 15 m</sys:String>
+  <sys:String x:Key="Planting.Palm">Palmera de coco 9 m</sys:String>
+  <sys:String x:Key="Planting.Conifer">Ciprés 12 m</sys:String>
+  <sys:String x:Key="Planting.Shrub">Arbusto 1,5 m</sys:String>
+  <sys:String x:Key="ElementStyle.Guanacaste">Copa de sombrilla</sys:String>
+  <sys:String x:Key="ElementStyle.Palm">Palmera</sys:String>
+  <sys:String x:Key="ElementStyle.Conifer">Conífera</sys:String>
+  <sys:String x:Key="ElementStyle.Shrub">Arbusto</sys:String>
   <sys:String x:Key="Library.Category.CurtainWalls">Muros cortina</sys:String>
   <sys:String x:Key="Library.Category.Seating">Sillas y sofás</sys:String>
   <sys:String x:Key="Library.Category.Tables">Mesas y escritorios</sys:String>

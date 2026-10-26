@@ -54,6 +54,17 @@ A physically based CPU path tracer, tuned for architecture:
   pattern also has **relief**: the shading normal follows a height field (grout
   lines, mortar joints, board gaps, trowelled plaster, grass blades), so grazing
   sun picks out the joints. Fine relief fades with distance so it never sparkles.
+- **Vegetation**: site plantings (*Masa y emplazamiento → Componente de
+  emplazamiento*, or the library's *Vegetación*) are generated procedurally:
+  broadleaf tree, **guanacaste tree** (short massive trunk, very wide umbrella
+  crown), coconut palm, cypress and shrub. Each tree is seeded by its id, so no
+  two look alike and one always regenerates the same; it is fitted exactly to
+  its height and canopy spread. Canopies are smooth-shaded lumpy clusters; the
+  foliage and bark materials add leaf clumps and furrows as relief.
+- **Clouds**: a procedural cumulus layer about 1.5 km up (*Nubes*, 0–100 %),
+  lit by the sun with a silver lining and greyer thick bodies, fading toward the
+  horizon. Clouds part around the sun's disk, so sunlight and shadows do not
+  change with the slider.
 - **Atmosphere**: aerial perspective veils distant surfaces with the color of
   the horizon (clear air ≈ 12 km visibility, shorter with turbidity), and the
   daytime horizon band is whitened, removing the pink cast of the Perez fit.

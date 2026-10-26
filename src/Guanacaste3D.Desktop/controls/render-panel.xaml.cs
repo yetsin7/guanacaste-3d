@@ -259,7 +259,11 @@ public partial class RenderPanel : UserControl
 
     private RenderSettings LightingFor(RenderQuality quality, ResourceMode resources) =>
         RenderPresets.Lighting(Scenario(), Latitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear, HourSlider.Value,
-            quality, resources) with { AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f };
+            quality, resources) with
+        {
+            AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f,
+            CloudCover = (float)(CloudSlider.Value / 100)
+        };
 
     private RenderSettings PreviewSettings() => LightingFor(RenderQuality.Draft, ResourceMode.Eco) with
     {

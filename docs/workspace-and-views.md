@@ -1,6 +1,6 @@
 # Workspace, views and icons
 
-How the drawing area behaves in version 0.10. Everything here is covered by
+How the drawing area behaves in version 0.11. Everything here is covered by
 `tests/desktop-interaction-checks` and `tests/Guanacaste3D.Checks`.
 
 ## Views
@@ -41,6 +41,11 @@ How the drawing area behaves in version 0.10. Everything here is covered by
 - **Keys while drawing walls**: SHIFT constrains to the axes like *Ortogonal*,
   SPACE flips the wall to the other side of a face location line, F8 toggles
   *Ortogonal*, typing a number sets the length.
+- **Vegetation**: *Componente de emplazamiento* arms planting with the last
+  species used; SPACE steps through broadleaf, guanacaste, palm, cypress and
+  shrub. Plans show a translucent canopy with a scalloped edge (spiked for palms
+  and conifers) and the trunk; width is the canopy spread, height the overall
+  height, both editable like any element.
 - **Default names** follow a Spanish Revit template: *Nivel 1* (its plan view
   carries the same name), *{3D}*, *Sección 1*, *Tabla de cantidades*. Older
   projects keep any name the user gave; untouched English defaults are translated.

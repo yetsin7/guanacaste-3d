@@ -37,6 +37,11 @@ public partial class MainWindow
     private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
     {
         if (TryPanPlan(e)) return;
+        // Redrawing the plan replaces the shapes under a resting pointer, so WPF raises a MouseMove at the same position;
+        // answering it with another redraw would loop forever and starve the interface. Only real movement counts.
+        var position = PlanPosition(e);
+        if (_lastPlanPointer == position) return;
+        _lastPlanPointer = position;
         _placementPointer = CanvasToWorld(PlanPosition(e));
         if (_placingOpening is not null || _drawingColumn || _drawingRoom)
         {
@@ -57,9 +62,13 @@ public partial class MainWindow
         RenderPlan();
     }
 
+    /// <summary>Last pointer position a plan MouseMove was handled at, so repeats at the same place are ignored.</summary>
+    private Point? _lastPlanPointer;
+
     /// <summary>Removes cursor-attached ghosts when the pointer leaves the plan, retaining any first anchor.</summary>
     private void PlanCanvas_MouseLeave(object sender, MouseEventArgs e)
     {
+        _lastPlanPointer = null;
         _placementPointer = null;
         _structuralPreviewPoint = null;
         _wallPreviewPoint = null;

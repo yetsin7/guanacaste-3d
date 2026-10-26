@@ -392,6 +392,7 @@ MeshExportChecks.Run(Check);
 DenoiserChecks.Run(Check);
 SolarChecks.Run(Check);
 WallPlacementChecks.Run(Check);
+PlantingChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 InPlaceFamilyChecks.Run(Check);
 

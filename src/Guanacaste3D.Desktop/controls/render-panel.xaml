@@ -72,6 +72,15 @@
                   <Slider x:Name="HourSlider" Minimum="5" Maximum="19" Value="10" TickFrequency="0.25"
                           IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
                 </DockPanel>
+                <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Clouds}"/>
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                             VerticalAlignment="Center" TextAlignment="Right"
+                             Text="{Binding Value, ElementName=CloudSlider, StringFormat={}{0:0} %}"/>
+                  <Slider x:Name="CloudSlider" Minimum="0" Maximum="100" Value="30" TickFrequency="5"
+                          IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"
+                          ToolTip="{DynamicResource RenderPanel.CloudsHint}"/>
+                </DockPanel>
               </StackPanel></Grid>
               <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Latitude}"/>
               <TextBox x:Name="LatitudeInput" Text="12.1" Width="70" HorizontalAlignment="Left"
@@ -125,7 +134,7 @@
               </ComboBox>
               <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Temperature}"/>
               <DockPanel>
-                <TextBlock x:Name="TemperatureText" DockPanel.Dock="Right" Width="48"
+                <TextBlock x:Name="TemperatureText" DockPanel.Dock="Right" Width="48" Text="5500 K"
                            Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" TextAlignment="Right"/>
                 <Slider x:Name="TemperatureSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
                         IsSnapToTickEnabled="True" ValueChanged="Temperature_Changed"

@@ -242,6 +242,11 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Space && Keyboard.FocusedElement is not TextBox && TryCyclePlantingSpecies())
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Space && _drawingWall && Keyboard.FocusedElement is not TextBox && TryFlipWallSide())
         {
             e.Handled = true;

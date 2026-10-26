@@ -21,7 +21,7 @@ public partial class MainWindow
     {
         StructuralElementKind.Downspout or StructuralElementKind.IsolatedFoundation or
             StructuralElementKind.Component or StructuralElementKind.Connection or
-            StructuralElementKind.ModelText => StructuralPlacementMode.Point,
+            StructuralElementKind.ModelText or StructuralElementKind.Planting => StructuralPlacementMode.Point,
         StructuralElementKind.Skylight or StructuralElementKind.Area or StructuralElementKind.Dormer or
             StructuralElementKind.Opening or StructuralElementKind.Shaft => StructuralPlacementMode.Rectangle,
         _ => StructuralPlacementMode.Line
@@ -34,6 +34,36 @@ public partial class MainWindow
         _structuralPreset = preset;
         StatusText.Text = FormatText("Status.PresetArmed", preset.Name);
     }
+
+    /// <summary>
+    /// Arms planting with the species last used (a broadleaf tree at first). The other species are in the library's
+    /// Vegetation category; Space cycles them while the tool is armed.
+    /// </summary>
+    private void BeginPlantingTool()
+    {
+        var species = ArchitecturalLibrary.PresetsFor(StructuralElementKind.Planting).ToArray();
+        var preset = species.FirstOrDefault(candidate => candidate.Style == _lastPlantingStyle) ?? species[0];
+        BeginPresetTool(preset with { Name = LocalizedPresetName(preset) });
+    }
+
+    /// <summary>Growth style of the last planting placed or chosen, so the command resumes with it.</summary>
+    private ElementStyle _lastPlantingStyle = ElementStyle.Default;
+
+    /// <summary>While planting, Space steps to the next species of the catalog, like door swing flipping.</summary>
+    private bool TryCyclePlantingSpecies()
+    {
+        if (_structuralTool is not { Kind: StructuralElementKind.Planting }) return false;
+        var species = ArchitecturalLibrary.PresetsFor(StructuralElementKind.Planting).ToArray();
+        var current = Array.FindIndex(species, candidate => candidate.Style == (_structuralPreset?.Style ?? ElementStyle.Default));
+        var next = species[(current + 1) % species.Length];
+        _lastPlantingStyle = next.Style;
+        BeginPresetTool(next with { Name = LocalizedPresetName(next) });
+        return true;
+    }
+
+    /// <summary>The display name of a catalog entry in the interface language.</summary>
+    private string LocalizedPresetName(ElementPreset preset) =>
+        string.IsNullOrWhiteSpace(preset.LocalizationKey) ? preset.Name : GetText(preset.LocalizationKey);
 
     /// <summary>Arms a tool by element kind with the kind's default section.</summary>
     private void BeginKindTool(StructuralElementKind kind) => BeginStructuralTool(kind, PlacementModeFor(kind));
@@ -236,6 +266,7 @@ public partial class MainWindow
         StructuralElementKind.Soffit => "Entity.Soffit",
         StructuralElementKind.Fascia => "Entity.Fascia",
         StructuralElementKind.SlabEdge => "Entity.SlabEdge",
+        StructuralElementKind.Planting => "Entity.Planting",
         _ => null
     };
 }

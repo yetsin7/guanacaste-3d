@@ -24,6 +24,11 @@ public partial class MainWindow
                 AddAreaOutline(element, selected);
                 continue;
             }
+            if (element.Kind == StructuralElementKind.Planting)
+            {
+                AddPlantingSymbol(element, selected, preview: false);
+                continue;
+            }
             if (element.Kind == StructuralElementKind.ModelText)
             {
                 var origin = WorldToCanvas(element.Start);
@@ -162,7 +167,9 @@ public partial class MainWindow
             (width, height, offset, style) = (preset.Width, preset.Height, preset.Offset, preset.Style);
         var preview = new StructuralElement(Guid.Empty, _activeLevelId, tool.Kind, string.Empty,
             origin, pointer, width, height, offset) { Style = style };
-        if (tool.Kind is StructuralElementKind.ReferencePlane or StructuralElementKind.RoomSeparator
+        if (tool.Kind == StructuralElementKind.Planting)
+            AddPlantingSymbol(preview, selected: false, preview: true);
+        else if (tool.Kind is StructuralElementKind.ReferencePlane or StructuralElementKind.RoomSeparator
             or StructuralElementKind.AreaBoundary or StructuralElementKind.ModelLine)
             AddStructuralPreviewOutline([origin, pointer]);
         else if (HasDetailedPlanParts(preview))
@@ -189,6 +196,74 @@ public partial class MainWindow
         PropertiesText.Text = FormatText("Properties.StructuralSummary",
             element.Name, element.Width, element.Height, element.Offset, element.Length);
         return true;
+    }
+
+    /// <summary>
+    /// Draws a planting the way a Revit site plan does: a translucent canopy with a scalloped edge at its full spread, a
+    /// small trunk circle, and the mark of its growth (palm fronds, conifer spikes). The preview is the same symbol,
+    /// dashed and without hit testing.
+    /// </summary>
+    private void AddPlantingSymbol(StructuralElement plant, bool selected, bool preview)
+    {
+        var center = plant.Start;
+        var radius = plant.Width / 2;
+        var stroke = selected ? Brushes.DarkOrange : preview ? Brushes.DarkOrange
+            : new SolidColorBrush(Color.FromRgb(46, 98, 44));
+        var (lobes, depth) = plant.Style switch
+        {
+            ElementStyle.Palm => (13, 0.22),
+            ElementStyle.Conifer => (16, 0.18),
+            ElementStyle.Shrub => (7, 0.10),
+            ElementStyle.Guanacaste => (18, 0.06),
+            _ => (11, 0.08)
+        };
+        var outline = new PointCollection();
+        const int samples = 144;
+        for (var index = 0; index < samples; index++)
+        {
+            var angle = index * Math.PI * 2 / samples;
+            // Rounded scallops for broadleaf canopies; sharp points for palm fronds and conifer branches.
+            var wave = Math.Abs(Math.Sin(angle * lobes / 2));
+            var shape = plant.Style is ElementStyle.Palm or ElementStyle.Conifer ? Math.Pow(wave, 6) : Math.Sqrt(wave);
+            var r = radius * (1 - depth + depth * shape);
+            outline.Add(WorldToCanvas(new Point2(center.X + r * Math.Cos(angle), center.Y + r * Math.Sin(angle))));
+        }
+        PlanCanvas.Children.Add(new Polygon
+        {
+            Points = outline,
+            Fill = preview ? Brushes.Transparent : new SolidColorBrush(Color.FromArgb(70, 96, 156, 72)),
+            Stroke = stroke,
+            StrokeThickness = selected ? 2 : 1,
+            StrokeDashArray = preview ? new DoubleCollection { 4, 3 } : null,
+            IsHitTestVisible = !preview,
+            Tag = preview ? null : plant.Id
+        });
+        if (plant.Style is ElementStyle.Palm or ElementStyle.Conifer)
+            for (var index = 0; index < lobes; index++)
+            {
+                var angle = (index + 0.5) * Math.PI * 2 / lobes;
+                var tip = new Point2(center.X + radius * 0.9 * Math.Cos(angle), center.Y + radius * 0.9 * Math.Sin(angle));
+                var from = WorldToCanvas(center);
+                var to = WorldToCanvas(tip);
+                PlanCanvas.Children.Add(new Line
+                {
+                    X1 = from.X, Y1 = from.Y, X2 = to.X, Y2 = to.Y, Stroke = stroke, StrokeThickness = 0.8,
+                    IsHitTestVisible = false
+                });
+            }
+        var trunk = Math.Max(0.06, Core.Geometry.PlantGeometry.Proportions(plant.Style, plant.Height, plant.Width).TrunkRadius)
+                    * _scale;
+        if (plant.Style == ElementStyle.Shrub) return;
+        var centerPoint = WorldToCanvas(center);
+        var trunkMark = new Ellipse
+        {
+            Width = trunk * 2, Height = trunk * 2, Stroke = stroke, StrokeThickness = 1,
+            Fill = preview ? Brushes.Transparent : new SolidColorBrush(Color.FromRgb(120, 94, 66)),
+            IsHitTestVisible = !preview, Tag = preview ? null : plant.Id
+        };
+        Canvas.SetLeft(trunkMark, centerPoint.X - trunk);
+        Canvas.SetTop(trunkMark, centerPoint.Y - trunk);
+        PlanCanvas.Children.Add(trunkMark);
     }
 
     /// <summary>Gives each structural kind a distinct, semi-transparent plan fill.</summary>

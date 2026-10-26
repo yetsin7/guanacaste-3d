@@ -33,6 +33,7 @@ public static class ElementGeometry
             StructuralElementKind.Gutter => GutterParts(element),
             StructuralElementKind.CurtainWall => CurtainWallParts(element),
             StructuralElementKind.Skylight => SkylightParts(element),
+            StructuralElementKind.Planting => PlantGeometry.ProxyParts(element),
             StructuralElementKind.Component when element.ComponentShape != ResidentialComponentShape.Box =>
                 ResidentialComponentGeometry.Parts(element),
             StructuralElementKind.Downspout or StructuralElementKind.Component or

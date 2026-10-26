@@ -44,6 +44,8 @@ public partial class MainWindow
     {
         if (_panAnchor is not Point anchor) return false;
         var current = e.GetPosition(PlanCanvas);
+        // A move to the same place (WPF raises one after every redraw under the pointer) changes nothing to pan.
+        if (current == anchor) return true;
         _panOffset = new Point(_panOffset.X + current.X - anchor.X, _panOffset.Y + current.Y - anchor.Y);
         _panAnchor = current;
         RenderPlan();

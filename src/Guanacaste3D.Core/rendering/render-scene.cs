@@ -88,6 +88,14 @@ public sealed class RenderSceneBuilder
         var start = _positions.Count;
         var meshPositions = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(mesh.Positions);
         _positions.AddRange(meshPositions);
+        if (mesh.Normals is { } meshNormals && meshNormals.Count == mesh.Positions.Count)
+        {
+            // Smooth-shaded parts of the building (foliage, trunks); flat vertices carry a zero normal.
+            _anyNormals = true;
+            PadNormals(start);
+            foreach (var normal in meshNormals)
+                _normals.Add(normal.LengthSquared() > 1e-12f ? Vector3.Normalize(normal) : Vector3.Zero);
+        }
         for (var triangle = 0; triangle < mesh.TriangleCount; triangle++)
         {
             var a = mesh.Indices[triangle * 3];

@@ -1,7 +1,15 @@
 # Development status
 
-Last updated: 2026-10-25. Version in development: 0.4.0 (csproj still says 0.3.0
-until the parameters increment lands).
+Last updated: 2026-10-26. Version: 0.11.0.
+
+## Revit-style wall drawing, site planting and a photographic render (0.10–0.11, 2026-10-26)
+
+- Wall chains close on their first point (30 px magnet, joined corner also with face location lines); Revit snap
+  order with nearest-on-wall, angular and alignment snapping; SHIFT ortho, SPACE flip; Spanish default names.
+- Site planting: five procedural species (broadleaf, guanacaste, palm, cypress, shrub), plan symbols, library
+  category, SPACE to change species, exact height and spread; smooth vertex normals in `SceneMesh`.
+- Render: procedural relief, new lawn, aerial perspective, whitened horizon, procedural clouds, AgX tone mapping,
+  white balance, and denoising of rough reflections and window panes.
 
 
 ## Native documents and family-system foundation (2026-10-25)

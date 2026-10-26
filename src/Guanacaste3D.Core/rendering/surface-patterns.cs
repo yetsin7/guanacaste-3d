@@ -75,6 +75,21 @@ internal static class SurfacePatterns
                 var grain = ValueNoise(u * 22f, v * 22f);
                 return new Vector3(0.94f + 0.07f * blotch + 0.04f * grain);
             }
+            case SurfacePattern.Foliage:
+            {
+                // Sunlit leaf clusters turn yellow-green, the gaps between them fall to a deep blue-green.
+                var clusters = ValueNoise(u * 6f, v * 6f);
+                var leaves = ValueNoise(u * 23f + 4, v * 23f - 7);
+                var tone = 0.62f + 0.55f * clusters + 0.30f * (leaves - 0.5f);
+                var light = Math.Clamp((clusters - 0.45f) * 1.6f, 0f, 1f);
+                return Vector3.Lerp(new Vector3(0.82f, 0.95f, 1.05f), new Vector3(1.22f, 1.12f, 0.78f), light) * tone;
+            }
+            case SurfacePattern.Bark:
+            {
+                var furrows = ValueNoise(u * 18f, v * 1.6f);
+                var grain = ValueNoise(u * 60f, v * 6f);
+                return new Vector3(0.70f + 0.45f * furrows + 0.12f * grain);
+            }
             default:
                 return Vector3.One;
         }
@@ -152,6 +167,15 @@ internal static class SurfacePatterns
                 var sand = (ValueNoise(worldU * 140f, worldV * 140f) - 0.5f) * 0.00012f;
                 return (trowel + sand) * fade;
             }
+            case SurfacePattern.Foliage:
+            {
+                // Clumps of leaves a few centimeters proud of the canopy: the sun picks out each cluster.
+                var clumps = ValueNoise(worldU * 6f, worldV * 6f) * 0.03f;
+                var leaves = ValueNoise(worldU * 23f, worldV * 23f) * 0.008f * fade;
+                return clumps + leaves;
+            }
+            case SurfacePattern.Bark:
+                return ValueNoise(worldU * 18f, worldV * 1.6f) * 0.012f + ValueNoise(worldU * 60f, worldV * 6f) * 0.002f * fade;
             case SurfacePattern.Grass:
             {
                 var blades = ValueNoise(worldU * 26f, worldV * 26f) * 0.004f + ValueNoise(worldU * 70f, worldV * 70f) * 0.0015f;

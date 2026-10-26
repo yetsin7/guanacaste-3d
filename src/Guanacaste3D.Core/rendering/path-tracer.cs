@@ -39,6 +39,9 @@ public sealed class PathTracer
     private Vector3 _sunRadiance;             // radiance of the sun disk; zero when the sun is off
     private Vector3 _skyScale;
     private float _hazeDensity;               // extinction of aerial perspective per meter; zero turns it off
+    private CloudLayer? _clouds;
+    private Vector3 _cloudSunlight;           // sun irradiance over π that lights the clouds
+    private Vector3 _cloudSkylight;           // zenith sky radiance that fills them
     private readonly Vector3 _sceneMin;
     private readonly Vector3 _sceneMax;
     private readonly SkyPortals? _portalCandidates;   // found once from the geometry; the setting only switches them on
@@ -166,6 +169,9 @@ public sealed class PathTracer
             ? sunColor * (MathF.PI * settings.SunIntensity / solidAngle)
             : Vector3.Zero;
         _skyScale = new Vector3(Math.Max(0, settings.SkyIntensity));
+        _clouds = settings.Sky == SkyKind.Clear && settings.CloudCover > 0.001f ? new CloudLayer(settings.CloudCover, 7) : null;
+        _cloudSunlight = settings.SunIntensity > 0 ? sunColor * settings.SunIntensity : Vector3.Zero;
+        _cloudSkylight = _sky.Radiance(Vector3.UnitZ) * _skyScale;
         // Koschmieder: visibility V gives 2 % contrast left, so the extinction is 3.912 / V. Clear air (turbidity 2.5)
         // is taken as 12 km and hazier air shortens it in proportion.
         var visibility = 12000f * 2.5f / Math.Clamp(settings.Turbidity, 1.5f, 20f);
@@ -1099,7 +1105,18 @@ public sealed class PathTracer
     }
 
     /// <summary>Radiance of the sky dome (no sun disk) in a direction.</summary>
-    private Vector3 SkyRadiance(Vector3 direction) => _sky.Radiance(direction) * _skyScale;
+    private Vector3 SkyRadiance(Vector3 direction)
+    {
+        var sky = _sky.Radiance(direction) * _skyScale;
+        if (_clouds is null || direction.Z <= 0.015f) return sky;
+        var (opacity, thickness) = _clouds.Sample(direction);
+        // Clouds part around the sun's disk, so the sun that lights the scene and casts its shadows is never hidden.
+        var clearOfSun = 1 - MathF.Pow(Math.Clamp((Vector3.Dot(direction, _sunDirection) - 0.985f) / 0.0145f, 0f, 1f), 0.5f);
+        opacity *= _sunRadiance == Vector3.Zero ? 1 : clearOfSun;
+        if (opacity <= 0.001f) return sky;
+        var cloud = CloudLayer.Shade(direction, thickness, _sunDirection, _cloudSunlight, _cloudSkylight);
+        return Vector3.Lerp(sky, cloud, opacity);
+    }
 
     /// <summary>
     /// Samples the sun, explicit lights and emissive triangles at a vertex and returns the reflected radiance,

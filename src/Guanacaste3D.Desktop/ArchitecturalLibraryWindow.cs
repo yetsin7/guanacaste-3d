@@ -140,6 +140,7 @@ internal sealed class ArchitecturalLibraryWindow : Window
                 StructuralElementKind.Ramp => "Ramps",
                 StructuralElementKind.Gutter or StructuralElementKind.Downspout => "Drainage",
                 StructuralElementKind.CurtainWall => "CurtainWalls",
+                StructuralElementKind.Planting => "Vegetation",
                 _ => "Framing"
             };
             var displayName = PresetName(preset);

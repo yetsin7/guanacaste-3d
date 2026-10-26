@@ -42,6 +42,8 @@
   <sys:String x:Key="RenderPanel.Image">Imagen</sys:String>
   <sys:String x:Key="RenderPanel.Exposure">Exposición</sys:String>
   <sys:String x:Key="RenderPanel.AutoExposure">Exposición automática</sys:String>
+  <sys:String x:Key="RenderPanel.Clouds">Nubes</sys:String>
+  <sys:String x:Key="RenderPanel.CloudsHint">Parte del cielo cubierta por cúmulos. Las nubes no tapan el sol: la luz y las sombras no cambian.</sys:String>
   <sys:String x:Key="RenderPanel.Look">Estilo de imagen</sys:String>
   <sys:String x:Key="RenderPanel.LookPhotographic">Fotográfico (AgX)</sys:String>
   <sys:String x:Key="RenderPanel.LookContrast">Contrastado (ACES)</sys:String>

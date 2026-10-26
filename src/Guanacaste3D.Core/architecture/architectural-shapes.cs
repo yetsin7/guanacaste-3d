@@ -86,6 +86,8 @@ public static class ArchitecturalShapes
         StructuralElementKind.Railing =>
             [ElementStyle.Default, ElementStyle.Pickets, ElementStyle.GlassPanel, ElementStyle.Cable, ElementStyle.SolidParapet],
         StructuralElementKind.Stair => [ElementStyle.Default, ElementStyle.Open],
+        StructuralElementKind.Planting =>
+            [ElementStyle.Default, ElementStyle.Guanacaste, ElementStyle.Palm, ElementStyle.Conifer, ElementStyle.Shrub],
         _ => [ElementStyle.Default]
     };
 
@@ -121,13 +123,15 @@ public static class ArchitecturalShapes
                 throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
             var lengthKind = element.Kind is StructuralElementKind.Ramp or StructuralElementKind.Gutter
                 or StructuralElementKind.CurtainWall;
-            var pointKind = element.Kind is StructuralElementKind.Downspout;
+            var pointKind = element.Kind is StructuralElementKind.Downspout or StructuralElementKind.Planting;
             if (!lengthKind && !pointKind && element.Kind != StructuralElementKind.Skylight) continue;
             if (element.Id == Guid.Empty || !document.Levels.Any(level => level.Id == element.LevelId) ||
                 !double.IsFinite(element.Width) || !double.IsFinite(element.Height) ||
                 !double.IsFinite(element.Offset) || !double.IsFinite(element.Length) ||
                 element.Height is <= 0 or > 100 || (lengthKind && element.Length is < 0.1 or > 1000) ||
-                (element.Kind != StructuralElementKind.Skylight && element.Width is < 0.02 or > 10))
+                (element.Kind != StructuralElementKind.Skylight && element.Width is < 0.02 or > 10 &&
+                 element.Kind != StructuralElementKind.Planting) ||
+                (element.Kind == StructuralElementKind.Planting && element.Width is < 0.2 or > 50))
                 throw new InvalidDataException("Invalid ramp, gutter, downspout, curtain wall or skylight geometry.");
         }
     }
