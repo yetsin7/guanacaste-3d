@@ -12,5 +12,7 @@
   <sys:String x:Key="Demo.Line">Clic en el punto inicial y clic en el final. La vista previa muestra el elemento antes de crearlo.</sys:String>
   <sys:String x:Key="Demo.Rectangle">Clic en una esquina y clic en la esquina opuesta para trazar el contorno.</sys:String>
   <sys:String x:Key="Demo.Move">Selecciona un elemento y arrástralo; las cotas temporales muestran la distancia mientras se mueve.</sys:String>
+  <sys:String x:Key="Demo.View">Haz clic en el botón: la vista cambia o se crea en el momento y queda abierta en una pestaña.</sys:String>
+  <sys:String x:Key="Demo.Panel">Haz clic en el botón para abrir su cuadro de opciones. Ajusta los valores y acepta para aplicarlos al proyecto.</sys:String>
   <sys:String x:Key="Demo.Dimension">Toca el número de una cota temporal, escribe la nueva distancia y pulsa Enter: el elemento se mueve. La flecha la convierte en cota permanente.</sys:String>
 </ResourceDictionary>

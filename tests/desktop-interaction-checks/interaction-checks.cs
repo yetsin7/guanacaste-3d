@@ -165,8 +165,13 @@ internal static class InteractionChecks
     private static void CaptureDemoToolTip()
     {
         var door = FindButtons(_window).First(button => button.Tag as string == "Door");
-        Check(door.ToolTip is string && door.ContextMenu is { Items.Count: 1 },
-            "Door hover remains a plain label and its demonstration requires the context menu");
+        var allRibbonButtons = FindButtons(_window).Where(button => button.Tag is string).ToList();
+        Check(door.ToolTip is ToolTip && allRibbonButtons.Count > 10 && allRibbonButtons.All(button => button.ToolTip is ToolTip),
+            "Every ribbon button carries an animated demonstration tooltip");
+        Check(new[] { "Door", "Window", "Wall", "Move", "Column", "Room", "Render", "Levels", "Schedules", "ManageLinks" }
+            .Select(CommandDemoToolTip.KindFor).All(kind => kind != CommandDemoKind.None) &&
+            CommandDemoToolTip.KindFor("Levels") == CommandDemoKind.OpenPanel && CommandDemoToolTip.KindFor("Move") == CommandDemoKind.MoveElement,
+            "Tools and dialogs alike are mapped to a demonstration scene");
         var tip = CommandDemoToolTip.CreateDemo("Door", door.ToolTip.ToString()!);
         tip.PlacementTarget = door;
         tip.IsOpen = true;

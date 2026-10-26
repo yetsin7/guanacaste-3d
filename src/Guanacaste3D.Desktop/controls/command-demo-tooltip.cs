@@ -18,13 +18,19 @@ public enum CommandDemoKind
     DrawLine,
     DrawRectangle,
     MoveElement,
-    EditDimension
+    EditDimension,
+
+    /// <summary>The command switches or creates a view: the plan turns into a 3D drawing.</summary>
+    ChangeView,
+
+    /// <summary>The command opens a dialog or panel: the button is clicked and its window appears.</summary>
+    OpenPanel
 }
 
 /// <summary>
-/// Provides ordinary ribbon tooltips and opt-in animated demonstrations for implemented workflows.
-/// Demonstrations open only through an explicit context-menu command, preventing incidental pointer
-/// movement from covering the workspace with animated content.
+/// Gives every command button a tooltip with its title, a sentence on how it works and a looping animated
+/// demonstration, like the one the door tool has. The scene is built only when the tooltip is about to show, so
+/// hundreds of buttons cost nothing until the pointer rests on one.
 /// </summary>
 public static class CommandDemoToolTip
 {
@@ -33,47 +39,76 @@ public static class CommandDemoToolTip
     private static readonly Duration Loop = new(TimeSpan.FromSeconds(4));
     private static readonly Uri DemoStrings = new("/Guanacaste3D.Desktop;component/resources/localization.demos.es.xaml", UriKind.Relative);
 
-    /// <summary>Chooses the scene for a ribbon command id; commands without a working tool get none.</summary>
-    public static CommandDemoKind KindFor(string commandId) => commandId switch
+    /// <summary>
+    /// Chooses the scene for a command id. Specific tools get their own scene; the rest are grouped by what they do
+    /// (place a point object, draw a line, draw an area, edit existing elements, measure, change a view) and anything else
+    /// is shown as a button that opens a panel, so no command is left without a demonstration.
+    /// </summary>
+    public static CommandDemoKind KindFor(string commandId)
     {
-        "Wall" or "WallByFace" => CommandDemoKind.DrawWall,
-        "Door" => CommandDemoKind.PlaceDoor,
-        "Window" => CommandDemoKind.PlaceWindow,
-        // TODO(human): map the remaining implemented tools to PlacePoint, DrawLine, DrawRectangle,
-        // MoveElement or EditDimension (e.g. "Column", "Railing", "Room", "Move", "AlignedDimension").
-        _ => CommandDemoKind.None
-    };
-
-    /// <summary>Adds a plain hover label and an explicit context-menu action for available demonstrations.</summary>
-    public static void Attach(FrameworkElement button, string commandId, string title)
-    {
-        var kind = KindFor(commandId);
-        button.ToolTip = title;
-        ToolTipService.SetInitialShowDelay(button, 700);
-        ToolTipService.SetShowDuration(button, 8000);
-        ToolTipService.SetBetweenShowDelay(button, 400);
-        if (kind == CommandDemoKind.None) return;
-
-        EnsureStrings();
-        var demonstrationMenu = new MenuItem { Header = Text("Demo.Show") ?? title };
-        demonstrationMenu.Click += (_, _) => ShowDemo(button, commandId, title);
-        button.ContextMenu = new ContextMenu { Items = { demonstrationMenu } };
+        if (string.IsNullOrWhiteSpace(commandId)) return CommandDemoKind.None;
+        var id = commandId;
+        bool Has(params string[] words) => words.Any(word => id.Contains(word, StringComparison.OrdinalIgnoreCase));
+        return id switch
+        {
+            "Wall" or "WallByFace" or "Wall.Structural" => CommandDemoKind.DrawWall,
+            "Door" => CommandDemoKind.PlaceDoor,
+            "Window" => CommandDemoKind.PlaceWindow,
+            _ when Has("Dimension", "Tag", "Spot", "Annotation", "Text", "Keynote", "Symbol", "Detail") => CommandDemoKind.EditDimension,
+            _ when Has("Move", "Rotate", "Mirror", "Align", "Offset", "Array", "Copy", "Split", "Trim", "Extend", "Scale",
+                "Delete", "Similar", "Join", "Paste", "Match", "Group", "Edit", "Modify", "Attach", "Detach", "Flip") => CommandDemoKind.MoveElement,
+            _ when Has("Plan", "Elevation", "Section", "3D", "Model3D", "Camera", "Walkthrough", "Render", "Viewer", "View", "Sheet",
+                "Schedule", "Legend", "Callout", "Perspective", "Orthographic", "Orbit", "Zoom", "Shadows") => CommandDemoKind.ChangeView,
+            _ when Has("Floor", "Slab", "Roof", "Ceiling", "Room", "Area", "Space", "Zone", "Shaft", "Region", "Mass", "Site", "Pad",
+                "Toposurface", "Subregion", "Footing", "Foundation") => CommandDemoKind.DrawRectangle,
+            _ when Has("Line", "Railing", "Beam", "Brace", "Duct", "Pipe", "Conduit", "Cable", "Tray", "Gutter", "Ramp", "Stair",
+                "Grid", "Axis", "Truss", "Sweep", "Reveal", "Path", "Curve", "Arc", "Spline", "Circle", "Polyline", "Mullion",
+                "Curtain") => CommandDemoKind.DrawLine,
+            _ when Has("Column", "Pier", "Component", "Furniture", "Equipment", "Fixture", "Light", "Sprinkler", "Device", "Plant",
+                "Parking", "Point", "Fitting", "Terminal", "Opening", "Bolt", "Anchor", "Plate", "Shear", "Rebar", "Mullion") => CommandDemoKind.PlacePoint,
+            _ => CommandDemoKind.OpenPanel
+        };
     }
 
-    /// <summary>Builds and opens a demonstration after the user explicitly requests it.</summary>
-    private static void ShowDemo(FrameworkElement placementTarget, string commandId, string title)
+    /// <summary>Gives a button its animated tooltip, shown after the pointer rests on it.</summary>
+    public static void Attach(FrameworkElement button, string commandId, string title)
     {
-        var tip = CreateDemo(commandId, title);
-        tip.PlacementTarget = placementTarget;
-        tip.IsOpen = true;
+        ToolTipService.SetInitialShowDelay(button, 600);
+        ToolTipService.SetShowDuration(button, 30000);
+        ToolTipService.SetBetweenShowDelay(button, 250);
+        var tip = new ToolTip
+        {
+            Padding = new Thickness(10), Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, StaysOpen = true,
+            // The title is the content until the scene exists, so UI automation and accessibility never see an empty tip.
+            Content = title
+        };
+        var built = false;
+        button.ToolTip = tip;
+        button.ToolTipOpening += (_, _) =>
+        {
+            if (built) return;
+            built = true;
+            Populate(tip, commandId, title);
+        };
     }
 
     /// <summary>Creates a localized demonstration tooltip for explicit display and UI verification.</summary>
     public static ToolTip CreateDemo(string commandId, string title)
     {
+        var tip = new ToolTip
+        {
+            Padding = new Thickness(10), Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, StaysOpen = false
+        };
+        Populate(tip, commandId, title);
+        return tip;
+    }
+
+    /// <summary>Fills a tooltip with the title, the explanation and the scene, and ties the scene's animation to it.</summary>
+    private static void Populate(ToolTip tip, string commandId, string title)
+    {
         EnsureStrings();
         var kind = KindFor(commandId);
-        var description = Text(DescriptionKey(kind, commandId)) ?? Text("ToolTip." + commandId);
+        var description = Text("Demo." + commandId) ?? Text(DescriptionKey(kind, commandId)) ?? Text("ToolTip." + commandId);
         var layout = new StackPanel { Width = SceneWidth };
         layout.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 13 });
         if (description is not null)
@@ -99,19 +134,12 @@ public static class CommandDemoToolTip
                 Foreground = new SolidColorBrush(Color.FromRgb(110, 118, 128))
             });
         }
-        var tip = new ToolTip
-        {
-            Content = layout,
-            Padding = new Thickness(10),
-            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
-            StaysOpen = false
-        };
+        tip.Content = layout;
         if (scene is not null)
         {
             tip.Opened += (_, _) => scene.Start();
             tip.Closed += (_, _) => scene.Stop();
         }
-        return tip;
     }
 
     /// <summary>Maps a scene to its explanation; line, point and rectangle tools share one text each.</summary>
@@ -125,6 +153,8 @@ public static class CommandDemoToolTip
         CommandDemoKind.DrawRectangle => "Demo.Rectangle",
         CommandDemoKind.MoveElement => "Demo.Move",
         CommandDemoKind.EditDimension => "Demo.Dimension",
+        CommandDemoKind.ChangeView => "Demo.View",
+        CommandDemoKind.OpenPanel => "Demo.Panel",
         _ => "Demo." + commandId
     };
 
@@ -201,6 +231,28 @@ public static class CommandDemoToolTip
                 scene.Cursor((0, 200, 110), (1, 58, 42), (2.6, 58, 42), (4, 200, 110));
                 scene.Click(1.1, 58, 42);
                 break;
+            case CommandDemoKind.ChangeView:
+            {
+                // A plan outline is clicked and turns into an isometric box, the way a command switches the view.
+                var plan = scene.Box(70, 40, 108, 56, filled: false);
+                scene.Animate(plan, UIElement.OpacityProperty, (0, 1), (1.6, 1), (2, 0), (3.6, 0), (4, 1));
+                var solid = scene.Isometric(124, 70);
+                scene.Animate(solid, UIElement.OpacityProperty, (0, 0), (1.6, 0), (2, 1), (3.6, 1), (4, 0));
+                scene.Cursor((0, 200, 100), (1.2, 22, 14), (1.6, 22, 14), (4, 200, 100));
+                scene.Click(1.5, 22, 14);
+                break;
+            }
+            default:
+            {
+                // A button is clicked and its dialog opens: title bar, two fields and a confirm button.
+                scene.Box(10, 8, 28, 16, filled: true);
+                var dialog = scene.Dialog(66, 22);
+                scene.Animate(dialog, UIElement.OpacityProperty, (0, 0), (1.6, 0), (2, 1), (3.6, 1), (4, 0));
+                scene.Translate(dialog, (0, 0, 6), (1.6, 0, 6), (2, 0, 0), (4, 0, 0));
+                scene.Cursor((0, 190, 110), (1.2, 22, 14), (1.6, 22, 14), (2.6, 170, 100), (4, 190, 110));
+                scene.Click(1.5, 22, 14);
+                break;
+            }
         }
         return scene;
     }
@@ -292,6 +344,46 @@ public static class CommandDemoToolTip
             symbol.Children.Add(new Line { X1 = -24, Y1 = 1.5, X2 = 24, Y2 = 1.5, Stroke = Brushes.SteelBlue, StrokeThickness = 1 });
             Canvas.Children.Add(symbol);
             return symbol;
+        }
+
+        /// <summary>Draws a small isometric box whose origin is the centre of its top face.</summary>
+        public Canvas Isometric(double x, double y)
+        {
+            var box = new Canvas();
+            void Face(Color color, params Point[] points) => box.Children.Add(new Polygon
+            {
+                Points = new PointCollection(points), Fill = Frozen(color), Stroke = WallBrush, StrokeThickness = 1.2,
+                StrokeLineJoin = PenLineJoin.Round
+            });
+            Face(Color.FromRgb(226, 230, 236), new(0, -30), new(46, -8), new(0, 14), new(-46, -8));
+            Face(Color.FromRgb(176, 184, 194), new(-46, -8), new(0, 14), new(0, 40), new(-46, 18));
+            Face(Color.FromRgb(150, 160, 172), new(0, 14), new(46, -8), new(46, 18), new(0, 40));
+            Canvas.SetLeft(box, x);
+            Canvas.SetTop(box, y);
+            Canvas.Children.Add(box);
+            return box;
+        }
+
+        /// <summary>Draws a miniature dialog window with a title bar, two fields and a confirm button.</summary>
+        public Canvas Dialog(double x, double y)
+        {
+            var window = new Canvas();
+            void Part(double left, double top, double width, double height, Brush fill, Brush? stroke = null)
+            {
+                var part = new Rectangle { Width = width, Height = height, Fill = fill, Stroke = stroke, StrokeThickness = stroke is null ? 0 : 1 };
+                Canvas.SetLeft(part, left);
+                Canvas.SetTop(part, top);
+                window.Children.Add(part);
+            }
+            Part(0, 0, 118, 90, Brushes.White, Frozen(Color.FromRgb(168, 176, 188)));
+            Part(0, 0, 118, 14, AccentBrush);
+            Part(10, 26, 98, 10, Frozen(Color.FromRgb(228, 232, 238)));
+            Part(10, 44, 98, 10, Frozen(Color.FromRgb(228, 232, 238)));
+            Part(68, 68, 40, 14, AccentBrush);
+            Canvas.SetLeft(window, x);
+            Canvas.SetTop(window, y);
+            Canvas.Children.Add(window);
+            return window;
         }
 
         /// <summary>Adds a dimension value that fades in and out on the given keyframes.</summary>

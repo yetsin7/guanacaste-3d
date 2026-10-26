@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Guanacaste3D.Desktop.Controls;
 using Guanacaste3D.Desktop.Customization;
 
 namespace Guanacaste3D.Desktop;
@@ -89,6 +90,7 @@ public partial class MainWindow
         };
         button.Click += (_, _) => ExecuteCatalogCommand(definition);
         AutomationProperties.SetName(button, label);
+        CommandDemoToolTip.Attach(button, definition.CommandId, string.IsNullOrWhiteSpace(shortcut) ? label : $"{label} · {shortcut}");
         return button;
     }
 

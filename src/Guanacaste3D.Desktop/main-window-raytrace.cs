@@ -43,6 +43,7 @@ public partial class MainWindow
         InitializeModelSelection();
         InitializeViewTabs();
         InitializeProjectedViewZoom();
+        InitializeToolbarDemos();
         _links.Changed += OnLinksChanged;
         _sceneDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
         _sceneDebounce.Tick += (_, _) =>

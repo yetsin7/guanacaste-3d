@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
+using Guanacaste3D.Desktop.Controls;
 
 namespace Guanacaste3D.Desktop;
 
@@ -133,6 +135,37 @@ public partial class MainWindow
         matrix.Translate(now.X - start.X, now.Y - start.Y);
         canvas.RenderTransform = new MatrixTransform(matrix);
         _projectedPanStart = now;
+    }
+
+    /// <summary>
+    /// Gives the project browser's toolbar buttons the same animated demonstration tooltip as the ribbon, using the command
+    /// each one stands for.
+    /// </summary>
+    private void InitializeToolbarDemos()
+    {
+        string[] commands = ["Plan", "Schedule", "Sheet", "Levels", "Sheet"];
+        var buttons = StandardSidebar.Children.OfType<DockPanel>().SelectMany(panel => panel.Children.OfType<Border>())
+            .SelectMany(border => border.Child is StackPanel strip ? strip.Children.OfType<Button>() : []).ToList();
+        for (var index = 0; index < buttons.Count && index < commands.Length; index++)
+        {
+            var title = buttons[index].ToolTip as string ?? AutomationProperties.GetName(buttons[index]);
+            if (!string.IsNullOrEmpty(title)) CommandDemoToolTip.Attach(buttons[index], commands[index], title);
+        }
+        // Any command button a ribbon declared in markup, identified by its Tag, gets the same tooltip.
+        Loaded += (_, _) => AttachMissingDemos(this);
+    }
+
+    private static void AttachMissingDemos(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
+        {
+            if (child is Button { Tag: string commandId } button && button.ToolTip is not System.Windows.Controls.ToolTip)
+            {
+                var title = button.Content as string ?? button.ToolTip as string ?? AutomationProperties.GetName(button);
+                if (!string.IsNullOrEmpty(title)) CommandDemoToolTip.Attach(button, commandId, title);
+            }
+            AttachMissingDemos(child);
+        }
     }
 
     /// <summary>Closes every open view except the one in use.</summary>
