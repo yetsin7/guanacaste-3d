@@ -19,9 +19,12 @@ static class ShowcaseShot
             }
         };
         var garden = GardenScene(min, max);
-        var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
-            ? new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom() }.Where(scene => scene.Name == only).ToArray()
+        var all = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") == "night"
+            ? new[] { NightInterior() }
             : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom() };
+        var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
+            ? all.Where(scene => scene.Name == only).ToArray()
+            : all;
         foreach (var scene in scenes)
         {
             var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh, scene.Materials);
@@ -34,6 +37,49 @@ static class ShowcaseShot
                 tracer.ToBgra32(true, new ImageFinish { AutoExposure = true, ToneMapper = ToneMapper.Aces })));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
+    }
+
+    /// <summary>The demonstration house at dusk, lit by a ceiling light in every room and a floor lamp, seen from inside.</summary>
+    private static BenchmarkScene NightInterior()
+    {
+        var session = new Guanacaste3D.Core.DocumentSession(Guanacaste3D.Core.SampleProjects.CreateDemonstrationHouse());
+        var level = session.Document.Levels[0].Id;
+        var lights = Guanacaste3D.Core.ArchitecturalLibrary.ElementPresets.Where(preset => preset.ComponentShape is
+            Guanacaste3D.Core.ResidentialComponentShape.CeilingLight or Guanacaste3D.Core.ResidentialComponentShape.FloorLamp).ToArray();
+        var ceiling = lights.First(preset => preset.ComponentShape == Guanacaste3D.Core.ResidentialComponentShape.CeilingLight);
+        var lamp = lights.First(preset => preset.ComponentShape == Guanacaste3D.Core.ResidentialComponentShape.FloorLamp);
+        var rooms = session.Document.Rooms.ToArray();
+        foreach (var room in rooms)
+        {
+            var c = new Guanacaste3D.Core.Point2((room.FirstCorner.X + room.SecondCorner.X) / 2, (room.FirstCorner.Y + room.SecondCorner.Y) / 2);
+            session.AddElementFromPreset(level, ceiling, c, c);
+        }
+        var first = rooms[0];
+        var corner = new Guanacaste3D.Core.Point2(Math.Min(first.FirstCorner.X, first.SecondCorner.X) + 0.6, Math.Max(first.FirstCorner.Y, first.SecondCorner.Y) - 0.6);
+        session.AddElementFromPreset(level, lamp, corner, corner);
+        Guanacaste3D.Core.ElementPreset Of(Guanacaste3D.Core.ResidentialComponentShape shape) =>
+            Guanacaste3D.Core.ArchitecturalLibrary.ElementPresets.First(preset => preset.ComponentShape == shape);
+        var fx = Math.Min(first.FirstCorner.X, first.SecondCorner.X);
+        var fy = Math.Min(first.FirstCorner.Y, first.SecondCorner.Y);
+        var gy = Math.Max(first.FirstCorner.Y, first.SecondCorner.Y);
+        void Place(Guanacaste3D.Core.ResidentialComponentShape shape, double x, double y)
+        {
+            var at = new Guanacaste3D.Core.Point2(x, y);
+            session.AddElementFromPreset(level, Of(shape), at, at);
+        }
+        Place(Guanacaste3D.Core.ResidentialComponentShape.Rug, fx + 2.0, gy - 1.6);
+        Place(Guanacaste3D.Core.ResidentialComponentShape.Sofa, fx + 2.0, gy - 0.6);
+        Place(Guanacaste3D.Core.ResidentialComponentShape.Table, fx + 1.6, fy + 1.4);
+        Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 1.0, fy + 1.4);
+        Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 2.2, fy + 1.4);
+        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true);
+        var low = new Vector3((float)Math.Min(first.FirstCorner.X, first.SecondCorner.X), (float)Math.Min(first.FirstCorner.Y, first.SecondCorner.Y), 0);
+        var high = new Vector3((float)Math.Max(first.FirstCorner.X, first.SecondCorner.X), (float)Math.Max(first.FirstCorner.Y, first.SecondCorner.Y), 0);
+        return new BenchmarkScene("night", mesh,
+            new RenderCamera(new Vector3(high.X - 0.4f, low.Y + 0.4f, 1.6f), new Vector3(low.X + 0.5f, high.Y - 0.5f, 1.2f), 70) { CorrectVerticals = true },
+            Environment.GetEnvironmentVariable("G3_SHOT_DAY") == "1"
+                ? new RenderSettings()
+                : new RenderSettings { SunIntensity = 0, SkyIntensity = 0.03f, SunDirection = new Vector3(-0.5f, -0.5f, 0.02f) });
     }
 
     /// <summary>The demonstration house with one tree of every species around it, seen from the garden.</summary>
@@ -73,7 +119,8 @@ static class ShowcaseShot
             var stairId = session.AddElementFromPreset(level, spiral, new(wx1 + 2.5, wy0 - 1.5), new(wx1 + 3.5, wy0 - 1.5));
             session.AddRailingsOnHost(stairId);
         }
-        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true);
+        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true,
+            plants: Environment.GetEnvironmentVariable("G3_SHOT_MODEL_TREES") == "1" ? Guanacaste3D.Core.Geometry.PlantDetail.Model : Guanacaste3D.Core.Geometry.PlantDetail.Render);
         var center = (min + max) / 2;
         if (Environment.GetEnvironmentVariable("G3_SHOT_TEXTURES") is { } textureFolder)
         {
@@ -82,10 +129,26 @@ static class ShowcaseShot
             {
                 [Guanacaste3D.Core.Geometry.SurfaceKind.Wall] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Wall, Load("brick-red"), 1.0, 0.6),
                 [Guanacaste3D.Core.Geometry.SurfaceKind.Floor] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Floor, Load("stone-paving"), 2.0, 0.6),
-                [Guanacaste3D.Core.Geometry.SurfaceKind.DoorLeaf] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.DoorLeaf, Load("wood-floor"), 1.0, 0.25),
             };
+            var wide = Environment.GetEnvironmentVariable("G3_SHOT_WIDE") == "1";
+            if (Environment.GetEnvironmentVariable("G3_SHOT_CLOSE") == "1")
+            {
+                var door = session.Document.Openings.First(opening => opening.Kind == Guanacaste3D.Core.OpeningKind.Door);
+                var host = session.Document.Walls.Single(wall => wall.Id == door.WallId);
+                var along = new Vector3((float)(host.End.X - host.Start.X), (float)(host.End.Y - host.Start.Y), 0) / (float)host.Length;
+                var at = new Vector3((float)host.Start.X, (float)host.Start.Y, 0) + along * (float)door.Offset;
+                var outward = new Vector3(along.Y, -along.X, 0);
+                if (Vector3.Dot(outward, at - center) < 0) outward = -outward;
+                return new BenchmarkScene("garden", mesh,
+                    new RenderCamera(at + outward * 3.2f + along * 1.2f + new Vector3(0, 0, 1.5f), at + new Vector3(0, 0, 1.2f), 55)
+                    {
+                        CorrectVerticals = true
+                    }, new RenderSettings()) { Materials = kind => materials.TryGetValue(kind, out var material) ? material : MaterialLibrary.ForKind(kind) };
+            }
             return new BenchmarkScene("garden", mesh,
-                new RenderCamera(new Vector3(center.X - 4, min.Y - 9, 1.9f), new Vector3(center.X - 1, center.Y, 1.6f), 62)
+                wide
+                    ? new RenderCamera(new Vector3(center.X - 2, min.Y - 30, 3.5f), new Vector3(center.X - 2, center.Y + 4, 5.5f), 60)
+                    : new RenderCamera(new Vector3(center.X - 4, min.Y - 9, 1.9f), new Vector3(center.X - 1, center.Y, 1.6f), 62)
                 {
                     CorrectVerticals = true
                 }, new RenderSettings()) { Materials = kind => materials.TryGetValue(kind, out var material) ? material : MaterialLibrary.ForKind(kind) };

@@ -19,7 +19,21 @@ public enum SurfaceKind : byte
     /// <summary>Soil exposed on the sides and underside of a toposolid.</summary>
     Earth,
     /// <summary>The weathering surface of a pitched roof (tiles by default).</summary>
-    Roof
+    Roof,
+    /// <summary>Single leaves of render-quality vegetation: thin, translucent to light from behind.</summary>
+    Leaf,
+    /// <summary>The faces of walls that look into the building (plastered by default); <see cref="Wall"/> is the outside.</summary>
+    InteriorWall,
+    /// <summary>Ironmongery: handles, hinges and roses, in brushed steel.</summary>
+    Metal,
+    /// <summary>The glowing diffuser or shade of a light fixture; it lights the scene in the render.</summary>
+    LightEmitter,
+    /// <summary>Upholstery fabric: sofas, armchairs, duvets and rugs.</summary>
+    Upholstery,
+    /// <summary>Bed linen: mattresses and pillows.</summary>
+    Bedding,
+    /// <summary>Glazed vitreous china: toilets, basins, bathtubs and shower trays.</summary>
+    Ceramic
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -98,7 +112,7 @@ public sealed class SceneMesh
 public static class BuildingMesher
 {
     /// <summary>Builds closed solids for walls (split around openings), slabs, and glazing panes.</summary>
-    public static SceneMesh Build(BuildingDocument document, bool includeGround = false)
+    public static SceneMesh Build(BuildingDocument document, bool includeGround = false, PlantDetail plants = PlantDetail.Model)
     {
         ArgumentNullException.ThrowIfNull(document);
         var elevations = document.Levels.ToDictionary(level => level.Id, level => level.Elevation);
@@ -106,13 +120,18 @@ public static class BuildingMesher
         var typesById = document.OpeningTypes.ToDictionary(type => type.Id);
         var joins = WallJoinIndex.Build(document.Walls);
 
+        var insides = document.Levels.ToDictionary(level => level.Id, level => InteriorTest(document, level.Id));
         foreach (var wall in document.Walls)
         {
             var z = elevations[wall.LevelId];
             var openings = document.Openings.Where(opening => opening.WallId == wall.Id).ToArray();
+            var inside = insides[wall.LevelId];
+            // Like the layers of a wall type: a face that looks into the building is plaster, one that looks out is facade.
+            SurfaceKind Face(Vector2 middle, Vector2 outward) =>
+                inside(new Point2(middle.X + outward.X * 0.3, middle.Y + outward.Y * 0.3)) ? SurfaceKind.InteriorWall : SurfaceKind.Wall;
             foreach (var solid in WallGeometry.Solids(wall, openings))
-                AddWallSection(mesh, joins.SectionOutline(wall, solid.From, solid.To),
-                    z + solid.Bottom, z + solid.Top, SurfaceKind.Wall);
+                AddPrism(mesh, joins.SectionOutline(wall, solid.From, solid.To).Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray(),
+                    (float)(z + solid.Bottom), (float)(z + solid.Top), SurfaceKind.Wall, Face);
             foreach (var opening in openings)
             {
                 if (!typesById.TryGetValue(opening.OpeningTypeId, out var type)) continue;
@@ -158,7 +177,9 @@ public static class BuildingMesher
             if (element.Kind == StructuralElementKind.Planting)
             {
                 // Like a Revit site component, a plant stands on the toposolid it is placed on.
-                PlantGeometry.AppendTo(mesh, element, datum + TerrainUnder(document, element.LevelId, element.Start));
+                var ground = datum + TerrainUnder(document, element.LevelId, element.Start);
+                if (plants == PlantDetail.Render) PlantDetailGeometry.AppendTo(mesh, element, ground);
+                else PlantGeometry.AppendTo(mesh, element, ground);
                 continue;
             }
             foreach (var part in ElementGeometry.Parts(element))
@@ -181,6 +202,32 @@ public static class BuildingMesher
                 SurfaceKind.Ground);
         }
         return mesh;
+    }
+
+    /// <summary>
+    /// Whether a plan point of a level lies inside the building: it is enclosed by walls, meaning a ray cast from it in
+    /// each of eight directions meets a wall of the level. A terrace or a courtyard open on one side is outside; door
+    /// and window openings do not let the rays out, because walls are tested along their whole length.
+    /// </summary>
+    private static Func<Point2, bool> InteriorTest(BuildingDocument document, Guid levelId)
+    {
+        var walls = document.Walls.Where(wall => wall.LevelId == levelId).Select(wall => (wall.Start, wall.End)).ToArray();
+        if (walls.Length < 3) return _ => false;
+        var directions = Enumerable.Range(0, 8).Select(index => (Math.Cos(index * Math.PI / 4 + 0.1), Math.Sin(index * Math.PI / 4 + 0.1))).ToArray();
+        return point => directions.All(direction => walls.Any(wall => Hits(point, direction, wall.Start, wall.End)));
+
+        static bool Hits(Point2 origin, (double X, double Y) direction, Point2 a, Point2 b)
+        {
+            var ex = b.X - a.X;
+            var ey = b.Y - a.Y;
+            var denominator = direction.X * ey - direction.Y * ex;
+            if (Math.Abs(denominator) < 1e-12) return false;
+            var ox = a.X - origin.X;
+            var oy = a.Y - origin.Y;
+            var t = (ox * ey - oy * ex) / denominator;
+            var u = (ox * direction.Y - oy * direction.X) / denominator;
+            return t > 0 && t < 60 && u >= -1e-6 && u <= 1 + 1e-6;
+        }
     }
 
     /// <summary>Elevation, above its level, of the toposolid surface under a plan point; zero where there is none.</summary>
@@ -227,9 +274,14 @@ public static class BuildingMesher
         var depth = type.Operation == OpeningOperation.Revolving ? type.Depth : WallGeometry.LeafDepth(type, wall);
         if (depth <= 0) return;
         if (type.Operation == OpeningOperation.Standard)
+        {
             AddDoorLeaves(mesh, wall, opening, depth, lining, bottom, top, type.GlazedLeaf);
+            AddDoorHardware(mesh, wall, opening, type, depth, lining, bottom);
+        }
         else
+        {
             AddOperatedDoor(mesh, wall, opening, type, depth, lining, bottom, top);
+        }
     }
 
     /// <summary>
@@ -408,24 +460,75 @@ public static class BuildingMesher
     }
 
     /// <summary>
-    /// Adds one door panel: a full-depth frame of hinge and latch stiles, a head rail and a kick rail,
-    /// with a thinner raised panel between them that sits recessed inside the frame.
+    /// Adds one door leaf the way a joiner builds a panelled door: full-depth stiles, a top rail, a lock rail at handle
+    /// height and a deep bottom rail, framing two raised-and-fielded panels (a thin field with a thicker raised centre
+    /// inside a bevel), or glass above the lock rail for a glazed leaf.
     /// </summary>
     private static void AddDoorPanel(SceneMesh mesh, Wall wall, double from, double to, double depth,
         double bottom, double top, bool glazed = false)
     {
-        const double stile = 0.07;
-        const double headRail = 0.09;
-        const double kickRail = 0.10;
+        const double stile = 0.11;
+        const double topRail = 0.11;
+        const double lockRail = 0.16;
+        const double bottomRail = 0.22;
+        const double bevel = 0.04;
         var half = depth / 2;
-        var panelHalf = depth * 0.15;
         var kind = SurfaceKind.DoorLeaf;
+        var lockBottom = Math.Min(bottom + 0.88, top - topRail - 0.4);
         AddWallBlock(mesh, wall, from, from + stile, -half, half, bottom, top, kind);
         AddWallBlock(mesh, wall, to - stile, to, -half, half, bottom, top, kind);
-        AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, top - headRail, top, kind);
-        AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, bottom, bottom + kickRail, kind);
-        AddWallBlock(mesh, wall, from + stile, to - stile, -panelHalf, panelHalf,
-            bottom + kickRail, top - headRail, glazed ? SurfaceKind.Glass : kind);
+        AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, top - topRail, top, kind);
+        AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, lockBottom, lockBottom + lockRail, kind);
+        AddWallBlock(mesh, wall, from + stile, to - stile, -half, half, bottom, bottom + bottomRail, kind);
+        foreach (var (low, high, isUpper) in new[] { (bottom + bottomRail, lockBottom, false), (lockBottom + lockRail, top - topRail, true) })
+        {
+            if (high - low < 0.05) continue;
+            if (glazed && isUpper)
+            {
+                AddWallBlock(mesh, wall, from + stile, to - stile, -0.004, 0.004, low, high, SurfaceKind.Glass);
+                continue;
+            }
+            // Field: thin, set back in the frame. Raised centre: thicker, inset by the bevel all round.
+            AddWallBlock(mesh, wall, from + stile, to - stile, -half * 0.35, half * 0.35, low, high, kind);
+            if (to - from - 2 * (stile + bevel) > 0.05 && high - low - 2 * bevel > 0.05)
+                AddWallBlock(mesh, wall, from + stile + bevel, to - stile - bevel, -half * 0.7, half * 0.7,
+                    low + bevel, high - bevel, kind);
+        }
+    }
+
+    /// <summary>
+    /// Ironmongery of a swing door, in brushed steel: a lever handle on a round rose on both faces at 95 cm, near the
+    /// latch edge, and three butt hinges on the hinge edge. Double doors get a handle on each meeting stile.
+    /// </summary>
+    private static void AddDoorHardware(SceneMesh mesh, Wall wall, WallOpening opening, OpeningType type, double depth,
+        double lining, double bottom)
+    {
+        if (type.Operation != OpeningOperation.Standard || depth <= 0) return;
+        var left = opening.Begin + lining;
+        var right = opening.End - lining;
+        var half = depth / 2;
+        var handleHeight = bottom + 0.95;
+        var latches = opening.Width > 1.2
+            ? new[] { ((left + right) / 2 - 0.07, -1.0), ((left + right) / 2 + 0.07, 1.0) }
+            : new[] { opening.FlipHand ? (left + 0.065, 1.0) : (right - 0.065, -1.0) };
+        foreach (var (at, toward) in latches)
+            foreach (var face in new[] { -1.0, 1.0 })
+            {
+                var plate = face * half;
+                // Rose: a short square-ish boss, then the lever running toward the hinge side.
+                AddWallBlock(mesh, wall, at - 0.026, at + 0.026, Math.Min(plate, plate + face * 0.01), Math.Max(plate, plate + face * 0.01),
+                    handleHeight - 0.026, handleHeight + 0.026, SurfaceKind.Metal);
+                AddWallBlock(mesh, wall, at - 0.009, at + 0.009, Math.Min(plate, plate + face * 0.055), Math.Max(plate, plate + face * 0.055),
+                    handleHeight - 0.009, handleHeight + 0.009, SurfaceKind.Metal);
+                var leverFrom = Math.Min(at, at + toward * 0.13);
+                var leverTo = Math.Max(at, at + toward * 0.13);
+                AddWallBlock(mesh, wall, leverFrom, leverTo, Math.Min(plate + face * 0.045, plate + face * 0.065),
+                    Math.Max(plate + face * 0.045, plate + face * 0.065), handleHeight - 0.01, handleHeight + 0.01, SurfaceKind.Metal);
+            }
+        if (opening.Width > 1.2) return;
+        var hinge = opening.FlipHand ? right - 0.004 : left + 0.004;
+        foreach (var height in new[] { bottom + 0.25, bottom + 1.05, bottom + opening.Height - 0.25 })
+            AddWallBlock(mesh, wall, hinge - 0.006, hinge + 0.006, -half * 0.9, half * 0.9, height - 0.05, height + 0.05, SurfaceKind.Metal);
     }
 
     /// <summary>
@@ -646,7 +749,7 @@ public static class BuildingMesher
                 var innerA = new Point2(a.X + inward.X, a.Y + inward.Y);
                 var innerB = new Point2(b.X + inward.X, b.Y + inward.Y);
                 mesh.AddQuad(LiftPoint(a, bottom), LiftPoint(b, bottom), LiftPoint(b, topB), LiftPoint(a, topA), SurfaceKind.Wall);
-                mesh.AddQuad(LiftPoint(innerB, bottom), LiftPoint(innerA, bottom), LiftPoint(innerA, topA), LiftPoint(innerB, topB), SurfaceKind.Wall);
+                mesh.AddQuad(LiftPoint(innerB, bottom), LiftPoint(innerA, bottom), LiftPoint(innerA, topA), LiftPoint(innerB, topB), SurfaceKind.InteriorWall);
                 mesh.AddQuad(LiftPoint(a, topA), LiftPoint(b, topB), LiftPoint(innerB, topB), LiftPoint(innerA, topA), SurfaceKind.Wall);
             }
         }
@@ -687,7 +790,7 @@ public static class BuildingMesher
 
     /// <summary>Extrudes a simple polygon vertically into a closed, outward-facing prism.</summary>
     private static void AddPrism(SceneMesh mesh, IReadOnlyList<Vector2> outline, float bottom, float top,
-        SurfaceKind kind)
+        SurfaceKind kind, Func<Vector2, Vector2, SurfaceKind>? sideKind = null)
     {
         var plan = outline.Select(point => new Point2(point.X, point.Y)).ToArray();
         var counterClockwise = PolygonTriangulator.SignedDoubleArea(plan) > 0;
@@ -702,7 +805,14 @@ public static class BuildingMesher
         {
             var current = ordered[index];
             var next = ordered[(index + 1) % ordered.Length];
-            mesh.AddQuad(Lift(current, bottom), Lift(next, bottom), Lift(next, top), Lift(current, top), kind);
+            var side = kind;
+            if (sideKind is not null && Vector2.DistanceSquared(current, next) > 1e-12f)
+            {
+                // Counter-clockwise outline: the outward normal of an edge is its direction turned clockwise.
+                var direction = Vector2.Normalize(next - current);
+                side = sideKind((current + next) / 2, new Vector2(direction.Y, -direction.X));
+            }
+            mesh.AddQuad(Lift(current, bottom), Lift(next, bottom), Lift(next, top), Lift(current, top), side);
         }
     }
 

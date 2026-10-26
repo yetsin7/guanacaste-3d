@@ -54,6 +54,26 @@ A physically based CPU path tracer, tuned for architecture:
   pattern also has **relief**: the shading normal follows a height field (grout
   lines, mortar joints, board gaps, trowelled plaster, grass blades), so grazing
   sun picks out the joints. Fine relief fades with distance so it never sparkles.
+- **Render-quality vegetation**: the render (not the 3D view, which keeps the
+  light modelling canopies) grows every planting: a flared trunk splits into
+  scaffold limbs that branch recursively (Leonardo's rule for thickness), and
+  leaf clusters are scattered through the crown's outer shell and joined to the
+  nearest branch tip (simplified space colonisation). Every leaf is real
+  geometry with a folded midrib, so sunlight falls through the crown in dapples:
+  about 45 000 leaves for a broadleaf tree, 90 000 compound leaves for the
+  guanacaste, needle sprays for the cypress, single pinnae on palm fronds.
+  Trees are generated off the interface thread and cached.
+- **Leaf translucency**: materials can transmit part of their diffuse light to
+  the back face (thin diffuse transmission, sampled and weighted with MIS for the
+  sun, sky portals, lamps and emissive surfaces), so backlit foliage glows.
+- **Family materials**: walls are classified face by face (a face enclosed by
+  walls in all directions is interior plaster, the others take the facade
+  material); doors are panelled (stiles, three rails, two raised-and-fielded
+  panels) with steel lever handles, roses and hinges; sofas, beds and rugs use
+  upholstery and linen with a woven pattern and rounded corners; sanitary ware is
+  glazed porcelain.
+- **Light fixtures**: ceiling lights and floor lamps glow and light the render
+  as area lights (*Luces artificiales* switches them off).
 - **Vegetation**: site plantings (*Masa y emplazamiento → Componente de
   emplazamiento*, or the library's *Vegetación*) are generated procedurally:
   broadleaf tree, **guanacaste tree** (short massive trunk, very wide umbrella

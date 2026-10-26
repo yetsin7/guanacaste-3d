@@ -41,6 +41,9 @@ internal interface IRenderSource
 
     /// <summary>Assigns a texture to a category, or returns it to its stock material when the path is null.</summary>
     void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief);
+
+    /// <summary>Whether light fixtures are on; changing it rebuilds the scene.</summary>
+    bool ArtificialLights { get; set; }
 }
 
 /// <summary>
@@ -312,6 +315,12 @@ public partial class RenderPanel : UserControl
 
     /// <summary>Aerial perspective is part of the lighting, so it changes the preview settings, not only the finish.</summary>
     private void Haze_Changed(object sender, RoutedEventArgs e) => Lighting_Changed(sender, e);
+
+    /// <summary>Switches the light fixtures on or off; their glow is part of the scene, so it is rebuilt.</summary>
+    private void Lights_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_source is not null) _source.ArtificialLights = ArtificialLightsCheck.IsChecked == true;
+    }
 
     private RenderCamera CurrentCamera()
     {

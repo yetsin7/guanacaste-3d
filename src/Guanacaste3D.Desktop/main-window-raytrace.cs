@@ -76,6 +76,17 @@ public partial class MainWindow
         public Task<RenderScene?> GetSceneAsync() => window.GetSceneAsync();
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
+
+        public bool ArtificialLights
+        {
+            get => window._artificialLights;
+            set
+            {
+                if (window._artificialLights == value) return;
+                window._artificialLights = value;
+                window.MarkSceneDirty();
+            }
+        }
         public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
             window.AssignRenderMaterial(category, texturePath, size, relief);
 
@@ -119,6 +130,9 @@ public partial class MainWindow
         return (min, max);
     }
 
+    /// <summary>Whether light fixtures glow and light the render (the Render panel's switch).</summary>
+    private bool _artificialLights = true;
+
     /// <summary>Assigns (or, with no path, clears) the render texture of a surface category as one undoable step.</summary>
     private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief)
     {
@@ -152,15 +166,19 @@ public partial class MainWindow
         if (_sceneTask is { } existing) return existing;
         if (!HasSceneContent()) return _sceneTask = Task.FromResult<RenderScene?>(null);
 
-        // The BIM mesh is built here (it reads the live document); copying everything into one scene happens off-thread.
-        var mesh = BuildingMesher.Build(_session.Document, includeGround: true);
+        // The document is copied here (records are immutable, so the copy is cheap) and meshed off-thread: the render
+        // gets trees with branches and tens of thousands of leaves, which must not stall the interface. The 3D view
+        // keeps the light modelling canopies.
+        var document = _session.Document.Clone();
         var links = _links.Visible().ToList();
         var version = _sceneVersion;
         var materials = _session.Document.RenderMaterials.ToList();
         var projectFile = _filePath;
+        var lightsOn = _artificialLights;
         var task = Task.Run<RenderScene?>(() =>
         {
-            var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile));
+            var mesh = BuildingMesher.Build(document, includeGround: true, plants: PlantDetail.Render);
+            var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile, lightsOn));
             foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
             var scene = builder.Build();
             MemoryTrim.AfterHeavyBuild();

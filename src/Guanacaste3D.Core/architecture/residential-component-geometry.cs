@@ -25,7 +25,7 @@ public static class ResidentialComponentGeometry
         ResidentialComponentShape.Dresser => Dresser(element),
         ResidentialComponentShape.Bookshelf => Bookshelf(element),
         ResidentialComponentShape.Television => Television(element),
-        ResidentialComponentShape.Rug => [Block(element, 0, 0, Width(element), Depth(element), 0, element.Height, SurfaceKind.Floor)],
+        ResidentialComponentShape.Rug => [Block(element, 0, 0, Width(element), Depth(element), 0, element.Height, SurfaceKind.Upholstery)],
         ResidentialComponentShape.FloorLamp => FloorLamp(element),
         ResidentialComponentShape.CeilingLight => CeilingLight(element),
         ResidentialComponentShape.Barbecue => Barbecue(element),
@@ -61,15 +61,23 @@ public static class ResidentialComponentGeometry
         var width = Width(element);
         var depth = Depth(element);
         var arm = Math.Clamp(width * 0.08, 0.09, 0.18);
-        yield return Block(element, 0, 0, width, depth, 0.12, 0.38);
-        yield return Block(element, 0, depth * 0.34, width, depth * 0.28, 0.32, element.Height);
+        const SurfaceKind fabric = SurfaceKind.Upholstery;
+        yield return Soft(element, 0, 0, width, depth, 0.12, 0.38, 0.04, fabric);
+        yield return Soft(element, 0, depth * 0.34, width, depth * 0.28, 0.32, element.Height, 0.06, fabric);
         foreach (var side in new[] { -1, 1 })
-            yield return Block(element, side * (width / 2 - arm / 2), 0, arm, depth, 0.20, element.Height * 0.72);
+            yield return Soft(element, side * (width / 2 - arm / 2), 0, arm, depth, 0.20, element.Height * 0.72, 0.04, fabric);
+        // Short dark legs lift the base, as on most contemporary sofas.
+        foreach (var (x, y) in Corners(element, 0.08))
+            yield return Block(element, x, y, 0.04, 0.04, 0, 0.12, SurfaceKind.DoorLeaf);
         var cushionCount = Math.Clamp((int)Math.Round(width / 0.70), 1, 3);
         var cushionWidth = (width - 2 * arm - 0.04 * (cushionCount - 1)) / cushionCount;
         for (var index = 0; index < cushionCount; index++)
-            yield return Block(element, -width / 2 + arm + cushionWidth / 2 + index * (cushionWidth + 0.04),
-                -depth * 0.08, cushionWidth, depth * 0.58, 0.38, 0.50);
+        {
+            var x = -width / 2 + arm + cushionWidth / 2 + index * (cushionWidth + 0.04);
+            yield return Soft(element, x, -depth * 0.08, cushionWidth, depth * 0.58, 0.38, 0.52, 0.05, fabric);
+            // Back cushion leaning on the back.
+            yield return Soft(element, x, depth * 0.17, cushionWidth, 0.16, 0.50, element.Height - 0.04, 0.05, fabric);
+        }
     }
 
     /// <summary>Builds a bed frame, mattress, headboard, and two pillows when the bed is wide enough.</summary>
@@ -78,12 +86,14 @@ public static class ResidentialComponentGeometry
         var width = Width(element);
         var depth = Depth(element);
         yield return Block(element, 0, 0, width, depth, 0.08, 0.25, SurfaceKind.DoorLeaf);
-        yield return Block(element, 0, 0, width * 0.96, depth * 0.91, 0.25, 0.48, SurfaceKind.Floor);
+        yield return Soft(element, 0, 0, width * 0.96, depth * 0.91, 0.25, 0.48, 0.06, SurfaceKind.Bedding);
+        // A duvet over the lower two thirds, hanging a little past the mattress.
+        yield return Soft(element, 0, -depth * 0.12, width * 1.0, depth * 0.66, 0.30, 0.52, 0.05, SurfaceKind.Upholstery);
         yield return Block(element, 0, depth / 2 - 0.055, width, 0.11, 0.08, element.Height, SurfaceKind.DoorLeaf);
         var pillowCount = width >= 1.30 ? 2 : 1;
         for (var index = 0; index < pillowCount; index++)
-            yield return Block(element, pillowCount == 1 ? 0 : (index == 0 ? -1 : 1) * width * 0.24,
-                depth * 0.30, width * (pillowCount == 1 ? 0.55 : 0.38), depth * 0.20, 0.48, 0.58);
+            yield return Soft(element, pillowCount == 1 ? 0 : (index == 0 ? -1 : 1) * width * 0.24,
+                depth * 0.30, width * (pillowCount == 1 ? 0.55 : 0.38), depth * 0.20, 0.48, 0.61, 0.06, SurfaceKind.Bedding);
     }
 
     /// <summary>Builds an octagonal pot, a trunk, and three offset foliage masses.</summary>
@@ -156,9 +166,9 @@ public static class ResidentialComponentGeometry
     private static IEnumerable<ElementPart> Toilet(StructuralElement element)
     {
         yield return Block(element, 0, 0.08, Width(element) * 0.58, Depth(element) * 0.48, 0, 0.34);
-        yield return RoundBlock(element, 0, -Depth(element) * 0.08, Width(element), 0.28, 0.46, SurfaceKind.Floor);
+        yield return RoundBlock(element, 0, -Depth(element) * 0.08, Width(element), 0.28, 0.46, SurfaceKind.Ceramic);
         yield return Block(element, 0, Depth(element) * 0.34, Width(element), Depth(element) * 0.24,
-            0.30, element.Height, SurfaceKind.Floor);
+            0.30, element.Height, SurfaceKind.Ceramic);
     }
 
     /// <summary>Builds a vanity cabinet, counter, basin, and faucet stem.</summary>
@@ -166,7 +176,7 @@ public static class ResidentialComponentGeometry
     {
         foreach (var part in Cabinet(element)) yield return part;
         yield return RoundBlock(element, 0, -Depth(element) * 0.08, Width(element) * 0.48,
-            element.Height, element.Height + 0.04, SurfaceKind.Floor);
+            element.Height, element.Height + 0.04, SurfaceKind.Ceramic);
         yield return RoundBlock(element, 0, Depth(element) * 0.12, 0.035,
             element.Height, element.Height + 0.22, SurfaceKind.OpeningFrame);
     }
@@ -177,7 +187,7 @@ public static class ResidentialComponentGeometry
     /// <summary>Builds a shower tray and two transparent enclosure panels.</summary>
     private static IEnumerable<ElementPart> Shower(StructuralElement element)
     {
-        yield return Block(element, 0, 0, Width(element), Depth(element), 0, 0.08, SurfaceKind.Floor);
+        yield return Block(element, 0, 0, Width(element), Depth(element), 0, 0.08, SurfaceKind.Ceramic);
         yield return Block(element, 0, Depth(element) / 2 - 0.01, Width(element), 0.02, 0.08, element.Height, SurfaceKind.Glass);
         yield return Block(element, Width(element) / 2 - 0.01, 0, 0.02, Depth(element), 0.08, element.Height, SurfaceKind.Glass);
     }
@@ -241,15 +251,16 @@ public static class ResidentialComponentGeometry
         var diameter = Math.Min(Width(element), Depth(element));
         yield return RoundBlock(element, 0, 0, diameter * 0.65, 0, 0.04, SurfaceKind.OpeningFrame);
         yield return RoundBlock(element, 0, 0, 0.025, 0.04, element.Height * 0.78, SurfaceKind.OpeningFrame);
-        yield return RoundBlock(element, 0, 0, diameter, element.Height * 0.72, element.Height, SurfaceKind.Floor);
+        // The fabric shade glows with the bulb inside it, so it is the emitting surface.
+        yield return RoundBlock(element, 0, 0, diameter, element.Height * 0.72, element.Height, SurfaceKind.LightEmitter);
     }
 
-    /// <summary>Builds a shallow ceiling-mounted light with a translucent diffuser.</summary>
+    /// <summary>Builds a shallow ceiling-mounted light: a metal canopy against the ceiling and a glowing diffuser under it.</summary>
     private static IEnumerable<ElementPart> CeilingLight(StructuralElement element)
     {
         var diameter = Math.Min(Width(element), Depth(element));
-        yield return RoundBlock(element, 0, 0, diameter, 0, element.Height * 0.45, SurfaceKind.OpeningFrame);
-        yield return RoundBlock(element, 0, 0, diameter * 0.82, element.Height * 0.45, element.Height, SurfaceKind.Glass);
+        yield return RoundBlock(element, 0, 0, diameter * 0.82, 0, element.Height * 0.6, SurfaceKind.LightEmitter);
+        yield return RoundBlock(element, 0, 0, diameter, element.Height * 0.6, element.Height, SurfaceKind.Metal);
     }
 
     /// <summary>Builds a barbecue cabinet with a raised hood, cooking grate, side shelves, and legs.</summary>
@@ -271,11 +282,11 @@ public static class ResidentialComponentGeometry
     private static IEnumerable<ElementPart> RimmedContainer(StructuralElement element, double wall, double rim,
         double top)
     {
-        yield return Block(element, 0, -Depth(element) / 2 + wall / 2, Width(element), wall, 0, top, SurfaceKind.Floor);
-        yield return Block(element, 0, Depth(element) / 2 - wall / 2, Width(element), wall, 0, top, SurfaceKind.Floor);
-        yield return Block(element, -Width(element) / 2 + wall / 2, 0, wall, Depth(element) - 2 * wall, 0, top, SurfaceKind.Floor);
-        yield return Block(element, Width(element) / 2 - wall / 2, 0, wall, Depth(element) - 2 * wall, 0, top, SurfaceKind.Floor);
-        yield return Block(element, 0, 0, Width(element) - 2 * rim, Depth(element) - 2 * rim, 0, 0.05, SurfaceKind.Floor);
+        yield return Block(element, 0, -Depth(element) / 2 + wall / 2, Width(element), wall, 0, top, SurfaceKind.Ceramic);
+        yield return Block(element, 0, Depth(element) / 2 - wall / 2, Width(element), wall, 0, top, SurfaceKind.Ceramic);
+        yield return Block(element, -Width(element) / 2 + wall / 2, 0, wall, Depth(element) - 2 * wall, 0, top, SurfaceKind.Ceramic);
+        yield return Block(element, Width(element) / 2 - wall / 2, 0, wall, Depth(element) - 2 * wall, 0, top, SurfaceKind.Ceramic);
+        yield return Block(element, 0, 0, Width(element) - 2 * rim, Depth(element) - 2 * rim, 0, 0.05, SurfaceKind.Ceramic);
     }
 
     /// <summary>Returns four inset plan corner centers for legs or burners.</summary>
@@ -299,6 +310,30 @@ public static class ResidentialComponentGeometry
         double depth, double bottom, double top, SurfaceKind kind = SurfaceKind.Structure) =>
         new(Rectangle(element.Start.X + centerX, element.Start.Y + centerY, width, depth),
             element.Offset + bottom, element.Offset + top, kind);
+
+    /// <summary>
+    /// An upholstered block: its plan corners are rounded (chamfered twice), so cushions, mattresses and arms read soft
+    /// instead of boxy.
+    /// </summary>
+    private static ElementPart Soft(StructuralElement element, double centerX, double centerY, double width, double depth,
+        double bottom, double top, double round, SurfaceKind kind)
+    {
+        var r = Math.Min(round, Math.Min(width, depth) * 0.3);
+        var x = element.Start.X + centerX;
+        var y = element.Start.Y + centerY;
+        var points = new List<Point2>();
+        foreach (var (cx, cy, start) in new[]
+                 {
+                     (x + width / 2 - r, y - depth / 2 + r, -Math.PI / 2), (x + width / 2 - r, y + depth / 2 - r, 0.0),
+                     (x - width / 2 + r, y + depth / 2 - r, Math.PI / 2), (x - width / 2 + r, y - depth / 2 + r, Math.PI)
+                 })
+            for (var step = 0; step <= 2; step++)
+            {
+                var angle = start + step * Math.PI / 4;
+                points.Add(new Point2(cx + r * Math.Cos(angle), cy + r * Math.Sin(angle)));
+            }
+        return new ElementPart(points, element.Offset + bottom, element.Offset + top, kind);
+    }
 
     /// <summary>Creates one regular twelve-sided solid used for pots, stems, bowls, burners, and light fittings.</summary>
     private static ElementPart RoundBlock(StructuralElement element, double centerX, double centerY, double diameter,

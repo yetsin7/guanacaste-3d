@@ -22,10 +22,10 @@ internal static class OpeningFamilyChecks
             // Each solid is a prism of 12 triangles. The 900 mm door has 3 lining solids and a leaf of 5 solids
             // (two stiles, head and kick rails, panel). The 1200 mm window has 3 lining solids, a sill, and two
             // lights of 4 sash members each; its glazing is one solid per light.
-            check(mesh.TriangleKinds.Count(kind => kind == SurfaceKind.DoorLeaf) == 5 * 12 &&
+            check(mesh.TriangleKinds.Count(kind => kind == SurfaceKind.DoorLeaf) == 9 * 12 &&
                 mesh.TriangleKinds.Count(kind => kind == SurfaceKind.OpeningFrame) == (3 + 3 + 1 + 8) * 12 &&
                 mesh.TriangleKinds.Count(kind => kind == SurfaceKind.Glass) == 2 * 12,
-                "Default assemblies are layered: a five-member door leaf, lining, sill, sash members, and two glazed lights");
+                "Default assemblies are layered: a panelled door leaf (stiles, three rails, two raised panels), lining, sill, sash members, and two glazed lights");
             check(mesh.Positions.All(point => float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z)),
                 "Opening assemblies generate finite geometry");
             var windowTypeId = session.Document.Openings.Single(opening => opening.Id == windowId).OpeningTypeId;

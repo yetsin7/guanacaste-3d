@@ -142,6 +142,8 @@
               </DockPanel>
               <CheckBox x:Name="HazeCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
                         Content="{DynamicResource RenderPanel.Haze}" Checked="Haze_Changed" Unchecked="Haze_Changed"/>
+              <CheckBox x:Name="ArtificialLightsCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
+                        Content="{DynamicResource RenderPanel.ArtificialLights}" Checked="Lights_Changed" Unchecked="Lights_Changed"/>
               <CheckBox x:Name="AutoExposureCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
                         Content="{DynamicResource RenderPanel.AutoExposure}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
               <CheckBox x:Name="BloomCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
