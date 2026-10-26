@@ -138,7 +138,7 @@ public partial class ProfessionalRibbon : UserControl
         {
             Content = label,
             // The shared ribbon button templates bind the icon image to CommandParameter.
-            CommandParameter = TryFindResource(definition.IconResourceKey),
+            CommandParameter = CommandIcons.For(definition.CommandId, definition.IconResourceKey) ?? TryFindResource(definition.IconResourceKey),
             ToolTip = label,
             Style = (Style)FindResource(definition.Size == RibbonCommandSize.Large
                 ? "LargeRibbonButtonStyle"

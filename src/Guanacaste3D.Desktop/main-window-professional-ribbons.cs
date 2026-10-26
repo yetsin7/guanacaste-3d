@@ -43,6 +43,7 @@ public partial class MainWindow
             case "Grid": ToggleGrid_Click(this, eventArguments); return true;
             case "Viewer":
             case "Model3D": ShowModel_Click(this, eventArguments); return true;
+            case "RenderView": ShowRender_Click(this, eventArguments); return true;
             case "Move": Move_Click(this, eventArguments); return true;
             case "CopyElement": Duplicate_Click(this, eventArguments); return true;
             case "CreateSimilar": CreateSimilar_Click(this, eventArguments); return true;

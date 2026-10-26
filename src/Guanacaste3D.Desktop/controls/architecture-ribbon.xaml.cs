@@ -171,7 +171,7 @@ public partial class ArchitectureRibbon : UserControl
         {
             Content = arrow ? (definition.Large ? label + "\n▾" : label + "  ▾") : label,
             Tag = definition.Tag,
-            CommandParameter = Application.Current.TryFindResource(definition.IconKey),
+            CommandParameter = CommandIcons.For(definition.Tag, definition.IconKey),
             ToolTip = null,
             MinWidth = definition.Large ? 58 : 0
         };
@@ -204,7 +204,7 @@ public partial class ArchitectureRibbon : UserControl
         foreach (var entry in entries)
         {
             var item = new MenuItem { Header = Text(entry.LabelKey) };
-            if (entry.IconKey is not null && Application.Current.TryFindResource(entry.IconKey) is System.Windows.Media.ImageSource icon)
+            if (CommandIcons.For(entry.Tag, entry.IconKey) is { } icon)
                 item.Icon = new Image { Source = icon, Width = 16, Height = 16 };
             var tag = entry.Tag;
             item.Click += (_, _) => Raise(tag);

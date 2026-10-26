@@ -102,6 +102,7 @@ internal static class InteractionChecks
             Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3d").Dimensions.Count == 1,
                 "UI-created annotation survives native save and reopen");
             CaptureDemoToolTip();
+            IconChecks();
             RenderJoinScene();
             Model3DSelectionChecks();
             RenderPreviewAndImportChecks();
@@ -159,6 +160,48 @@ internal static class InteractionChecks
         {
             Directory.Delete(folder, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Every ribbon command has an icon of its own, and a contact sheet of all of them (large and at ribbon size) is written
+    /// for visual review.
+    /// </summary>
+    private static void IconChecks()
+    {
+        var ids = Enum.GetValues<Guanacaste3D.Desktop.Controls.RibbonWorkspace>()
+            .SelectMany(workspace => Guanacaste3D.Desktop.Controls.RibbonCatalog.GetGroups(workspace))
+            .SelectMany(group => group.Commands).Select(command => command.CommandId).Distinct().ToList();
+        var resources = Application.Current.Resources;
+        var missing = ids.Where(id => resources["CmdIcon." + id] is not ImageSource).ToList();
+        Check(ids.Count > 150 && missing.Count == 0, "Every ribbon command has its own icon" + (missing.Count > 0 ? ": " + string.Join(", ", missing) : ""));
+        IEnumerable<string> KeysOf(ResourceDictionary dictionary) =>
+            dictionary.Keys.OfType<string>().Concat(dictionary.MergedDictionaries.SelectMany(KeysOf));
+        var icons = KeysOf(resources).Where(key => key.StartsWith("CmdIcon.")).Distinct().OrderBy(key => key).ToList();
+        const int columns = 14;
+        var rows = (icons.Count + columns - 1) / columns;
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+        {
+            context.DrawRectangle(Brushes.White, null, new Rect(0, 0, columns * 92, rows * 92));
+            for (var index = 0; index < icons.Count; index++)
+            {
+                var x = index % columns * 92;
+                var y = index / columns * 92;
+                var image = (ImageSource)resources[icons[index]];
+                context.DrawImage(image, new Rect(x + 6, y + 6, 48, 48));
+                context.DrawImage(image, new Rect(x + 62, y + 6, 16, 16));
+                context.DrawImage(image, new Rect(x + 62, y + 28, 24, 24));
+                var label = new FormattedText(icons[index][8..], System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), 9, Brushes.DimGray, 1.0) { MaxTextWidth = 86, MaxTextHeight = 24 };
+                context.DrawText(label, new Point(x + 3, y + 60));
+            }
+        }
+        var sheet = new RenderTargetBitmap(columns * 92, rows * 92, 96, 96, PixelFormats.Pbgra32);
+        sheet.Render(visual);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(sheet));
+        using var stream = File.Create("artifacts/interaction-evidence/command-icons.png");
+        encoder.Save(stream);
     }
 
     /// <summary>Verifies that demonstrations require an explicit request, then captures the Door scene.</summary>

@@ -50,15 +50,19 @@ public sealed class CommandPreferenceService
 
     /// <summary>Returns the initial quick access tools and familiar two-key command sequences.</summary>
     public static CommandPreferences CreateDefaults() => new(
-        ["Save", "Undo", "Redo", "Wall", "Model3D"],
+        ["Save", "Undo", "Redo", "Wall", "Model3D", "RenderView"],
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Wall"] = "WA",
             ["Door"] = "DR",
             ["Window"] = "WN",
             ["Model3D"] = "3D",
+            ["RenderView"] = "RN",
             ["VisibilityGraphics"] = "VG"
-        });
+        }, CurrentVersion);
+
+    /// <summary>The layout of the defaults: version 2 added the Render view button beside the 3D view button.</summary>
+    private const int CurrentVersion = 2;
 
     /// <summary>Removes duplicate identifiers and canonicalizes keyboard sequences.</summary>
     private static CommandPreferences Normalize(CommandPreferences preferences)
@@ -73,7 +77,15 @@ public sealed class CommandPreferenceService
                 pair => pair.Key,
                 pair => pair.Value.Trim().ToUpperInvariant(),
                 StringComparer.OrdinalIgnoreCase);
-        return new CommandPreferences(quickAccess, shortcuts);
+        // Preferences saved before version 2 get the Render view button right after the 3D view button, once. After that
+        // the user's own choice, including removing it, is kept.
+        if (preferences.Version < 2)
+        {
+            var model = quickAccess.IndexOf("Model3D");
+            if (model >= 0 && !quickAccess.Contains("RenderView")) quickAccess.Insert(model + 1, "RenderView");
+            shortcuts.TryAdd("RenderView", "RN");
+        }
+        return new CommandPreferences(quickAccess, shortcuts, CurrentVersion);
     }
 }
 
@@ -82,4 +94,5 @@ public sealed class CommandPreferenceService
 /// </summary>
 public sealed record CommandPreferences(
     IReadOnlyList<string> QuickAccessCommandIds,
-    IReadOnlyDictionary<string, string> Shortcuts);
+    IReadOnlyDictionary<string, string> Shortcuts,
+    int Version = 0);

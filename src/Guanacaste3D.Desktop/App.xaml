@@ -7,6 +7,7 @@
         <ResourceDictionary Source="resources/icons.xaml"/>
         <ResourceDictionary Source="resources/icons.contextual.xaml"/>
         <ResourceDictionary Source="resources/icons-professional.xaml"/>
+        <ResourceDictionary Source="resources/icons.commands.xaml"/>
         <ResourceDictionary Source="resources/theme.xaml"/>
         <ResourceDictionary Source="resources/brand.xaml"/>
         <ResourceDictionary Source="resources/localization.splash.es.xaml"/>

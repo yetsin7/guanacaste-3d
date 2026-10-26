@@ -80,7 +80,7 @@ public partial class MainWindow
             Style = (Style)FindResource("QuickAccessButtonStyle"),
             Content = new Image
             {
-                Source = TryFindResource(definition.IconResourceKey) as ImageSource,
+                Source = CommandIcons.For(definition.CommandId, definition.IconResourceKey),
                 Width = 16,
                 Height = 16
             },

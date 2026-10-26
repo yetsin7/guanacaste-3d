@@ -95,7 +95,8 @@ public partial class MainWindow
             };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             // The label goes on the side away from the arrow, so it never covers the building.
-            var anchor = center - along * (radius + 4 + label.DesiredSize.Height / 2);
+            var halfExtent = Math.Abs(along.X) * label.DesiredSize.Width / 2 + Math.Abs(along.Y) * label.DesiredSize.Height / 2;
+            var anchor = center - along * (radius + 4 + halfExtent);
             Canvas.SetLeft(label, anchor.X - label.DesiredSize.Width / 2);
             Canvas.SetTop(label, anchor.Y - label.DesiredSize.Height / 2);
             PlanCanvas.Children.Add(label);
