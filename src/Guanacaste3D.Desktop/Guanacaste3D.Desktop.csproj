@@ -9,8 +9,19 @@
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
     <Version>0.8.0</Version>
+    <!-- Embedded in the .exe so Explorer, the Start menu shortcut and the taskbar show the brand mark. -->
+    <ApplicationIcon>resources\brand\guanacaste3d.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Per-frame picture buffers (a few MB) are short-lived; keeping them out of the large-object heap lets cheap
+         collections reclaim them, so a long live preview does not grow the process by gigabytes. -->
+    <RuntimeHostConfigurationOption Include="System.GC.LOHThreshold" Value="8388608" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Window.Icon reads the same icon through a pack URI at run time. -->
+    <Resource Include="resources\brand\guanacaste3d.ico" />
   </ItemGroup>
 </Project>

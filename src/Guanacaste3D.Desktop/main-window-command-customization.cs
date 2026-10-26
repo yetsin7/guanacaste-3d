@@ -80,8 +80,8 @@ public partial class MainWindow
             Content = new Image
             {
                 Source = TryFindResource(definition.IconResourceKey) as ImageSource,
-                Width = 18,
-                Height = 18
+                Width = 16,
+                Height = 16
             },
             ToolTip = string.IsNullOrWhiteSpace(shortcut)
                 ? label
@@ -106,6 +106,7 @@ public partial class MainWindow
     /// <summary>Accumulates sequential alphanumeric shortcuts while preserving text entry controls.</summary>
     private void MainWindow_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
+        if (IsNavigating3D()) return;
         if (Keyboard.FocusedElement is TextBoxBase or ComboBox ||
             string.IsNullOrWhiteSpace(e.Text) ||
             !char.IsLetterOrDigit(e.Text[0])) return;

@@ -96,11 +96,12 @@ internal static class InteractionChecks
             Invoke("RenderPlan");
             Pump();
             SaveBitmap("artifacts/interaction-evidence/plan-dimensions.png");
-            ProjectFile.Save("artifacts/interaction-evidence/placed-elements.g3", session.Document);
-            Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3").Dimensions.Count == 1,
+            ProjectFile.Save("artifacts/interaction-evidence/placed-elements.g3d", session.Document);
+            Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3d").Dimensions.Count == 1,
                 "UI-created annotation survives native save and reopen");
             CaptureDemoToolTip();
             RenderJoinScene();
+            RenderPreviewAndImportChecks();
             Console.WriteLine("Desktop interaction checks passed.");
             return 0;
         }
@@ -140,6 +141,100 @@ internal static class InteractionChecks
     }
 
     /// <summary>Finds every button in the window's logical tree.</summary>
+    /// <summary>Pumps the dispatcher until a condition holds or the time runs out.</summary>
+    private static bool WaitFor(Func<bool> condition, int seconds)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(seconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            Pump();
+            if (condition()) return true;
+        }
+        return condition();
+    }
+
+    /// <summary>
+    /// Exercises the Render tab against the real window: the live preview appears and follows the shared camera, a model
+    /// dropped on the window is imported through its dialog, linked, saved beside the project and restored when it is reopened.
+    /// </summary>
+    private static void RenderPreviewAndImportChecks()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "guanacaste-ui-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            // Earlier checks edited the project; mark it clean so opening the sample does not wait for the save prompt.
+            SetField("_dirty", false);
+            Invoke("OpenSample_Click", _window, new RoutedEventArgs());
+            Pump();
+            var tabs = (TabControl)_window.FindName("ViewTabs");
+            tabs.SelectedIndex = 6;
+            var panel = (FrameworkElement)_window.FindName("RenderPanelControl");
+            var status = (TextBlock)panel.FindName("StatusText");
+            var image = (Image)panel.FindName("PreviewImage");
+            Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
+            Check(WaitFor(() => status.Text.Contains("muestra") || status.Text.Contains("lista"), 20), "The preview reports its progress in Spanish");
+
+            byte[] Snapshot()
+            {
+                var bitmap = (WriteableBitmap)image.Source;
+                var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+                bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+                return pixels;
+            }
+            WaitFor(() => status.Text.Contains("lista"), 40);
+            var before = Snapshot();
+            var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
+            camera.Position = new System.Numerics.Vector3(-8, 8, 3);
+            camera.LookAt(new System.Numerics.Vector3(0, 0, 1));
+            var navigator = panel.GetType().GetProperty("Navigator", PrivateInstance | System.Reflection.BindingFlags.Public)!.GetValue(panel)!;
+            ((Action?)navigator.GetType().GetField("Changed", PrivateInstance)!.GetValue(navigator))?.Invoke();
+            Check(WaitFor(() => !Snapshot().SequenceEqual(before), 40), "Moving the shared camera updates the live preview");
+
+            // A mesh dropped on the window: the import dialog is accepted automatically, as the user would press Import.
+            var model = Path.Combine(folder, "tree.obj");
+            File.WriteAllLines(model, ["v 0 0 0", "v 2 0 0", "v 0 2 0", "v 0 0 3", "f 1 2 3", "f 1 3 4", "f 1 4 2", "f 2 4 3"]);
+            var accept = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            accept.Tick += (_, _) =>
+            {
+                foreach (var dialog in Application.Current.Windows.OfType<ImportWindow>().Where(window => window.IsVisible))
+                {
+                    var button = (Button)dialog.FindName("ImportButton");
+                    if (button.IsEnabled && button.Content is string text && text != "Cerrar")
+                        dialog.GetType().GetMethod("Import_Click", PrivateInstance)!.Invoke(dialog, [dialog, new RoutedEventArgs()]);
+                    else if (button.Content is "Cerrar") dialog.DialogResult = true;
+                }
+            };
+            accept.Start();
+            tabs.SelectedIndex = 1;
+            var import = (Task)Invoke("ImportFilesAsync", (object)new[] { model })!;
+            Check(WaitFor(() => import.IsCompleted, 60), "Importing a dropped file finishes");
+            accept.Stop();
+            var links = Field<object>("_links");
+            var list = (System.Collections.IList)links.GetType().GetProperty("Links")!.GetValue(links)!;
+            Check(list.Count == 1, "The dropped mesh is linked to the project");
+            Check(Field<bool>("_dirty"), "Linking a model marks the project as changed");
+
+            var path = Path.Combine(folder, "casa.g3d");
+            SetField("_filePath", path);
+            Check((bool)Invoke("SaveProject", false)!, "The project saves with a linked model");
+            Check(File.Exists(path + ".links.json"), "Saving writes the links file beside the project");
+            Invoke("OpenProjectPath", path);
+            Check(WaitFor(() =>
+            {
+                links = Field<object>("_links");
+                var reopened = (System.Collections.IList)links.GetType().GetProperty("Links")!.GetValue(links)!;
+                var loaded = reopened.Count == 1 && (bool)links.GetType().GetMethod("IsLoaded")!.Invoke(links, [((Guanacaste3D.Core.Import.ModelLink)reopened[0]!).Id])!;
+                return loaded;
+            }, 30), "Reopening the project restores and reloads its linked model");
+        }
+        finally
+        {
+            SetField("_dirty", false);
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     private static IEnumerable<Button> FindButtons(DependencyObject parent)
     {
         foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())

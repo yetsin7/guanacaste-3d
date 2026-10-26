@@ -62,6 +62,11 @@ public partial class MainWindow
             case "Schedules": Schedules_Click(this, eventArguments); return true;
             case "OpeningTypes":
             case "WallOpenings": OpeningTypes_Click(this, eventArguments); return true;
+            case "ImportCad":
+            case "LinkCad":
+            case "LinkIfc":
+            case "InsertFromFile": ImportModel_Click(this, eventArguments); return true;
+            case "ManageLinks": LinkedModels_Click(this, eventArguments); return true;
             case "ExportIfc": ExportIfc_Click(this, eventArguments); return true;
             case "ExportModel3D": ExportModel3D_Click(this, eventArguments); return true;
             case "CustomizeCommands": CustomizeCommands_Click(this, eventArguments); return true;

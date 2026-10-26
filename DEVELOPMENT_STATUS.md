@@ -15,6 +15,8 @@ until the parameters increment lands).
 | DXF export | R12 ASCII, one layer group per level, deterministic | structural checks (no external CAD validator run yet) |
 | IFC4 export | Storeys, walls, voids/fills (doors, windows), slabs, spaces, materials; deterministic GlobalIds | STEP structure, reference resolution and IFC4 attribute-count checks (IfcOpenShell not run yet) |
 | OBJ/GLB export | Shared mesh in Y-up meters with materials | OBJ index/material checks, GLB chunk/accessor checks |
+| Model import | OBJ, DXF, DWG (via AutoCAD/ODA), STL, IFC, glTF, COLLADA, SKP (via the SketchUp SDK); Revit files show version and preview and point to IFC. Drag and drop, linked models saved beside the project | `import-checks.cs` incl. real files: 450 MB Revit OBJ in ≈4 s; IFC volume equals IfcOpenShell's; SketchUp sample through the real SDK |
+| Live render | Navigable ray-traced preview (Lumion-style controls, shared camera), final render with pause/stop, walk-through to PNG frames, memory watchdog keeps the image if memory runs short | `navigation-checks.cs`, `desktop-interaction-checks` (live preview, camera, import, links) |
 | Denoiser | Indirect light filtered with an edge-aware à-trous filter; at 4 spp: indirect error −47 %, total −31 % vs a 256-spp reference | `denoiser-checks.cs`, render screenshot after 2 s |
 
 ## Not verified / blocked

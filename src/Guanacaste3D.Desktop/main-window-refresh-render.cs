@@ -16,7 +16,7 @@ public partial class MainWindow
     private void RefreshAll()
     {
         if (_session is null) return;
-        Title = "Guanacaste 3D — " + _session.Document.Name + (_dirty ? " *" : "");
+        UpdateWindowTitle();
         if (!_session.Document.Levels.Any(level => level.Id == _activeLevelId))
             _activeLevelId = _session.Document.Levels[0].Id;
         if (!_session.Document.Walls.Any(wall => wall.Id == _selectedWallId)) _selectedWallId = null;
@@ -121,10 +121,18 @@ public partial class MainWindow
             .FirstOrDefault(item => Equals(item.Tag, wall.WallTypeId));
     }
 
-    /// <summary>Renders the shared BIM scene mesh with daylight-style lighting in the 3D view.</summary>
+    /// <summary>Marks the 3D view stale after a change; it is rebuilt only while the tab is showing.</summary>
     private void Render3D()
     {
         if (ModelViewport is null || _session is null) return;
+        MarkSceneDirty();
+        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+    }
+
+    /// <summary>Rebuilds the 3D view's models: the BIM mesh plus a light proxy of every linked model.</summary>
+    private void RebuildModelVisual()
+    {
+        _modelDirty = false;
         ModelViewport.Children.Clear();
         ModelViewport.Children.Add(new ModelVisual3D
         {
@@ -137,16 +145,31 @@ public partial class MainWindow
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
         foreach (var group in ScenePresentation.ToWpfModels(scene))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
-        var (min, max) = BuildingMesher.Build(_session.Document).Bounds();
-        if (_session.Document.Walls.Count == 0 && _session.Document.Floors.Count == 0)
-            (min, max) = (new System.Numerics.Vector3(-5, -5, 0), new System.Numerics.Vector3(5, 5, 3));
+        foreach (var (link, loaded) in _links.Visible())
+            foreach (var group in ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement))
+                ModelViewport.Children.Add(new ModelVisual3D { Content = group });
+        UpdateModelCamera();
+    }
+
+    /// <summary>Points the 3D view's camera where the shared navigation camera is.</summary>
+    private void UpdateModelCamera()
+    {
+        if (ModelViewport is null) return;
+        var (min, max) = SceneBounds();
+        var radius = Math.Max(3, (max - min).Length() / 2);
         var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
-        ModelViewport.Camera = ScenePresentation.ToWpfCamera(CurrentRenderCamera(min, max), aspect);
+        ModelViewport.Camera = ScenePresentation.ToWpfCamera(_navigation, aspect, radius);
     }
 
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        // While the pointer is over the 3D view or render preview, W A S D Q E fly the camera instead of triggering tools.
+        if (NavigationOwnsKey(e.Key))
+        {
+            base.OnPreviewKeyDown(e);
+            return;
+        }
         if (TryHandleDirectWallLengthKey(e))
         {
             e.Handled = true;

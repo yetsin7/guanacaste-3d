@@ -44,9 +44,28 @@ Guanacaste3D.slnx
 ## Rendering pipeline
 
 `BuildingDocument` → `BuildingMesher.Build` (walls split around openings,
-glazing panes, ear-clipped slabs, ground) → `Bvh` (binned SAH, flat nodes,
-two-sided Möller–Trumbore) → `PathTracer` (cosine-weighted diffuse bounces,
-next-event estimation to a finite sun disk for soft shadows, thin-glass
-Fresnel, analytic sky, Russian roulette, ACES tone mapping) → BGRA32 bytes →
-WPF `WriteableBitmap`. Each pass adds one sample per pixel on all cores but
-one, so the UI stays responsive and the image refines progressively.
+glazing panes, ear-clipped slabs, ground) and any linked models
+(`ImportedModel` + `ModelPlacement`) → `RenderSceneBuilder` → `RenderScene`
+(indexed triangles, one `RenderMaterial` per triangle, lights) → two `Bvh`
+hierarchies (opaque, transmissive; binned SAH, parallel build, leaf-ordered
+triangle data) → `PathTracer` (GGX/Lambert surfaces, sun disk, sky, lights and
+emissive triangles combined with MIS, shadow rays through glass, window portals,
+adaptive sampling) → `ImageProcessor` (denoise, exposure, bloom, tone map) →
+BGRA32 → WPF `WriteableBitmap`.
+
+Three drivers share that engine: `LivePreview` (navigable low-detail preview on
+one background thread), `RenderSession` (final image with pause, ETA and a memory
+watchdog) and `TourRenderer` (walk-through frames reusing one acceleration
+structure). The 3D view and the Render tab share one `NavigationCamera`; a
+`SceneQuery` (its own BVH) answers cursor-centered zoom and camera collisions.
+
+## Model import
+
+`ModelImporter` recognizes a file by its content and dispatches to a reader
+(`import/`): OBJ, DXF, STL, IFC, glTF and COLLADA natively; DWG through AutoCAD's
+Core Console or the ODA File Converter; SketchUp through the SketchUp C API,
+loaded at run time; Revit files yield only metadata and a preview (their geometry
+is proprietary; IFC is the supported route). Readers produce an `ImportedModel`
+in meters, Z up. Imported models are **linked** (`ModelLink`, saved in
+`<project>.g3.links.json`), never embedded in the `.g3` file, so the project
+schema is unchanged. See `docs/rendering-and-import.md`.

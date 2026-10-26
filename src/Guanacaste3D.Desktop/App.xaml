@@ -8,12 +8,17 @@
         <ResourceDictionary Source="resources/icons.contextual.xaml"/>
         <ResourceDictionary Source="resources/icons-professional.xaml"/>
         <ResourceDictionary Source="resources/theme.xaml"/>
+        <ResourceDictionary Source="resources/brand.xaml"/>
+        <ResourceDictionary Source="resources/localization.splash.es.xaml"/>
         <ResourceDictionary Source="resources/localization.es.xaml"/>
         <ResourceDictionary Source="resources/localization.ribbons.es.xaml"/>
         <ResourceDictionary Source="resources/localization.customization.es.xaml"/>
         <ResourceDictionary Source="resources/localization.parameters.es.xaml"/>
         <ResourceDictionary Source="resources/localization.errors.es.xaml"/>
         <ResourceDictionary Source="resources/localization.structure.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.render-engine.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.import.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.render.es.xaml"/>
         <ResourceDictionary Source="resources/localization.architecture.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
