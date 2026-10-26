@@ -28,3 +28,16 @@ or building-code compliance.
 Validation: `dotnet run --project tests/model-audit-checks -c Release`. Checks
 cover all three findings, cross-level isolation, joined walls, immutability,
 native round-trip stability, and clearing a finding by fixing the geometry.
+
+To inspect a saved project from a terminal, run:
+
+```powershell
+dotnet run --project tools/project-audit -c Release -- path/to/project.g3
+```
+
+The command prints a JSON report with the project identity, finding count,
+codes, element references and measurements. A nonzero exit code indicates an
+invalid argument or project file; advisory findings themselves exit normally.
+The CLI was run against a native saved family project and returned a valid
+empty JSON report. An older interaction fixture was rejected because its type
+catalog failed current project validation; the CLI returned a structured error.
