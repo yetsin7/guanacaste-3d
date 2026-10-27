@@ -90,6 +90,7 @@ public partial class MainWindow
     {
         UpdateModelSelection(false);
         UpdateDocumentationProperties();
+        if (TryRefreshSheetProperties()) return;
         if (TryRefreshExtendedProperties()) return;
         var selectedOpening = _session.Document.Openings.FirstOrDefault(opening => opening.Id == _selectedOpeningId);
         if (selectedOpening is not null)

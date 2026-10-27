@@ -10,6 +10,7 @@ public static partial class PdfPlanExporter
     {
         ArgumentNullException.ThrowIfNull(document);
         document.Validate();
+        if (document.Sheets.Count > 0) return ExportSheets(document, date);
         var pdf = new PdfWriter();
         var (width, height) = PaperSize(paper);
         var number = 1;
@@ -58,8 +59,9 @@ public static partial class PdfPlanExporter
                 var start = ProjectHorizontal(axis.Start, view.Orientation);
                 var end = ProjectHorizontal(axis.End, view.Orientation);
                 if (Math.Abs(start - end) > 0.00001) continue;
-                items.Add(new SheetPolyline([new(start, minimum.Z - 0.5), new(start, maximum.Z + 0.5)], 0.13, Grey, Dashed: true));
-                items.Add(new SheetText(new(start, maximum.Z + 0.6), axis.Name, 2.5, Black));
+                items.Add(new SheetPolyline([new(start, minimum.Z - 0.5), new(start, maximum.Z + 0.9)], 0.13, Grey, Dashed: true));
+                items.Add(new SheetPolygon(Circle(new(start, maximum.Z + 1.1), 0.2, 32), 0.18, Black, (1, 1, 1)) { PaperRadius = 3 });
+                items.Add(new SheetText(new(start, maximum.Z + 1.1), axis.Name, 2.5, Black) { CenteredOnSymbol = true });
                 minX = Math.Min(minX, start);
                 maxX = Math.Max(maxX, start);
             }

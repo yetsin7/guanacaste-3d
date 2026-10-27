@@ -19,6 +19,7 @@ internal static partial class DocumentationChecks
             CheckAxes();
             CheckElectricalMigration();
             CheckPrintedDocumentation();
+            CheckBaseLevelsAndSheetFamilies();
             CheckDesktop();
             Console.WriteLine($"Documentation checks passed: {_checks}.");
             return 0;

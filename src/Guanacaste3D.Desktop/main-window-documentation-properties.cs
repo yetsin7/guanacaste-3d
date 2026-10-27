@@ -17,7 +17,8 @@ public partial class MainWindow
         if (PropertiesText.Parent is not StackPanel panel) return;
         var view = _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId);
         var axis = _session.Document.Grids.FirstOrDefault(axis => axis.Id == _selectedGridId);
-        var active = view is not null || axis is not null;
+        var sheet = ViewTabs.SelectedIndex == 3 ? _session.Document.Sheets.FirstOrDefault(sheet => sheet.Id == _selectedSheetId) : null;
+        var active = view is not null || axis is not null || sheet is not null;
         var startIndex = panel.Children.IndexOf(PropertiesText) + 1;
         for (var index = startIndex; index < panel.Children.Count; index++)
             if (!ReferenceEquals(panel.Children[index], _documentationEditor))
@@ -30,6 +31,13 @@ public partial class MainWindow
         _documentationEditor.Children.Clear();
         _documentationCoordinateInputs.Clear();
         _documentationEditor.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        if (sheet is not null)
+        {
+            var edit = new Button { Content = GetText("SheetEditor.Open"), Margin = new Thickness(0, 6, 0, 6) };
+            edit.Click += EditSheet_Click;
+            _documentationEditor.Children.Add(edit);
+            return;
+        }
         var cut = axis is not null ? new SectionCut(axis.Start, axis.End) : view?.Cut;
         if (cut is null) return;
         _documentationEditor.Children.Add(new TextBlock { Text = GetText("Documentation.Endpoints"),
@@ -82,7 +90,7 @@ public partial class MainWindow
     /// <summary>Synchronizes the properties identity when returning to an already open documentation tab.</summary>
     private void SynchronizeDocumentationView()
     {
-        if (_session is null || CurrentSelection() is not null || _selectedElectricalId is not null) return;
+        if (_session is null || CurrentSelection() is not null || _selectedElectricalId is not null || _selectedPlumbingId is not null) return;
         _selectedGridId = null;
         _selectedViewId = ViewTabs.SelectedIndex switch
         {

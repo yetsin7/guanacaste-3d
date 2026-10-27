@@ -25,7 +25,7 @@ public partial class MainWindow
     /// <summary>Selects a persistent view and coordinates the active level and workspace tab.</summary>
     private void SelectProjectView(Guid viewId)
     {
-        _selectedElectricalId = _selectedGridId = null;
+        _selectedElectricalId = _selectedPlumbingId = _selectedGridId = null;
         var view = _session.Document.Views.FirstOrDefault(candidate => candidate.Id == viewId);
         if (view is null) return;
         _selectedViewId = view.Id;

@@ -7,7 +7,7 @@ internal static class DimensionExportChecks
     public static void Run(Action<bool, string> check)
     {
         var session = new DocumentSession(BuildingDocument.Create());
-        var level = session.AddLevel();
+        var level = session.Document.Levels.Single(level => level.Role == LevelRole.BaseRoof).Id;
         var wall = session.AddWall(level, new(0, 0), new(12, 0));
         var door = session.AddOpening(wall, OpeningKind.Door, 3.45);
         var dimension = PlanDimensions.ForSelection(session.Document, door)

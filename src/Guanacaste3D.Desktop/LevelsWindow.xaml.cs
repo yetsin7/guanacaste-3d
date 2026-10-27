@@ -70,6 +70,8 @@ public partial class LevelsWindow : Window
         _editingLevelId = id;
         NameBox.Text = level.Name;
         ElevationBox.Text = Meters(level.Elevation);
+        DeleteLevelButton.IsEnabled = !BaseLevels.IsProtected(level);
+        DeleteLevelButton.ToolTip = BaseLevels.IsProtected(level) ? Text("Levels.ProtectedBase") : null;
         var above = LevelConstraints.LevelAbove(_session.Document, id);
         DependentsText.Text = Format("Levels.Dependents", LevelConstraints.CountDependents(_session.Document, id),
             above?.Name ?? Text("Levels.NoLevelAbove"));
@@ -90,6 +92,11 @@ public partial class LevelsWindow : Window
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (_editingLevelId is not Guid id) return;
+        if (BaseLevels.IsProtected(_session.Document.Levels.Single(level => level.Id == id)))
+        {
+            StatusText.Text = Text("Levels.ProtectedBase");
+            return;
+        }
         var name = _session.Document.Levels.First(level => level.Id == id).Name;
         if (MessageBox.Show(this, Format("Levels.ConfirmDelete", name), Text("Levels.WindowTitle"),
                 MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;

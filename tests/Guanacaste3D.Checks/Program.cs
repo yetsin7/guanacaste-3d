@@ -1,7 +1,6 @@
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Rendering;
-
 /// <summary>Fails the executable check suite when an expected invariant is not satisfied.</summary>
 static void Check(bool valid, string explanation)
 {
@@ -11,7 +10,7 @@ static void Check(bool valid, string explanation)
 
 var document = BuildingDocument.Create();
 document.Validate();
-Check(document.Levels.Count == 1, "Default level");
+Check(document.Levels.Count == 2 && document.Levels.All(BaseLevels.IsProtected), "Default protected floor and roof levels");
 
 var session = new DocumentSession(document);
 var id = session.AddWall(document.Levels[0].Id, new Point2(0, 0), new Point2(5, 0));
@@ -211,9 +210,7 @@ try
           reloadedWallType.SectionFillPattern == WallFillPattern.Diagonal,
         "Coordinated BIM elements survive a project round trip");
 
-    var legacyDocument = coordinatedSession.Document.Clone();
-    legacyDocument.SchemaVersion = 1;
-    legacyDocument.WallTypes = [];
+    var legacyDocument = LegacyDocumentFixtures.CreateSchemaOne(coordinatedSession.Document);
     File.WriteAllText(coordinatedFilename, "G3-PROJECT/1\n" +
         System.Text.Json.JsonSerializer.Serialize(legacyDocument));
     var upgradedDocument = ProjectFile.Load(coordinatedFilename);

@@ -1,0 +1,15 @@
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LevelName" xml:space="preserve"><value>Nivel {0}</value></data>
+  <data name="SheetName" xml:space="preserve"><value>Lámina {0}</value></data>
+  <data name="SheetFamily" xml:space="preserve"><value>Lámina arquitectónica</value></data>
+  <data name="ExampleProject" xml:space="preserve"><value>PROYECTO ARQUITECTÓNICO</value></data>
+  <data name="ExamplePlan" xml:space="preserve"><value>PLANTA DE MUROS PERIMETRALES</value></data>
+  <data name="ExampleElevations" xml:space="preserve"><value>ALZADOS ARQUITECTÓNICOS</value></data>
+  <data name="ExampleDescription" xml:space="preserve"><value>Muros, cotas y ejes del perímetro.</value></data>
+  <data name="ExampleSubtitle" xml:space="preserve"><value>PERÍMETRO Y CUBIERTA</value></data>
+  <data name="ExampleNote" xml:space="preserve"><value>Cotas expresadas en metros.</value></data>
+</root>

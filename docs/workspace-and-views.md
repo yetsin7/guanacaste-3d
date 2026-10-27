@@ -66,12 +66,12 @@ How the drawing area behaves in version 0.14. Everything here is covered by
 - **Realistic 3D view**: with *Maqueta gris* off, the 3D view shows the render
   textures assigned in *Render → Materiales*, projected exactly as the renderer
   projects them.
-- **PDF sheets**: *Archivo → Exportar planos a PDF…* writes one vector sheet per
-  level on the paper of the project's first sheet (A3 otherwise): walls cut and
-  filled, doors with leaves and swings, windows, rooms with name and area,
-  stairs with their walking line, roofs with overhang and ridges, plantings,
-  contours, title block (project, view, scale, date, sheet number), scale bar
-  and north arrow, at the largest standard scale that fits.
+- **Editable PDF sheets**: *Archivo → Exportar planos a PDF…* prints the saved
+  sheet compositions using native `.g3df` title-block families, actual physical
+  paper dimensions, and independently scaled model views. Double-click a sheet
+  to edit its views, border, texts, and fields. Without saved sheets, the exporter
+  generates a coordinated set of plans, sections, and elevations. See
+  [editable sheet families](editable-sheet-families.md).
 - **Wall, door and window catalog**: about thirty wall types grouped by what
   they are built of (gypsum partitions 75–160 mm, moisture-resistant, acoustic
   and shaft-wall gypsum, glass partitions and storefronts, concrete block,

@@ -196,6 +196,14 @@ public static class ProjectFile
             document.PlumbingPoints ??= [];
             document.PlumbingSystems ??= [];
         }
+        // Schema 15 adds protected base datums and editable drawing-sheet families and compositions.
+        if (document.SchemaVersion == 14)
+        {
+            document.SchemaVersion = 15;
+            BaseLevels.Ensure(document);
+            document.SheetFamilies ??= [];
+            SheetFamilies.Ensure(document);
+        }
 
     }
 

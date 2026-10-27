@@ -55,6 +55,7 @@ public sealed class ProjectTemplateDocument
             throw new InvalidDataException("The template contains an invalid named setting.");
     }
 
+    /// <summary>Creates an independent project and restores missing protected base datums from older templates.</summary>
     public BuildingDocument CreateProject(string projectName)
     {
         Validate();
@@ -64,6 +65,7 @@ public sealed class ProjectTemplateDocument
         var document = BuildingDocument.Create(projectName);
         document.Levels = Levels.Select(level => new Level(Guid.NewGuid(), level.Name, level.Elevation)).ToList();
         document.Views = BuiltInProjectViews.CreateDefaults(document.Levels);
+        BaseLevels.Ensure(document);
         document.Validate();
         return document;
     }

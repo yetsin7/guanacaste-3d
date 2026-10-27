@@ -228,4 +228,12 @@ public sealed record DrawingSheet(
     Guid Id,
     string Number,
     string Name,
-    SheetPaperSize PaperSize);
+    SheetPaperSize PaperSize)
+{
+    /// <summary>Reusable editable border family shared with other sheets.</summary>
+    public Guid? TitleBlockFamilyId { get; init; }
+    public List<SheetViewport> Viewports { get; init; } = [];
+    public string Description { get; init; } = string.Empty;
+    public string Subtitle { get; init; } = string.Empty;
+    public string DateText { get; init; } = string.Empty;
+}

@@ -15,6 +15,7 @@ public partial class MainWindow
         {
             if (FamilyFile.IsFamilyPath(path))
             {
+                if (TryImportSheetFamily(path)) return true;
                 var family = FamilyFile.Load(path);
                 _session.ImportOpeningFamily(family);
                 StatusText.Text = FormatText("Status.FamilyImported", family.Name);
@@ -104,6 +105,7 @@ public partial class MainWindow
         if (dialog.ShowDialog(this) != true) return;
         try
         {
+            if (TryImportSheetFamily(dialog.FileName)) return;
             var family = FamilyFile.Load(dialog.FileName);
             _session.ImportOpeningFamily(family);
             StatusText.Text = FormatText("Status.FamilyImported", family.Name);
