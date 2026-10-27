@@ -43,6 +43,9 @@ public static class BuiltInProjectViews
     public static readonly Guid SectionAId = Guid.Parse("26870a61-1d20-4f66-918a-6138d5370687");
     public static readonly Guid ProjectScheduleId = Guid.Parse("54af0a0e-63f6-4fd8-9ff3-aa27947758e8");
 
+    /// <summary>The area table view: rooms grouped by level, placeable on a sheet.</summary>
+    public static readonly Guid AreaScheduleId = Guid.Parse("8d2f6a14-3b7e-4c59-a1d0-5e9c7b3f2a68");
+
     public static readonly Guid SouthElevationId = Guid.Parse("7a1f0c52-5d4b-4f0e-8a9c-2b6e1d3f4a05");
     public static readonly Guid EastElevationId = Guid.Parse("c3d8e1b7-92a4-4c6f-b5e0-0f7a2d9c4b16");
     public static readonly Guid WestElevationId = Guid.Parse("e5b9a0d4-1c37-48fa-9d62-6a3c8f1e7b27");
@@ -65,7 +68,16 @@ public static class BuiltInProjectViews
         views.Add(new ProjectView(SectionAId, SectionName, ProjectViewKind.Section, null, ViewOrientation.East));
         views.Add(new ProjectView(ProjectScheduleId, ScheduleName, ProjectViewKind.Schedule, null, ViewOrientation.None));
         EnsureElevations(views);
+        EnsureAreaSchedule(views);
         return views;
+    }
+
+    /// <summary>Adds the area table view to projects made before it existed.</summary>
+    public static void EnsureAreaSchedule(List<ProjectView> views)
+    {
+        if (views.All(view => view.Id != AreaScheduleId))
+            views.Add(new ProjectView(AreaScheduleId, DefaultLabels.Get("AreaTable.Title"), ProjectViewKind.Schedule, null,
+                ViewOrientation.None));
     }
 
     /// <summary>

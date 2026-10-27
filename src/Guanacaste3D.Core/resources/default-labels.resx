@@ -12,4 +12,10 @@
   <data name="ExampleDescription" xml:space="preserve"><value>Muros, cotas y ejes del perímetro.</value></data>
   <data name="ExampleSubtitle" xml:space="preserve"><value>PERÍMETRO Y CUBIERTA</value></data>
   <data name="ExampleNote" xml:space="preserve"><value>Cotas expresadas en metros.</value></data>
+  <data name="AreaTable.Title" xml:space="preserve"><value>Cuadro de áreas</value></data>
+  <data name="AreaTable.Number" xml:space="preserve"><value>N.º</value></data>
+  <data name="AreaTable.Room" xml:space="preserve"><value>Espacio</value></data>
+  <data name="AreaTable.Area" xml:space="preserve"><value>Área</value></data>
+  <data name="AreaTable.LevelTotal" xml:space="preserve"><value>Subtotal del nivel</value></data>
+  <data name="AreaTable.Total" xml:space="preserve"><value>Total construido</value></data>
 </root>

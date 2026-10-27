@@ -72,8 +72,9 @@ public sealed partial class DocumentSession
             foreach (var viewport in sheet.Viewports)
             {
                 if (viewport is null || viewport.Id == Guid.Empty || !ids.Add(viewport.Id) ||
-                    !document.Views.Any(view => view.Id == viewport.ViewId && view.Kind is ProjectViewKind.Plan or
-                        ProjectViewKind.Elevation or ProjectViewKind.Section or ProjectViewKind.Model3D) ||
+                    !document.Views.Any(view => view.Id == viewport.ViewId && (view.Kind is ProjectViewKind.Plan or
+                        ProjectViewKind.Elevation or ProjectViewKind.Section or ProjectViewKind.Model3D ||
+                        view.Id == BuiltInProjectViews.AreaScheduleId)) ||
                     !double.IsFinite(viewport.X) || !double.IsFinite(viewport.Y) || !double.IsFinite(viewport.Width) ||
                     !double.IsFinite(viewport.Height) || viewport.X < layout.Margin || viewport.Y < layout.Margin + layout.HeaderHeight ||
                     viewport.Width < 20 || viewport.Height < 20 || viewport.X + viewport.Width > layout.Width - layout.Margin ||

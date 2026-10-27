@@ -226,6 +226,7 @@ public partial class MainWindow : Window
         _session.Changed -= OnDocumentChanged;
         // Projects from before the four elevations were offered gain the missing ones.
         BuiltInProjectViews.EnsureElevations(document.Views);
+        BuiltInProjectViews.EnsureAreaSchedule(document.Views);
         _session = new DocumentSession(document);
         _session.Changed += OnDocumentChanged;
         _activeLevelId = document.Levels[0].Id;

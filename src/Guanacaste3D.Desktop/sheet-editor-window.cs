@@ -68,7 +68,8 @@ public sealed class SheetEditorWindow : Window
         var tools = new WrapPanel(); DockPanel.SetDock(tools, Dock.Top);
         _views.Width = 240; _views.Margin = new Thickness(4); _views.DisplayMemberPath = "Label"; _views.SelectedValuePath = "Value";
         var choices = _session.Document.Views.Where(view => view.Kind is ProjectViewKind.Plan or ProjectViewKind.Section or
-            ProjectViewKind.Elevation or ProjectViewKind.Model3D).Select(view => new LabeledValue<Guid>(view.Name, view.Id)).ToArray();
+            ProjectViewKind.Elevation or ProjectViewKind.Model3D ||
+            view.Id == BuiltInProjectViews.AreaScheduleId).Select(view => new LabeledValue<Guid>(view.Name, view.Id)).ToArray();
         _views.ItemsSource = choices; _views.SelectedIndex = 0; tools.Children.Add(_views);
         tools.Children.Add(Button("SheetEditor.AddView", AddView_Click));
         tools.Children.Add(Button("SheetEditor.RemoveView", RemoveView_Click));

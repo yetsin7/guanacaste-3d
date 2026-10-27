@@ -383,6 +383,7 @@ OpeningFamilyChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
 FloorPlanHatchChecks.Run(Check);
+AreaScheduleChecks.Run(Check);
 ScheduleChecks.Run(Check);
 LocalizationChecks.Run(Check);
 IfcChecks.Run(Check);
