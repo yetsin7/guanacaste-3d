@@ -176,7 +176,13 @@ public static class ProjectFile
             document.SchemaVersion = 11;
             document.RenderMaterials ??= [];
         }
-        if (document.SchemaVersion == 11) document.SchemaVersion = 12;
+        // Schema 12 adds the electrical system: devices, switch links and circuits.
+        if (document.SchemaVersion == 11)
+        {
+            document.SchemaVersion = 12;
+            document.ElectricalDevices ??= [];
+            document.ElectricalCircuits ??= [];
+        }
         // Schema 13 adds finite section cutting lines and project-wide reference axes.
         if (document.SchemaVersion == 12)
         {

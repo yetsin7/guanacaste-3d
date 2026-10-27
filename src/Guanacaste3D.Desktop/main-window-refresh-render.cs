@@ -244,6 +244,11 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Space && Keyboard.FocusedElement is not TextBox && TryElectricalSpace())
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Space && Keyboard.FocusedElement is not TextBox && TryCyclePlantingSpecies())
         {
             e.Handled = true;
@@ -265,6 +270,11 @@ public partial class MainWindow
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
         else if (e.Key == Key.R) { Room_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
+        else if (e.Key == Key.Escape && CancelElectricalTools())
+        {
+            StatusText.Text = GetText("Status.SelectionMode");
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape && CancelTopoPointTool()) e.Handled = true;
         else if (e.Key == Key.Escape && _drawingWall) { HandleWallEscape(); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }

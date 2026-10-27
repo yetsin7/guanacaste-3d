@@ -42,7 +42,11 @@ internal static partial class DocumentationChecks
             ClickAt(new(5, 3));
             Check(session.Document.StructuralElements.Count(element => element.Kind == StructuralElementKind.Beam) == 1,
                 "The Beam command creates one individual diagonal beam instead of a beam system");
+            var electrical = session.AddElectricalDevice(level, ElectricalDeviceKind.Switch, "S1", new(4, 0));
+            SetField("_selectedElectricalId", (Guid?)electrical);
             Invoke("ExecuteApplicationCommand", "Grid");
+            Check(Field<Guid?>("_selectedElectricalId") is null,
+                "Starting a datum tool clears stale electrical selection from the properties palette");
             Check(Field<bool>("_creatingGrid") && ((Canvas)_window.FindName("PlanCanvas")).Cursor == Cursors.Cross,
                 "Grid command arms an interactive axis tool with a coordinate cursor");
             ClickAt(new(-1, -2));
@@ -75,12 +79,19 @@ internal static partial class DocumentationChecks
             Check(((TextBlock)_window.FindName("PropertiesActiveViewText")).Text == section.Name && _window.Title.Contains(section.Name),
                 "The section tab, properties caption, and window title use the same saved view name");
             var coordinates = Field<List<TextBox>>("_documentationCoordinateInputs");
-            Check(coordinates.Count == 4 && ((TextBlock)_window.FindName("PropertiesText")).Text.Contains("Sección"),
+            Check(coordinates.Count == 4 && ((TextBlock)_window.FindName("PropertiesText")).Text.Contains(
+                (string)application.FindResource("Documentation.ViewKind.Section")),
                 "Section properties show localized identity and editable cut endpoints");
             coordinates[3].Text = "6";
             Invoke("ApplyDocumentationEndpoints_Click", new Button { Tag = section.Id }, new RoutedEventArgs());
             Check(session.Document.Views.Single(view => view.Id == section.Id).Cut!.End.Y == 6,
                 "Editing cut coordinates regenerates the same section view");
+            Pump();
+            Check(sectionCanvas.Children.OfType<System.Windows.Shapes.Path>().Any() &&
+                Field<List<TextBox>>("_documentationCoordinateInputs").Count == 4,
+                "Regenerating cut coordinates retains visible geometry and its editable properties");
+            Check(sectionCanvas.Children.OfType<TextBlock>().All(label => Canvas.GetLeft(label) >= 0),
+                "Section level labels remain inside the viewport after its extent changes");
             SaveBitmap("section-with-foundation.png");
             Invoke("SelectProjectView", BuiltInProjectViews.NorthElevationId);
             Pump();

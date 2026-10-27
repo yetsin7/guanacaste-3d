@@ -98,6 +98,23 @@ internal static class SurfacePatterns
                 var light = Math.Clamp((clusters - 0.45f) * 1.6f, 0f, 1f);
                 return Vector3.Lerp(new Vector3(0.82f, 0.95f, 1.05f), new Vector3(1.22f, 1.12f, 0.78f), light) * tone;
             }
+            case SurfacePattern.Fabric:
+            {
+                // Basket weave: alternating warp and weft every 2 mm, and a slow mottling where the nap lies differently.
+                var warp = MathF.Sin(u * 1600f) * MathF.Sin(v * 1600f);
+                var nap = ValueNoise(u * 6f, v * 6f);
+                return new Vector3(0.9f + 0.06f * warp + 0.12f * nap);
+            }
+            case SurfacePattern.Leaves:
+            {
+                // One tone per leaf (cells about a leaf wide): young leaves lighter and yellower, old ones darker.
+                var cell = Hash01((int)MathF.Floor(position.X * 9), (int)MathF.Floor(position.Y * 9) * 31 + (int)MathF.Floor(position.Z * 9));
+                var tone = 0.75f + 0.5f * cell;
+                var young = Math.Clamp((cell - 0.72f) * 3.5f, 0f, 1f);
+                var dry = cell > 0.985f ? 1f : 0f;
+                var color = Vector3.Lerp(new Vector3(0.92f, 1.0f, 1.02f), new Vector3(1.25f, 1.18f, 0.7f), young) * tone;
+                return Vector3.Lerp(color, new Vector3(2.2f, 1.5f, 0.6f), dry);
+            }
             case SurfacePattern.Bark:
             {
                 var furrows = ValueNoise(u * 18f, v * 1.6f);
@@ -242,6 +259,8 @@ internal static class SurfacePatterns
             }
             case SurfacePattern.Bark:
                 return ValueNoise(worldU * 18f, worldV * 1.6f) * 0.012f + ValueNoise(worldU * 60f, worldV * 6f) * 0.002f * fade;
+            case SurfacePattern.Fabric:
+                return (ValueNoise(worldU * 6f, worldV * 6f) * 0.002f + MathF.Sin(worldU * 1600f) * MathF.Sin(worldV * 1600f) * 0.0002f) * fade;
             case SurfacePattern.Grass:
             {
                 var blades = ValueNoise(worldU * 26f, worldV * 26f) * 0.004f + ValueNoise(worldU * 70f, worldV * 70f) * 0.0015f;

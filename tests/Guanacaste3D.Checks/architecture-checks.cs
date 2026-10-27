@@ -314,8 +314,8 @@ static class ArchitectureChecks
             Faces(OpeningKind.Door, OpeningOperation.Pocket, 1.8, 2.1, 0),
             Faces(OpeningKind.Door, OpeningOperation.Revolving, 1.8, 2.1, 0, depth: 0.9)
         };
-        check(glazedSwing == swing && counts.Distinct().Count() == counts.Length,
-            "Every door operation builds its own leaves; a glazed leaf swaps the pane, not the geometry");
+        check(glazedSwing != swing && counts.Distinct().Count() == counts.Length,
+            "Every door operation builds its own leaves; a glazed leaf has glass where the upper raised panel was");
 
         var windows = new[]
         {

@@ -25,6 +25,7 @@ public partial class MainWindow
     /// <summary>Selects a persistent view and coordinates the active level and workspace tab.</summary>
     private void SelectProjectView(Guid viewId)
     {
+        _selectedElectricalId = _selectedGridId = null;
         var view = _session.Document.Views.FirstOrDefault(candidate => candidate.Id == viewId);
         if (view is null) return;
         _selectedViewId = view.Id;
@@ -131,7 +132,7 @@ public partial class MainWindow
                 FontSize = 11,
                 Background = Brushes.White
             };
-            Canvas.SetLeft(label, horizontalOffset - 105);
+            Canvas.SetLeft(label, Math.Max(4, horizontalOffset - 105));
             Canvas.SetTop(label, elevationY - 18);
             canvas.Children.Add(label);
         }

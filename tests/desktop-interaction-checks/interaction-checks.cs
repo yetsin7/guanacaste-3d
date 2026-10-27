@@ -106,6 +106,7 @@ internal static class InteractionChecks
             PlantingChecks(session);
             StairToolChecks(session);
             TexturedModelChecks(session);
+            ElectricalToolChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -237,6 +238,61 @@ internal static class InteractionChecks
         Invoke("RebuildModelVisual");
     }
 
+    /// <summary>
+    /// Places a panel and a switch on a wall and a luminaire on the ceiling with the ribbon commands, wires the switch to
+    /// the light and a new circuit from the panel to both, then flips the switch and checks the light follows.
+    /// </summary>
+    private static void ElectricalToolChecks(DocumentSession session)
+    {
+        var level = session.Document.Levels[0].Id;
+        var wall = session.Document.Walls.First(candidate => candidate.LevelId == level && candidate.Length > 3);
+        var dx = (wall.End.X - wall.Start.X) / wall.Length;
+        var dy = (wall.End.Y - wall.Start.Y) / wall.Length;
+        Point2 Near(double along, double off) => new(wall.Start.X + dx * along - dy * off, wall.Start.Y + dy * along + dx * off);
+        var before = session.Document.ElectricalDevices.Count;
+        Invoke("ExecuteApplicationCommand", "ElectricalEquipment");
+        Invoke("PlaceElectricalDevice", ElectricalDeviceKind.Panel, Near(0.6, 0.3));
+        Invoke("ExecuteApplicationCommand", "LightSwitch");
+        Invoke("PlaceElectricalDevice", ElectricalDeviceKind.Switch, Near(1.6, 0.3));
+        Invoke("ExecuteApplicationCommand", "LightingFixture");
+        Invoke("PlaceElectricalDevice", ElectricalDeviceKind.CeilingFixture, Near(2.0, 2.0));
+        var placed = session.Document.ElectricalDevices.Skip(before).ToArray();
+        var panel = placed.Single(device => device.Kind == ElectricalDeviceKind.Panel);
+        var light = placed.Single(device => device.Kind == ElectricalDeviceKind.CeilingFixture);
+        var lightSwitch = placed.Single(device => device.Kind == ElectricalDeviceKind.Switch);
+        Check(placed.Length == 3 && Math.Abs(Math.Abs(DistanceToLine(wall, panel.Position)) - wall.Thickness / 2) < 1e-6,
+            "Panels and switches attach to the wall face; luminaires go where clicked");
+
+        Invoke("ExecuteApplicationCommand", "Wire");
+        Invoke("HandleWiringClick", lightSwitch.Position);
+        Invoke("HandleWiringClick", light.Position);
+        Invoke("CancelElectricalTools");
+        Invoke("ExecuteApplicationCommand", "Wire");
+        Invoke("HandleWiringClick", panel.Position);
+        Invoke("HandleWiringClick", light.Position);
+        Invoke("HandleWiringClick", lightSwitch.Position);
+        Invoke("CancelElectricalTools");
+        var analysis = ElectricalAnalysis.Analyze(session.Document);
+        Check(session.Document.ElectricalDevices.Single(device => device.Id == lightSwitch.Id).Controls.Contains(light.Id) &&
+              session.Document.ElectricalCircuits.Count(circuit => circuit.PanelId == panel.Id) == 1 &&
+              analysis.Brightness(light.Id) == 1,
+            "The wiring tool links a switch to its light and wires a new circuit from the panel");
+        Invoke("FlipSwitch", lightSwitch.Id);
+        Check(ElectricalAnalysis.Analyze(session.Document).Brightness(light.Id) == 0, "Flipping the switch turns the light off at once");
+        Invoke("RenderPlan");
+        Pump();
+        Check(_canvas.Children.OfType<System.Windows.Shapes.Ellipse>().Any(shape => shape.Tag is Guid id && id == light.Id),
+            "Electrical devices are drawn in plan with their symbols");
+        foreach (var device in placed) session.RemoveElectricalDevice(device.Id);
+    }
+
+    private static double DistanceToLine(Wall wall, Point2 point)
+    {
+        var dx = (wall.End.X - wall.Start.X) / wall.Length;
+        var dy = (wall.End.Y - wall.Start.Y) / wall.Length;
+        return (point.X - wall.Start.X) * -dy + (point.Y - wall.Start.Y) * dx;
+    }
+
     /// <summary>Opens each registered document kind through the same path used by Windows file associations.</summary>
     private static void CheckAssociatedDocumentStartup()
     {
@@ -338,8 +394,18 @@ internal static class InteractionChecks
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using (var stream = File.Create("artifacts/interaction-evidence/door-demo-tooltip.png")) encoder.Save(stream);
-        tip.IsOpen = false;
         Check(content.ActualHeight > 150, "Door demonstration scene is laid out inside the tooltip");
+        Check(!tip.StaysOpen && tip.Placement == System.Windows.Controls.Primitives.PlacementMode.Custom &&
+              tip.CustomPopupPlacementCallback is not null,
+            "Tooltips use focus-aware placement constrained to the active Guanacaste 3D window");
+        var competingWindow = new Window { Width = 320, Height = 200, ShowInTaskbar = false };
+        competingWindow.Show();
+        competingWindow.Activate();
+        Pump();
+        Check(!tip.IsOpen, "Tooltips close when Guanacaste 3D loses activation");
+        competingWindow.Close();
+        _window.Activate();
+        Pump();
     }
 
     /// <summary>Finds every button in the window's logical tree.</summary>

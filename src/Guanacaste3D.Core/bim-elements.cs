@@ -11,6 +11,29 @@ public enum WallFunction
     Retaining
 }
 
+/// <summary>What a wall is built of; it sets the material of its faces in the 3D views and the render.</summary>
+public enum WallConstruction
+{
+    /// <summary>Rendered masonry: plaster on both faces.</summary>
+    Plaster,
+    /// <summary>Gypsum board on steel or wood studs: smooth paint on both faces.</summary>
+    Gypsum,
+    /// <summary>A glass partition: tempered panes in aluminium channels with mullions.</summary>
+    Glass,
+    /// <summary>Exposed clay brick outside, plaster inside.</summary>
+    Brick,
+    /// <summary>Exposed concrete block outside, plaster inside.</summary>
+    Block,
+    /// <summary>Exposed (fair-faced) concrete outside, plaster inside.</summary>
+    Concrete,
+    /// <summary>Natural stone outside, plaster inside.</summary>
+    Stone,
+    /// <summary>Timber cladding outside.</summary>
+    Wood,
+    /// <summary>Metal panel outside.</summary>
+    Metal
+}
+
 /// <summary>Defines the drafting pattern used to represent a wall in a coordinated view.</summary>
 public enum WallFillPattern
 {
@@ -38,6 +61,9 @@ public sealed record WallType(
 
     /// <summary>Drafting pattern used for cut wall material in section views.</summary>
     public WallFillPattern SectionFillPattern { get; init; } = WallFillPattern.Diagonal;
+
+    /// <summary>What the wall is built of: it sets the material of its faces in 3D and in the render.</summary>
+    public WallConstruction Construction { get; init; }
 }
 
 /// <summary>Provides stable identifiers and defaults for built-in wall types.</summary>

@@ -12,6 +12,7 @@ public partial class MainWindow
     /// <summary>Updates the properties palette for rooms, floors, sheets, and wall types.</summary>
     private bool TryRefreshExtendedProperties()
     {
+        if (TryRefreshElectricalProperties()) return true;
         if (TryRefreshStructuralProperties()) return true;
         if (_session.Document.Grids.FirstOrDefault(axis => axis.Id == _selectedGridId) is { } axis)
         {

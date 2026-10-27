@@ -17,6 +17,7 @@ internal static partial class DocumentationChecks
         {
             CheckSections();
             CheckAxes();
+            CheckElectricalMigration();
             CheckPrintedDocumentation();
             CheckDesktop();
             Console.WriteLine($"Documentation checks passed: {_checks}.");
@@ -76,6 +77,12 @@ internal static partial class DocumentationChecks
         Check(migrated.SchemaVersion == BuildingDocument.CurrentSchemaVersion && migrated.Grids.Count == 0 &&
             migrated.Views.Single(view => view.Id == BuiltInProjectViews.SectionAId).Cut is null,
             "Schema 11 projects migrate with their legacy section and no invented axes");
+        var overlap = new DocumentSession(BuildingDocument.Create("Overlapping solid verification"));
+        overlap.AddColumn(overlap.Document.Levels[0].Id, new(0, 0));
+        overlap.AddColumn(overlap.Document.Levels[0].Id, new(0, 0.2));
+        var overlapContours = SectionGeometry.Build(BuildingMesher.Build(overlap.Document), new(new(0, -1), new(0, 1)));
+        Check(overlapContours.All(contour => contour.Closed) && overlapContours.Sum(contour => WindingAt(contour, new(1.1, 1))) == 2,
+            "Overlapping solids preserve a nonzero interior instead of creating an artificial void");
     }
 
     /// <summary>Verifies editable dimensions against shared axes and safe deletion with history.</summary>
@@ -155,6 +162,19 @@ internal static partial class DocumentationChecks
         Check(cutPrimitives.OfType<SheetPolyline>().Any(line => line.Weight == 0.35) &&
             cutPrimitives.OfType<SheetText>().Any(text => text.Text.Contains(session.Document.Levels[0].Name)),
             "Printed sections include actual cut contours and coordinated level names");
+    }
+
+    /// <summary>Protects schema 12 electrical projects when applying the documentation migration.</summary>
+    private static void CheckElectricalMigration()
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Electrical migration verification"));
+        var id = session.AddElectricalDevice(session.Document.Levels[0].Id, ElectricalDeviceKind.Switch,
+            "S1", new(2, 0));
+        var previous = session.Document.Clone();
+        previous.SchemaVersion = 12;
+        var migrated = ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(previous));
+        Check(migrated.SchemaVersion == 13 && migrated.ElectricalDevices.Single().Id == id && migrated.Grids.Count == 0,
+            "Schema 12 electrical projects retain their devices when upgraded for documentation");
     }
 
     /// <summary>Exercises the official compressed file format in a unique directory and removes only its own output.</summary>

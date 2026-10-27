@@ -1068,7 +1068,7 @@ public sealed class PathTracer
             if (bounce == _settings.MaxBounces) break;
 
             if (!SampleBsdf(in point, in surface, viewDirection, ref sampler, out var next, out var weightBsdf,
-                    out var pdf, out var delta, out var diffuseLobe))
+                    out var pdf, out var delta, out var diffuseLobe, out var transmitted))
                 break;
             // Russian roulette keeps cost bounded without bias once the path is dim.
             var continuation = weightBsdf;
@@ -1092,7 +1092,8 @@ public sealed class PathTracer
             scatterNormal = point.Normal;
             sinceScatter = 0;
             direction = next;
-            origin = shadowOrigin;
+            // Light that passed through a translucent leaf continues from its far side.
+            origin = transmitted ? position - point.Geometric * _rayEpsilon : shadowOrigin;
             bounce++;
         }
 
@@ -1160,15 +1161,14 @@ public sealed class PathTracer
         if (_sunRadiance != Vector3.Zero)
         {
             var light = Sampling.Cone(_sunDirection, _sunCosine, sampler.NextFloat(), sampler.NextFloat());
-            var nDotL = Vector3.Dot(point.Normal, light);
-            if (nDotL > 0 && Vector3.Dot(point.Geometric, light) > 0)
+            if (Receives(in point, in surface, light, out var nDotL, out var cosine, out var from))
             {
-                var transmittance = Visibility(origin, light, float.MaxValue);
+                var transmittance = Visibility(from, light, float.MaxValue);
                 if (transmittance != Vector3.Zero)
                 {
                     var f = Evaluate(in surface, point.Diffuse, point.Normal, view, light, nDotV, nDotL, out var pdf);
                     total += transmittance * _sunRadiance * f *
-                             (nDotL / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf));
+                             (cosine / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf));
                 }
             }
         }
@@ -1193,19 +1193,44 @@ public sealed class PathTracer
         if (_portals is not null && _portals.TrySample(point.Position, point.Normal, sampler.NextFloat(),
                 sampler.NextFloat(), sampler.NextFloat(), out var portalDirection, out var portalPdf))
         {
-            var nDotL = Vector3.Dot(point.Normal, portalDirection);
-            if (nDotL > 0 && Vector3.Dot(point.Geometric, portalDirection) > 0)
+            if (Receives(in point, in surface, portalDirection, out var nDotL, out var cosine, out var from))
             {
-                var transmittance = Visibility(origin, portalDirection, float.MaxValue);
+                var transmittance = Visibility(from, portalDirection, float.MaxValue);
                 if (transmittance != Vector3.Zero)
                 {
                     var f = Evaluate(in surface, point.Diffuse, point.Normal, view, portalDirection, nDotV, nDotL, out var pdf);
                     total += transmittance * SkyRadiance(portalDirection) * f *
-                             (nDotL / portalPdf * Sampling.PowerHeuristic(portalPdf, pdf));
+                             (cosine / portalPdf * Sampling.PowerHeuristic(portalPdf, pdf));
                 }
             }
         }
         return total;
+    }
+
+    /// <summary>
+    /// Whether light arriving from <paramref name="direction"/> reaches the surface's lobes: from the front, or from
+    /// behind through a translucent surface. Gives the signed and absolute cosines and the shadow-ray origin on that side.
+    /// </summary>
+    private bool Receives(in ShadePoint point, in SurfaceData surface, Vector3 direction, out float nDotL, out float cosine,
+        out Vector3 origin)
+    {
+        nDotL = Vector3.Dot(point.Normal, direction);
+        var geometric = Vector3.Dot(point.Geometric, direction);
+        if (nDotL > 0 && geometric > 0)
+        {
+            cosine = nDotL;
+            origin = point.Position + point.Geometric * _rayEpsilon;
+            return true;
+        }
+        if (surface.Translucency > 0 && nDotL < 0 && geometric < 0)
+        {
+            cosine = -nDotL;
+            origin = point.Position - point.Geometric * _rayEpsilon;
+            return true;
+        }
+        cosine = 0;
+        origin = default;
+        return false;
     }
 
     /// <summary>Light reflected toward the viewer from one explicit light, with a shadow ray.</summary>
@@ -1219,18 +1244,17 @@ public sealed class PathTracer
             // A point on the lamp's sphere gives soft shadows without changing the light's total power.
             target += Sampling.Cone(Vector3.UnitZ, -1f, sampler.NextFloat(), sampler.NextFloat()) * light.Radius;
         }
-        var toLight = target - origin;
+        var toLight = target - point.Position;
         var distanceSquared = MathF.Max(toLight.LengthSquared(), 1e-4f);
         var distance = MathF.Sqrt(distanceSquared);
         var direction = toLight / distance;
-        var nDotL = Vector3.Dot(point.Normal, direction);
-        if (nDotL <= 0 || Vector3.Dot(point.Geometric, direction) <= 0) return Vector3.Zero;
+        if (!Receives(in point, in surface, direction, out var nDotL, out var cosine, out var from)) return Vector3.Zero;
         var intensity = lights.Intensity(index, -direction);
         if (intensity == Vector3.Zero) return Vector3.Zero;
-        var transmittance = Visibility(origin, direction, distance * 0.999f);
+        var transmittance = Visibility(from, direction, distance * 0.999f);
         if (transmittance == Vector3.Zero) return Vector3.Zero;
         var f = Evaluate(in surface, point.Diffuse, point.Normal, view, direction, nDotV, nDotL, out _);
-        return transmittance * intensity * f * (nDotL / distanceSquared);
+        return transmittance * intensity * f * (cosine / distanceSquared);
     }
 
     /// <summary>Light transmitted along a segment: zero if opaque geometry blocks it, tinted if only glass is crossed.</summary>
@@ -1264,12 +1288,18 @@ public sealed class PathTracer
     private static Vector3 Evaluate(in SurfaceData surface, Vector3 diffuse, Vector3 normal, Vector3 view,
         Vector3 light, float nDotV, float nDotL, out float pdf)
     {
+        var specularProbability = SpecularProbability(in surface, diffuse, nDotV);
+        if (nDotL < 0)
+        {
+            // Diffuse transmission through a thin translucent surface: light from behind, scattered toward the viewer.
+            pdf = (1 - specularProbability) * surface.Translucency * -nDotL * (1 / MathF.PI);
+            return diffuse * (surface.Translucency * (1 / MathF.PI));
+        }
         var half = Vector3.Normalize(light + view);
         var vDotH = MathF.Max(Vector3.Dot(view, half), 0);
         var fresnel = Microfacet.Fresnel(surface.F0, vDotH);
         var value = diffuse * ((Vector3.One - fresnel) * (1 / MathF.PI));
-        var specularProbability = SpecularProbability(in surface, diffuse, nDotV);
-        pdf = (1 - specularProbability) * nDotL * (1 / MathF.PI);
+        pdf = (1 - specularProbability) * (1 - surface.Translucency) * nDotL * (1 / MathF.PI);
         if (surface.HasSpecular && !surface.Delta)
         {
             var nDotH = MathF.Max(Vector3.Dot(normal, half), 0);
@@ -1295,13 +1325,14 @@ public sealed class PathTracer
     /// perfect mirrors), and whether the lobe was diffuse.
     /// </summary>
     private bool SampleBsdf(in ShadePoint point, in SurfaceData surface, Vector3 view, ref Sampler sampler,
-        out Vector3 next, out Vector3 weight, out float pdf, out bool delta, out bool diffuseLobe)
+        out Vector3 next, out Vector3 weight, out float pdf, out bool delta, out bool diffuseLobe, out bool transmitted)
     {
         next = Vector3.UnitZ;
         weight = Vector3.Zero;
         pdf = 0;
         delta = false;
         diffuseLobe = false;
+        transmitted = false;
         var normal = point.Normal;
         var nDotV = MathF.Max(Vector3.Dot(normal, view), 1e-4f);
         var specularProbability = SpecularProbability(in surface, point.Diffuse, nDotV);
@@ -1309,12 +1340,15 @@ public sealed class PathTracer
 
         if (!chooseSpecular)
         {
-            next = Sampling.CosineHemisphere(normal, sampler.NextFloat(), sampler.NextFloat());
+            // A translucent surface sends a share of its diffuse light out of its back face.
+            transmitted = surface.Translucency > 0 && sampler.NextFloat() < surface.Translucency;
+            next = Sampling.CosineHemisphere(transmitted ? -normal : normal, sampler.NextFloat(), sampler.NextFloat());
             var nDotL = Vector3.Dot(normal, next);
-            if (nDotL <= 1e-5f || Vector3.Dot(point.Geometric, next) <= 0) return false;
+            var geometric = Vector3.Dot(point.Geometric, next);
+            if (transmitted ? nDotL >= -1e-5f || geometric >= 0 : nDotL <= 1e-5f || geometric <= 0) return false;
             var f = Evaluate(in surface, point.Diffuse, normal, view, next, nDotV, nDotL, out pdf);
             if (pdf <= 1e-9f) return false;
-            weight = f * (nDotL / pdf);
+            weight = f * (MathF.Abs(nDotL) / pdf);
             diffuseLobe = true;
             return true;
         }
@@ -1378,6 +1412,8 @@ public sealed class PathTracer
         public float TextureScale { get; init; }
         /// <summary>Relief height in meters of a full white-to-black step in the texture.</summary>
         public float TextureDepth { get; init; }
+        /// <summary>Share of diffuse light passed through to the back face (leaves).</summary>
+        public float Translucency { get; init; }
         public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
         /// <summary>Whether direct light can be evaluated here (anything except a pure mirror or pure emitter).</summary>
         public bool HasLobes { get; init; }
@@ -1402,7 +1438,9 @@ public sealed class PathTracer
                 DielectricF0 = m.DielectricF0,
                 Delta = delta,
                 HasSpecular = hasSpecular,
-                CacheEligible = !delta && m.Metallic <= 0.05f && m.Transmission <= 0 && !(m.Emission.X > 0 || m.Emission.Y > 0 || m.Emission.Z > 0),
+                CacheEligible = !delta && m.Metallic <= 0.05f && m.Transmission <= 0 && m.Translucency <= 0 &&
+                                !(m.Emission.X > 0 || m.Emission.Y > 0 || m.Emission.Z > 0),
+                Translucency = m.Translucency,
                 HasLobes = Sampling.Luminance(diffuse) > 1e-4f || (hasSpecular && !delta),
                 Pattern = m.Pattern,
                 PatternScale = m.PatternScale,
@@ -1487,20 +1525,20 @@ public sealed class PathTracer
             if (slot < 0) slot = ~slot;
             slot = Math.Min(slot, _triangles.Length - 1);
             var target = Sampling.TrianglePoint(_a[slot], _b[slot], _c[slot], sampler.NextFloat(), sampler.NextFloat());
-            var toLight = target - origin;
+            var toLight = target - point.Position;
             var distanceSquared = toLight.LengthSquared();
             if (distanceSquared < 1e-6f) return Vector3.Zero;
             var distance = MathF.Sqrt(distanceSquared);
             var direction = toLight / distance;
-            var nDotL = Vector3.Dot(point.Normal, direction);
             var lightCosine = MathF.Abs(Vector3.Dot(_normal[slot], direction));
-            if (nDotL <= 0 || lightCosine < 1e-5f || Vector3.Dot(point.Geometric, direction) <= 0) return Vector3.Zero;
+            if (lightCosine < 1e-5f ||
+                !tracer.Receives(in point, in surface, direction, out var nDotL, out var cosine, out var from)) return Vector3.Zero;
             var probability = _areas[slot] * MathF.Max(Sampling.Luminance(_emission[slot]), 1e-4f) / _total;
             var pdfLight = probability * distanceSquared / (lightCosine * _areas[slot]);
-            var transmittance = tracer.Visibility(origin, direction, distance * 0.998f - tracer._rayEpsilon);
+            var transmittance = tracer.Visibility(from, direction, distance * 0.998f - tracer._rayEpsilon);
             if (transmittance == Vector3.Zero) return Vector3.Zero;
             var f = Evaluate(in surface, point.Diffuse, point.Normal, view, direction, nDotV, nDotL, out var pdfBsdf);
-            return transmittance * _emission[slot] * f * (nDotL / pdfLight * Sampling.PowerHeuristic(pdfLight, pdfBsdf));
+            return transmittance * _emission[slot] * f * (cosine / pdfLight * Sampling.PowerHeuristic(pdfLight, pdfBsdf));
         }
     }
 }

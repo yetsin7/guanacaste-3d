@@ -24,7 +24,13 @@
         <ResourceDictionary Source="resources/localization.view3d.es.xaml"/>
         <ResourceDictionary Source="resources/localization.architecture.es.xaml"/>
         <ResourceDictionary Source="resources/localization.documentation.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.electrical.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
+      <Style TargetType="{x:Type ToolTip}">
+        <Setter Property="StaysOpen" Value="False"/>
+        <EventSetter Event="Opened" Handler="ToolTip_Opened"/>
+        <EventSetter Event="Closed" Handler="ToolTip_Closed"/>
+      </Style>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

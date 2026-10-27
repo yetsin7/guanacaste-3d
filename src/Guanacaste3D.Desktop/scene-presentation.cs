@@ -42,7 +42,8 @@ internal static class ScenePresentation
                 mesh.TextureCoordinates.Add(new System.Windows.Point(u / textured, -v / textured));
             }
         }
-        foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Glass })
+        foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Leaf, SurfaceKind.InteriorWall, SurfaceKind.Metal, SurfaceKind.LightEmitter, SurfaceKind.Upholstery, SurfaceKind.Bedding, SurfaceKind.Ceramic, SurfaceKind.LightOff, SurfaceKind.SpotEmitter, SurfaceKind.WallBrick, SurfaceKind.WallBlock,
+            SurfaceKind.WallConcrete, SurfaceKind.WallStone, SurfaceKind.WallWood, SurfaceKind.WallMetal, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
             mesh.Freeze();
@@ -243,6 +244,21 @@ internal static class ScenePresentation
         SurfaceKind.Bark => Diffuse(Color.FromRgb(104, 86, 68)),
         SurfaceKind.Earth => Diffuse(Color.FromRgb(126, 98, 72)),
         SurfaceKind.Roof => Diffuse(Color.FromRgb(168, 86, 58)),
+        SurfaceKind.Leaf => Diffuse(Color.FromRgb(70, 108, 50)),
+        SurfaceKind.InteriorWall => Diffuse(Color.FromRgb(226, 222, 212)),
+        SurfaceKind.Metal => Diffuse(Color.FromRgb(160, 162, 166)),
+        SurfaceKind.Upholstery => Diffuse(Color.FromRgb(112, 106, 98)),
+        SurfaceKind.Bedding => Diffuse(Color.FromRgb(232, 230, 224)),
+        SurfaceKind.Ceramic => Diffuse(Color.FromRgb(240, 240, 236)),
+        SurfaceKind.LightOff => Diffuse(Color.FromRgb(214, 212, 206)),
+        SurfaceKind.WallBrick => Diffuse(Color.FromRgb(168, 86, 60)),
+        SurfaceKind.WallBlock => Diffuse(Color.FromRgb(160, 160, 156)),
+        SurfaceKind.WallConcrete => Diffuse(Color.FromRgb(168, 166, 160)),
+        SurfaceKind.WallStone => Diffuse(Color.FromRgb(150, 140, 124)),
+        SurfaceKind.WallWood => Diffuse(Color.FromRgb(160, 112, 72)),
+        SurfaceKind.WallMetal => Diffuse(Color.FromRgb(190, 194, 198)),
+        SurfaceKind.SpotEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 240, 210))),
+        SurfaceKind.LightEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 236, 200))),
         SurfaceKind.Glass => new MaterialGroup
         {
             Children =

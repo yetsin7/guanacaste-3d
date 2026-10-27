@@ -152,10 +152,14 @@ public static partial class RibbonCatalog
             S("FlexPipe", "RibbonCommand.FlexDuct", "Icon.Pipe"),
             S("PlumbingFixture", "RibbonCommand.PlumbingFixture", "Icon.Pipe")),
         G("RibbonGroup.Electrical",
-            L("Wire", "RibbonCommand.ElectricalEquipment", "Icon.Wire"),
+            L("LightingFixture", "RibbonCommand.LightingFixture", "Icon.Wire"),
+            L("ElectricalDevice", "RibbonCommand.ElectricalDevice", "Icon.Wire"),
+            L("LightSwitch", "RibbonCommand.LightSwitch", "Icon.Wire"),
+            L("Wire", "RibbonCommand.Wire", "Icon.Wire"),
+            S("ElectricalEquipment", "RibbonCommand.ElectricalEquipment", "Icon.Wire"),
+            S("PanelSchedule", "RibbonCommand.PanelSchedule", "Icon.Wire"),
             S("CableTray", "RibbonCommand.CableTray", "Icon.Wire"),
-            S("Conduit", "RibbonCommand.Conduit", "Icon.Wire"),
-            S("ElectricalEquipment", "RibbonCommand.ElectricalEquipment", "Icon.Wire")),
+            S("Conduit", "RibbonCommand.Conduit", "Icon.Wire")),
     ];
 
     /// <summary>Defines external reference, import, and library loading tools.</summary>

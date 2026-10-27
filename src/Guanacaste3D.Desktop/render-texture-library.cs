@@ -35,11 +35,13 @@ internal static class RenderTextureLibrary
     public static IReadOnlyList<(SurfaceKind Category, string LabelKey)> Categories { get; } =
     [
         (SurfaceKind.Wall, "Material.Walls"),
+        (SurfaceKind.InteriorWall, "Material.InteriorWalls"),
         (SurfaceKind.Floor, "Material.Floors"),
         (SurfaceKind.Roof, "Material.Roof"),
         (SurfaceKind.Ground, "Material.Ground"),
         (SurfaceKind.Structure, "Material.Structure"),
         (SurfaceKind.DoorLeaf, "Material.Wood"),
+        (SurfaceKind.Upholstery, "Material.Upholstery"),
         (SurfaceKind.Earth, "Material.Earth")
     ];
 
@@ -134,7 +136,8 @@ internal static class RenderTextureLibrary
     /// The material of each surface category for the render: the project's texture where one is assigned and readable,
     /// the stock material everywhere else.
     /// </summary>
-    public static Func<SurfaceKind, RenderMaterial> Resolver(IReadOnlyList<RenderMaterialAssignment> assignments, string? projectFile)
+    public static Func<SurfaceKind, RenderMaterial> Resolver(IReadOnlyList<RenderMaterialAssignment> assignments, string? projectFile,
+        bool lightsOn = true)
     {
         var textured = new Dictionary<SurfaceKind, RenderMaterial>();
         foreach (var assignment in assignments)
@@ -143,6 +146,12 @@ internal static class RenderTextureLibrary
             if (Load(Resolve(assignment.TexturePath, projectFile)) is not { } texture) continue;
             textured[assignment.Category] = MaterialLibrary.Textured(assignment.Category, texture,
                 assignment.TextureSize, assignment.Relief);
+        }
+        // With the lights off a fixture is just its white diffuser.
+        if (!lightsOn)
+        {
+            textured[SurfaceKind.LightEmitter] = MaterialLibrary.ForKind(SurfaceKind.LightEmitter) with { Emission = default };
+            textured[SurfaceKind.SpotEmitter] = MaterialLibrary.ForKind(SurfaceKind.SpotEmitter) with { Emission = default };
         }
         return kind => textured.TryGetValue(kind, out var material) ? material : MaterialLibrary.ForKind(kind);
     }

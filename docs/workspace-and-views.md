@@ -72,6 +72,31 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   stairs with their walking line, roofs with overhang and ridges, plantings,
   contours, title block (project, view, scale, date, sheet number), scale bar
   and north arrow, at the largest standard scale that fits.
+- **Wall, door and window catalog**: about thirty wall types grouped by what
+  they are built of (gypsum partitions 75–160 mm, moisture-resistant, acoustic
+  and shaft-wall gypsum, glass partitions and storefronts, concrete block,
+  brick, concrete, stone, timber cladding, metal panel, bahareque and adobe).
+  The construction sets the faces in 3D and in the render: exposed brick,
+  block, concrete, stone, timber or metal outside and plaster inside; gypsum
+  painted on both faces; interior brick, block or concrete partitions exposed
+  on both faces; glass partitions are a 12 mm pane in aluminium channels with
+  a mullion at least every 1.2 m. Doors come panelled, flush, six-panel,
+  louvered, frameless glass and security (grille over glass); windows can carry
+  exterior security bars, always drawn on the side away from the rooms.
+- **Electrical**: *Luminaria*, *Dispositivo eléctrico* (receptacles) and
+  *Interruptor* place devices (SPACE cycles the kind; wall devices snap to the
+  nearest wall within 0.8 m and take their standard height: receptacles 0.30 m,
+  switches 1.20 m, luminaires at the ceiling). *Equipo eléctrico* places a
+  panel. *Cable*: click a switch, then the lights it controls (click again to
+  unlink); click a panel to open a new 20 A circuit, then click devices to add
+  or remove them. Double-clicking a switch flips it; single-pole switches act
+  in series, three-way switches by parity, dimmers scale the light. The plan
+  draws each circuit's run coloured by state (ok, over 80 %, open, tripped)
+  and the switch legs; lit fixtures show in yellow, and the 3D view and render
+  light or darken them at once. *Tabla de paneles* lists every circuit with
+  load, current, utilization, conductor gauge (NEC table) and voltage drop, and
+  turns breakers on/off, resizes them or opens the main. A circuit above 100 %
+  trips; while a project has no panel, unwired devices count as powered.
 - **Default names** follow a Spanish Revit template: *Nivel 1* (its plan view
   carries the same name), *{3D}*, *Sección 1*, *Tabla de cantidades*. Older
   projects keep any name the user gave; untouched English defaults are translated.

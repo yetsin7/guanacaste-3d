@@ -1,0 +1,94 @@
+using System.Numerics;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
+
+/// <summary>Regression checks for render-quality trees, leaf translucency, wall faces, door hardware and light fixtures.</summary>
+static class RenderDetailChecks
+{
+    public static void Run(Action<bool, string> check)
+    {
+        Trees(check);
+        Translucency(check);
+        WallFaces(check);
+        Fixtures(check);
+    }
+
+    private static void Trees(Action<bool, string> check)
+    {
+        foreach (var preset in ArchitecturalLibrary.PresetsFor(StructuralElementKind.Planting))
+        {
+            var document = BuildingDocument.Create("Tree");
+            document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), document.Levels[0].Id, StructuralElementKind.Planting,
+                "Tree", new Point2(3, 4), new Point2(3, 4), preset.Width, preset.Height, 0) { Style = preset.Style });
+            var model = BuildingMesher.Build(document);
+            var render = BuildingMesher.Build(document, plants: PlantDetail.Render);
+            var leaves = render.TriangleKinds.Count(kind => kind == SurfaceKind.Leaf);
+            var (min, max) = render.Bounds();
+            check(leaves > 2000 && render.TriangleCount > model.TriangleCount * 3 &&
+                  Math.Abs(max.Z - preset.Height) < 0.02 && min.Z > -0.01f,
+                $"The render-quality {preset.Style} has branches and single leaves and keeps its height");
+            var again = BuildingMesher.Build(document, plants: PlantDetail.Render);
+            check(again.Positions.Count == render.Positions.Count && again.Positions[^1] == render.Positions[^1],
+                $"The render-quality {preset.Style} regenerates identically");
+        }
+    }
+
+    private static void Translucency(Action<bool, string> check)
+    {
+        // A leaf-like sheet between the camera and the sun: lit only from behind.
+        var mesh = new SceneMesh();
+        mesh.AddQuad(new(-1, 0, 0), new(1, 0, 0), new(1, 0, 2), new(-1, 0, 2), SurfaceKind.Leaf);
+        var camera = new RenderCamera(new Vector3(0, -3, 1), new Vector3(0, 0, 1), 30);
+        var settings = new RenderSettings { SunDirection = new Vector3(0, 1, 0.3f), SkyIntensity = 0, CloudCover = 0, Seed = 5 };
+        float Brightness(float translucency)
+        {
+            var scene = new RenderSceneBuilder().AddBuilding(mesh, kind =>
+                MaterialLibrary.ForKind(SurfaceKind.Leaf) with { Translucency = translucency, Pattern = SurfacePattern.None }).Build();
+            var tracer = new PathTracer(scene, 16, 16, camera, settings);
+            for (var pass = 0; pass < 16; pass++) tracer.RenderPass();
+            return tracer.LinearImage(false).Average(Sampling.Luminance);
+        }
+        var opaque = Brightness(0);
+        var translucent = Brightness(0.6f);
+        check(opaque < 1e-4f && translucent > 0.01f, "Sunlight passes through a translucent leaf from behind, not through an opaque one");
+    }
+
+    private static void WallFaces(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Faces"));
+        var level = session.Document.Levels[0].Id;
+        Point2[] corners = [new(0, 0), new(6, 0), new(6, 5), new(0, 5)];
+        for (var index = 0; index < 4; index++) session.AddWall(level, corners[index], corners[(index + 1) % 4]);
+        var door = session.Document.OpeningTypes.First(type => type.Kind == OpeningKind.Door && type.Operation == OpeningOperation.Standard);
+        session.AddOpening(session.Document.Walls[0].Id, OpeningKind.Door, offset: 3);
+        var mesh = BuildingMesher.Build(session.Document);
+        Vector3 Center(int triangle) => (mesh.Positions[mesh.Indices[triangle * 3]] + mesh.Positions[mesh.Indices[triangle * 3 + 1]] +
+                                        mesh.Positions[mesh.Indices[triangle * 3 + 2]]) / 3;
+        var faces = Enumerable.Range(0, mesh.TriangleCount).Where(triangle =>
+            mesh.TriangleKinds[triangle] is SurfaceKind.Wall or SurfaceKind.InteriorWall).ToArray();
+        var outsideOk = faces.Where(triangle => Center(triangle).Y < -0.09f).All(triangle => mesh.TriangleKinds[triangle] == SurfaceKind.Wall);
+        var insideOk = faces.Where(triangle => Center(triangle).Y is > 0.09f and < 0.2f && Center(triangle).X is > 0.5f and < 5.5f)
+            .All(triangle => mesh.TriangleKinds[triangle] == SurfaceKind.InteriorWall);
+        check(outsideOk && insideOk && faces.Any(triangle => mesh.TriangleKinds[triangle] == SurfaceKind.InteriorWall),
+            "Walls face the outside with the facade material and the rooms with plaster");
+        check(mesh.TriangleKinds.Count(kind => kind == SurfaceKind.Metal) >= 24,
+            "A swing door carries lever handles on both faces and hinges in metal");
+        _ = door;
+    }
+
+    private static void Fixtures(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Lights"));
+        var level = session.Document.Levels[0].Id;
+        var ceiling = ArchitecturalLibrary.ElementPresets.First(preset => preset.ComponentShape == ResidentialComponentShape.CeilingLight);
+        session.AddElementFromPreset(level, ceiling, new Point2(2, 2), new Point2(2, 2));
+        var mesh = BuildingMesher.Build(session.Document);
+        var emitter = mesh.TriangleKinds.Select((kind, index) => (kind, index)).Where(item => item.kind == SurfaceKind.LightEmitter)
+            .Select(item => mesh.Positions[mesh.Indices[item.index * 3]].Z).DefaultIfEmpty(-1).Min();
+        var canopy = mesh.TriangleKinds.Select((kind, index) => (kind, index)).Where(item => item.kind == SurfaceKind.Metal)
+            .Select(item => mesh.Positions[mesh.Indices[item.index * 3]].Z).DefaultIfEmpty(-1).Max();
+        check(emitter > 2 && canopy > emitter && MaterialLibrary.ForKind(SurfaceKind.LightEmitter).IsEmissive,
+            "A ceiling light hangs its glowing diffuser under a metal canopy");
+    }
+}

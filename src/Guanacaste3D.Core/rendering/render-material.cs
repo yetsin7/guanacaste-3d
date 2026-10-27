@@ -24,7 +24,11 @@ public enum SurfacePattern : byte
     /// <summary>Furrowed bark running up a trunk.</summary>
     Bark,
     /// <summary>Clay barrel tiles in overlapping courses, laid down the slope of the surface.</summary>
-    RoofTiles
+    RoofTiles,
+    /// <summary>Leaf-to-leaf color variation: fresh, mature and a few yellowing leaves.</summary>
+    Leaves,
+    /// <summary>Woven textile: a fine basket weave with a soft nap.</summary>
+    Fabric
 }
 
 /// <summary>
@@ -62,6 +66,11 @@ public sealed record RenderMaterial
     public float TextureSize { get; init; } = 1;
     /// <summary>0–1: how strongly the texture's brightness raises the surface (light parts proud, dark parts recessed).</summary>
     public float TextureRelief { get; init; }
+    /// <summary>
+    /// 0–1: share of the diffuse light that passes through to the other side, as through a leaf or a paper lantern.
+    /// Thin surfaces only; it makes foliage glow when the sun is behind it.
+    /// </summary>
+    public float Translucency { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;
@@ -88,7 +97,8 @@ public sealed record RenderMaterial
         TransmissionTint = Clean(TransmissionTint, 0, 1, 1),
         PatternScale = Clean(PatternScale, 0.01f, 1000, 1),
         TextureSize = Clean(TextureSize, 0.01f, 1000, 1),
-        TextureRelief = Clean(TextureRelief, 0, 1, 0)
+        TextureRelief = Clean(TextureRelief, 0, 1, 0),
+        Translucency = Clean(Translucency, 0, 1, 0)
     };
 
     private static float Clean(float value, float low, float high, float fallback) =>
@@ -142,6 +152,65 @@ public static class MaterialLibrary
         {
             Name = "Corteza", BaseColor = new(0.20f, 0.16f, 0.12f), Roughness = 0.95f,
             Pattern = SurfacePattern.Bark, PatternScale = 1
+        },
+        SurfaceKind.InteriorWall => ForKind(SurfaceKind.Wall) with { Name = "Pared interior" },
+        SurfaceKind.LightOff => ForKind(SurfaceKind.LightEmitter) with { Name = "Difusor apagado", Emission = default },
+        SurfaceKind.WallBrick => new RenderMaterial
+        {
+            Name = "Ladrillo", BaseColor = new(0.52f, 0.24f, 0.15f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 0.4f
+        },
+        SurfaceKind.WallBlock => new RenderMaterial
+        {
+            Name = "Bloque de concreto", BaseColor = new(0.50f, 0.50f, 0.48f), Roughness = 0.92f, Pattern = SurfacePattern.Blocks, PatternScale = 1
+        },
+        SurfaceKind.WallConcrete => new RenderMaterial
+        {
+            Name = "Concreto visto", BaseColor = new(0.52f, 0.51f, 0.49f), Roughness = 0.85f, Pattern = SurfacePattern.Concrete, PatternScale = 1.4f
+        },
+        SurfaceKind.WallStone => new RenderMaterial
+        {
+            Name = "Piedra", BaseColor = new(0.46f, 0.43f, 0.38f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 1.5f
+        },
+        SurfaceKind.WallWood => new RenderMaterial
+        {
+            Name = "Revestimiento de madera", BaseColor = new(0.50f, 0.34f, 0.20f), Roughness = 0.7f, Pattern = SurfacePattern.Planks, PatternScale = 1
+        },
+        SurfaceKind.WallMetal => new RenderMaterial
+        {
+            Name = "Panel metálico", BaseColor = new(0.70f, 0.72f, 0.74f), Roughness = 0.4f, Metallic = 0.7f
+        },
+        SurfaceKind.SpotEmitter => ForKind(SurfaceKind.LightEmitter) with
+        {
+            Name = "Lente encendida", Emission = new Vector3(1.0f, 0.86f, 0.68f) * 110f
+        },
+        SurfaceKind.Upholstery => new RenderMaterial
+        {
+            Name = "Tapiz", BaseColor = new(0.30f, 0.28f, 0.25f), Roughness = 0.95f,
+            Pattern = SurfacePattern.Fabric, PatternScale = 1
+        },
+        SurfaceKind.Bedding => new RenderMaterial
+        {
+            Name = "Lino", BaseColor = new(0.80f, 0.79f, 0.76f), Roughness = 0.92f,
+            Pattern = SurfacePattern.Fabric, PatternScale = 0.6f
+        },
+        SurfaceKind.Ceramic => new RenderMaterial
+        {
+            Name = "Porcelana", BaseColor = new(0.86f, 0.86f, 0.84f), Roughness = 0.07f
+        },
+        // Warm white, about 2700 K; the radiance of an opal diffuser in front of a 60 W-equivalent lamp.
+        SurfaceKind.LightEmitter => new RenderMaterial
+        {
+            Name = "Difusor encendido", BaseColor = new(0.9f, 0.88f, 0.84f), Roughness = 0.6f,
+            Emission = new Vector3(1.0f, 0.80f, 0.58f) * 14f
+        },
+        SurfaceKind.Metal => new RenderMaterial
+        {
+            Name = "Acero cepillado", BaseColor = new(0.62f, 0.62f, 0.63f), Roughness = 0.32f, Metallic = 1
+        },
+        SurfaceKind.Leaf => new RenderMaterial
+        {
+            Name = "Hoja", BaseColor = new(0.10f, 0.20f, 0.045f), Roughness = 0.45f, Translucency = 0.55f,
+            Pattern = SurfacePattern.Leaves, PatternScale = 1
         },
         SurfaceKind.Roof => new RenderMaterial
         {

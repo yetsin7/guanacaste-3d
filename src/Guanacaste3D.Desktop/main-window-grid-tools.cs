@@ -19,6 +19,7 @@ public partial class MainWindow
     private void BeginGridTool()
     {
         SetWallTool(false);
+        _selectedElectricalId = null;
         _creatingGrid = true;
         ViewTabs.SelectedIndex = 0;
         PlanCanvas.Cursor = Cursors.Cross;
@@ -117,6 +118,7 @@ public partial class MainWindow
         if ((e.OriginalSource as FrameworkElement)?.Tag is not Guid id ||
             !_session.Document.Grids.Any(axis => axis.Id == id)) return false;
         _selectedGridId = id;
+        _selectedElectricalId = null;
         _selectedViewId = _selectedWallId = _selectedOpeningId = _selectedColumnId = _selectedStructuralId = null;
         _selectedRoomId = _selectedFloorId = null;
         if (e.ClickCount > 1) RenameGridAxis(id);

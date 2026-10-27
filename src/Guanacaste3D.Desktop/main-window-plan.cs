@@ -85,6 +85,7 @@ public partial class MainWindow
             HandleMoveClick(PlanPosition(e));
             return;
         }
+        if (TryHandleElectricalClick(e)) return;
         if (TryHandleTopoPointClick(e)) return;
         if (TryHandleRoomPlacement(e)) return;
         if (TryHandleColumnPlacement(e)) return;
@@ -104,6 +105,7 @@ public partial class MainWindow
         if (!_drawingWall)
         {
             if (TrySelectOpeningSymbol(e)) return;
+            if (TrySelectElectrical(e)) return;
             if (TrySelectExtendedPlanElement(e)) return;
             _selectedViewId = null;
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
@@ -114,6 +116,7 @@ public partial class MainWindow
             _selectedFloorId = null;
             _selectedStructuralId = null;
             _selectedColumnId = null;
+            _selectedElectricalId = null;
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(candidate => candidate.Id == wallId);
@@ -134,6 +137,12 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (CancelElectricalTools())
+        {
+            StatusText.Text = GetText("Status.SelectionMode");
+            e.Handled = true;
+            return;
+        }
         if (CancelTopoPointTool())
         {
             e.Handled = true;
@@ -288,6 +297,7 @@ public partial class MainWindow
             Canvas.SetTop(marker, canvasPoint.Y - 6);
             PlanCanvas.Children.Add(marker);
         }
+        RenderElectricalPlan();
         RenderMovePreview();
         RenderTemporaryDimensions();
         RenderWallSketchOverlay();

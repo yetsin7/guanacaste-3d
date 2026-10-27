@@ -39,6 +39,23 @@ public enum OpeningOperation
     Void
 }
 
+/// <summary>How a door leaf is made.</summary>
+public enum DoorLeafStyle
+{
+    /// <summary>Two raised-and-fielded panels.</summary>
+    Panelled,
+    /// <summary>A smooth flush leaf, as for interior and hotel doors.</summary>
+    Flush,
+    /// <summary>Six raised panels in three rows, the classic colonial door.</summary>
+    SixPanel,
+    /// <summary>Angled slats over the whole leaf: ventilation for closets and service rooms.</summary>
+    Louvered,
+    /// <summary>A frameless tempered-glass leaf.</summary>
+    FullGlass,
+    /// <summary>A steel security leaf with a grille over glass, as at many Costa Rican entrances.</summary>
+    Security
+}
+
 /// <summary>
 /// A reusable door or window type. Width and height are type parameters that
 /// drive every instance; <see cref="DefaultSill"/> seeds the instance sill when
@@ -74,6 +91,12 @@ public sealed record OpeningType(
 
     /// <summary>Doors only: the leaf panel is glass instead of solid timber.</summary>
     public bool GlazedLeaf { get; init; }
+
+    /// <summary>Doors: how the leaf is made.</summary>
+    public DoorLeafStyle LeafStyle { get; init; }
+
+    /// <summary>Windows: a steel grille of vertical bars on the outside face.</summary>
+    public bool SecurityBars { get; init; }
 
     /// <summary>Returns "Family: Type" for lists and schedules.</summary>
     public string DisplayName => $"{FamilyName}: {Name}";
@@ -125,7 +148,8 @@ public static class OpeningTypeRules
                 !double.IsFinite(type.DefaultSill) || type.DefaultSill is < 0 or > 50 ||
                 !double.IsFinite(type.Depth) || type.Depth is < 0 or > 1 ||
                 !double.IsFinite(type.FrameWidth) || type.FrameWidth is < 0.02 or > 0.15 ||
-                !Enum.IsDefined(type.Operation) || (type.Kind == OpeningKind.Door && type.Operation is
+                !Enum.IsDefined(type.Operation) || !Enum.IsDefined(type.LeafStyle) ||
+                (type.SecurityBars && type.Kind != OpeningKind.Window) || (type.Kind == OpeningKind.Door && type.Operation is
                     OpeningOperation.Casement or OpeningOperation.Awning or OpeningOperation.Hung or
                     OpeningOperation.Louvered or OpeningOperation.Void) || (type.Kind == OpeningKind.Window && (type.GlazedLeaf || type.Operation is
                     OpeningOperation.Folding or OpeningOperation.Pocket or OpeningOperation.Overhead or

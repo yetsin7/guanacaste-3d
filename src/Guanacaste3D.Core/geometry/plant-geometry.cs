@@ -35,7 +35,7 @@ public static class PlantGeometry
     /// Scales the plant just generated so it stands on its base and is exactly as tall and as wide as its parameters:
     /// the random lumps of a canopy must not change the height a schedule reports. Normals follow the inverse scale.
     /// </summary>
-    private static void FitToBox(SceneMesh mesh, int first, Vector3 root, float height, float spread)
+    internal static void FitToBox(SceneMesh mesh, int first, Vector3 root, float height, float spread)
     {
         var positions = mesh.Positions;
         if (positions.Count == first) return;
@@ -337,16 +337,16 @@ public static class PlantGeometry
             center.X + radius * Math.Cos(index * Math.PI / 4 + Math.PI / 8),
             center.Y + radius * Math.Sin(index * Math.PI / 4 + Math.PI / 8))).ToArray();
 
-    private static int Seed(Guid id)
+    internal static int Seed(Guid id)
     {
         var bytes = id.ToByteArray();
         return BitConverter.ToInt32(bytes, 0) ^ BitConverter.ToInt32(bytes, 4) ^ BitConverter.ToInt32(bytes, 8) ^
                BitConverter.ToInt32(bytes, 12);
     }
 
-    private static float Jitter(Random random, float amount) => ((float)random.NextDouble() * 2 - 1) * amount;
+    internal static float Jitter(Random random, float amount) => ((float)random.NextDouble() * 2 - 1) * amount;
 
-    private static (Vector3 U, Vector3 V) Basis(Vector3 axis)
+    internal static (Vector3 U, Vector3 V) Basis(Vector3 axis)
     {
         var helper = MathF.Abs(axis.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX;
         var u = Vector3.Normalize(Vector3.Cross(axis, helper));
@@ -354,7 +354,7 @@ public static class PlantGeometry
     }
 
     /// <summary>Smooth 3D value noise in [0, 1].</summary>
-    private static float Noise(Vector3 p)
+    internal static float Noise(Vector3 p)
     {
         var ix = (int)MathF.Floor(p.X);
         var iy = (int)MathF.Floor(p.Y);

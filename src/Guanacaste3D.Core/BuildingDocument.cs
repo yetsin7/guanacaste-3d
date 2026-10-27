@@ -56,6 +56,8 @@ public sealed class BuildingDocument
     public List<ScheduleDefinition> Schedules { get; set; } = [];
     public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
     public List<RenderMaterialAssignment> RenderMaterials { get; set; } = [];
+    public List<ElectricalDevice> ElectricalDevices { get; set; } = [];
+    public List<ElectricalCircuit> ElectricalCircuits { get; set; } = [];
 
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
@@ -101,7 +103,9 @@ public sealed class BuildingDocument
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
         }).ToList(),
         InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList(),
-        RenderMaterials = [.. RenderMaterials]
+        RenderMaterials = [.. RenderMaterials],
+        ElectricalDevices = ElectricalDevices.Select(device => device with { Controls = [.. device.Controls] }).ToList(),
+        ElectricalCircuits = [.. ElectricalCircuits]
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -187,6 +191,7 @@ public sealed class BuildingDocument
         ScheduleDefinitionRules.Validate(this);
         InPlaceFamilyRules.Validate(this);
         RenderMaterialRules.Validate(this);
+        ElectricalRules.Validate(this);
     }
 
     /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>
