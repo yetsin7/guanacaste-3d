@@ -91,10 +91,13 @@ public sealed class PlumbingAnalysis
         var points = document.PlumbingPoints.ToDictionary(point => point.Id);
         var defaultPressure = document.PlumbingPoints.FirstOrDefault(point => point.Kind == PlumbingPointKind.WaterMeter)?.SupplyPressureKPa ?? 280;
         var vents = document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.VentStack).ToList();
-        // Vent stacks rise through the roof: above the highest wall top of the building.
-        var roofTop = document.Walls.Where(wall => elevations.ContainsKey(wall.LevelId))
-            .Select(wall => elevations[wall.LevelId] + wall.Height).DefaultIfEmpty(elevations.Values.Max() + 3).Max() +
-            PlumbingStandards.VentAboveRoof;
+        // Vent stacks rise through the roof: above the highest wall top and the roof datum, whichever is higher.
+        var wallTop = document.Walls.Where(wall => elevations.ContainsKey(wall.LevelId))
+            .Select(wall => elevations[wall.LevelId] + wall.Height).DefaultIfEmpty(double.NegativeInfinity).Max();
+        var roofLevel = document.Levels.Where(level => level.Role == LevelRole.BaseRoof).Select(level => level.Elevation)
+            .DefaultIfEmpty(double.NegativeInfinity).Max();
+        var building = Math.Max(wallTop, roofLevel);
+        var roofTop = (double.IsFinite(building) ? building : elevations.Values.Max() + 3) + PlumbingStandards.VentAboveRoof;
 
         // The cold demand of a water heater is all the hot demand it serves.
         var heaterUnits = new Dictionary<Guid, double>();
