@@ -19,10 +19,11 @@ public partial class MainWindow
                 AddToposolidPlan(floor);
                 continue;
             }
+            var hatch = FloorPlanHatchRules.For(floor);
             var polygon = new Polygon
             {
                 Points = new PointCollection(floor.Boundary.Select(WorldToCanvas)),
-                Fill = new SolidColorBrush(Color.FromArgb(70, 111, 145, 125)),
+                Fill = WallAppearanceRendering.CreateBrush(hatch.Color, hatch.Pattern, 0.85),
                 Stroke = floor.Id == _selectedFloorId ? Brushes.DarkOrange : Brushes.SeaGreen,
                 StrokeThickness = floor.Id == _selectedFloorId ? 2.5 : 1,
                 Tag = floor.Id

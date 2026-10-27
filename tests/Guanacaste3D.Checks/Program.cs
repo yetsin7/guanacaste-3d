@@ -382,6 +382,7 @@ NavigationChecks.Run(Check);
 OpeningFamilyChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
+FloorPlanHatchChecks.Run(Check);
 ScheduleChecks.Run(Check);
 LocalizationChecks.Run(Check);
 IfcChecks.Run(Check);
