@@ -176,6 +176,13 @@ public static class ProjectFile
             document.SchemaVersion = 11;
             document.RenderMaterials ??= [];
         }
+        // Schema 12 adds the electrical system: devices, switch links and circuits.
+        if (document.SchemaVersion == 11)
+        {
+            document.SchemaVersion = 12;
+            document.ElectricalDevices ??= [];
+            document.ElectricalCircuits ??= [];
+        }
 
     }
 

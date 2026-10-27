@@ -39,6 +39,37 @@ static class ShowcaseShot
         }
     }
 
+    /// <summary>
+    /// Rebuilds the demonstration house from the catalog: exposed brick outside, a six-panel front door, louvered and
+    /// flush doors inside, and barred windows, for judging the construction materials and leaf styles.
+    /// </summary>
+    private static void ApplyCatalog(Guanacaste3D.Core.DocumentSession session)
+    {
+        var document = session.Document;
+        document.WallTypes.AddRange(Guanacaste3D.Core.ArchitecturalLibrary.WallTypes().Where(type => document.WallTypes.All(existing => existing.Id != type.Id)));
+        document.OpeningTypes.AddRange(Guanacaste3D.Core.ArchitecturalLibrary.OpeningTypes().Where(type => document.OpeningTypes.All(existing => existing.Id != type.Id)));
+        var brick = document.WallTypes.Single(type => type.Name == "Exposed Brick 150 mm");
+        foreach (var wall in document.Walls.ToArray())
+        {
+            var current = document.WallTypes.Single(type => type.Id == wall.WallTypeId);
+            if (current.Function != Guanacaste3D.Core.WallFunction.Exterior) continue;
+            try { session.SetWallType(wall.Id, brick.Id); } catch (InvalidDataException) { }
+        }
+        var styles = new[] { "Six-Panel Door", "Louvered Door", "Flush Door" };
+        var doorIndex = 0;
+        foreach (var opening in document.Openings.ToArray())
+        {
+            var current = document.OpeningTypes.Single(type => type.Id == opening.OpeningTypeId);
+            var replacement = opening.Kind == Guanacaste3D.Core.OpeningKind.Door
+                ? document.OpeningTypes.Where(type => type.FamilyName == styles[Math.Min(doorIndex++, styles.Length - 1)])
+                    .OrderBy(type => Math.Abs(type.Width - current.Width)).FirstOrDefault()
+                : document.OpeningTypes.Where(type => type.Kind == Guanacaste3D.Core.OpeningKind.Window && type.SecurityBars)
+                    .OrderBy(type => Math.Abs(type.Width - current.Width) + Math.Abs(type.Height - current.Height)).FirstOrDefault();
+            if (replacement is null) continue;
+            try { session.SetOpeningType(opening.Id, replacement.Id); } catch (InvalidDataException) { }
+        }
+    }
+
     /// <summary>The demonstration house at dusk, lit by a ceiling light in every room and a floor lamp, seen from inside.</summary>
     private static BenchmarkScene NightInterior()
     {
@@ -67,6 +98,20 @@ static class ShowcaseShot
             var at = new Guanacaste3D.Core.Point2(x, y);
             session.AddElementFromPreset(level, Of(shape), at, at);
         }
+        if (Environment.GetEnvironmentVariable("G3_SHOT_ELECTRICAL") == "1")
+        {
+            var gx = Math.Max(first.FirstCorner.X, first.SecondCorner.X);
+            foreach (var (x, y) in new[] { (fx + 1.5, fy + 1.5), (gx - 1.5, fy + 1.5), (fx + 1.5, gy - 1.5), (gx - 1.5, gy - 1.5) })
+                session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Downlight, "D", new Guanacaste3D.Core.Point2(x, y), ceiling: 2.7);
+            session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Pendant, "P", new Guanacaste3D.Core.Point2(fx + 1.6, fy + 1.4), ceiling: 2.7);
+            var sconce = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.WallSconce, "A", new Guanacaste3D.Core.Point2(fx + 0.1, (fy + gy) / 2), facing: 0);
+            var sw = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Switch, "S", new Guanacaste3D.Core.Point2(fx + 0.1, fy + 0.8), facing: 0);
+            session.ToggleSwitchLink(sw, sconce);
+            session.ToggleSwitch(sw);
+            session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Outlet, "T", new Guanacaste3D.Core.Point2(fx + 0.1, fy + 2.2), facing: 0);
+            foreach (var element in session.Document.StructuralElements.Where(element => element.ComponentShape == Guanacaste3D.Core.ResidentialComponentShape.CeilingLight).ToArray())
+                session.RemoveStructuralElement(element.Id);
+        }
         Place(Guanacaste3D.Core.ResidentialComponentShape.Rug, fx + 2.0, gy - 1.6);
         Place(Guanacaste3D.Core.ResidentialComponentShape.Sofa, fx + 2.0, gy - 0.6);
         Place(Guanacaste3D.Core.ResidentialComponentShape.Table, fx + 1.6, fy + 1.4);
@@ -87,6 +132,7 @@ static class ShowcaseShot
     {
         var session = new Guanacaste3D.Core.DocumentSession(Guanacaste3D.Core.SampleProjects.CreateDemonstrationHouse());
         var level = session.Document.Levels[0].Id;
+        if (Environment.GetEnvironmentVariable("G3_SHOT_CATALOG") == "1") ApplyCatalog(session);
         var species = Guanacaste3D.Core.ArchitecturalLibrary.PresetsFor(Guanacaste3D.Core.StructuralElementKind.Planting).ToArray();
         var spots = new (int Species, double X, double Y)[]
         {
@@ -125,7 +171,8 @@ static class ShowcaseShot
         if (Environment.GetEnvironmentVariable("G3_SHOT_TEXTURES") is { } textureFolder)
         {
             RenderTexture Load(string name) => RenderTexture.FromRaster(PngCodec.Load(Path.Combine(textureFolder, name + ".png")));
-            var materials = new Dictionary<Guanacaste3D.Core.Geometry.SurfaceKind, RenderMaterial>
+            // "none" keeps the built-in procedural materials, for close-ups of geometry.
+            var materials = textureFolder == "none" ? [] : new Dictionary<Guanacaste3D.Core.Geometry.SurfaceKind, RenderMaterial>
             {
                 [Guanacaste3D.Core.Geometry.SurfaceKind.Wall] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Wall, Load("brick-red"), 1.0, 0.6),
                 [Guanacaste3D.Core.Geometry.SurfaceKind.Floor] = MaterialLibrary.Textured(Guanacaste3D.Core.Geometry.SurfaceKind.Floor, Load("stone-paving"), 2.0, 0.6),

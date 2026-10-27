@@ -44,21 +44,36 @@ public static class ArchitecturalLibrary
     /// <summary>Wall assemblies: partitions, masonry, concrete, regional earth walls, foundations and retaining walls.</summary>
     public static IReadOnlyList<WallType> WallTypes() =>
     [
-        Wall("Gypsum Partition 75 mm", WallFunction.Interior, 0.075, "Gypsum on steel studs", "#8C959B", WallFillPattern.Solid),
-        Wall("Gypsum Partition 150 mm", WallFunction.Interior, 0.15, "Insulated gypsum on steel studs", "#8C959B", WallFillPattern.Solid),
-        Wall("Fire-Rated Partition 200 mm", WallFunction.Interior, 0.20, "Fire-rated gypsum assembly", "#A0654F", WallFillPattern.Crosshatch),
-        Wall("Wood Stud Partition 140 mm", WallFunction.Interior, 0.14, "Wood studs and board", "#A9835A", WallFillPattern.Diagonal),
-        Wall("Glass Partition 50 mm", WallFunction.Interior, 0.05, "Tempered glass", "#9CC7D6", WallFillPattern.Solid),
-        Wall("Concrete Block 150 mm", WallFunction.Interior, 0.15, "Concrete masonry", "#7D8185", WallFillPattern.Crosshatch),
-        Wall("Concrete Block 250 mm", WallFunction.Exterior, 0.25, "Concrete masonry", "#7D8185", WallFillPattern.Crosshatch),
-        Wall("Clay Brick 120 mm", WallFunction.Interior, 0.12, "Clay brick", "#A8553C", WallFillPattern.Diagonal),
-        Wall("Brick Cavity Wall 300 mm", WallFunction.Exterior, 0.30, "Brick cavity wall", "#A8553C", WallFillPattern.Diagonal),
-        Wall("Reinforced Concrete 200 mm", WallFunction.Exterior, 0.20, "Cast-in-place concrete", "#6E7378", WallFillPattern.Solid),
-        Wall("Reinforced Concrete 300 mm", WallFunction.Exterior, 0.30, "Cast-in-place concrete", "#6E7378", WallFillPattern.Solid),
-        Wall("Stone Wall 400 mm", WallFunction.Exterior, 0.40, "Natural stone", "#8E8677", WallFillPattern.Crosshatch),
-        Wall("Bahareque 150 mm", WallFunction.Exterior, 0.15, "Cane and earth (bahareque)", "#B08968", WallFillPattern.Diagonal),
-        Wall("Adobe 400 mm", WallFunction.Exterior, 0.40, "Adobe", "#B8895A", WallFillPattern.Solid),
-        Wall("Insulated Metal Panel 100 mm", WallFunction.Exterior, 0.10, "Insulated metal panel", "#B7BEC4", WallFillPattern.Solid),
+        Wall("Gypsum Partition 75 mm", WallFunction.Interior, 0.075, "Gypsum on steel studs", "#8C959B", WallFillPattern.Solid, WallConstruction.Gypsum),
+        Wall("Gypsum Partition 100 mm", WallFunction.Interior, 0.10, "Gypsum both faces on 64 mm steel studs", "#8C959B", WallFillPattern.Solid, WallConstruction.Gypsum),
+        Wall("Gypsum Partition 150 mm", WallFunction.Interior, 0.15, "Insulated gypsum on steel studs", "#8C959B", WallFillPattern.Solid, WallConstruction.Gypsum),
+        Wall("Moisture-Resistant Gypsum 100 mm", WallFunction.Interior, 0.10, "Green moisture-resistant gypsum for baths", "#7FA49B", WallFillPattern.Solid, WallConstruction.Gypsum),
+        Wall("Double-Layer Acoustic Gypsum 160 mm", WallFunction.Interior, 0.16, "Two gypsum layers each face, mineral wool", "#8C959B", WallFillPattern.Diagonal, WallConstruction.Gypsum),
+        Wall("Gypsum Shaft Wall 100 mm", WallFunction.Interior, 0.10, "Shaft-liner gypsum on C-H studs", "#A0654F", WallFillPattern.Crosshatch, WallConstruction.Gypsum),
+        Wall("Exterior Gypsum Sheathing 150 mm", WallFunction.Exterior, 0.15, "Glass-mat exterior board on steel framing", "#9AA3A8", WallFillPattern.Solid, WallConstruction.Gypsum),
+        Wall("Fiber Cement Wall 100 mm", WallFunction.Exterior, 0.10, "Fiber cement board on steel framing", "#A3A39B", WallFillPattern.Solid, WallConstruction.Plaster),
+        Wall("Covintec Panel 120 mm", WallFunction.Exterior, 0.12, "Welded-wire panel with polystyrene and mortar", "#9E9A90", WallFillPattern.Diagonal, WallConstruction.Plaster),
+        Wall("Fire-Rated Partition 200 mm", WallFunction.Interior, 0.20, "Fire-rated gypsum assembly", "#A0654F", WallFillPattern.Crosshatch, WallConstruction.Gypsum),
+        Wall("Wood Stud Partition 140 mm", WallFunction.Interior, 0.14, "Wood studs and board", "#A9835A", WallFillPattern.Diagonal, WallConstruction.Gypsum),
+        Wall("Glass Partition 50 mm", WallFunction.Interior, 0.05, "Tempered glass", "#9CC7D6", WallFillPattern.Solid, WallConstruction.Glass),
+        Wall("Framed Glass Partition 100 mm", WallFunction.Interior, 0.10, "Tempered glass in aluminium frame (mampara)", "#9CC7D6", WallFillPattern.Solid, WallConstruction.Glass),
+        Wall("Glass Storefront 150 mm", WallFunction.Exterior, 0.15, "Laminated glass storefront", "#9CC7D6", WallFillPattern.Solid, WallConstruction.Glass),
+        Wall("Concrete Block 120 mm", WallFunction.Interior, 0.12, "Concrete block 12x20x40", "#7D8185", WallFillPattern.Crosshatch, WallConstruction.Block),
+        Wall("Concrete Block 150 mm", WallFunction.Interior, 0.15, "Concrete masonry", "#7D8185", WallFillPattern.Crosshatch, WallConstruction.Block),
+        Wall("Concrete Block 200 mm", WallFunction.Exterior, 0.20, "Concrete block 20x20x40", "#7D8185", WallFillPattern.Crosshatch, WallConstruction.Block),
+        Wall("Concrete Block 250 mm", WallFunction.Exterior, 0.25, "Concrete masonry", "#7D8185", WallFillPattern.Crosshatch, WallConstruction.Block),
+        Wall("Rendered Block 150 mm", WallFunction.Exterior, 0.15, "Concrete block, rendered and painted", "#7D8185", WallFillPattern.Crosshatch, WallConstruction.Plaster),
+        Wall("Clay Brick 120 mm", WallFunction.Interior, 0.12, "Clay brick", "#A8553C", WallFillPattern.Diagonal, WallConstruction.Brick),
+        Wall("Exposed Brick 150 mm", WallFunction.Exterior, 0.15, "Face brick", "#A8553C", WallFillPattern.Diagonal, WallConstruction.Brick),
+        Wall("Brick Cavity Wall 300 mm", WallFunction.Exterior, 0.30, "Brick cavity wall", "#A8553C", WallFillPattern.Diagonal, WallConstruction.Brick),
+        Wall("Reinforced Concrete 200 mm", WallFunction.Exterior, 0.20, "Cast-in-place concrete", "#6E7378", WallFillPattern.Solid, WallConstruction.Concrete),
+        Wall("Reinforced Concrete 300 mm", WallFunction.Exterior, 0.30, "Cast-in-place concrete", "#6E7378", WallFillPattern.Solid, WallConstruction.Concrete),
+        Wall("Stone Wall 400 mm", WallFunction.Exterior, 0.40, "Natural stone", "#8E8677", WallFillPattern.Crosshatch, WallConstruction.Stone),
+        Wall("Stone Veneer Wall 250 mm", WallFunction.Exterior, 0.25, "Stone veneer on block", "#8E8677", WallFillPattern.Crosshatch, WallConstruction.Stone),
+        Wall("Timber Clad Wall 200 mm", WallFunction.Exterior, 0.20, "Timber cladding on studs", "#A9835A", WallFillPattern.Diagonal, WallConstruction.Wood),
+        Wall("Bahareque 150 mm", WallFunction.Exterior, 0.15, "Cane and earth (bahareque)", "#B08968", WallFillPattern.Diagonal, WallConstruction.Plaster),
+        Wall("Adobe 400 mm", WallFunction.Exterior, 0.40, "Adobe", "#B8895A", WallFillPattern.Solid, WallConstruction.Plaster),
+        Wall("Insulated Metal Panel 100 mm", WallFunction.Exterior, 0.10, "Insulated metal panel", "#B7BEC4", WallFillPattern.Solid, WallConstruction.Metal),
         Wall("Parapet 150 mm", WallFunction.Exterior, 0.15, "Masonry parapet", "#7D8185", WallFillPattern.Solid),
         Wall("Foundation Wall 300 mm", WallFunction.Foundation, 0.30, "Reinforced concrete", "#5D6166", WallFillPattern.Solid),
         Wall("Foundation Wall 400 mm", WallFunction.Foundation, 0.40, "Reinforced concrete", "#5D6166", WallFillPattern.Solid),
@@ -67,10 +82,11 @@ public static class ArchitecturalLibrary
     ];
 
     private static WallType Wall(string name, WallFunction function, double thickness, string material, string color,
-        WallFillPattern pattern) =>
+        WallFillPattern pattern, WallConstruction construction = WallConstruction.Plaster) =>
         new(StableId("wall", name), name, function, thickness, material)
         {
-            PlanFillColor = color, PlanFillPattern = pattern, SectionFillColor = color, SectionFillPattern = pattern
+            PlanFillColor = color, PlanFillPattern = pattern, SectionFillColor = color, SectionFillPattern = pattern,
+            Construction = construction
         };
 
     /// <summary>Door families (swing, double, sliding, pocket, folding, garage, revolving) and window families.</summary>
@@ -78,15 +94,15 @@ public static class ArchitecturalLibrary
     {
         var types = new List<OpeningType>();
         void Door(string family, double width, double height, OpeningOperation operation, double depth = 0.04,
-            bool glazed = false, string material = "Timber") =>
+            bool glazed = false, string material = "Timber", DoorLeafStyle style = DoorLeafStyle.Panelled) =>
             types.Add(new OpeningType(StableId("opening", $"{family}/{Size(width, height)}"), OpeningKind.Door,
                 family, Size(width, height), width, height, 0)
-            { Depth = depth, Operation = operation, GlazedLeaf = glazed, MaterialName = material });
+            { Depth = depth, Operation = operation, GlazedLeaf = glazed, MaterialName = material, LeafStyle = style });
         void Window(string family, double width, double height, double sill, OpeningOperation operation, int lights = 0,
-            string material = "Aluminium") =>
+            string material = "Aluminium", bool bars = false) =>
             types.Add(new OpeningType(StableId("opening", $"{family}/{Size(width, height)}"), OpeningKind.Window,
                 family, Size(width, height), width, height, sill)
-            { Operation = operation, GlazingLightCount = lights, MaterialName = material });
+            { Operation = operation, GlazingLightCount = lights, MaterialName = material, SecurityBars = bars });
 
         foreach (var width in new[] { 0.7, 1.0 }) Door("Single Door", width, 2.1, OpeningOperation.Standard);
         foreach (var width in new[] { 1.4, 1.8, 2.0 }) Door("Double Door", width, 2.1, OpeningOperation.Standard);
@@ -98,6 +114,14 @@ public static class ArchitecturalLibrary
         foreach (var width in new[] { 1.2, 1.8, 2.4 }) Door("Bi-Fold Door", width, 2.1, OpeningOperation.Folding);
         foreach (var width in new[] { 2.4, 2.7, 4.8 }) Door("Garage Door", width, 2.1, OpeningOperation.Overhead, 0.05, material: "Steel");
         Door("Revolving Door", 2.0, 2.2, OpeningOperation.Revolving, 0.9, glazed: true, material: "Glass and steel");
+        foreach (var width in new[] { 0.7, 0.8, 0.9 }) Door("Flush Door", width, 2.1, OpeningOperation.Standard, style: DoorLeafStyle.Flush);
+        foreach (var width in new[] { 0.8, 0.9 }) Door("Six-Panel Door", width, 2.1, OpeningOperation.Standard, style: DoorLeafStyle.SixPanel);
+        foreach (var width in new[] { 0.6, 0.8 }) Door("Louvered Door", width, 2.1, OpeningOperation.Standard, style: DoorLeafStyle.Louvered);
+        foreach (var width in new[] { 0.9, 1.0 }) Door("Frameless Glass Door", width, 2.1, OpeningOperation.Standard, 0.012, glazed: true,
+            material: "Tempered glass", style: DoorLeafStyle.FullGlass);
+        foreach (var width in new[] { 0.9, 1.0 }) Door("Security Door", width, 2.1, OpeningOperation.Standard, 0.05, material: "Steel",
+            style: DoorLeafStyle.Security);
+        Door("Bathroom Door", 0.7, 2.0, OpeningOperation.Standard, style: DoorLeafStyle.Flush);
 
         foreach (var (width, height, sill) in new[] { (1.8, 1.2, 0.9), (2.4, 1.5, 0.9) })
             Window("Picture Window", width, height, sill, OpeningOperation.Standard, 1);
@@ -110,6 +134,12 @@ public static class ArchitecturalLibrary
         foreach (var width in new[] { 0.9, 1.2 }) Window("Hung Window", width, 1.5, 0.9, OpeningOperation.Hung, 1);
         foreach (var width in new[] { 0.6, 1.2 }) Window("Louvered Window", width, 1.2, 0.9, OpeningOperation.Louvered, 1, "Glass blades");
         Window("Clerestory Window", 1.8, 0.5, 2.2, OpeningOperation.Standard, 3);
+        foreach (var (width, height) in new[] { (1.2, 1.2), (1.5, 1.2), (2.0, 1.4) })
+            Window("Sliding Window with Security Bars", width, height, 0.9, OpeningOperation.Sliding, 2, bars: true);
+        foreach (var width in new[] { 0.9, 1.2 }) Window("Louvered Window with Security Bars", width, 1.2, 0.9, OpeningOperation.Louvered, 1, "Glass blades", true);
+        foreach (var width in new[] { 1.2, 2.4 }) Window("Floor-to-Ceiling Window", width, 2.4, 0.1, OpeningOperation.Standard, width > 2 ? 2 : 1);
+        Window("Bathroom Window", 0.6, 0.4, 1.6, OpeningOperation.Louvered, 1, "Frosted glass blades");
+        Window("Corner Fixed Window", 0.9, 1.5, 0.6, OpeningOperation.Standard, 1);
         // Plain holes in a wall: a doorway, a pass-through and a large opening.
         Window("Wall Opening", 0.9, 2.1, 0, OpeningOperation.Void, 0, string.Empty);
         Window("Wall Opening", 1.5, 1.2, 0.9, OpeningOperation.Void, 0, string.Empty);

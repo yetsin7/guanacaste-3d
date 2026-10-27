@@ -12,6 +12,7 @@ public partial class MainWindow
     /// <summary>Updates the properties palette for rooms, floors, sheets, and wall types.</summary>
     private bool TryRefreshExtendedProperties()
     {
+        if (TryRefreshElectricalProperties()) return true;
         if (TryRefreshStructuralProperties()) return true;
         var selectedView = _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId);
         if (selectedView is not null)

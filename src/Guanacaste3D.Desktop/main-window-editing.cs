@@ -137,6 +137,7 @@ public partial class MainWindow
             RefreshAll();
             return;
         }
+        if (DeleteElectricalSelection()) return;
         if (DeleteExtendedSelection()) return;
         if (_selectedWallId is not Guid id) return;
         _session.RemoveWall(id);

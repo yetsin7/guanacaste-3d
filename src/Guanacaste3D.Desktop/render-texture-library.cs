@@ -148,7 +148,11 @@ internal static class RenderTextureLibrary
                 assignment.TextureSize, assignment.Relief);
         }
         // With the lights off a fixture is just its white diffuser.
-        if (!lightsOn) textured[SurfaceKind.LightEmitter] = MaterialLibrary.ForKind(SurfaceKind.LightEmitter) with { Emission = default };
+        if (!lightsOn)
+        {
+            textured[SurfaceKind.LightEmitter] = MaterialLibrary.ForKind(SurfaceKind.LightEmitter) with { Emission = default };
+            textured[SurfaceKind.SpotEmitter] = MaterialLibrary.ForKind(SurfaceKind.SpotEmitter) with { Emission = default };
+        }
         return kind => textured.TryGetValue(kind, out var material) ? material : MaterialLibrary.ForKind(kind);
     }
 }

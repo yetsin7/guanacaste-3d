@@ -20,6 +20,10 @@
   <sys:String x:Key="Error.Invalid component family geometry.">La geometría de la familia de componente no es válida.</sys:String>
   <sys:String x:Key="Error.Invalid door or window type catalog.">Tipo de puerta o ventana no válido: revisa ancho, alto y antepecho (las puertas usan antepecho 0).</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheets.">Las láminas no son válidas.</sys:String>
+  <sys:String x:Key="Error.The electrical device does not exist.">El dispositivo eléctrico no existe.</sys:String>
+  <sys:String x:Key="Error.Invalid electrical device.">El dispositivo eléctrico no es válido.</sys:String>
+  <sys:String x:Key="Error.The circuit does not exist.">El circuito no existe.</sys:String>
+  <sys:String x:Key="Error.Invalid circuit.">El circuito no es válido.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
   <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>
   <sys:String x:Key="Error.The toposolid does not exist.">El sólido topográfico no existe.</sys:String>

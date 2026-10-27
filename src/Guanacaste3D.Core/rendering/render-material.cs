@@ -154,6 +154,35 @@ public static class MaterialLibrary
             Pattern = SurfacePattern.Bark, PatternScale = 1
         },
         SurfaceKind.InteriorWall => ForKind(SurfaceKind.Wall) with { Name = "Pared interior" },
+        SurfaceKind.LightOff => ForKind(SurfaceKind.LightEmitter) with { Name = "Difusor apagado", Emission = default },
+        SurfaceKind.WallBrick => new RenderMaterial
+        {
+            Name = "Ladrillo", BaseColor = new(0.52f, 0.24f, 0.15f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 0.4f
+        },
+        SurfaceKind.WallBlock => new RenderMaterial
+        {
+            Name = "Bloque de concreto", BaseColor = new(0.50f, 0.50f, 0.48f), Roughness = 0.92f, Pattern = SurfacePattern.Blocks, PatternScale = 1
+        },
+        SurfaceKind.WallConcrete => new RenderMaterial
+        {
+            Name = "Concreto visto", BaseColor = new(0.52f, 0.51f, 0.49f), Roughness = 0.85f, Pattern = SurfacePattern.Concrete, PatternScale = 1.4f
+        },
+        SurfaceKind.WallStone => new RenderMaterial
+        {
+            Name = "Piedra", BaseColor = new(0.46f, 0.43f, 0.38f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 1.5f
+        },
+        SurfaceKind.WallWood => new RenderMaterial
+        {
+            Name = "Revestimiento de madera", BaseColor = new(0.50f, 0.34f, 0.20f), Roughness = 0.7f, Pattern = SurfacePattern.Planks, PatternScale = 1
+        },
+        SurfaceKind.WallMetal => new RenderMaterial
+        {
+            Name = "Panel metálico", BaseColor = new(0.70f, 0.72f, 0.74f), Roughness = 0.4f, Metallic = 0.7f
+        },
+        SurfaceKind.SpotEmitter => ForKind(SurfaceKind.LightEmitter) with
+        {
+            Name = "Lente encendida", Emission = new Vector3(1.0f, 0.86f, 0.68f) * 110f
+        },
         SurfaceKind.Upholstery => new RenderMaterial
         {
             Name = "Tapiz", BaseColor = new(0.30f, 0.28f, 0.25f), Roughness = 0.95f,

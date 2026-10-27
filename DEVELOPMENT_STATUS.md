@@ -1,6 +1,16 @@
 # Development status
 
-Last updated: 2026-10-26. Version: 0.11.0.
+Last updated: 2026-10-26. Version: 0.16.0.
+
+## Electrical design and an expanded construction catalog (0.16, 2026-10-26)
+
+- Electrical system: receptacles (standard, GFCI, USB, 240 V), switches (single-pole, three-way, dimmer), luminaires
+  (ceiling, downlight, sconce, pendant) and panels; switch links, circuits and breakers, live load/current/utilization,
+  breaker and main trips, NEC conductor sizing and voltage drop; panel schedule window; lights on or off in plan, 3D and
+  render. Project schema 12.
+- Catalog: about thirty wall types by construction (gypsum, glass, block, brick, concrete, stone, timber, metal), door
+  leaf styles (flush, six-panel, louvered, frameless glass, security) and windows with exterior security bars, all
+  meshed with their own materials.
 
 ## Revit-style wall drawing, site planting and a photographic render (0.10–0.11, 2026-10-26)
 

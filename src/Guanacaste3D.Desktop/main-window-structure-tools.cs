@@ -92,6 +92,18 @@ public partial class MainWindow
                 BeginKindTool(StructuralElementKind.ReferencePlane); return true;
             case "RibbonCommand.ArchitecturalLibrary":
                 OpenArchitecturalLibrary(); return true;
+            case "RibbonCommand.LightingFixture":
+                BeginElectricalTool(Luminaires); return true;
+            case "RibbonCommand.ElectricalDevice":
+                BeginElectricalTool(Receptacles); return true;
+            case "RibbonCommand.LightSwitch":
+                BeginElectricalTool(Switches); return true;
+            case "RibbonCommand.ElectricalEquipment":
+                BeginElectricalTool([ElectricalDeviceKind.Panel]); return true;
+            case "RibbonCommand.Wire":
+                BeginWiringTool(); return true;
+            case "RibbonCommand.PanelSchedule":
+                OpenPanelSchedule(); return true;
             case "RibbonCommand.Toposolid":
                 BeginToposolidSketch(false); return true;
             case "RibbonCommand.GradedRegion":
@@ -159,6 +171,7 @@ public partial class MainWindow
         _structuralTool = null;
         _structuralPreset = null;
         _placingTopoPoints = false;
+        CancelElectricalTools();
         _tagTarget = null;
         CancelArchitectureTools();
         _pendingStructuralStart = null;

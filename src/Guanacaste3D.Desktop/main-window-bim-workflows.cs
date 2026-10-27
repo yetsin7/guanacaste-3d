@@ -273,6 +273,7 @@ public partial class MainWindow
         _selectedSheetId = sheetId;
         _selectedColumnId = columnId;
         _selectedStructuralId = structuralId;
+        _selectedElectricalId = null;
         _selectedViewId = null;
         _selectedWallId = null;
         _selectedOpeningId = null;

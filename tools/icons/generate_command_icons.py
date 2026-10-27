@@ -75,7 +75,9 @@ MAP = {
     "FabricationPart": ("fabrication", None), "MultipointRouting": ("routing", None), "DuctStiffener": ("stiffener", None), "PidModeler": ("pid", None),
     "MechanicalEquipment": ("mechanical_equipment", None), "MechanicalControlDevice": ("control_device", None), "Pipe": ("pipe", None),
     "FlexPipe": ("flex_pipe", None), "PlumbingFixture": ("plumbing_fixture", None), "Wire": ("wire", None), "CableTray": ("cable_tray", None),
-    "Conduit": ("conduit", None), "ElectricalEquipment": ("electrical_equipment", None),
+    "Conduit": ("conduit", None), "ElectricalEquipment": ("panel_board", None),
+    "LightingFixture": ("luminaire", None), "ElectricalDevice": ("outlet", None), "LightSwitch": ("light_switch", None),
+    "PanelSchedule": ("schedule", "star"),
     # Insert
     "ManageLinks": ("link", "gear"), "LinkNativeProject": ("link", "plus"), "LinkIfc": ("ifc", "link"), "LinkCad": ("link_cad", None),
     "LinkTopography": ("link_topo", None), "DwfMarkups": ("markup", None), "PointCloud": ("point_cloud", None), "CoordinationModel": ("coordination", None),
