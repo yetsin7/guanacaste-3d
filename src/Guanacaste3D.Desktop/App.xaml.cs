@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 
 namespace Guanacaste3D.Desktop;
@@ -41,6 +42,21 @@ public partial class App : Application
         await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
     }
 
+    /// <summary>
+    /// Keeps each tooltip inside its active Guanacaste 3D window and registers it for focus-aware dismissal.
+    /// </summary>
+    private void ToolTip_Opened(object sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is ToolTip toolTip) WindowBoundToolTip.Open(toolTip);
+    }
+
+    /// <summary>Releases the window activation listener associated with a tooltip after it closes.</summary>
+    private void ToolTip_Closed(object sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is ToolTip toolTip) WindowBoundToolTip.Close(toolTip);
+    }
+
+    /// <summary>Returns a localized application string, or the resource key when no translation exists.</summary>
     private static string GetText(string key) =>
         Current.TryFindResource(key) as string ?? key;
 }
