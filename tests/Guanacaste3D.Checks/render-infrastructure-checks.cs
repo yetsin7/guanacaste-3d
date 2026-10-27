@@ -91,8 +91,12 @@ static class RenderInfrastructureChecks
         check(big.Quality == RenderQuality.High && middle.Quality == RenderQuality.Standard && small.Quality == RenderQuality.Draft &&
               big.Notes.Contains(PlanNote.ChosenAutomatically),
             "AUTO picks High for a strong machine, Standard for a middle one and Draft for a weak one");
-        check(big.TargetSamples > middle.TargetSamples && middle.TargetSamples > small.TargetSamples && big.Threads > small.Threads,
-            "A stronger machine gets more samples and more threads");
+        check(big.TargetSamples > middle.TargetSamples,
+            $"High must exceed Standard samples (High={big.TargetSamples}, Standard={middle.TargetSamples})");
+        check(middle.TargetSamples > small.TargetSamples,
+            $"Standard must exceed Draft samples (Standard={middle.TargetSamples}, Draft={small.TargetSamples})");
+        check(big.Threads > small.Threads,
+            $"Strong machine must use more threads (16 cores={big.Threads}, 4 cores={small.Threads})");
         check(QualityPlanner.Plan(null, Machine(64, 256), 1920, 1080).Quality != RenderQuality.Final, "AUTO never chooses Final");
         var final = QualityPlanner.Plan(RenderQuality.Final, Machine(16, 24), 1920, 1080);
         var onBattery = QualityPlanner.Plan(RenderQuality.Final, Machine(16, 24, battery: true), 1920, 1080);
