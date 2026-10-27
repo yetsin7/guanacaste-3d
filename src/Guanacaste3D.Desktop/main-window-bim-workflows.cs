@@ -145,18 +145,6 @@ public partial class MainWindow
         if (ProjectTree is not null && _session is not null) RefreshTree();
     }
 
-    /// <summary>Updates the status bar when the active workspace tab changes.</summary>
-    private void ViewTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
-        if (ActiveViewText is null || ViewTabs.SelectedItem is not TabItem tab) return;
-        var activeViewName = tab.Header?.ToString() ?? string.Empty;
-        ActiveViewText.Text = activeViewName;
-        if (PropertiesActiveViewText is not null) PropertiesActiveViewText.Text = activeViewName;
-        UpdateRenderWorkspace(ViewTabs.SelectedIndex == RenderTabIndex);
-        UpdateWindowTitle();
-    }
-
     /// <summary>
     /// Replaces the standard properties and project-browser palettes with the render controls while the Render view is
     /// active. The render surface spans the complete workspace so its sidebar occupies the same column as the palettes.
@@ -273,6 +261,7 @@ public partial class MainWindow
         _selectedSheetId = sheetId;
         _selectedColumnId = columnId;
         _selectedStructuralId = structuralId;
+        _selectedGridId = null;
         _selectedElectricalId = null;
         _selectedViewId = null;
         _selectedWallId = null;

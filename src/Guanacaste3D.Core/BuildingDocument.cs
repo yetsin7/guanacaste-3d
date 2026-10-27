@@ -33,13 +33,14 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 12;
+    public const int CurrentSchemaVersion = 13;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled Project";
     public List<PlanDimension> Dimensions { get; set; } = [];
     public List<Level> Levels { get; set; } = [];
+    public List<GridAxis> Grids { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
     public List<WallOpening> Openings { get; set; } = [];
     public List<WallType> WallTypes { get; set; } = [];
@@ -80,6 +81,7 @@ public sealed class BuildingDocument
         Name = Name,
         Dimensions = [.. Dimensions],
         Levels = [.. Levels],
+        Grids = [.. Grids],
         Walls = [.. Walls],
         Openings = [.. Openings],
         WallTypes = [.. WallTypes],
@@ -112,7 +114,7 @@ public sealed class BuildingDocument
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
-        if (Dimensions is null || Levels is null || Walls is null || Openings is null || WallTypes is null ||
+        if (Dimensions is null || Levels is null || Grids is null || Walls is null || Openings is null || WallTypes is null ||
             Rooms is null || Floors is null || Columns is null || StructuralElements is null ||
             Sheets is null || Views is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000 ||
@@ -127,6 +129,9 @@ public sealed class BuildingDocument
             Levels.Select(l => l.Id).Distinct().Count() != Levels.Count)
             throw new InvalidDataException("The level collection is invalid.");
         var levelIds = Levels.Select(l => l.Id).ToHashSet();
+        if (Grids.Count > 10000 || Grids.Any(axis => axis is null || !axis.IsValid) ||
+            Grids.Select(axis => axis.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Grids.Count)
+            throw new InvalidDataException("Invalid grid axis definitions.");
         if (WallTypes.Count is < 1 or > 10000 || WallTypes.Any(type =>
                 type.Id == Guid.Empty || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 120 ||
                 !Enum.IsDefined(type.Function) || !double.IsFinite(type.Thickness) ||
@@ -158,6 +163,7 @@ public sealed class BuildingDocument
         if (Dimensions.Any(item => item is null) || StructuralElements.Any(item => item is null))
             throw new InvalidDataException("Invalid plan dimension references.");
         var allIds = Levels.Select(level => level.Id)
+            .Concat(Grids.Select(axis => axis.Id))
             .Concat(Walls.Select(wall => wall.Id))
             .Concat(Openings.Select(opening => opening.Id))
             .Concat(WallTypes.Select(type => type.Id))
@@ -259,6 +265,7 @@ public sealed class BuildingDocument
         if (Views.Count < 1 || Views.Any(view => view.Id == Guid.Empty ||
                 string.IsNullOrWhiteSpace(view.Name) || view.Name.Length > 120 ||
                 !Enum.IsDefined(view.Kind) || !Enum.IsDefined(view.Orientation) ||
+                (view.Cut is not null && (view.Kind != ProjectViewKind.Section || !view.Cut.IsValid)) ||
                 (view.Kind == ProjectViewKind.Plan &&
                     (view.LevelId is not Guid levelId || !levelIds.Contains(levelId))) ||
                 (view.Kind != ProjectViewKind.Plan && view.LevelId is not null)) ||

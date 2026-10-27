@@ -33,6 +33,7 @@ public partial class MainWindow
     /// <summary>Coordinates project-browser selection with the active model selection.</summary>
     private void ProjectTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
+        _selectedGridId = null;
         if (e.NewValue is not TreeViewItem item || item.Tag is not Guid id) return;
         if (TryHandleProjectTreeSelection(id)) return;
         _selectedViewId = null;
@@ -73,7 +74,9 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
-        if (!PlanToolArmed() && TrySelectElevationSymbol(e)) return;
+        if (!PlanToolArmed() && (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
+        if (TryHandleGridPlacement(e)) return;
+        if (TryHandleSectionPlacement(e)) return;
         if (TryPlaceOpening(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
@@ -304,6 +307,8 @@ public partial class MainWindow
         RenderPlacementPreview();
         RenderPermanentDimensions();
         RenderElevationSymbols();
+        RenderSectionSymbols();
+        RenderGridAxes();
     }
 
     /// <summary>Fills a wall's mitered plan footprint, drawn above every outline so joined faces disappear.</summary>

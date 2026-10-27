@@ -183,6 +183,12 @@ public static class ProjectFile
             document.ElectricalDevices ??= [];
             document.ElectricalCircuits ??= [];
         }
+        // Schema 13 adds finite section cutting lines and project-wide reference axes.
+        if (document.SchemaVersion == 12)
+        {
+            document.SchemaVersion = 13;
+            document.Grids ??= [];
+        }
 
     }
 

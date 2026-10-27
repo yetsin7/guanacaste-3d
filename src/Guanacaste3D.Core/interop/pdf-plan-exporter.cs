@@ -25,7 +25,7 @@ public sealed record SheetText(Point2 Position, string Text, double Size, (doubl
 /// stairs with their walking line, columns, structure, plantings and terrain contours. Each sheet carries a title block,
 /// a scale bar and a north arrow, and the plan is drawn at the largest standard scale that fits the paper.
 /// </summary>
-public static class PdfPlanExporter
+public static partial class PdfPlanExporter
 {
     private const double PointsPerMillimeter = 72 / 25.4;
     private static readonly (double, double, double) Black = (0, 0, 0);
@@ -129,6 +129,7 @@ public static class PdfPlanExporter
                 if (walk.Count >= 2) items.Add(new SheetPolyline(Arrow(walk[^2], walk[^1], Math.Min(0.3, element.Width / 3)), 0.18, Black));
             }
         }
+        AddDocumentationPrimitives(items, document, levelId);
         return items;
     }
 
@@ -161,8 +162,9 @@ public static class PdfPlanExporter
             items.Add(new SheetPolyline([At(u, -half), At(u, half)], 0.25, Black));
     }
 
+    /// <summary>Fits vector model geometry above a title block; generated views omit the plan north marker.</summary>
     private static void DrawSheet(PdfPage page, BuildingDocument document, Level level, IReadOnlyList<SheetPrimitive> primitives,
-        double width, double height, DateTimeOffset date, string number)
+        double width, double height, DateTimeOffset date, string number, string? viewTitle = null)
     {
         const double margin = 10;
         const double titleHeight = 32;
@@ -206,20 +208,21 @@ public static class PdfPlanExporter
                 }
             }
         }
-        DrawTitleBlock(page, document, level, width, margin, titleHeight, scale, date, number);
+        DrawTitleBlock(page, document, level, width, margin, titleHeight, scale, date, number, viewTitle);
         DrawScaleBar(page, margin + 12, margin + titleHeight + 12, scale);
-        DrawNorthArrow(page, width - margin - 22, height - margin - 26);
+        if (viewTitle is null) DrawNorthArrow(page, width - margin - 22, height - margin - 26);
     }
 
+    /// <summary>Uses the saved view name when printing a section or elevation.</summary>
     private static void DrawTitleBlock(PdfPage page, BuildingDocument document, Level level, double width, double margin,
-        double titleHeight, double scale, DateTimeOffset date, string number)
+        double titleHeight, double scale, DateTimeOffset date, string number, string? viewTitle)
     {
         page.Rectangle(margin, margin, width - 2 * margin, titleHeight, 0.5, Black);
         var right = width - margin;
         var cells = new[] { right - 200, right - 140, right - 80 };
         foreach (var x in cells) page.Path([(x, margin), (x, margin + titleHeight)], false, 0.25, Black, null);
         page.Text(margin + 6, margin + titleHeight - 12, document.Name, 7, Black, true);
-        page.Text(margin + 6, margin + titleHeight - 22, $"Planta arquitectónica — {level.Name}", 4.5, Black);
+        page.Text(margin + 6, margin + titleHeight - 22, viewTitle ?? $"Planta arquitectónica — {level.Name}", 4.5, Black);
         page.Text(margin + 6, margin + 5, "Guanacaste 3D", 3, Grey);
         page.Text(cells[0] + 4, margin + titleHeight - 9, "Escala", 2.5, Grey);
         page.Text(cells[0] + 4, margin + 10, $"1:{scale:0}", 6, Black, true);

@@ -38,106 +38,6 @@ public partial class MainWindow
     private Point2? _structuralPreviewPoint;
     private Guid? _selectedStructuralId;
 
-    /// <summary>
-    /// Maps a Structure ribbon command to its tool. Commands that reuse an existing workflow are delegated
-    /// to it; commands whose BIM operation is not modeled yet return false and keep the planned message.
-    /// </summary>
-    private bool TryExecuteStructuralCommand(string commandId)
-    {
-        var eventArguments = new RoutedEventArgs();
-        // The catalog sends its own ids ("Beam"); the table below is keyed by label key ("RibbonCommand.Beam").
-        commandId = commandId switch
-        {
-            "StructColumn" => "RibbonCommand.Column",
-            "WallByFace" => "RibbonCommand.WallFoundation",
-            "ConnectionAuto" => "RibbonCommand.ConnectionAutomation",
-            _ when !commandId.StartsWith("RibbonCommand.", StringComparison.Ordinal) => "RibbonCommand." + commandId,
-            _ => commandId
-        };
-        switch (commandId)
-        {
-            case "RibbonCommand.LoadFamily":
-                ImportFamily_Click(this, eventArguments); return true;
-            case "RibbonCommand.Beam":
-                BeginStructuralTool(StructuralElementKind.Beam, StructuralPlacementMode.Line); return true;
-            case "RibbonCommand.Truss":
-                BeginStructuralTool(StructuralElementKind.Truss, StructuralPlacementMode.Line); return true;
-            case "RibbonCommand.Brace":
-                BeginStructuralTool(StructuralElementKind.Brace, StructuralPlacementMode.Line); return true;
-            case "RibbonCommand.BeamSystem":
-                BeginStructuralTool(StructuralElementKind.Beam, StructuralPlacementMode.Rectangle); return true;
-            case "RibbonCommand.WallFoundation":
-                BeginStructuralTool(StructuralElementKind.WallFoundation, StructuralPlacementMode.Line); return true;
-            case "RibbonCommand.IsolatedFoundation":
-                BeginStructuralTool(StructuralElementKind.IsolatedFoundation, StructuralPlacementMode.Point); return true;
-            case "RibbonCommand.Component":
-                BeginStructuralTool(StructuralElementKind.Component, StructuralPlacementMode.Point); return true;
-            case "RibbonCommand.Connection":
-                BeginStructuralTool(StructuralElementKind.Connection, StructuralPlacementMode.Point); return true;
-            case "RibbonCommand.ConnectionAutomation":
-                CreateConnectionsAtJoints(); return true;
-            case "RibbonCommand.ModelLine":
-                BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Line); return true;
-            case "RibbonCommand.OpeningByFace":
-                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Point); return true;
-            case "RibbonCommand.VerticalOpening":
-                BeginStructuralTool(StructuralElementKind.Opening, StructuralPlacementMode.Rectangle); return true;
-            case "RibbonCommand.ShaftOpening":
-                BeginStructuralTool(StructuralElementKind.Shaft, StructuralPlacementMode.Rectangle); return true;
-            case "RibbonCommand.ModelText":
-                BeginStructuralTool(StructuralElementKind.ModelText, StructuralPlacementMode.Point); return true;
-            case "RibbonCommand.DormerOpening":
-                BeginStructuralTool(StructuralElementKind.Dormer, StructuralPlacementMode.Rectangle); return true;
-            case "RibbonCommand.ReferencePlane":
-                BeginKindTool(StructuralElementKind.ReferencePlane); return true;
-            case "RibbonCommand.ArchitecturalLibrary":
-                OpenArchitecturalLibrary(); return true;
-            case "RibbonCommand.LightingFixture":
-                BeginElectricalTool(Luminaires); return true;
-            case "RibbonCommand.ElectricalDevice":
-                BeginElectricalTool(Receptacles); return true;
-            case "RibbonCommand.LightSwitch":
-                BeginElectricalTool(Switches); return true;
-            case "RibbonCommand.ElectricalEquipment":
-                BeginElectricalTool([ElectricalDeviceKind.Panel]); return true;
-            case "RibbonCommand.Wire":
-                BeginWiringTool(); return true;
-            case "RibbonCommand.PanelSchedule":
-                OpenPanelSchedule(); return true;
-            case "RibbonCommand.Toposolid":
-                BeginToposolidSketch(false); return true;
-            case "RibbonCommand.GradedRegion":
-                BeginTopoPointTool(); return true;
-            case "RibbonCommand.LabelContours":
-                _labelContours = !_labelContours;
-                StatusText.Text = GetText(_labelContours ? "Status.ContourLabelsOn" : "Status.ContourLabelsOff");
-                RenderPlan();
-                return true;
-            case "RibbonCommand.SiteComponent":
-            case "RibbonCommand.Planting":
-                BeginPlantingTool(); return true;
-            case "RibbonCommand.ModelGroup":
-                BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group); return true;
-            case "RibbonCommand.Column":
-                Column_Click(this, eventArguments); return true;
-            case "RibbonCommand.FoundationSlab":
-                Floor_Click(this, eventArguments); return true;
-            case "RibbonCommand.WallOpening":
-                Window_Click(this, eventArguments); return true;
-            case "RibbonCommand.Level":
-                AddLevel_Click(this, eventArguments); return true;
-            case "RibbonCommand.Grid":
-            case "RibbonCommand.ShowWorkPlane":
-                ToggleGrid_Click(this, eventArguments); return true;
-            case "RibbonCommand.SetWorkPlane":
-                Levels_Click(this, eventArguments); return true;
-            case "RibbonCommand.Viewer":
-                ShowModel_Click(this, eventArguments); return true;
-            default:
-                return false;
-        }
-    }
-
     /// <summary>Arms a placement tool; leaves any other drawing tool and restores the plan view.</summary>
     private void BeginStructuralTool(StructuralElementKind kind, StructuralPlacementMode mode)
     {
@@ -168,6 +68,8 @@ public partial class MainWindow
     /// <summary>Disarms the placement tool and drops its provisional geometry.</summary>
     private void CancelStructuralTool()
     {
+        CancelSectionTool();
+        CancelGridTool();
         _structuralTool = null;
         _structuralPreset = null;
         _placingTopoPoints = false;
@@ -181,7 +83,7 @@ public partial class MainWindow
     /// <summary>Tracks the pointer while a structural tool is armed so its preview follows the cursor.</summary>
     private bool TryUpdateStructuralPreview(MouseEventArgs e)
     {
-        if (TryUpdateSketchPreview(e)) return true;
+        if (TryUpdateGridPreview(e) || TryUpdateSectionPreview(e) || TryUpdateSketchPreview(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var pointer = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         _structuralPreviewPoint = ResolveStructuralPoint(tool.Kind, pointer);
@@ -239,7 +141,7 @@ public partial class MainWindow
             return true;
         }
 
-        if (tool.Kind == StructuralElementKind.Beam)
+        if (tool.Kind == StructuralElementKind.Beam && tool.Mode == StructuralPlacementMode.Rectangle)
         {
             var count = _session.AddBeamSystem(_activeLevelId, GetStructuralName(tool.Kind),
                 start, point, StructuralBeamSpacing);
@@ -313,21 +215,6 @@ public partial class MainWindow
         }
         _selectedStructuralId = created;
         StatusText.Text = FormatText("Status.StructuralCreated", GetStructuralName(StructuralElementKind.Dormer));
-        RefreshAll();
-    }
-
-    /// <summary>Asks for the annotation text and places it at the clicked position; cancelling places nothing.</summary>
-    private void PlaceModelText(Point2 position)
-    {
-        var text = TextPrompt.Ask(this, GetText("Prompt.ModelText.Title"), GetText("Prompt.ModelText.Label"),
-            GetText("Prompt.Accept"), GetText("Prompt.Cancel"));
-        if (text is null)
-        {
-            StatusText.Text = GetText("Status.ModelTextCancelled");
-            return;
-        }
-        _selectedStructuralId = _session.AddModelText(_activeLevelId, position, text);
-        StatusText.Text = FormatText("Status.StructuralCreated", text);
         RefreshAll();
     }
 

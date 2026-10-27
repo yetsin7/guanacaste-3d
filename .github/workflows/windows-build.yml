@@ -51,6 +51,8 @@ jobs:
         run: dotnet build Guanacaste3D.slnx -c Release --no-restore
       - name: Core regression checks on Windows
         run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
+      - name: Documentation model and WPF interaction checks
+        run: dotnet run --project tests/documentation-checks/documentation-checks.csproj -c Release --no-build --no-restore
       - name: Publish self-contained portable Windows app
         run: dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/portable-win-x64
       - name: Verify executable and write checksum

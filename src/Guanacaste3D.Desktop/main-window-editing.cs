@@ -126,6 +126,13 @@ public partial class MainWindow
     /// <summary>Deletes the selected supported BIM element and its dependent geometry.</summary>
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedGridId is Guid gridId)
+        {
+            _session.RemoveGridAxis(gridId);
+            _selectedGridId = null;
+            RefreshAll();
+            return;
+        }
         if (_selectedOpeningId is Guid openingId)
         {
             // Selecting a door also selects its host wall for the properties panel; Delete removes only the door.
