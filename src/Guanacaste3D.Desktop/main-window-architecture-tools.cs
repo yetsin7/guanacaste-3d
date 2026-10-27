@@ -12,6 +12,9 @@ public partial class MainWindow
     private enum TagTarget { Room, Area }
 
     private ElementPreset? _structuralPreset;
+
+    /// <summary>The turn given to the next component placed, changed with SPACE.</summary>
+    private double _componentRotation;
     private ColumnPreset? _columnPreset;
     private Guid? _placingOpeningTypeId;
     private TagTarget? _tagTarget;
@@ -53,6 +56,27 @@ public partial class MainWindow
     /// While planting or placing a stair, Space steps to the next type of the catalog (species; straight, L, U or spiral
     /// stair), like door swing flipping.
     /// </summary>
+    /// <summary>
+    /// SPACE turns furniture and fixtures a quarter turn, like Revit's Space while placing a component: the next one placed
+    /// while the tool is armed, or the selected one when no tool is armed (one undoable step).
+    /// </summary>
+    private bool TryRotateComponent()
+    {
+        if (_structuralTool is { Kind: StructuralElementKind.Component })
+        {
+            _componentRotation = (_componentRotation + Math.PI / 2) % (2 * Math.PI);
+            RenderPlan();
+            return true;
+        }
+        if (_structuralTool is not null || _selectedStructuralId is not Guid id) return false;
+        var element = _session.Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == id);
+        if (element is not { Kind: StructuralElementKind.Component } || element.Start.DistanceTo(element.End) > 1e-9) return false;
+        _session.RotateElement(id, Math.PI / 2);
+        StatusText.Text = GetText("Status.ComponentRotated");
+        RefreshAll();
+        return true;
+    }
+
     private bool TryCyclePlantingSpecies()
     {
         if (_structuralTool is not { Kind: StructuralElementKind.Planting or StructuralElementKind.Stair } tool) return false;

@@ -38,6 +38,7 @@ public static class MeshExporter
         SurfaceKind.WallStone => ("G3D_Stone", new Vector3(0.46f, 0.43f, 0.38f), 1, 0.9f),
         SurfaceKind.WallWood => ("G3D_Cladding", new Vector3(0.50f, 0.34f, 0.20f), 1, 0.7f),
         SurfaceKind.WallMetal => ("G3D_MetalPanel", new Vector3(0.70f, 0.72f, 0.74f), 1, 0.4f),
+        SurfaceKind.Mirror => ("G3D_Mirror", new Vector3(0.92f, 0.93f, 0.93f), 1, 0.02f),
         SurfaceKind.LightOff => ("G3D_LightOff", new Vector3(0.9f, 0.88f, 0.84f), 1, 0.6f),
         SurfaceKind.Upholstery => ("G3D_Upholstery", new Vector3(0.30f, 0.28f, 0.25f), 1, 0.95f),
         SurfaceKind.Bedding => ("G3D_Bedding", new Vector3(0.80f, 0.79f, 0.76f), 1, 0.92f),

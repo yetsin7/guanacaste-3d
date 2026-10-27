@@ -59,7 +59,10 @@ A physically based CPU path tracer, tuned for architecture:
   timber cladding, metal panel), with plaster on faces that look into rooms.
 - **Switched lights**: luminaires placed with the electrical tools are emissive
   only while their circuit is live and their switches are closed; downlights
-  have a small, bright lens, and an open switch leaves the diffuser dark.
+  have a small, bright lens, and an open switch leaves the diffuser dark. A
+  dimmer scales the light it controls: the render gives those triangles a copy
+  of the emitter material at the dimmed radiance (in 1/64 steps).
+- **Mirrors**: bathroom and wall mirrors are silvered glass (a smooth metal).
 - **Render-quality vegetation**: the render (not the 3D view, which keeps the
   light modelling canopies) grows every planting: a flared trunk splits into
   scaffold limbs that branch recursively (Leonardo's rule for thickness), and

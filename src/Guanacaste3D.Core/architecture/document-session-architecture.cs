@@ -164,7 +164,7 @@ public sealed partial class DocumentSession
     }
 
     /// <summary>Adds an element from a catalog section; line elements run between the two points.</summary>
-    public Guid AddElementFromPreset(Guid levelId, ElementPreset preset, Point2 start, Point2 end)
+    public Guid AddElementFromPreset(Guid levelId, ElementPreset preset, Point2 start, Point2 end, double rotation = 0)
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddStructuralElement", document =>
@@ -173,9 +173,33 @@ public sealed partial class DocumentSession
             {
                 Style = preset.Style, Width = preset.Width, Height = preset.Height, Offset = preset.Offset,
                 Depth = preset.Depth, ComponentShape = preset.ComponentShape,
-                ComponentCategory = preset.ComponentCategory
+                ComponentCategory = preset.ComponentCategory, Rotation = NormalizeTurn(rotation)
             }));
         return id;
+    }
+
+    /// <summary>Turns a point-hosted element (furniture, fixtures, equipment) about its insertion point.</summary>
+    public void RotateElement(Guid elementId, double radians)
+    {
+        var element = Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == elementId)
+            ?? throw new InvalidDataException("The element does not exist.");
+        if (element.Start.DistanceTo(element.End) > 1e-9)
+            throw new InvalidDataException("Only point-hosted elements turn about their insertion point.");
+        Commit("Transaction.RotateElement", document =>
+        {
+            var index = document.StructuralElements.FindIndex(candidate => candidate.Id == elementId);
+            document.StructuralElements[index] = element with { Rotation = NormalizeTurn(element.Rotation + radians) };
+        });
+    }
+
+    /// <summary>An angle brought into [0, 2π), with turns within a micro-radian of a right angle snapped onto it.</summary>
+    private static double NormalizeTurn(double radians)
+    {
+        var turn = radians % (2 * Math.PI);
+        if (turn < 0) turn += 2 * Math.PI;
+        var quarter = Math.Round(turn / (Math.PI / 2)) * (Math.PI / 2);
+        if (Math.Abs(turn - quarter) < 1e-6) turn = quarter;
+        return turn >= 2 * Math.PI - 1e-9 ? 0 : turn;
     }
 
     /// <summary>Adds a column from a catalog section.</summary>

@@ -24,6 +24,7 @@
   <sys:String x:Key="Error.Invalid electrical device.">El dispositivo eléctrico no es válido.</sys:String>
   <sys:String x:Key="Error.The circuit does not exist.">El circuito no existe.</sys:String>
   <sys:String x:Key="Error.Invalid circuit.">El circuito no es válido.</sys:String>
+  <sys:String x:Key="Error.Only point-hosted elements turn about their insertion point.">Solo los elementos de punto (muebles, aparatos, equipos) giran sobre su punto de inserción.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
   <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>
   <sys:String x:Key="Error.The toposolid does not exist.">El sólido topográfico no existe.</sys:String>

@@ -175,6 +175,10 @@ public static class MaterialLibrary
         {
             Name = "Revestimiento de madera", BaseColor = new(0.50f, 0.34f, 0.20f), Roughness = 0.7f, Pattern = SurfacePattern.Planks, PatternScale = 1
         },
+        SurfaceKind.Mirror => new RenderMaterial
+        {
+            Name = "Espejo", BaseColor = new(0.92f, 0.93f, 0.93f), Roughness = 0.02f, Metallic = 1
+        },
         SurfaceKind.WallMetal => new RenderMaterial
         {
             Name = "Panel metálico", BaseColor = new(0.70f, 0.72f, 0.74f), Roughness = 0.4f, Metallic = 0.7f

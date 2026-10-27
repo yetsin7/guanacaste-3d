@@ -20,6 +20,7 @@ public partial class MainWindow
     /// <summary>Rotates the selected wall by the common 90-degree increment.</summary>
     private void Rotate_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedWallId is null && TryRotateComponent()) return;
         if (_selectedWallId is not Guid id)
         {
             StatusText.Text = GetText("Status.SelectWallToRotate");

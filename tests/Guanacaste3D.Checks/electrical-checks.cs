@@ -82,6 +82,17 @@ static class ElectricalChecks
         mesh = BuildingMesher.Build(session.Document);
         check(mesh.TriangleKinds.Contains(SurfaceKind.LightOff), "A switched-off luminaire shows a dark diffuser");
 
+        // A dimmer at 40 % dims the emitter in the render to 40 % of its full radiance.
+        session.ToggleSwitch(single);
+        session.SetDimLevel(dimmer, 0.4);
+        mesh = BuildingMesher.Build(session.Document);
+        var scene = new Guanacaste3D.Core.Rendering.RenderSceneBuilder().AddBuilding(mesh).Build();
+        var full = Guanacaste3D.Core.Rendering.MaterialLibrary.ForKind(SurfaceKind.LightEmitter).Emission;
+        check(scene.Materials.Any(material => Math.Abs(material.Emission.X - full.X * 0.4) < full.X * 0.02) &&
+              Enumerable.Range(0, mesh.TriangleCount).Any(triangle => Math.Abs(mesh.EmissionOf(triangle) - 0.4) < 1e-6),
+            "A dimmed luminaire emits a matching fraction of its light in the render");
+        session.SetDimLevel(dimmer, 1);
+
         var path = Path.Combine(Path.GetTempPath(), $"electrical-{Guid.NewGuid():N}.g3d");
         try
         {

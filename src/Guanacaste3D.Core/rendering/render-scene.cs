@@ -85,6 +85,7 @@ public sealed class RenderSceneBuilder
         ArgumentNullException.ThrowIfNull(mesh);
         materialFor ??= MaterialLibrary.ForKind;
         var kinds = new Dictionary<SurfaceKind, int>();
+        var dimmed = new Dictionary<(SurfaceKind, int), int>();
         var start = _positions.Count;
         var meshPositions = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(mesh.Positions);
         _positions.AddRange(meshPositions);
@@ -107,7 +108,19 @@ public sealed class RenderSceneBuilder
                 continue;
             }
             var kind = mesh.TriangleKinds[triangle];
-            if (!kinds.TryGetValue(kind, out var material)) kinds[kind] = material = MaterialIndex(materialFor(kind));
+            int material;
+            var output = mesh.EmissionOf(triangle);
+            if (output < 1)
+            {
+                // A light on a dimmer: its own copy of the material with the emission scaled, one per dimmer step.
+                var step = (int)MathF.Round(output * 64);
+                if (!dimmed.TryGetValue((kind, step), out material))
+                {
+                    var full = materialFor(kind);
+                    dimmed[(kind, step)] = material = MaterialIndex(full with { Emission = full.Emission * (step / 64f) });
+                }
+            }
+            else if (!kinds.TryGetValue(kind, out material)) kinds[kind] = material = MaterialIndex(materialFor(kind));
             _indices.Add(start + a);
             _indices.Add(start + b);
             _indices.Add(start + c);

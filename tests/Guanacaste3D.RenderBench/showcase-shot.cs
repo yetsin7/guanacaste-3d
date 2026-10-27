@@ -103,7 +103,13 @@ static class ShowcaseShot
             var gx = Math.Max(first.FirstCorner.X, first.SecondCorner.X);
             foreach (var (x, y) in new[] { (fx + 1.5, fy + 1.5), (gx - 1.5, fy + 1.5), (fx + 1.5, gy - 1.5), (gx - 1.5, gy - 1.5) })
                 session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Downlight, "D", new Guanacaste3D.Core.Point2(x, y), ceiling: 2.7);
-            session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Pendant, "P", new Guanacaste3D.Core.Point2(fx + 1.6, fy + 1.4), ceiling: 2.7);
+            var pendant = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Pendant, "P", new Guanacaste3D.Core.Point2(fx + 1.6, fy + 1.4), ceiling: 2.7);
+            if (double.TryParse(Environment.GetEnvironmentVariable("G3_SHOT_DIM"), System.Globalization.CultureInfo.InvariantCulture, out var dim))
+            {
+                var dimmer = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Dimmer, "SD", new Guanacaste3D.Core.Point2(fx + 0.1, fy + 1.0), facing: 0);
+                session.ToggleSwitchLink(dimmer, pendant);
+                session.SetDimLevel(dimmer, dim);
+            }
             var sconce = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.WallSconce, "A", new Guanacaste3D.Core.Point2(fx + 0.1, (fy + gy) / 2), facing: 0);
             var sw = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Switch, "S", new Guanacaste3D.Core.Point2(fx + 0.1, fy + 0.8), facing: 0);
             session.ToggleSwitchLink(sw, sconce);
@@ -113,10 +119,29 @@ static class ShowcaseShot
                 session.RemoveStructuralElement(element.Id);
         }
         Place(Guanacaste3D.Core.ResidentialComponentShape.Rug, fx + 2.0, gy - 1.6);
-        Place(Guanacaste3D.Core.ResidentialComponentShape.Sofa, fx + 2.0, gy - 0.6);
-        Place(Guanacaste3D.Core.ResidentialComponentShape.Table, fx + 1.6, fy + 1.4);
-        Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 1.0, fy + 1.4);
-        Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 2.2, fy + 1.4);
+        if (Environment.GetEnvironmentVariable("G3_SHOT_FURNISH") == "1")
+        {
+            // The newer families: a sectional, a round table with chairs turned to face it (a family's front is -Y, so a
+            // chair west of the table turns +90° to face east), an ottoman and a wall mirror.
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Sectional, fx + 1.9, gy - 1.05);
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Ottoman, fx + 2.4, gy - 2.6);
+            Place(Guanacaste3D.Core.ResidentialComponentShape.RoundTable, fx + 1.6, fy + 1.4);
+            foreach (var (dx, dy, turn) in new[] { (-0.75, 0.0, Math.PI / 2), (0.75, 0.0, -Math.PI / 2), (0.0, -0.75, Math.PI) })
+            {
+                var at = new Guanacaste3D.Core.Point2(fx + 1.6 + dx, fy + 1.4 + dy);
+                session.AddElementFromPreset(level, Of(Guanacaste3D.Core.ResidentialComponentShape.Chair), at, at, turn);
+            }
+            var mirror = new Guanacaste3D.Core.Point2(fx + 0.02, (fy + gy) / 2 + 0.6);
+            session.AddElementFromPreset(level, Guanacaste3D.Core.ArchitecturalLibrary.ElementPresets.First(preset => preset.Name == "Wall Mirror"),
+                mirror, mirror, Math.PI / 2);
+        }
+        else
+        {
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Sofa, fx + 2.0, gy - 0.6);
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Table, fx + 1.6, fy + 1.4);
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 1.0, fy + 1.4);
+            Place(Guanacaste3D.Core.ResidentialComponentShape.Chair, fx + 2.2, fy + 1.4);
+        }
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true);
         var low = new Vector3((float)Math.Min(first.FirstCorner.X, first.SecondCorner.X), (float)Math.Min(first.FirstCorner.Y, first.SecondCorner.Y), 0);
         var high = new Vector3((float)Math.Max(first.FirstCorner.X, first.SecondCorner.X), (float)Math.Max(first.FirstCorner.Y, first.SecondCorner.Y), 0);

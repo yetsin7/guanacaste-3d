@@ -209,6 +209,7 @@
   <sys:String x:Key="Status.PlanFit">Planta encuadrada al nivel activo.</sys:String>
   <sys:String x:Key="Status.WallDuplicated">Muro duplicado a 1 metro de distancia en X e Y.</sys:String>
   <sys:String x:Key="Status.SelectWallToRotate">Selecciona un muro para rotarlo.</sys:String>
+  <sys:String x:Key="Status.ComponentRotated">Elemento girado 90°. ESPACIO lo vuelve a girar.</sys:String>
   <sys:String x:Key="Status.WallRotated90">Muro rotado 90° alrededor de su punto inicial.</sys:String>
   <sys:String x:Key="Status.WallMovedOneMeter">Muro desplazado 1 metro hacia X positivo.</sys:String>
   <sys:String x:Key="Status.SelectElementToMove">Seleccione un elemento para mover.</sys:String>

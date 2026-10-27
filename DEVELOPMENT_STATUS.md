@@ -1,6 +1,13 @@
 # Development status
 
-Last updated: 2026-10-26. Version: 0.16.0.
+Last updated: 2026-10-26. Version: 0.17.0.
+
+## More families, component rotation and dimmed lights (0.17, 2026-10-26)
+
+- 27 new furniture and fixture families (sectional, round tables, office chair, bar stool, bunk bed, crib, sink cabinet,
+  range hood, pedestal sink, double vanity, bidet, urinal, mirrors, water heater, hammock, sun lounger, umbrella...).
+- Components turn about their insertion point (SPACE while placing or on the selection, *Rotar*), saved and undoable.
+- Dimmers dim their lights in the render, not only on/off; mirrors render as silvered glass.
 
 ## Electrical design and an expanded construction catalog (0.16, 2026-10-26)
 

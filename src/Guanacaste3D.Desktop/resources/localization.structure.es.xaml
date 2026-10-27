@@ -23,6 +23,7 @@ Sección {1:0.00} × {2:0.00} m
 Desfase {3:0.00} m
 Longitud {4:0.00} m</sys:String>
   <sys:String x:Key="Transaction.AddStructuralElement">Crear elemento estructural</sys:String>
+  <sys:String x:Key="Transaction.RotateElement">Girar elemento</sys:String>
   <sys:String x:Key="Transaction.RemoveStructuralElement">Eliminar elemento estructural</sys:String>
   <sys:String x:Key="Transaction.MoveStructuralElement">Mover elemento estructural</sys:String>
   <sys:String x:Key="Transaction.AddBeamSystem">Crear sistema de vigas</sys:String>

@@ -49,7 +49,9 @@ public enum SurfaceKind : byte
     /// <summary>Timber cladding.</summary>
     WallWood,
     /// <summary>Metal panel cladding.</summary>
-    WallMetal
+    WallMetal,
+    /// <summary>Silvered glass: bathroom and wall mirrors.</summary>
+    Mirror
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -66,6 +68,24 @@ public sealed class SceneMesh
     public List<Vector3>? Normals { get; private set; }
 
     public int TriangleCount => TriangleKinds.Count;
+
+    /// <summary>
+    /// Per-triangle output of emitting surfaces, for lights on a dimmer: 1 for full output. Null until a dimmed light is
+    /// added, and shorter than <see cref="TriangleCount"/> when the triangles after it are at full output.
+    /// </summary>
+    public List<float>? EmissionScale { get; private set; }
+
+    /// <summary>The output of one triangle's emission, 1 unless it belongs to a dimmed light.</summary>
+    public float EmissionOf(int triangle) => EmissionScale is { } scale && triangle < scale.Count ? scale[triangle] : 1;
+
+    /// <summary>Scales the emission of every triangle added since <paramref name="firstTriangle"/>.</summary>
+    public void Dim(int firstTriangle, double output)
+    {
+        if (output >= 1) return;
+        EmissionScale ??= [];
+        while (EmissionScale.Count < TriangleCount) EmissionScale.Add(1);
+        for (var triangle = firstTriangle; triangle < TriangleCount; triangle++) EmissionScale[triangle] = (float)Math.Max(0, output);
+    }
 
     /// <summary>Appends one triangle with its own three vertices.</summary>
     public void AddTriangle(Vector3 a, Vector3 b, Vector3 c, SurfaceKind kind)
@@ -216,8 +236,12 @@ public static class BuildingMesher
         // The electrical simulation decides which fixtures glow: switches, dimmers, breakers and panels.
         var electrical = ElectricalAnalysis.Analyze(document);
         foreach (var device in document.ElectricalDevices)
-            ElectricalGeometry.AppendTo(mesh, device, elevations[device.LevelId],
-                device.IsLuminaire ? electrical.Brightness(device.Id) : 0);
+        {
+            var first = mesh.TriangleCount;
+            var brightness = device.IsLuminaire ? electrical.Brightness(device.Id) : 0;
+            ElectricalGeometry.AppendTo(mesh, device, elevations[device.LevelId], brightness);
+            if (brightness > 0) mesh.Dim(first, brightness);
+        }
 
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
@@ -230,9 +254,11 @@ public static class BuildingMesher
                 else PlantGeometry.AppendTo(mesh, element, ground);
                 continue;
             }
-            var lit = element.Kind != StructuralElementKind.Component || electrical.Brightness(element.Id) > 0;
+            var output = element.Kind == StructuralElementKind.Component ? electrical.Brightness(element.Id) : 1;
+            var first = mesh.TriangleCount;
             foreach (var part in ElementGeometry.Parts(element))
-                AddPart(mesh, lit || part.Kind != SurfaceKind.LightEmitter ? part : part with { Kind = SurfaceKind.LightOff }, datum);
+                AddPart(mesh, output > 0 || part.Kind != SurfaceKind.LightEmitter ? part : part with { Kind = SurfaceKind.LightOff }, datum);
+            if (output > 0) mesh.Dim(first, output);
         }
 
         foreach (var family in document.InPlaceFamilies)

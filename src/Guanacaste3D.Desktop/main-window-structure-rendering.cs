@@ -194,10 +194,16 @@ public partial class MainWindow
         var origin = start;
         var (width, height, offset) = StructuralElementStandards.For(tool.Kind);
         var style = ElementStyle.Default;
+        var (depth, shape) = (0.0, ResidentialComponentShape.Box);
         if (_structuralPreset is { } preset && preset.Kind == tool.Kind)
-            (width, height, offset, style) = (preset.Width, preset.Height, preset.Offset, preset.Style);
+            (width, height, offset, style, depth, shape) =
+                (preset.Width, preset.Height, preset.Offset, preset.Style, preset.Depth, preset.ComponentShape);
         var preview = new StructuralElement(Guid.Empty, _activeLevelId, tool.Kind, string.Empty,
-            origin, pointer, width, height, offset) { Style = style };
+            origin, pointer, width, height, offset)
+        {
+            Style = style, Depth = depth, ComponentShape = shape,
+            Rotation = tool.Kind == StructuralElementKind.Component ? _componentRotation : 0
+        };
         if (tool.Kind == StructuralElementKind.Planting)
             AddPlantingSymbol(preview, selected: false, preview: true);
         else if (tool.Kind is StructuralElementKind.ReferencePlane or StructuralElementKind.RoomSeparator

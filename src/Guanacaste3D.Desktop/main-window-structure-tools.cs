@@ -354,7 +354,8 @@ public partial class MainWindow
             else
             {
                 _selectedStructuralId = _structuralPreset is { } preset && preset.Kind == kind
-                    ? _session.AddElementFromPreset(_activeLevelId, preset, start, end)
+                    ? _session.AddElementFromPreset(_activeLevelId, preset, start, end,
+                        kind == StructuralElementKind.Component ? _componentRotation : 0)
                     : _session.AddStructuralElement(_activeLevelId, kind, GetStructuralName(kind), start, end);
             }
         }

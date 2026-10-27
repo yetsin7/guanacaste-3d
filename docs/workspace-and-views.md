@@ -83,6 +83,20 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   a mullion at least every 1.2 m. Doors come panelled, flush, six-panel,
   louvered, frameless glass and security (grille over glass); windows can carry
   exterior security bars, always drawn on the side away from the rooms.
+- **Furniture and fixtures**: about 65 families. They cover living,
+  dining, bedroom, kitchen, bath, utility and outdoor use. Recent additions:
+  - Seating and tables: round and bistro tables, an L-shaped sectional, an
+    office chair, a bar stool, an ottoman and a lounge chair.
+  - Bedroom: a bunk bed and a crib.
+  - Kitchen: a sink cabinet with an undermounted steel bowl and gooseneck
+    mixer, a range hood, a tall pantry, 60 cm cabinets and a microwave.
+  - Bath and utility: a pedestal sink, a double vanity with two vessel basins,
+    a bidet, a wall-hung urinal, mirrors and a water heater.
+  - Outdoor: a hammock on its stand, a sun lounger and a patio umbrella.
+
+  SPACE turns the next component a quarter turn while placing, and turns the
+  selected one afterwards (*Rotar* does the same). One undoable step; the turn
+  is saved with the project.
 - **Electrical**: *Luminaria*, *Dispositivo eléctrico* (receptacles) and
   *Interruptor* place devices (SPACE cycles the kind; wall devices snap to the
   nearest wall within 0.8 m and take their standard height: receptacles 0.30 m,

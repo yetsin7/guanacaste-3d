@@ -162,6 +162,12 @@ public sealed record StructuralElement(
     /// <summary>Residential library group retained on component instances for schedules and future type browsing.</summary>
     public ResidentialComponentCategory ComponentCategory { get; init; }
 
+    /// <summary>
+    /// Point-hosted elements only: counter-clockwise turn in radians about <see cref="Start"/>. Zero faces the family's
+    /// front toward -Y, as authored.
+    /// </summary>
+    public double Rotation { get; init; }
+
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }
 
@@ -204,11 +210,13 @@ public sealed record StructuralElement(
                     or StructuralElementKind.Skylight or StructuralElementKind.Area && length >= 1e-9)
                 return Geometry.SlabOpenings.Corners(PlanExtent);
             if (length < 1e-9)
-                return
-                [
-                    new(Start.X - half, Start.Y - halfDepth), new(Start.X + half, Start.Y - halfDepth),
-                    new(Start.X + half, Start.Y + halfDepth), new(Start.X - half, Start.Y + halfDepth)
-                ];
+            {
+                var (cos, sin) = (Math.Cos(Rotation), Math.Sin(Rotation));
+                return new[] { (-half, -halfDepth), (half, -halfDepth), (half, halfDepth), (-half, halfDepth) }
+                    .Select(corner => new Point2(Start.X + corner.Item1 * cos - corner.Item2 * sin,
+                        Start.Y + corner.Item1 * sin + corner.Item2 * cos))
+                    .ToArray();
+            }
 
             var normalX = -(End.Y - Start.Y) / length * half;
             var normalY = (End.X - Start.X) / length * half;
