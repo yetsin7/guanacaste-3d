@@ -169,12 +169,14 @@ public partial class ArchitectureRibbon : UserControl
         var arrow = definition.HasMenu;
         var button = new Button
         {
-            Content = arrow ? (definition.Large ? label + "\n▾" : label + "  ▾") : label,
+            // The button shows only its icon; the name lives in the tooltip and the accessibility tree.
+            Content = label,
             Tag = definition.Tag,
             CommandParameter = CommandIcons.For(definition.Tag, definition.IconKey),
-            ToolTip = null,
-            MinWidth = definition.Large ? 58 : 0
+            ToolTip = null
         };
+        RibbonButton.SetHasMenu(button, arrow);
+        System.Windows.Automation.AutomationProperties.SetName(button, label);
         button.SetResourceReference(StyleProperty, definition.Large ? "ArchitectureLargeButtonStyle" : "ArchitectureCompactButtonStyle");
         button.Click += (_, e) =>
         {
@@ -194,7 +196,7 @@ public partial class ArchitectureRibbon : UserControl
     private static bool IsOverArrow(Button button, bool large)
     {
         var position = Mouse.GetPosition(button);
-        return large ? position.Y > button.ActualHeight - 22 : position.X > button.ActualWidth - 24;
+        return large ? position.Y > button.ActualHeight - 22 : position.X > button.ActualWidth - 14;
     }
 
     /// <summary>Opens a menu of commands under an element.</summary>

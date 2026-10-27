@@ -49,6 +49,24 @@ public partial class ProfessionalRibbon : UserControl
         }
     }
 
+    /// <summary>Refits the ribbon when the window width changes.</summary>
+    private void RibbonViewport_SizeChanged(object sender, SizeChangedEventArgs e) => FitRibbonToViewport();
+
+    /// <summary>
+    /// Shrinks a slightly too wide ribbon to fit, so no scroll bar is needed. A much narrower window keeps the
+    /// natural size and the mouse wheel pans sideways.
+    /// </summary>
+    private void FitRibbonToViewport()
+    {
+        GroupHost.LayoutTransform = Transform.Identity;
+        GroupHost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var naturalWidth = GroupHost.DesiredSize.Width + 2;
+        if (naturalWidth <= 0 || RibbonViewport.ActualWidth <= 0) return;
+        var scale = Math.Min(1, (RibbonViewport.ActualWidth - 4) / naturalWidth);
+        if (scale < 0.75) scale = 1;
+        if (scale < 1) GroupHost.LayoutTransform = new ScaleTransform(scale, scale);
+    }
+
     /// <summary>
     /// Creates each group from the catalog while preserving compact three-row clusters.
     /// </summary>
@@ -59,6 +77,7 @@ public partial class ProfessionalRibbon : UserControl
         {
             GroupHost.Children.Add(CreateGroup(group));
         }
+        Dispatcher.BeginInvoke(FitRibbonToViewport, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     /// <summary>
@@ -139,7 +158,6 @@ public partial class ProfessionalRibbon : UserControl
             Content = label,
             // The shared ribbon button templates bind the icon image to CommandParameter.
             CommandParameter = CommandIcons.For(definition.CommandId, definition.IconResourceKey) ?? TryFindResource(definition.IconResourceKey),
-            ToolTip = label,
             Style = (Style)FindResource(definition.Size == RibbonCommandSize.Large
                 ? "LargeRibbonButtonStyle"
                 : "CompactRibbonButtonStyle")

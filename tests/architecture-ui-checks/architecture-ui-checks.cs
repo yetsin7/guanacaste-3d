@@ -110,7 +110,7 @@ internal static class ArchitectureUiChecks
         var architectureViewport = Descendants<ScrollViewer>(ribbon).Single();
         Check(architectureViewport.ScrollableWidth < 1,
             $"Every Architecture panel fits a 1920 px window (overflow: {architectureViewport.ScrollableWidth:F1} px)");
-        var splitButtons = Descendants<Button>(ribbon).Where(button => button.Content is string text && text.Contains('▾')).Count();
+        var splitButtons = Descendants<Button>(ribbon).Count(button => Guanacaste3D.Desktop.Controls.RibbonButton.GetHasMenu(button));
         Check(splitButtons >= 14, $"Split buttons carry a dropdown arrow ({splitButtons})");
         var titles = Descendants<TextBlock>(ribbon).Select(block => block.Text).ToList();
         foreach (var title in new[] { "Seleccionar", "Construir", "Circulación", "Modelo", "Habitación y área", "Hueco", "Referencia", "Plano de trabajo" })
@@ -118,7 +118,7 @@ internal static class ArchitectureUiChecks
         SaveBitmap("artifacts/interaction-evidence/architecture-ribbon.png");
     }
 
-    /// <summary>Verifies that narrow workspaces expose every ribbon group through visible horizontal scrolling.</summary>
+    /// <summary>Verifies that narrow workspaces expose every ribbon group without a visible scroll bar (wheel panning or fit-to-width).</summary>
     private static void CheckCompactWindowLayout()
     {
         _window.Width = 1024;
@@ -137,8 +137,8 @@ internal static class ArchitectureUiChecks
             Check(viewer!.ActualWidth <= _window.ActualWidth,
                 $"Ribbon tab {index} stays inside the compact window");
             if (viewer.ScrollableWidth <= 0) continue;
-            Check(viewer.ComputedHorizontalScrollBarVisibility == Visibility.Visible,
-                $"Ribbon tab {index} exposes overflowing commands with a visible scroll bar");
+            Check(viewer.ComputedHorizontalScrollBarVisibility != Visibility.Visible,
+                $"Ribbon tab {index} shows no scroll bar even when it overflows");
             viewer.ScrollToHorizontalOffset(viewer.ScrollableWidth);
             Pump();
             Check(Math.Abs(viewer.HorizontalOffset - viewer.ScrollableWidth) < 1,

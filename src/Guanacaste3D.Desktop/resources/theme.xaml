@@ -262,9 +262,10 @@
     <Setter Property="VerticalAlignment" Value="Stretch"/>
   </Style>
 
-  <!-- Ribbon commands remain reachable at every window width. The compact bar appears only when needed. -->
+  <!-- Icon-only ribbons are narrow enough to fit. If a very small window still overflows, the wheel pans
+       sideways; there is deliberately no scroll bar. -->
   <Style x:Key="RibbonScrollViewerStyle" TargetType="ScrollViewer">
-    <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="HorizontalScrollBarVisibility" Value="Hidden"/>
     <Setter Property="VerticalScrollBarVisibility" Value="Disabled"/>
     <Setter Property="controls:RibbonScroll.WheelScrollsHorizontally" Value="True"/>
     <Setter Property="PanningMode" Value="HorizontalOnly"/>
@@ -278,32 +279,33 @@
     <Setter Property="Margin" Value="3,0,3,1"/>
   </Style>
 
-  <!-- Small ribbon row: 16 px icon followed by its caption; three rows stack per column. -->
+  <!-- Small ribbon command: a 22 px icon only; three stack per column. The name appears in the tooltip. -->
   <Style x:Key="CompactRibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-    <Setter Property="MinWidth" Value="0"/>
-    <Setter Property="Height" Value="25"/>
-    <Setter Property="MinHeight" Value="25"/>
-    <Setter Property="Padding" Value="3,1,6,1"/>
+    <Setter Property="MinWidth" Value="34"/>
+    <Setter Property="Height" Value="26"/>
+    <Setter Property="MinHeight" Value="26"/>
+    <Setter Property="Padding" Value="2"/>
     <Setter Property="Margin" Value="1,0"/>
-    <Setter Property="FontSize" Value="12"/>
     <Setter Property="Foreground" Value="{StaticResource RibbonTextBrush}"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
-    <Setter Property="HorizontalContentAlignment" Value="Left"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
           <Border x:Name="CompactSurface" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <Image Source="{TemplateBinding CommandParameter}" Width="16" Height="16" Stretch="Uniform"
-                     Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-              <TextBlock Text="{TemplateBinding Content}" VerticalAlignment="Center"
-                         Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+              <Image Source="{TemplateBinding CommandParameter}" Width="22" Height="22" Stretch="Uniform"
+                     RenderOptions.BitmapScalingMode="HighQuality"/>
+              <TextBlock x:Name="MenuArrow" Text="&#x25BE;" FontSize="9" Margin="2,0,0,0" Visibility="Collapsed"
+                         VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
             </StackPanel>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="controls:RibbonButton.HasMenu" Value="True">
+              <Setter TargetName="MenuArrow" Property="Visibility" Value="Visible"/>
+            </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="CompactSurface" Property="Background" Value="{StaticResource RibbonHoverBrush}"/>
               <Setter TargetName="CompactSurface" Property="BorderBrush" Value="{StaticResource RibbonHoverBorderBrush}"/>
@@ -320,15 +322,13 @@
     </Setter>
   </Style>
 
-  <!-- Large ribbon command: 32 px icon above a caption that wraps onto two lines. -->
+  <!-- Large ribbon command: a 40 px icon only, as tall as three stacked small commands. -->
   <Style x:Key="LargeRibbonButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-    <Setter Property="MinWidth" Value="44"/>
-    <Setter Property="MaxWidth" Value="104"/>
-    <Setter Property="Height" Value="75"/>
-    <Setter Property="MinHeight" Value="75"/>
+    <Setter Property="MinWidth" Value="48"/>
+    <Setter Property="Height" Value="78"/>
+    <Setter Property="MinHeight" Value="78"/>
     <Setter Property="Padding" Value="3,2"/>
     <Setter Property="Margin" Value="1,0"/>
-    <Setter Property="FontSize" Value="12"/>
     <Setter Property="Foreground" Value="{StaticResource RibbonTextBrush}"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
@@ -339,15 +339,18 @@
           <Border x:Name="LargeSurface" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-            <StackPanel VerticalAlignment="Top">
-              <Image Source="{TemplateBinding CommandParameter}" Width="32" Height="32" Stretch="Uniform"
-                     Margin="0,1,0,3" RenderOptions.BitmapScalingMode="HighQuality"/>
-              <TextBlock Text="{TemplateBinding Content}" TextAlignment="Center" TextWrapping="Wrap"
-                         LineHeight="15" LineStackingStrategy="BlockLineHeight"
-                         Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}"/>
-            </StackPanel>
+            <Grid>
+              <Image Source="{TemplateBinding CommandParameter}" Width="40" Height="40" Stretch="Uniform"
+                     VerticalAlignment="Center" Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality"/>
+              <TextBlock x:Name="MenuArrow" Text="&#x25BE;" FontSize="11" Visibility="Collapsed"
+                         HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                         Foreground="{TemplateBinding Foreground}"/>
+            </Grid>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="controls:RibbonButton.HasMenu" Value="True">
+              <Setter TargetName="MenuArrow" Property="Visibility" Value="Visible"/>
+            </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="LargeSurface" Property="Background" Value="{StaticResource RibbonHoverBrush}"/>
               <Setter TargetName="LargeSurface" Property="BorderBrush" Value="{StaticResource RibbonHoverBorderBrush}"/>

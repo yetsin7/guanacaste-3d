@@ -1,7 +1,7 @@
 <UserControl x:Class="Guanacaste3D.Desktop.Controls.ArchitectureRibbon"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  Height="114">
+  Height="104">
   <UserControl.Resources>
     <!-- The architecture tab reuses the shared ribbon metrics so every tab reads the same. -->
     <Style x:Key="ArchitectureCompactButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactRibbonButtonStyle}"/>

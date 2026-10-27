@@ -37,7 +37,11 @@ public static class CommandDemoToolTip
     private const double SceneWidth = 248;
     private const double SceneHeight = 132;
     private static readonly Duration Loop = new(TimeSpan.FromSeconds(4));
-    private static readonly Uri DemoStrings = new("/Guanacaste3D.Desktop;component/resources/localization.demos.es.xaml", UriKind.Relative);
+    private static readonly Uri[] DemoStrings =
+    [
+        new("/Guanacaste3D.Desktop;component/resources/localization.demos.es.xaml", UriKind.Relative),
+        new("/Guanacaste3D.Desktop;component/resources/localization.tooltips.es.xaml", UriKind.Relative)
+    ];
 
     /// <summary>
     /// Chooses the scene for a command id. Specific tools get their own scene; the rest are grouped by what they do
@@ -73,7 +77,7 @@ public static class CommandDemoToolTip
     /// <summary>Gives a button its animated tooltip, shown after the pointer rests on it.</summary>
     public static void Attach(FrameworkElement button, string commandId, string title)
     {
-        ToolTipService.SetInitialShowDelay(button, 600);
+        ToolTipService.SetInitialShowDelay(button, 350);
         ToolTipService.SetShowDuration(button, 30000);
         ToolTipService.SetBetweenShowDelay(button, 250);
         var tip = new ToolTip
@@ -107,10 +111,12 @@ public static class CommandDemoToolTip
     private static void Populate(ToolTip tip, string commandId, string title)
     {
         EnsureStrings();
+        // A fuller name ("Tip.<id>") replaces an ambiguous ribbon label such as "Lineal" or "Por cara".
+        title = Text("Tip." + commandId) ?? title;
         var kind = KindFor(commandId);
         var description = Text("Demo." + commandId) ?? Text(DescriptionKey(kind, commandId)) ?? Text("ToolTip." + commandId);
         var layout = new StackPanel { Width = SceneWidth };
-        layout.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 13 });
+        layout.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.Bold, FontSize = 14 });
         if (description is not null)
             layout.Children.Add(new TextBlock
             {
@@ -161,9 +167,12 @@ public static class CommandDemoToolTip
     /// <summary>Loads the demonstration strings once, beside the dictionaries the application merged.</summary>
     private static void EnsureStrings()
     {
-        if (Application.Current is not { } application ||
-            application.Resources.MergedDictionaries.Any(dictionary => dictionary.Source == DemoStrings)) return;
-        application.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = DemoStrings });
+        if (Application.Current is not { } application) return;
+        foreach (var source in DemoStrings)
+        {
+            if (application.Resources.MergedDictionaries.Any(dictionary => dictionary.Source == source)) continue;
+            application.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = source });
+        }
     }
 
     /// <summary>Returns a localized string, or null when the key does not exist.</summary>

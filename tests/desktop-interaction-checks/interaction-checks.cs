@@ -448,8 +448,11 @@ internal static class InteractionChecks
             .Select(CommandDemoToolTip.KindFor).All(kind => kind != CommandDemoKind.None) &&
             CommandDemoToolTip.KindFor("Levels") == CommandDemoKind.OpenPanel && CommandDemoToolTip.KindFor("Move") == CommandDemoKind.MoveElement,
             "Tools and dialogs alike are mapped to a demonstration scene");
-        var tip = CommandDemoToolTip.CreateDemo("Door", door.ToolTip.ToString()!);
+        var tip = CommandDemoToolTip.CreateDemo("Door", (string)door.Content);
         tip.PlacementTarget = door;
+        // Tooltips only open over the active window; another application in front must not decide the result.
+        _window.Activate();
+        Pump();
         tip.IsOpen = true;
         for (var frame = 0; frame < 30; frame++) Pump();
         var content = (FrameworkElement)tip.Content;
