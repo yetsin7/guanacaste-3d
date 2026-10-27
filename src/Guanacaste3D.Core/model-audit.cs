@@ -7,6 +7,36 @@ public enum ModelAuditCode { NearWallGap, OverlappingRooms, LowOpeningHeadCleara
 public sealed record ModelAuditIssue(ModelAuditCode Code, Guid ElementId, Guid? RelatedId,
     Guid LevelId, double ValueMeters);
 
+/// <summary>Severity of an advisory BIM coordination finding.</summary>
+public enum ModelAuditSeverity { Information, Warning, Critical }
+
+/// <summary>Actionable audit item with a stable identity and human-readable explanation.</summary>
+public sealed record ModelAuditFinding(ModelAuditIssue Issue, ModelAuditSeverity Severity,
+    string Description, string SuggestedAction);
+
+/// <summary>Converts measured audit issues into actionable coordination findings.</summary>
+public static class ModelAuditReporting
+{
+    public static IReadOnlyList<ModelAuditFinding> Describe(IEnumerable<ModelAuditIssue> issues)
+    {
+        ArgumentNullException.ThrowIfNull(issues);
+        return issues.Select(issue => issue.Code switch
+        {
+            ModelAuditCode.NearWallGap => new ModelAuditFinding(issue, ModelAuditSeverity.Warning,
+                $"Wall endpoints are {issue.ValueMeters * 1000:0.#} mm apart.",
+                "Review the wall junction and join or intentionally separate the walls."),
+            ModelAuditCode.OverlappingRooms => new ModelAuditFinding(issue, ModelAuditSeverity.Warning,
+                $"Room annotations overlap by {issue.ValueMeters:0.###} m².",
+                "Adjust room boundaries or verify that the overlap is intentional."),
+            ModelAuditCode.LowOpeningHeadClearance => new ModelAuditFinding(issue,
+                issue.ValueMeters < 0 ? ModelAuditSeverity.Critical : ModelAuditSeverity.Warning,
+                $"Remaining opening head clearance is {issue.ValueMeters * 1000:0.#} mm.",
+                "Review the opening sill, height and host wall elevation."),
+            _ => throw new ArgumentOutOfRangeException(nameof(issues), "Unknown model audit code.")
+        }).ToArray();
+    }
+}
+
 /// <summary>Finds drafting and coordination issues without changing the validated BIM document.</summary>
 public static class ModelAudit
 {
