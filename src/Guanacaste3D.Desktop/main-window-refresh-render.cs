@@ -150,10 +150,12 @@ public partial class MainWindow
         });
         var scene = BuildingMesher.Build(_session.Document, includeGround: true);
         var thickness = EdgeThickness();
-        var textures = _clayMode ? null : RenderTextureLibrary.Previews3D(_session.Document.RenderMaterials, _filePath);
-        foreach (var group in _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures))
+        var textures = _clayMode || _xRay ? null : RenderTextureLibrary.Previews3D(_session.Document.RenderMaterials, _filePath);
+        foreach (var group in _xRay ? ScenePresentation.ToWpfXRay(scene)
+                 : _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
-        if (_showEdges)
+        // Edges would draw the whole shell solid again, so X-ray shows none.
+        if (_showEdges && !_xRay)
         {
             // The ground plane would add four enormous lines at the horizon, so only the building contributes edges.
             var positions = new List<System.Numerics.Vector3>(scene.Positions);
@@ -188,6 +190,7 @@ public partial class MainWindow
     }
 
     private bool _clayMode = true;
+    private bool _xRay;
     private bool _showEdges = true;
     private readonly Dictionary<Guid, List<EdgeSegment>> _linkEdges = [];
 
@@ -210,6 +213,7 @@ public partial class MainWindow
         if (ClayCheck is null || EdgesCheck is null) return;
         _clayMode = ClayCheck.IsChecked == true;
         _showEdges = EdgesCheck.IsChecked == true;
+        _xRay = XRayCheck?.IsChecked == true;
         if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
         else _modelDirty = true;
     }

@@ -62,12 +62,21 @@ public sealed class PlumbingAnalysis
 {
     private readonly Dictionary<Guid, PlumbingSystemReport> _byId;
 
-    private PlumbingAnalysis(List<PlumbingSystemReport> systems, List<(StructuralElement, PlumbingSystemKind)> unserved)
+    private PlumbingAnalysis(List<PlumbingSystemReport> systems, List<(StructuralElement, PlumbingSystemKind)> unserved,
+        List<SepticReport> septic, List<RoofDrainageReport> roofs)
     {
         Systems = systems;
         Unserved = unserved;
+        Septic = septic;
+        Roofs = roofs;
         _byId = systems.ToDictionary(report => report.System.Id);
     }
+
+    /// <summary>The design of every septic tank and its drain field.</summary>
+    public IReadOnlyList<SepticReport> Septic { get; }
+
+    /// <summary>Every roof's runoff and whether its downspouts carry it.</summary>
+    public IReadOnlyList<RoofDrainageReport> Roofs { get; }
 
     public IReadOnlyList<PlumbingSystemReport> Systems { get; }
 
@@ -115,7 +124,10 @@ public sealed class PlumbingAnalysis
 
         var reports = new List<PlumbingSystemReport>();
         var heaterPressure = new Dictionary<Guid, double>();
-        foreach (var kind in new[] { PlumbingSystemKind.ColdWater, PlumbingSystemKind.HotWater, PlumbingSystemKind.Sanitary })
+        var rainfall = document.PlumbingPoints.FirstOrDefault(point => point.Kind == PlumbingPointKind.StormOutlet)?.RainfallMmPerHour ?? 150;
+        var spoutFlows = SiteDrainage.DownspoutFlows(document, rainfall);
+        var spouts = document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Downspout).ToDictionary(element => element.Id);
+        foreach (var kind in new[] { PlumbingSystemKind.ColdWater, PlumbingSystemKind.HotWater, PlumbingSystemKind.Sanitary, PlumbingSystemKind.StormWater })
             foreach (var system in document.PlumbingSystems.Where(system => system.Kind == kind))
             {
                 // The source: a meter, a heater or an outlet, with its position, level and starting condition.
@@ -132,7 +144,9 @@ public sealed class PlumbingAnalysis
                     }
                 }
                 else if (points.TryGetValue(system.SourceId, out var point) && elevations.TryGetValue(point.LevelId, out var level) &&
-                         point.Kind == (kind == PlumbingSystemKind.ColdWater ? PlumbingPointKind.WaterMeter : PlumbingPointKind.SewerOutlet))
+                         (kind == PlumbingSystemKind.ColdWater ? point.Kind == PlumbingPointKind.WaterMeter
+                             : kind == PlumbingSystemKind.Sanitary ? point.IsSanitaryOutlet
+                             : point.Kind == PlumbingPointKind.StormOutlet))
                 {
                     root = new Node(point.Id, point.Name, point.Position, level, 0, null, level, level - point.InvertDepth, point.Position);
                     start = kind == PlumbingSystemKind.ColdWater ? point.SupplyPressureKPa : level - point.InvertDepth;
@@ -144,6 +158,17 @@ public sealed class PlumbingAnalysis
                 }
 
                 var nodes = new List<Node> { root };
+                if (kind == PlumbingSystemKind.StormWater)
+                {
+                    // Downspouts carry their share of roof runoff down to the buried storm drain.
+                    foreach (var id in system.Fixtures.Distinct())
+                        if (spouts.TryGetValue(id, out var spout) && elevations.TryGetValue(spout.LevelId, out var level))
+                            nodes.Add(new Node(spout.Id, spout.Name, spout.Start, level, spoutFlows.GetValueOrDefault(spout.Id), null,
+                                level, level + spout.Offset, spout.Start));
+                    var storm = Storm(system, nodes, start, spouts);
+                    reports.Add(storm);
+                    continue;
+                }
                 foreach (var id in system.Fixtures.Distinct())
                 {
                     if (!components.TryGetValue(id, out var element) || PlumbingStandards.Fixture(element) is not { } spec ||
@@ -180,7 +205,67 @@ public sealed class PlumbingAnalysis
             if (spec.Drains && !served.Contains((element.Id, PlumbingSystemKind.Sanitary)))
                 unserved.Add((element, PlumbingSystemKind.Sanitary));
         }
-        return new PlumbingAnalysis(reports, unserved);
+        if (document.PlumbingPoints.Any(point => point.Kind == PlumbingPointKind.StormOutlet))
+            foreach (var spout in spouts.Values.Where(spout => !served.Contains((spout.Id, PlumbingSystemKind.StormWater))))
+                unserved.Add((spout, PlumbingSystemKind.StormWater));
+
+        var septic = document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.SepticTank)
+            .Select(point => SiteDrainage.Septic(document, point)).ToList();
+        var roofs = SiteDrainage.Roofs(document).Select(item =>
+        {
+            var draining = spouts.Values.Where(spout => SiteDrainage.Drains(item.Outline, spout.Start)).ToList();
+            var flow = SiteDrainage.RoofFlow(item.Area, rainfall);
+            var capacity = draining.Sum(SiteDrainage.LeaderCapacity);
+            var status = draining.Count == 0 || capacity < flow ? PlumbingStatus.Fail : capacity < flow * 1.2 ? PlumbingStatus.Warning : PlumbingStatus.Ok;
+            return new RoofDrainageReport(item.Roof.Id, item.Roof.Name, item.Area, flow, draining.Count, capacity, status);
+        }).ToList();
+        return new PlumbingAnalysis(reports, unserved, septic, roofs);
+    }
+
+    /// <summary>
+    /// The storm drain: tree from the outlet, sized for full flow by Manning at 1 %, with the inverts rising at 1 % away
+    /// from the outlet; each downspout drops into it and is checked against its leader's capacity.
+    /// </summary>
+    private static PlumbingSystemReport Storm(PlumbingSystem system, List<Node> nodes, double outletInvert,
+        Dictionary<Guid, StructuralElement> spouts)
+    {
+        var root = nodes[0];
+        var (parent, order) = Tree(nodes);
+        var flows = Subtree(nodes, parent, order, node => node.Units);
+        var sizes = SiteDrainage.StormSizes;
+        var runs = new List<PipeRun>();
+        var fixtures = new List<FixtureReport>();
+        var invert = new double[nodes.Count];
+        var path = new double[nodes.Count];
+        invert[0] = outletInvert;
+        var mainSize = 0;
+        foreach (var index in order.Skip(1))
+        {
+            var from = parent[index];
+            var length = Manhattan(nodes[from].Point, nodes[index].Point);
+            invert[index] = invert[from] + SiteDrainage.StormSlope * length;
+            path[index] = path[from] + length;
+            var size = SiteDrainage.StormSize(flows[index]);
+            if (from == 0) mainSize = Math.Max(mainSize, size);
+            AddSquareRun(runs, PlumbingSystemKind.StormWater, nodes[from].Point, invert[from], nodes[index].Point, invert[index], sizes[size]);
+        }
+        for (var index = 1; index < nodes.Count; index++)
+        {
+            var node = nodes[index];
+            var size = SiteDrainage.StormSize(node.Units);
+            // The boot at the foot of the downspout, down into the buried drain.
+            runs.Add(new PipeRun(PlumbingSystemKind.StormWater, node.Point, node.OutletZ, node.Point, invert[index], sizes[size].Nominal,
+                sizes[size].Outside));
+            var capacity = SiteDrainage.LeaderCapacity(spouts[node.Id!.Value]);
+            var cover = node.Level - invert[index];
+            var (status, issue) = node.Units > capacity ? (PlumbingStatus.Fail, "Plumbing.Issue.LeaderTooSmall")
+                : cover < 0.10 ? (PlumbingStatus.Fail, "Plumbing.Issue.NoFall")
+                : node.Units > capacity * 0.85 ? (PlumbingStatus.Warning, "Plumbing.Issue.LeaderNearlyFull")
+                : (PlumbingStatus.Ok, string.Empty);
+            fixtures.Add(new FixtureReport(node.Id.Value, node.Name, node.Units, sizes[size].Nominal, double.NaN, capacity, double.NaN,
+                invert[index], cover, path[index], status, issue));
+        }
+        return Report(system, root.Name, runs, fixtures, flows[0], flows[0], sizes[mainSize].Nominal);
     }
 
     /// <summary>

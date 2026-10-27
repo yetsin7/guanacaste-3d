@@ -5,6 +5,8 @@
   <!-- 3D view: study-model style, edges, selection and temporary dimensions. -->
   <sys:String x:Key="View3D.Clay">Maqueta gris</sys:String>
   <sys:String x:Key="View3D.Edges">Aristas</sys:String>
+  <sys:String x:Key="View3D.XRay">Rayos X</sys:String>
+  <sys:String x:Key="View3D.XRayTip">Muestra las instalaciones (tuberías, eléctrico, aire acondicionado, tanque séptico) a través de muros, pisos y terreno.</sys:String>
   <sys:String x:Key="Tool.RenderView">Vista Render</sys:String>
   <sys:String x:Key="View.Close">Cerrar vista</sys:String>
   <sys:String x:Key="View.CloseAll">Cerrar todas las demás vistas</sys:String>

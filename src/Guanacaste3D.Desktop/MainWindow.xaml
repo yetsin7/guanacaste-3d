@@ -439,7 +439,9 @@
                   <CheckBox x:Name="ClayCheck" Content="{DynamicResource View3D.Clay}" IsChecked="True" VerticalAlignment="Center"
                             Margin="0,0,10,0" Checked="ViewStyle_Changed" Unchecked="ViewStyle_Changed"/>
                   <CheckBox x:Name="EdgesCheck" Content="{DynamicResource View3D.Edges}" IsChecked="True" VerticalAlignment="Center"
-                            Margin="0,0,12,0" Checked="ViewStyle_Changed" Unchecked="ViewStyle_Changed"/>
+                            Margin="0,0,10,0" Checked="ViewStyle_Changed" Unchecked="ViewStyle_Changed"/>
+                  <CheckBox x:Name="XRayCheck" Content="{DynamicResource View3D.XRay}" IsChecked="False" VerticalAlignment="Center"
+                            ToolTip="{DynamicResource View3D.XRayTip}" Margin="0,0,12,0" Checked="ViewStyle_Changed" Unchecked="ViewStyle_Changed"/>
                   <Button Content="{DynamicResource Model.ResetCamera}" Click="ResetOrbit_Click"/>
                   <Button Content="{DynamicResource Render.Start}" Click="StartRender_Click"/>
                 </StackPanel>

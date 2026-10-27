@@ -40,6 +40,27 @@ public sealed partial class DocumentSession
         UpdatePoint("Transaction.SetOutletDepth", pointId, point => point with { InvertDepth = depth });
     }
 
+    /// <summary>Sets how many people a septic tank serves (0 counts two per bedroom).</summary>
+    public void SetSepticOccupants(Guid pointId, int occupants)
+    {
+        if (occupants is < 0 or > 200) throw new InvalidDataException("Invalid plumbing point.");
+        UpdatePoint("Transaction.SetSepticOccupants", pointId, point => point with { Occupants = occupants });
+    }
+
+    /// <summary>Sets the soil's infiltration rate for a septic tank's drain field, in L/m²·day.</summary>
+    public void SetPercolation(Guid pointId, double litersPerSquareMeterDay)
+    {
+        if (!double.IsFinite(litersPerSquareMeterDay) || litersPerSquareMeterDay is < 5 or > 200) throw new InvalidDataException("Invalid plumbing point.");
+        UpdatePoint("Transaction.SetPercolation", pointId, point => point with { Percolation = litersPerSquareMeterDay });
+    }
+
+    /// <summary>Sets the design rainfall at a storm outlet, in mm/h.</summary>
+    public void SetRainfall(Guid pointId, double millimetersPerHour)
+    {
+        if (!double.IsFinite(millimetersPerHour) || millimetersPerHour is < 20 or > 400) throw new InvalidDataException("Invalid plumbing point.");
+        UpdatePoint("Transaction.SetRainfall", pointId, point => point with { RainfallMmPerHour = millimetersPerHour });
+    }
+
     /// <summary>Starts a system from a meter (cold), a water heater (hot) or an outlet (sanitary).</summary>
     public Guid AddPlumbingSystem(PlumbingSystemKind kind, Guid sourceId, string name)
     {
@@ -55,7 +76,11 @@ public sealed partial class DocumentSession
         var system = Document.PlumbingSystems.FirstOrDefault(candidate => candidate.Id == systemId)
             ?? throw new InvalidDataException("The plumbing system does not exist.");
         var fixture = Document.StructuralElements.FirstOrDefault(element => element.Id == fixtureId);
-        if (fixture is null || PlumbingStandards.Fixture(fixture) is not { } spec ||
+        if (system.Kind == PlumbingSystemKind.StormWater)
+        {
+            if (fixture?.Kind != StructuralElementKind.Downspout) throw new InvalidDataException("The fixture does not use this system.");
+        }
+        else if (fixture is null || PlumbingStandards.Fixture(fixture) is not { } spec ||
             !(system.Kind switch
             {
                 PlumbingSystemKind.ColdWater => spec.NeedsCold || PlumbingStandards.IsWaterHeater(fixture),
@@ -98,14 +123,18 @@ public sealed partial class DocumentSession
     /// fixture and water heater, hot water from the nearest heater to every fixture that uses it, and the drain from
     /// every fixture to the nearest outlet. Existing systems are replaced. Returns the number of systems made.
     /// </summary>
-    public int ConnectPlumbing(Func<PlumbingSystemKind, int, string> name, Func<int, string>? ventName = null)
+    public int ConnectPlumbing(Func<PlumbingSystemKind, int, string> name, Func<int, string>? ventName = null,
+        Func<int, string>? downspoutName = null)
     {
         ventName ??= number => $"V{number}";
+        downspoutName ??= number => $"BP{number}";
         var meters = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.WaterMeter).ToArray();
-        var outlets = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.SewerOutlet).ToArray();
+        var outlets = Document.PlumbingPoints.Where(point => point.IsSanitaryOutlet).ToArray();
+        var stormOutlets = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.StormOutlet).ToArray();
         var heaters = Document.StructuralElements.Where(PlumbingStandards.IsWaterHeater).ToArray();
         var fixtures = Document.StructuralElements.Where(element => PlumbingStandards.Fixture(element) is not null).ToArray();
-        if (meters.Length == 0 && outlets.Length == 0) throw new InvalidDataException("Place a water meter or a sewer outlet first.");
+        if (meters.Length == 0 && outlets.Length == 0 && stormOutlets.Length == 0)
+            throw new InvalidDataException("Place a water meter or a sewer outlet first.");
         var elevations = Document.Levels.ToDictionary(level => level.Id, level => level.Elevation);
         double Distance(Point2 a, Guid levelA, Point2 b, Guid levelB) =>
             Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) + Math.Abs(elevations[levelA] - elevations[levelB]) * 2;
@@ -147,11 +176,65 @@ public sealed partial class DocumentSession
                 newVents.Add(new PlumbingPoint(Guid.NewGuid(), fixture.LevelId, PlumbingPointKind.VentStack, ventName(count), at));
                 vents.Add((fixture.LevelId, at));
             }
+        // Rainwater: each roof gets downspouts enough for its runoff (at least two, at its eave corners), and every
+        // downspout drains to the nearest storm outlet.
+        var newSpouts = new List<StructuralElement>();
+        if (stormOutlets.Length > 0)
+        {
+            var rainfall = stormOutlets[0].RainfallMmPerHour;
+            var spouts = Document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Downspout).ToList();
+            foreach (var (roof, outline, area) in SiteDrainage.Roofs(Document))
+            {
+                var draining = spouts.Concat(newSpouts).Where(spout => SiteDrainage.Drains(outline, spout.Start)).ToList();
+                var probe = new StructuralElement(Guid.Empty, roof.LevelId, StructuralElementKind.Downspout, "", default, default, 0.10, 1, 0)
+                {
+                    Style = ElementStyle.Round
+                };
+                var needed = Math.Max(2, (int)Math.Ceiling(SiteDrainage.RoofFlow(area, rainfall) / SiteDrainage.LeaderCapacity(probe)));
+                var (minX, maxX, minY, maxY) = (outline.Min(p => p.X) + 0.1, outline.Max(p => p.X) - 0.1, outline.Min(p => p.Y) + 0.1, outline.Max(p => p.Y) - 0.1);
+                var candidates = new List<Point2> { new(minX, minY), new(maxX, minY), new(maxX, maxY), new(minX, maxY) };
+                // More than four: the middles of the long sides, then their quarter points.
+                for (var split = 2; candidates.Count < needed + 4 && split <= 8; split *= 2)
+                    for (var part = 1; part < split; part++)
+                    {
+                        var t = (double)part / split;
+                        if (maxX - minX >= maxY - minY)
+                        {
+                            candidates.Add(new Point2(minX + (maxX - minX) * t, minY));
+                            candidates.Add(new Point2(minX + (maxX - minX) * t, maxY));
+                        }
+                        else
+                        {
+                            candidates.Add(new Point2(minX, minY + (maxY - minY) * t));
+                            candidates.Add(new Point2(maxX, minY + (maxY - minY) * t));
+                        }
+                    }
+                var height = Math.Max(2.4, RoofGeometry.WithOverhang(roof).ElevationOffset);
+                foreach (var at in candidates)
+                {
+                    if (draining.Count >= needed) break;
+                    if (draining.Any(spout => spout.Start.DistanceTo(at) < 0.8)) continue;
+                    var spout = new StructuralElement(Guid.NewGuid(), roof.LevelId, StructuralElementKind.Downspout,
+                        $"{downspoutName(spouts.Count + newSpouts.Count + 1)}", at, at, 0.10, height, 0) { Style = ElementStyle.Round };
+                    newSpouts.Add(spout);
+                    draining.Add(spout);
+                }
+            }
+            var allSpouts = spouts.Concat(newSpouts).ToList();
+            foreach (var group in allSpouts.GroupBy(spout => stormOutlets.MinBy(outlet =>
+                         Distance(outlet.Position, outlet.LevelId, spout.Start, spout.LevelId))!.Id))
+                systems.Add(new PlumbingSystem(Guid.NewGuid(), PlumbingSystemKind.StormWater, group.Key,
+                    name(PlumbingSystemKind.StormWater, systems.Count(system => system.Kind == PlumbingSystemKind.StormWater) + 1))
+                {
+                    Fixtures = group.Select(spout => spout.Id).ToList()
+                });
+        }
         Commit("Transaction.ConnectPlumbing", document =>
         {
             document.PlumbingSystems.Clear();
             document.PlumbingSystems.AddRange(systems);
             document.PlumbingPoints.AddRange(newVents);
+            document.StructuralElements.AddRange(newSpouts);
         });
         return systems.Count;
     }
@@ -162,7 +245,8 @@ public sealed partial class DocumentSession
         {
             PlumbingSystemKind.ColdWater => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.Kind == PlumbingPointKind.WaterMeter),
             PlumbingSystemKind.HotWater => Document.StructuralElements.Any(element => element.Id == sourceId && PlumbingStandards.IsWaterHeater(element)),
-            _ => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.Kind == PlumbingPointKind.SewerOutlet)
+            PlumbingSystemKind.StormWater => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.Kind == PlumbingPointKind.StormOutlet),
+            _ => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.IsSanitaryOutlet)
         };
         if (!valid) throw new InvalidDataException("The plumbing source does not exist.");
     }
@@ -192,7 +276,9 @@ public static class PlumbingRules
                 string.IsNullOrWhiteSpace(point.Name) || point.Name.Length > 120 ||
                 !double.IsFinite(point.Position.X) || !double.IsFinite(point.Position.Y) ||
                 !double.IsFinite(point.SupplyPressureKPa) || point.SupplyPressureKPa is < 50 or > 1000 ||
-                !double.IsFinite(point.InvertDepth) || point.InvertDepth is < 0.2 or > 5)
+                !double.IsFinite(point.InvertDepth) || point.InvertDepth is < 0.2 or > 5 ||
+                point.Occupants is < 0 or > 200 || !double.IsFinite(point.Percolation) || point.Percolation is < 5 or > 200 ||
+                !double.IsFinite(point.RainfallMmPerHour) || point.RainfallMmPerHour is < 20 or > 400)
                 throw new InvalidDataException("Invalid plumbing point.");
         if (document.PlumbingSystems.Select(system => system.Id).Distinct().Count() != document.PlumbingSystems.Count)
             throw new InvalidDataException("Invalid plumbing system.");

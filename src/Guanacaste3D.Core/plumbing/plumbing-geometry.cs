@@ -36,9 +36,14 @@ public static class PlumbingGeometry
             }
         }
         var elevations = document.Levels.ToDictionary(level => level.Id, level => level.Elevation);
+        foreach (var septic in analysis.Septic)
+            if (document.PlumbingPoints.FirstOrDefault(point => point.Id == septic.Id) is { } tank &&
+                elevations.TryGetValue(tank.LevelId, out var tankLevel))
+                AddSeptic(mesh, septic, tankLevel);
         foreach (var point in document.PlumbingPoints)
         {
             if (!elevations.TryGetValue(point.LevelId, out var level)) continue;
+            if (point.Kind is PlumbingPointKind.SepticTank or PlumbingPointKind.VentStack) continue;
             var at = new Vector3((float)point.Position.X, (float)point.Position.Y, (float)level);
             if (point.Kind == PlumbingPointKind.WaterMeter)
             {
@@ -48,7 +53,9 @@ public static class PlumbingGeometry
             }
             else
             {
-                Tube(mesh, at - new Vector3(0, 0, 0.02f), at + new Vector3(0, 0, 0.012f), 0.07f, SurfaceKind.PipeDrain);
+                // A cleanout cap at grade: grey for the sewer, green for the storm outlet.
+                Tube(mesh, at - new Vector3(0, 0, 0.02f), at + new Vector3(0, 0, 0.012f), 0.07f,
+                    point.Kind == PlumbingPointKind.StormOutlet ? SurfaceKind.PipeStorm : SurfaceKind.PipeDrain);
             }
         }
     }
@@ -57,8 +64,71 @@ public static class PlumbingGeometry
     {
         PlumbingSystemKind.ColdWater => SurfaceKind.PipeCold,
         PlumbingSystemKind.HotWater => SurfaceKind.PipeHot,
+        PlumbingSystemKind.StormWater => SurfaceKind.PipeStorm,
         _ => SurfaceKind.PipeDrain
     };
+
+    /// <summary>
+    /// A septic tank buried beside the house: concrete walls, floor and lid, a baffle wall making two chambers, two
+    /// access covers at grade; then the outlet pipe to a distribution box and the gravel trenches of the drain field,
+    /// each with its perforated pipe.
+    /// </summary>
+    private static void AddSeptic(SceneMesh mesh, SepticReport septic, double level)
+    {
+        var d = new Vector3((float)septic.FieldDirection.X, (float)septic.FieldDirection.Y, 0);
+        var n = new Vector3(-d.Y, d.X, 0);
+        var center = new Vector3((float)septic.Position.X, (float)septic.Position.Y, 0);
+        var halfL = (float)septic.Length / 2 + 0.10f;
+        var halfW = (float)septic.Width / 2 + 0.10f;
+        var top = (float)level - 0.25f;
+        var bottom = top - (float)septic.LiquidDepth - 0.40f;
+        const float wall = 0.10f;
+        Block(mesh, center, d, n, -halfL, halfL, -halfW, halfW, bottom, bottom + wall, SurfaceKind.Structure);
+        Block(mesh, center, d, n, -halfL, halfL, -halfW, halfW, top - wall, top, SurfaceKind.Structure);
+        Block(mesh, center, d, n, -halfL, -halfL + wall, -halfW, halfW, bottom, top, SurfaceKind.Structure);
+        Block(mesh, center, d, n, halfL - wall, halfL, -halfW, halfW, bottom, top, SurfaceKind.Structure);
+        Block(mesh, center, d, n, -halfL, halfL, -halfW, -halfW + wall, bottom, top, SurfaceKind.Structure);
+        Block(mesh, center, d, n, -halfL, halfL, halfW - wall, halfW, bottom, top, SurfaceKind.Structure);
+        // The baffle at two thirds of the length keeps scum and sludge in the first chamber.
+        var baffle = -halfL + 2 * halfL * 2 / 3;
+        Block(mesh, center, d, n, baffle - 0.04f, baffle + 0.04f, -halfW + wall, halfW - wall, bottom + 0.3f, top - 0.15f, SurfaceKind.Structure);
+        foreach (var at in new[] { -halfL * 0.55f, halfL * 0.65f })
+            Tube(mesh, center + d * at + new Vector3(0, 0, top), center + d * at + new Vector3(0, 0, (float)level + 0.03f), 0.30f, SurfaceKind.Metal);
+        // Outlet to the distribution box, then the trenches running on away from the house.
+        var pipeZ = top - 0.30f;
+        var box = center + d * (halfL + 1.5f);
+        Tube(mesh, center + d * halfL + new Vector3(0, 0, pipeZ), box + new Vector3(0, 0, pipeZ - 0.03f), 0.055f, SurfaceKind.PipeDrain);
+        Block(mesh, box, d, n, -0.3f, 0.3f, -0.3f, 0.3f, pipeZ - 0.35f, (float)level - 0.05f, SurfaceKind.Structure);
+        var trenchLength = (float)(septic.FieldLength / septic.Trenches);
+        for (var trench = 0; trench < septic.Trenches; trench++)
+        {
+            var offset = (trench - (septic.Trenches - 1) / 2f) * 2f;
+            var start = box + d * 1.0f + n * offset;
+            var gravelTop = pipeZ - 0.02f;
+            Block(mesh, start, d, n, 0, trenchLength, -(float)SiteDrainage.TrenchWidth / 2, (float)SiteDrainage.TrenchWidth / 2,
+                gravelTop - 0.35f, gravelTop, SurfaceKind.Earth);
+            Tube(mesh, start + new Vector3(0, 0, gravelTop - 0.10f), start + d * trenchLength + new Vector3(0, 0, gravelTop - 0.10f - 0.005f * trenchLength),
+                0.05f, SurfaceKind.PipeDrain);
+            if (Math.Abs(offset) > 0.01f)
+                Tube(mesh, box + new Vector3(0, 0, gravelTop - 0.10f), start + new Vector3(0, 0, gravelTop - 0.10f), 0.05f, SurfaceKind.PipeDrain);
+        }
+    }
+
+    /// <summary>A box in a local frame: along <paramref name="d"/> from a0 to a1, across <paramref name="n"/> from b0 to b1.</summary>
+    private static void Block(SceneMesh mesh, Vector3 origin, Vector3 d, Vector3 n, float a0, float a1, float b0, float b1,
+        float bottom, float top, SurfaceKind kind)
+    {
+        Vector3 P(float a, float b, float z) => new Vector3(origin.X, origin.Y, 0) + d * a + n * b + new Vector3(0, 0, z);
+        var corners = new[] { (a0, b0), (a1, b0), (a1, b1), (a0, b1) };
+        for (var index = 0; index < 4; index++)
+        {
+            var (aa, ab) = corners[index];
+            var (ba, bb) = corners[(index + 1) % 4];
+            mesh.AddQuad(P(aa, ab, bottom), P(ba, bb, bottom), P(ba, bb, top), P(aa, ab, top), kind);
+        }
+        mesh.AddQuad(P(a0, b0, top), P(a1, b0, top), P(a1, b1, top), P(a0, b1, top), kind);
+        mesh.AddQuad(P(a0, b1, bottom), P(a1, b1, bottom), P(a1, b0, bottom), P(a0, b0, bottom), kind);
+    }
 
     /// <summary>An eight-sided tube with closed ends from <paramref name="a"/> to <paramref name="b"/>.</summary>
     public static void Tube(SceneMesh mesh, Vector3 a, Vector3 b, float radius, SurfaceKind kind)

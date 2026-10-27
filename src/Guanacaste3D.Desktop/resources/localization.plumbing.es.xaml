@@ -13,6 +13,32 @@
   <sys:String x:Key="Plumbing.Point.WaterMeter">Medidor de agua</sys:String>
   <sys:String x:Key="Plumbing.Point.SewerOutlet">Salida a cloaca</sys:String>
   <sys:String x:Key="Plumbing.Point.VentStack">Columna de ventilación</sys:String>
+  <sys:String x:Key="Plumbing.Point.SepticTank">Tanque séptico</sys:String>
+  <sys:String x:Key="Plumbing.Point.StormOutlet">Salida pluvial</sys:String>
+  <sys:String x:Key="Plumbing.Kind.StormWater">Pluvial</sys:String>
+  <sys:String x:Key="Plumbing.SystemName.StormWater">Pluvial {0}</sys:String>
+  <sys:String x:Key="Plumbing.DownspoutName">Bajante pluvial {0}</sys:String>
+  <sys:String x:Key="Plumbing.FlowUnits">L/s</sys:String>
+  <sys:String x:Key="Plumbing.SepticLabel">TS {0:0.0} m³ · {1} pers.</sys:String>
+  <sys:String x:Key="Plumbing.FieldLabel">Drenaje {0:0} m en {1} zanjas</sys:String>
+  <sys:String x:Key="Plumbing.Issue.LeaderTooSmall">La bajante no da abasto para su área de techo: agregue bajantes o use una mayor</sys:String>
+  <sys:String x:Key="Plumbing.Issue.LeaderNearlyFull">La bajante trabaja cerca de su capacidad</sys:String>
+  <sys:String x:Key="Properties.SepticSummary">{0}&#x0a;Tanque séptico (NBR 7229)&#x0a;Personas: {1}&#x0a;Aporte: {2:0} L/día&#x0a;Volumen útil: {3:0.00} m³&#x0a;Interior: {4:0.00} × {5:0.00} m, {6:0.00} m de agua&#x0a;Infiltración del suelo: {7:0} L/m²·día&#x0a;Drenaje: {8:0.0} m² = {9:0.0} m de zanja en {10} ramales</sys:String>
+  <sys:String x:Key="Properties.StormOutletSummary">{0}&#x0a;Salida pluvial&#x0a;Lluvia de diseño: {1:0} mm/h&#x0a;Profundidad de salida: {2:0.00} m&#x0a;Sistemas: {3}</sys:String>
+  <sys:String x:Key="PlumbingSchedule.MorePeople">Tanque séptico +1 persona</sys:String>
+  <sys:String x:Key="PlumbingSchedule.FewerPeople">Tanque séptico −1 persona</sys:String>
+  <sys:String x:Key="PlumbingSchedule.MorePercolation">Suelo más permeable</sys:String>
+  <sys:String x:Key="PlumbingSchedule.LessPercolation">Suelo menos permeable</sys:String>
+  <sys:String x:Key="PlumbingSchedule.MoreRain">Lluvia +25 mm/h</sys:String>
+  <sys:String x:Key="PlumbingSchedule.LessRain">Lluvia −25 mm/h</sys:String>
+  <sys:String x:Key="PlumbingSchedule.StormLine">{0}: lluvia de diseño {1:0} mm/h, sale a {2:0.00} m bajo el terreno</sys:String>
+  <sys:String x:Key="PlumbingSchedule.LeaderFlow">Caudal / capacidad bajante</sys:String>
+  <sys:String x:Key="PlumbingSchedule.SepticLine">{0}: {1} personas, {2:0} L/día → {3:0.00} m³ útiles ({4:0.00} × {5:0.00} m, {6:0.00} m de agua); drenaje de {7:0.0} m² = {8:0.0} m de zanja en {9} ramales</sys:String>
+  <sys:String x:Key="PlumbingSchedule.Roofs">Techos y bajantes pluviales:</sys:String>
+  <sys:String x:Key="PlumbingSchedule.RoofLine">{0}: {1:0.0} m², escorrentía {2:0.00} L/s, {3} bajantes para {4:0.00} L/s · {5}</sys:String>
+  <sys:String x:Key="Transaction.SetSepticOccupants">Cambiar personas del tanque séptico</sys:String>
+  <sys:String x:Key="Transaction.SetPercolation">Cambiar infiltración del suelo</sys:String>
+  <sys:String x:Key="Transaction.SetRainfall">Cambiar lluvia de diseño</sys:String>
   <sys:String x:Key="Plumbing.VentName">Ventilación {0}</sys:String>
   <sys:String x:Key="Plumbing.Issue.NoVent">Sin ventilación: la trampa se sifonaría; agregue una columna de ventilación</sys:String>
   <sys:String x:Key="Plumbing.Issue.TrapArmTooLong">Brazo de trampa demasiado largo hasta la ventilación</sys:String>
@@ -42,9 +68,9 @@
   <sys:String x:Key="PlumbingStatus.Fail">No cumple</sys:String>
 
   <!-- Status bar and properties -->
-  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic para colocarlo. Espacio cambia entre medidor, salida a cloaca y columna de ventilación; Esc termina.</sys:String>
+  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic para colocarlo. Espacio cambia entre medidor, salida a cloaca, tanque séptico, salida pluvial y columna de ventilación; Esc termina.</sys:String>
   <sys:String x:Key="Status.PlumbingPlaced">{0} colocado.</sys:String>
-  <sys:String x:Key="Status.PipingPickSource">Tubería: haz clic en un medidor (agua fría), un calentador (agua caliente) o una salida a cloaca (desagüe).</sys:String>
+  <sys:String x:Key="Status.PipingPickSource">Tubería: haz clic en un medidor (agua fría), un calentador (agua caliente), una salida a cloaca o tanque séptico (desagüe) o una salida pluvial (bajantes).</sys:String>
   <sys:String x:Key="Status.PipingPickFixture">Haz clic en los aparatos sanitarios para conectarlos o desconectarlos; Esc termina.</sys:String>
   <sys:String x:Key="Status.PipingSystemPicked">{0} desde {1}: haz clic en los aparatos para conectarlos o desconectarlos.</sys:String>
   <sys:String x:Key="Status.PipingConnected">{0} conectado a {1}: {2}</sys:String>

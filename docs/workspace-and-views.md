@@ -131,6 +131,25 @@ How the drawing area behaves in version 0.14. Everything here is covered by
     highest wall top, through the roof.
   - The plan draws each trap arm as a dotted line to its vent, green or red;
     the schedule lists vent, arm and limit per fixture.
+- **X-ray**: the *Rayos X* switch of the 3D view draws walls, floors, roofs and
+  the ground as faint glass and every building service in its colours. That
+  covers pipes under the floor, fixtures of the electrical system, the air
+  conditioner, the septic tank and its drain field.
+- **Septic tank**: the fourth option of the service tool. Drains connect to it
+  as to a sewer outlet.
+  - It is sized by NBR 7229 for its occupants (two per bedroom unless set):
+    V = 1000 + N·(C·T + K·Lf), twice as long as wide, 1.2 m of water.
+  - Its drain field is sized by the soil's infiltration rate (40 L/m²·day by
+    default), in trenches of up to 20 m that run away from the house.
+  - People and soil are changed in the plumbing schedule.
+- **Storm drainage**: the fifth option places the storm outlet (street gutter or
+  soakaway).
+  - *Conectar plomería* gives every roof the downspouts its runoff needs, at
+    least two, at the eave corners. Runoff is Q = 0.95·i·A at the outlet's
+    design rainfall, 150 mm/h by default.
+  - Each downspout drops into a buried drain sized by Manning at 1 % to the
+    outlet, and its leader's capacity is checked against its share of the roof.
+  - The schedule lists every roof's area, runoff and downspouts.
 - **Air conditioning**: *Equipos mecánicos* places a minisplit on a wall.
   - It is sized for the room it is in, at 600 BTU/h per m² (one ton per
     20 m²). Its condenser goes outside the wall behind it, joined by the line

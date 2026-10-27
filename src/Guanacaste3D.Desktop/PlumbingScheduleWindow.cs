@@ -56,7 +56,22 @@ internal sealed class PlumbingScheduleWindow : Window
             Tool("PlumbingSchedule.MorePressure", () => _session.SetSupplyPressure(id, Math.Min(1000, meter.SupplyPressureKPa + 20)));
             Tool("PlumbingSchedule.LessPressure", () => _session.SetSupplyPressure(id, Math.Max(50, meter.SupplyPressureKPa - 20)));
         }
-        foreach (var outlet in document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.SewerOutlet))
+        foreach (var tank in document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.SepticTank))
+        {
+            var id = tank.Id;
+            var people = SiteDrainage.Occupants(document, tank);
+            Tool("PlumbingSchedule.MorePeople", () => _session.SetSepticOccupants(id, Math.Min(200, people + 1)));
+            Tool("PlumbingSchedule.FewerPeople", () => _session.SetSepticOccupants(id, Math.Max(1, people - 1)));
+            Tool("PlumbingSchedule.MorePercolation", () => _session.SetPercolation(id, Math.Min(200, tank.Percolation + 10)));
+            Tool("PlumbingSchedule.LessPercolation", () => _session.SetPercolation(id, Math.Max(5, tank.Percolation - 10)));
+        }
+        foreach (var storm in document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.StormOutlet))
+        {
+            var id = storm.Id;
+            Tool("PlumbingSchedule.MoreRain", () => _session.SetRainfall(id, Math.Min(400, storm.RainfallMmPerHour + 25)));
+            Tool("PlumbingSchedule.LessRain", () => _session.SetRainfall(id, Math.Max(20, storm.RainfallMmPerHour - 25)));
+        }
+        foreach (var outlet in document.PlumbingPoints.Where(point => point.IsSanitaryOutlet || point.Kind == PlumbingPointKind.StormOutlet))
         {
             var id = outlet.Id;
             Tool("PlumbingSchedule.Deeper", () => _session.SetOutletDepth(id, Math.Min(5, outlet.InvertDepth + 0.1)));
@@ -66,16 +81,25 @@ internal sealed class PlumbingScheduleWindow : Window
         foreach (var point in document.PlumbingPoints)
             _content.Children.Add(new TextBlock
             {
-                Text = point.Kind == PlumbingPointKind.WaterMeter
-                    ? Format("PlumbingSchedule.MeterLine", point.Name, point.SupplyPressureKPa, point.SupplyPressureKPa / 6.895)
-                    : Format("PlumbingSchedule.OutletLine", point.Name, point.InvertDepth),
+                Text = point.Kind switch
+                {
+                    PlumbingPointKind.WaterMeter => Format("PlumbingSchedule.MeterLine", point.Name, point.SupplyPressureKPa, point.SupplyPressureKPa / 6.895),
+                    PlumbingPointKind.StormOutlet => Format("PlumbingSchedule.StormLine", point.Name, point.RainfallMmPerHour, point.InvertDepth),
+                    PlumbingPointKind.VentStack => point.Name,
+                    _ => Format("PlumbingSchedule.OutletLine", point.Name, point.InvertDepth)
+                },
                 Foreground = Brushes.DimGray
             });
 
         foreach (var report in analysis.Systems)
         {
             var kind = report.System.Kind;
-            var unit = Text(kind == PlumbingSystemKind.Sanitary ? "Plumbing.DrainUnits" : "Plumbing.SupplyUnits");
+            var unit = Text(kind switch
+            {
+                PlumbingSystemKind.Sanitary => "Plumbing.DrainUnits",
+                PlumbingSystemKind.StormWater => "Plumbing.FlowUnits",
+                _ => "Plumbing.SupplyUnits"
+            });
             _content.Children.Add(new TextBlock
             {
                 Text = Format("PlumbingSchedule.SystemHeader", report.System.Name, Text($"Plumbing.Kind.{kind}"), report.SourceName,
@@ -95,7 +119,12 @@ internal sealed class PlumbingScheduleWindow : Window
             Column("PlumbingSchedule.Fixture", nameof(Row.Fixture), 190);
             Column("PlumbingSchedule.Units", nameof(Row.Units), 70);
             Column("PlumbingSchedule.Branch", nameof(Row.Branch), 70);
-            if (kind == PlumbingSystemKind.Sanitary)
+            if (kind == PlumbingSystemKind.StormWater)
+            {
+                Column("PlumbingSchedule.LeaderFlow", nameof(Row.Pressure), 170);
+                Column("PlumbingSchedule.Invert", nameof(Row.Invert), 150);
+            }
+            else if (kind == PlumbingSystemKind.Sanitary)
             {
                 Column("PlumbingSchedule.Invert", nameof(Row.Invert), 150);
                 Column("PlumbingSchedule.Vent", nameof(Row.Vent), 170);
@@ -111,8 +140,9 @@ internal sealed class PlumbingScheduleWindow : Window
             state.CellTemplate = new DataTemplate { VisualTree = text };
             grid.Columns.Add(state);
             Column("PlumbingSchedule.Note", nameof(Row.Note), 260);
-            grid.ItemsSource = report.Fixtures.Select(fixture => new Row(fixture.Name, $"{fixture.Units:0.#}", fixture.Nominal,
-                double.IsNaN(fixture.PressureKPa) ? string.Empty
+            grid.ItemsSource = report.Fixtures.Select(fixture => new Row(fixture.Name, $"{fixture.Units:0.##}", fixture.Nominal,
+                kind == PlumbingSystemKind.StormWater ? $"{fixture.Units:0.00} / {fixture.RequiredKPa:0.00} L/s"
+                : double.IsNaN(fixture.PressureKPa) ? string.Empty
                     : $"{fixture.PressureKPa:0} kPa ({fixture.PressureKPa / 6.895:0} psi) / {fixture.RequiredKPa:0}",
                 double.IsNaN(fixture.WaitSeconds) ? string.Empty : $"{fixture.WaitSeconds:0} s",
                 double.IsNaN(fixture.Invert) ? string.Empty : $"{fixture.Invert:0.00} m ({fixture.Cover * 100:0} cm)",
@@ -141,6 +171,23 @@ internal sealed class PlumbingScheduleWindow : Window
             _content.Children.Add(buttons);
         }
 
+        foreach (var septic in analysis.Septic)
+            _content.Children.Add(new TextBlock
+            {
+                Text = Format("PlumbingSchedule.SepticLine", septic.Name, septic.Occupants, septic.DailyLiters, septic.VolumeLiters / 1000,
+                    septic.Length, septic.Width, septic.LiquidDepth, septic.FieldArea, septic.FieldLength, septic.Trenches),
+                FontWeight = FontWeights.SemiBold, Foreground = Brushes.SaddleBrown, Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap
+            });
+        if (analysis.Roofs.Count > 0 && document.PlumbingPoints.Any(point => point.Kind == PlumbingPointKind.StormOutlet))
+        {
+            _content.Children.Add(new TextBlock { Text = Text("PlumbingSchedule.Roofs"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+            foreach (var roof in analysis.Roofs)
+                _content.Children.Add(new TextBlock
+                {
+                    Text = Format("PlumbingSchedule.RoofLine", roof.Name, roof.Area, roof.Flow, roof.Downspouts, roof.Capacity, StateText(roof.Status)),
+                    Foreground = StateBrush(roof.Status)
+                });
+        }
         if (analysis.Unserved.Count > 0)
         {
             _content.Children.Add(new TextBlock

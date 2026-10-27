@@ -1,6 +1,15 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.19.0.
+Last updated: 2026-10-27. Version: 0.20.0.
+
+## X-ray view, septic tank and storm drainage (0.20, 2026-10-27)
+
+- X-ray 3D view: architecture as faint glass, building services solid; the mesher records service triangle ranges.
+- Septic tank (NBR 7229) with drain field sized by infiltration, as a sanitary outlet; modelled below grade.
+- Storm drainage:
+  - roof runoff by the rational method;
+  - downspouts placed automatically and checked against their leader capacity;
+  - buried drains sized by Manning at 1 % to a storm outlet.
 
 ## Traps and vents, minisplit air conditioning (0.19, 2026-10-27)
 

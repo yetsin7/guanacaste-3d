@@ -396,6 +396,7 @@ ElectricalChecks.Run(Check);
 CatalogChecks.Run(Check);
 PlumbingChecks.Run(Check);
 CoolingChecks.Run(Check);
+SiteDrainageChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 ModelViewIntegrationChecks.Run(Check);
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

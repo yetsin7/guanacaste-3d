@@ -57,7 +57,9 @@ public enum SurfaceKind : byte
     /// <summary>Hot-water pipe, red.</summary>
     PipeHot,
     /// <summary>PVC sanitary drain.</summary>
-    PipeDrain
+    PipeDrain,
+    /// <summary>Rainwater drain, green as in Revit's storm system.</summary>
+    PipeStorm
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -74,6 +76,15 @@ public sealed class SceneMesh
     public List<Vector3>? Normals { get; private set; }
 
     public int TriangleCount => TriangleKinds.Count;
+
+    /// <summary>
+    /// Triangle ranges [First, End) that belong to building services (electrical devices, plumbing, air conditioning) rather
+    /// than to the architecture, so a view can show them through walls and floors.
+    /// </summary>
+    public List<(int First, int End)> Services { get; } = [];
+
+    /// <summary>Whether a triangle belongs to a building service.</summary>
+    public bool IsService(int triangle) => Services.Any(range => triangle >= range.First && triangle < range.End);
 
     /// <summary>
     /// Per-triangle output of emitting surfaces, for lights on a dimmer: 1 for full output. Null until a dimmed light is
@@ -241,6 +252,7 @@ public static class BuildingMesher
 
         // The electrical simulation decides which fixtures glow: switches, dimmers, breakers and panels.
         var electrical = ElectricalAnalysis.Analyze(document);
+        var servicesFrom = mesh.TriangleCount;
         foreach (var device in document.ElectricalDevices)
         {
             var first = mesh.TriangleCount;
@@ -253,6 +265,7 @@ public static class BuildingMesher
         var buriedFrom = mesh.Positions.Count;
         PlumbingGeometry.AppendTo(mesh, document, PlumbingAnalysis.Analyze(document));
         var buriedTo = mesh.Positions.Count;
+        mesh.Services.Add((servicesFrom, mesh.TriangleCount));
 
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {

@@ -69,6 +69,9 @@ A physically based CPU path tracer, tuned for architecture:
 - **Vents and air conditioning**: vent stacks come out through the roof with
   a rain cap. A minisplit shows its indoor unit high on the wall and its
   condenser on a pad outside, with the insulated line set between them.
+- **Buried services**: the septic tank (two chambers, access covers at grade),
+  its distribution box and gravel trenches, and the storm drains are modelled
+  below grade. The ground plane ignores them, so the house stays on the ground.
 - **Mirrors**: bathroom and wall mirrors are silvered glass (a smooth metal).
 - **Render-quality vegetation**: the render (not the 3D view, which keeps the
   light modelling canopies) grows every planting: a flared trunk splits into

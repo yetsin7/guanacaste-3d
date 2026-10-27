@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Guanacaste3D.Core;
 
 /// <summary>The three piped systems of a house: cold water, hot water and the sanitary drain.</summary>
@@ -5,7 +7,9 @@ public enum PlumbingSystemKind
 {
     ColdWater,
     HotWater,
-    Sanitary
+    Sanitary,
+    /// <summary>Rainwater: roof downspouts to the storm outlet, kept apart from the sanitary drain.</summary>
+    StormWater
 }
 
 /// <summary>The points where the building meets the public networks.</summary>
@@ -19,7 +23,11 @@ public enum PlumbingPointKind
     /// Vent stack: a pipe from the drain up through the roof that lets air into the drains, so a draining fixture does
     /// not siphon the water seal out of the traps near it.
     /// </summary>
-    VentStack
+    VentStack,
+    /// <summary>Septic tank with its drain field, where there is no public sewer: a sanitary outlet that treats on site.</summary>
+    SepticTank,
+    /// <summary>Storm outlet: where the rainwater drain discharges to the street gutter (cuneta) or a soakaway.</summary>
+    StormOutlet
 }
 
 /// <summary>A water meter or sewer outlet on a level, at the edge of the building.</summary>
@@ -30,6 +38,18 @@ public sealed record PlumbingPoint(Guid Id, Guid LevelId, PlumbingPointKind Kind
 
     /// <summary>Sewer outlets: depth of the drain invert below the level, in meters, where it meets the public sewer.</summary>
     public double InvertDepth { get; init; } = 0.60;
+
+    /// <summary>Septic tanks: people served; zero takes two per bedroom.</summary>
+    public int Occupants { get; init; }
+
+    /// <summary>Septic tanks: what the soil absorbs, in liters per square meter of trench bottom per day.</summary>
+    public double Percolation { get; init; } = 40;
+
+    /// <summary>Storm outlets: design rainfall intensity in mm/h (a short tropical downpour; 150 mm/h in Guanacaste).</summary>
+    public double RainfallMmPerHour { get; init; } = 150;
+
+    /// <summary>Whether the point receives the sanitary drain: a sewer connection or a septic tank.</summary>
+    [JsonIgnore] public bool IsSanitaryOutlet => Kind is PlumbingPointKind.SewerOutlet or PlumbingPointKind.SepticTank;
 }
 
 /// <summary>

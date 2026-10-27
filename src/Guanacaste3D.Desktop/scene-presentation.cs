@@ -44,7 +44,7 @@ internal static class ScenePresentation
         }
         foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Leaf, SurfaceKind.InteriorWall, SurfaceKind.Metal, SurfaceKind.LightEmitter, SurfaceKind.Upholstery, SurfaceKind.Bedding, SurfaceKind.Ceramic, SurfaceKind.LightOff, SurfaceKind.SpotEmitter, SurfaceKind.WallBrick, SurfaceKind.WallBlock,
             SurfaceKind.WallConcrete, SurfaceKind.WallStone, SurfaceKind.WallWood, SurfaceKind.WallMetal, SurfaceKind.Mirror, SurfaceKind.PipeCold, SurfaceKind.PipeHot, SurfaceKind.PipeDrain,
-            SurfaceKind.Glass })
+            SurfaceKind.PipeStorm, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
             mesh.Freeze();
@@ -118,6 +118,50 @@ internal static class ScenePresentation
                 ? new MaterialGroup { Children = { Diffuse(Color.FromArgb(90, key.R, key.G, key.B)), new SpecularMaterial(new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)), 60) } }
                 : Diffuse(color);
             var model = new GeometryModel3D(mesh, wpfMaterial) { BackMaterial = wpfMaterial };
+            model.Freeze();
+            yield return model;
+        }
+    }
+
+    /// <summary>
+    /// X-ray: the building services (pipes, fixtures of the electrical system, air conditioning, septic tank) in their
+    /// own colours, and the architecture and the ground as faint glass, so pipes under the floor and in the walls show
+    /// through. Opaque services are emitted first and the translucent shell last, as WPF draws transparency in order.
+    /// </summary>
+    public static IEnumerable<GeometryModel3D> ToWpfXRay(SceneMesh scene)
+    {
+        var services = new Dictionary<SurfaceKind, MeshGeometry3D>();
+        var shell = new MeshGeometry3D();
+        var ground = new MeshGeometry3D();
+        for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
+        {
+            var kind = scene.TriangleKinds[triangle];
+            MeshGeometry3D target;
+            if (scene.IsService(triangle))
+            {
+                if (!services.TryGetValue(kind, out target!)) services[kind] = target = new MeshGeometry3D();
+            }
+            else target = kind == SurfaceKind.Ground ? ground : shell;
+            for (var corner = 0; corner < 3; corner++)
+            {
+                target.TriangleIndices.Add(target.Positions.Count);
+                target.Positions.Add(ToWpf(scene.Positions[scene.Indices[triangle * 3 + corner]]));
+            }
+        }
+        foreach (var (kind, mesh) in services)
+        {
+            mesh.Freeze();
+            var material = MaterialFor(kind);
+            var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            model.Freeze();
+            yield return model;
+        }
+        foreach (var (mesh, color) in new[] { (ground, Color.FromArgb(40, 150, 140, 120)), (shell, Color.FromArgb(38, 120, 150, 190)) })
+        {
+            if (mesh.TriangleIndices.Count == 0) continue;
+            mesh.Freeze();
+            var material = Diffuse(color);
+            var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
             model.Freeze();
             yield return model;
         }
@@ -262,6 +306,7 @@ internal static class ScenePresentation
         SurfaceKind.PipeCold => Diffuse(Color.FromRgb(40, 100, 200)),
         SurfaceKind.PipeHot => Diffuse(Color.FromRgb(200, 45, 35)),
         SurfaceKind.PipeDrain => Diffuse(Color.FromRgb(150, 120, 80)),
+        SurfaceKind.PipeStorm => Diffuse(Color.FromRgb(60, 150, 70)),
         SurfaceKind.SpotEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 240, 210))),
         SurfaceKind.LightEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 236, 200))),
         SurfaceKind.Glass => new MaterialGroup
