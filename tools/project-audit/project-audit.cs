@@ -14,13 +14,15 @@ try
 {
     var document = ProjectFile.Load(args[failOnIssues ? 1 : 0]);
     var issues = ModelAudit.Analyze(document);
+    var findings = ModelAuditReporting.Describe(issues);
     var report = new
     {
         projectId = document.Id,
         projectName = document.Name,
         issueCount = issues.Count,
         issues,
-        findings = ModelAuditReporting.Describe(issues)
+        findings,
+        levelSummaries = ModelAuditReporting.SummarizeByLevel(findings)
     };
     var options = new JsonSerializerOptions { WriteIndented = true };
     options.Converters.Add(new JsonStringEnumConverter());
