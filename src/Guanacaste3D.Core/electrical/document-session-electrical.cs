@@ -9,14 +9,59 @@ public sealed partial class DocumentSession
     {
         var id = Guid.NewGuid();
         var elevation = ElectricalStandards.MountsOnWall(kind) ? ElectricalStandards.MountingHeight(kind) : ceiling ?? WallTopOf(levelId);
+        // An air conditioner is sized for the room it is in, and its condenser goes outside the wall behind it.
+        var capacity = 0.0;
+        Point2? outdoor = null;
+        if (kind == ElectricalDeviceKind.MiniSplit)
+        {
+            var room = CoolingAnalysis.RoomAt(Document, levelId, position);
+            capacity = room is null ? 12000 : ElectricalStandards.CoolingCapacityFor(CoolingAnalysis.Area(room));
+            var thickness = Document.Walls.Where(wall => wall.LevelId == levelId)
+                .Select(wall => (wall.Thickness, Distance: WallDistance(wall, position)))
+                .Where(item => item.Distance < 0.6).OrderBy(item => item.Distance).Select(item => item.Thickness)
+                .DefaultIfEmpty(0.20).First();
+            outdoor = new Point2(position.X - Math.Cos(facing) * (thickness + 0.45), position.Y - Math.Sin(facing) * (thickness + 0.45));
+        }
         Commit("Transaction.AddElectricalDevice", document => document.ElectricalDevices.Add(
             new ElectricalDevice(id, levelId, kind, name, position, elevation)
             {
                 Facing = facing,
-                Watts = ElectricalStandards.DefaultWatts(kind),
-                MainBreakerAmps = kind == ElectricalDeviceKind.Panel ? 100 : 0
+                Watts = kind == ElectricalDeviceKind.MiniSplit ? ElectricalStandards.CoolingWatts(capacity) : ElectricalStandards.DefaultWatts(kind),
+                MainBreakerAmps = kind == ElectricalDeviceKind.Panel ? 100 : 0,
+                CoolingBtu = capacity,
+                OutdoorPosition = outdoor
             }));
         return id;
+    }
+
+    /// <summary>Changes an air conditioner's capacity; its electrical load follows.</summary>
+    public void SetCoolingCapacity(Guid deviceId, double btu)
+    {
+        if (!ElectricalStandards.CoolingCapacities.Contains(btu)) throw new InvalidDataException("Invalid electrical device.");
+        Update("Transaction.SetCoolingCapacity", deviceId, existing => existing.Kind != ElectricalDeviceKind.MiniSplit
+            ? throw new InvalidDataException("Invalid electrical device.")
+            : existing with { CoolingBtu = btu, Watts = ElectricalStandards.CoolingWatts(btu) });
+    }
+
+    /// <summary>Sets a circuit to 120 V (one pole) or 240 V (two poles).</summary>
+    public void SetCircuitVoltage(Guid circuitId, double voltage)
+    {
+        if (voltage is not (120 or 240)) throw new InvalidDataException("Invalid circuit.");
+        Commit("Transaction.SetCircuitVoltage", document =>
+        {
+            var index = document.ElectricalCircuits.FindIndex(circuit => circuit.Id == circuitId);
+            if (index < 0) throw new InvalidDataException("The circuit does not exist.");
+            document.ElectricalCircuits[index] = document.ElectricalCircuits[index] with { Voltage = voltage };
+        });
+    }
+
+    private static double WallDistance(Wall wall, Point2 point)
+    {
+        var length = Math.Max(wall.Length, 1e-9);
+        var dx = (wall.End.X - wall.Start.X) / length;
+        var dy = (wall.End.Y - wall.Start.Y) / length;
+        var along = Math.Clamp((point.X - wall.Start.X) * dx + (point.Y - wall.Start.Y) * dy, 0, length);
+        return point.DistanceTo(new Point2(wall.Start.X + dx * along, wall.Start.Y + dy * along));
     }
 
     /// <summary>Removes a device, its circuits if it is a panel, and every switch link to it.</summary>
@@ -92,7 +137,19 @@ public sealed partial class DocumentSession
     {
         if (circuitId is Guid circuit && Document.ElectricalCircuits.All(candidate => candidate.Id != circuit))
             throw new InvalidDataException("The circuit does not exist.");
-        Update("Transaction.AssignCircuit", deviceId, existing => existing with { CircuitId = circuitId });
+        var device = Document.ElectricalDevices.FirstOrDefault(candidate => candidate.Id == deviceId)
+            ?? throw new InvalidDataException("The electrical device does not exist.");
+        Commit("Transaction.AssignCircuit", document =>
+        {
+            var index = document.ElectricalDevices.FindIndex(candidate => candidate.Id == deviceId);
+            document.ElectricalDevices[index] = device with { CircuitId = circuitId };
+            // The first device on an empty circuit sets its voltage: a 240 V appliance makes it a two-pole circuit.
+            if (circuitId is Guid target && document.ElectricalDevices.All(other => other.Id == deviceId || other.CircuitId != target))
+            {
+                var at = document.ElectricalCircuits.FindIndex(candidate => candidate.Id == target);
+                document.ElectricalCircuits[at] = document.ElectricalCircuits[at] with { Voltage = device.Needs240 ? 240 : 120 };
+            }
+        });
     }
 
     /// <summary>Changes a circuit's breaker: its rating and its handle.</summary>
@@ -136,7 +193,8 @@ public sealed partial class DocumentSession
     public void MoveElectricalDevice(Guid deviceId, double deltaX, double deltaY) =>
         Update("Transaction.MoveElectricalDevice", deviceId, existing => existing with
         {
-            Position = new Point2(existing.Position.X + deltaX, existing.Position.Y + deltaY)
+            Position = new Point2(existing.Position.X + deltaX, existing.Position.Y + deltaY),
+            OutdoorPosition = existing.OutdoorPosition is Point2 outdoor ? new Point2(outdoor.X + deltaX, outdoor.Y + deltaY) : null
         });
 
     private void Update(string transaction, Guid deviceId, Func<ElectricalDevice, ElectricalDevice> change)
@@ -173,7 +231,9 @@ public static class ElectricalRules
                 !double.IsFinite(device.DimLevel) || device.DimLevel is < 0.1 or > 1 ||
                 device.CircuitId is Guid circuit && !circuits.Contains(circuit) ||
                 device.Controls is null || device.Controls.Count > 200 || device.Controls.Count > 0 && !device.IsSwitch ||
-                !double.IsFinite(device.MainBreakerAmps) || device.MainBreakerAmps is < 0 or > 1200)
+                !double.IsFinite(device.MainBreakerAmps) || device.MainBreakerAmps is < 0 or > 1200 ||
+                !double.IsFinite(device.CoolingBtu) || device.CoolingBtu is < 0 or > 200000 ||
+                device.OutdoorPosition is Point2 outdoor && (!double.IsFinite(outdoor.X) || !double.IsFinite(outdoor.Y)))
                 throw new InvalidDataException("Invalid electrical device.");
         foreach (var circuit in document.ElectricalCircuits)
             if (circuit.Id == Guid.Empty || !panels.Contains(circuit.PanelId) || circuit.Number is < 1 or > 200 ||

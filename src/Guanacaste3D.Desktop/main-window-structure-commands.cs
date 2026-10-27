@@ -71,6 +71,8 @@ public partial class MainWindow
                 BeginWiringTool(); return true;
             case "RibbonCommand.PanelSchedule":
                 OpenPanelSchedule(); return true;
+            case "RibbonCommand.MechanicalEquipment":
+                BeginElectricalTool(Cooling); return true;
             case "RibbonCommand.PlumbingService":
                 BeginPlumbingPointTool(); return true;
             case "RibbonCommand.Pipe":

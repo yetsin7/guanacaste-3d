@@ -25,6 +25,8 @@ public partial class MainWindow
         [ElectricalDeviceKind.CeilingFixture, ElectricalDeviceKind.Downlight, ElectricalDeviceKind.WallSconce, ElectricalDeviceKind.Pendant,
             ElectricalDeviceKind.CeilingFan];
 
+    private static readonly ElectricalDeviceKind[] Cooling = [ElectricalDeviceKind.MiniSplit];
+
     private ElectricalDeviceKind? _electricalTool;
     private ElectricalDeviceKind[] _electricalFamily = [];
     private bool _wiring;
@@ -83,6 +85,18 @@ public partial class MainWindow
                 { } device && (device.IsSwitch || device.Kind == ElectricalDeviceKind.Panel))
         {
             FlipSwitch(id);
+            return true;
+        }
+        if (_selectedElectricalId is Guid unitId &&
+            _session.Document.ElectricalDevices.FirstOrDefault(device => device.Id == unitId) is { Kind: ElectricalDeviceKind.MiniSplit } unit)
+        {
+            // SPACE steps a selected air conditioner through the standard capacities.
+            var capacities = ElectricalStandards.CoolingCapacities;
+            var next = capacities[(capacities.ToList().IndexOf(unit.CoolingBtu) + 1) % capacities.Count];
+            _session.SetCoolingCapacity(unitId, next);
+            var report = CoolingAnalysis.Analyze(_session.Document).First(candidate => candidate.Unit.Id == unitId);
+            StatusText.Text = FormatText("Status.CoolingCapacity", unit.Name, next, report.RequiredBtu, GetText($"Cooling.Status.{report.Status}"));
+            RefreshAll();
             return true;
         }
         return false;
@@ -265,6 +279,16 @@ public partial class MainWindow
             return false;
         var analysis = ElectricalAnalysis.Analyze(_session.Document);
         var circuit = device.CircuitId is Guid id ? analysis.Circuit(id) : null;
+        if (device.Kind == ElectricalDeviceKind.MiniSplit)
+        {
+            var cooling = CoolingAnalysis.Analyze(_session.Document).First(report => report.Unit.Id == device.Id);
+            PropertiesText.Text = FormatText("Properties.MiniSplitSummary", device.Name, device.CoolingBtu, device.Watts,
+                device.Watts / 240, cooling.Room?.Name ?? GetText("Cooling.NoRoom"), cooling.RoomArea, cooling.RequiredBtu,
+                cooling.InstalledBtu, GetText($"Cooling.Status.{cooling.Status}"),
+                circuit is null ? GetText("Electrical.NoCircuit")
+                    : $"{FormatText("Electrical.CircuitName", circuit.Circuit.Number)} · {circuit.Circuit.Voltage:0} V · {GetText($"CircuitStatus.{circuit.Status}")}");
+            return true;
+        }
         var state = device.IsLuminaire ? (analysis.Brightness(device.Id) > 0 ? GetText("Electrical.Lit") : GetText("Electrical.Dark"))
             : device.IsSwitch || device.Kind == ElectricalDeviceKind.Panel ? GetText(device.IsOn ? "Electrical.On" : "Electrical.Off")
             : GetText(analysis.Energized(device) ? "Electrical.Energized" : "Electrical.NoPower");
@@ -282,7 +306,7 @@ public partial class MainWindow
 
     private static Brush StatusBrush(CircuitStatus status) => status switch
     {
-        CircuitStatus.Tripped => Brushes.Red,
+        CircuitStatus.Tripped or CircuitStatus.WrongVoltage => Brushes.Red,
         CircuitStatus.Off => Brushes.Gray,
         CircuitStatus.Warning => Brushes.DarkOrange,
         CircuitStatus.Ok => Brushes.SeaGreen,
@@ -320,6 +344,28 @@ public partial class MainWindow
             DrawElectricalSymbol(device.Kind, device.Position, device.Facing, brush, lit, device.IsOn, device.Id);
             if (report is not null)
                 AddPlanLabel(device.Position, $"C{report.Circuit.Number}", brush, 9, 8, 6);
+        }
+        // Air conditioners: the condenser outside, the line set to it, and the capacity coloured by the room's load.
+        foreach (var cooling in CoolingAnalysis.Analyze(_session.Document).Where(report => report.Unit.LevelId == _activeLevelId))
+        {
+            var brush = cooling.Status switch
+            {
+                CoolingStatus.Ok => Brushes.SeaGreen,
+                CoolingStatus.NoRoom => ElectricalInk,
+                _ => Brushes.DarkOrange
+            };
+            AddPlanLabel(cooling.Unit.Position, $"{cooling.Unit.CoolingBtu / 1000:0}k BTU", brush, 9, 0, -14);
+            if (cooling.Unit.OutdoorPosition is not Point2 outdoor) continue;
+            AddPlanPath(cooling.Unit.Position, outdoor, ElectricalInk, 1.0, new DoubleCollection { 3, 2 }, bend: 0);
+            var at = WorldToCanvas(outdoor);
+            var size = Math.Clamp(0.7 * _scale, 14, 60);
+            var box = new Rectangle { Width = size, Height = size * 0.45, Stroke = ElectricalInk, StrokeThickness = 1.3, Fill = Brushes.White };
+            var turn = -cooling.Unit.Facing * 180 / Math.PI + 90;
+            box.RenderTransform = new RotateTransform(turn, size / 2, size * 0.225);
+            Canvas.SetLeft(box, at.X - size / 2);
+            Canvas.SetTop(box, at.Y - size * 0.225);
+            PlanCanvas.Children.Add(box);
+            AddCanvasLabel("CE", at, ElectricalInk, Math.Max(8, size * 0.22), null);
         }
         if (_electricalTool is ElectricalDeviceKind kind && _placementPointer is Point2 pointer)
         {
@@ -397,6 +443,19 @@ public partial class MainWindow
                 Place(Circle(size * 0.5, glow), symbolCenter);
                 Stroke(center, symbolCenter);
                 break;
+            case ElectricalDeviceKind.MiniSplit:
+            {
+                // The indoor unit: a long box on the wall face with "AC", as in Revit's mechanical equipment tags.
+                var across = new Vector(outward.Y, -outward.X) * size * 1.6;
+                var depth = outward * size * 0.7;
+                PlanCanvas.Children.Add(new Polygon
+                {
+                    Points = [center - across, center + across, center + across + depth, center - across + depth],
+                    Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.4, Tag = tag
+                });
+                Text("AC", center + depth * 0.5);
+                break;
+            }
             case ElectricalDeviceKind.CeilingFan:
                 // Four blades around the hub, as in Revit's fan symbol, the hub yellow when its light is on.
                 foreach (var angle in new[] { 0.4, 0.4 + Math.PI / 2, 0.4 + Math.PI, 0.4 + 3 * Math.PI / 2 })

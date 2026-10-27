@@ -98,8 +98,9 @@ public sealed partial class DocumentSession
     /// fixture and water heater, hot water from the nearest heater to every fixture that uses it, and the drain from
     /// every fixture to the nearest outlet. Existing systems are replaced. Returns the number of systems made.
     /// </summary>
-    public int ConnectPlumbing(Func<PlumbingSystemKind, int, string> name)
+    public int ConnectPlumbing(Func<PlumbingSystemKind, int, string> name, Func<int, string>? ventName = null)
     {
+        ventName ??= number => $"V{number}";
         var meters = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.WaterMeter).ToArray();
         var outlets = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.SewerOutlet).ToArray();
         var heaters = Document.StructuralElements.Where(PlumbingStandards.IsWaterHeater).ToArray();
@@ -129,10 +130,28 @@ public sealed partial class DocumentSession
             fixture => PlumbingStandards.Fixture(fixture)!.NeedsHot);
         Build(PlumbingSystemKind.Sanitary, outlets.Select(outlet => (outlet.Id, outlet.LevelId, outlet.Position)).ToArray(), fixture =>
             PlumbingStandards.Fixture(fixture)!.Drains);
+        // Vent every trap: a fixture with no vent stack within its trap-arm length gets a new stack at its back wall,
+        // which then also serves its neighbours (a fixture that drains needs a vent whatever outlet it drains to).
+        var vents = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.VentStack)
+            .Select(point => (point.LevelId, point.Position)).ToList();
+        var newVents = new List<PlumbingPoint>();
+        if (outlets.Length > 0)
+            foreach (var fixture in fixtures.Where(fixture => PlumbingStandards.Fixture(fixture)!.Drains)
+                         .OrderBy(fixture => fixture.Start.X).ThenBy(fixture => fixture.Start.Y))
+            {
+                var spec = PlumbingStandards.Fixture(fixture)!;
+                var at = PlumbingStandards.Connection(fixture);
+                var reach = PlumbingStandards.TrapArmLimit(PlumbingStandards.DrainSize(spec.DrainUnits, spec.MinDrainSize)) * 0.8;
+                if (vents.Any(vent => Math.Abs(vent.Position.X - at.X) + Math.Abs(vent.Position.Y - at.Y) <= reach)) continue;
+                var count = Document.PlumbingPoints.Count(point => point.Kind == PlumbingPointKind.VentStack) + newVents.Count + 1;
+                newVents.Add(new PlumbingPoint(Guid.NewGuid(), fixture.LevelId, PlumbingPointKind.VentStack, ventName(count), at));
+                vents.Add((fixture.LevelId, at));
+            }
         Commit("Transaction.ConnectPlumbing", document =>
         {
             document.PlumbingSystems.Clear();
             document.PlumbingSystems.AddRange(systems);
+            document.PlumbingPoints.AddRange(newVents);
         });
         return systems.Count;
     }

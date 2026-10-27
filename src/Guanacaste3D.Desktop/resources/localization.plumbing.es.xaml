@@ -5,13 +5,21 @@
   <!-- Plumbing: meter and outlet, cold, hot and sanitary systems, the hydraulic check and its schedule (Spanish). -->
 
   <!-- Ribbon -->
-  <sys:String x:Key="RibbonCommand.PlumbingService">Medidor y salida</sys:String>
+  <sys:String x:Key="RibbonCommand.PlumbingService">Medidor, salida y ventilación</sys:String>
   <sys:String x:Key="RibbonCommand.ConnectPlumbing">Conectar plomería</sys:String>
   <sys:String x:Key="RibbonCommand.PlumbingSchedule">Cuadro de plomería</sys:String>
 
   <!-- Points, systems and units -->
   <sys:String x:Key="Plumbing.Point.WaterMeter">Medidor de agua</sys:String>
   <sys:String x:Key="Plumbing.Point.SewerOutlet">Salida a cloaca</sys:String>
+  <sys:String x:Key="Plumbing.Point.VentStack">Columna de ventilación</sys:String>
+  <sys:String x:Key="Plumbing.VentName">Ventilación {0}</sys:String>
+  <sys:String x:Key="Plumbing.Issue.NoVent">Sin ventilación: la trampa se sifonaría; agregue una columna de ventilación</sys:String>
+  <sys:String x:Key="Plumbing.Issue.TrapArmTooLong">Brazo de trampa demasiado largo hasta la ventilación</sys:String>
+  <sys:String x:Key="PlumbingSchedule.Vent">Ventilación · brazo / máx.</sys:String>
+  <sys:String x:Key="PlumbingSchedule.VentLine">{0}: Ø{1} para {2:0.#} UD, sale a {3:0.00} m sobre el techo</sys:String>
+  <sys:String x:Key="Properties.VentStackSummary">{0}&#x0a;Columna de ventilación&#x0a;Diámetro: Ø{1}&#x0a;Ventila {2:0.#} UD&#x0a;Remate: {3:0.00} m&#x0a;Las trampas se asignan solas a la columna más cercana.</sys:String>
+  <sys:String x:Key="Status.VentIsAutomatic">Las columnas de ventilación no tienen sistema propio: cada trampa se ventila con la columna más cercana.</sys:String>
   <sys:String x:Key="Plumbing.Kind.ColdWater">Agua fría</sys:String>
   <sys:String x:Key="Plumbing.Kind.HotWater">Agua caliente</sys:String>
   <sys:String x:Key="Plumbing.Kind.Sanitary">Desagüe sanitario</sys:String>
@@ -34,7 +42,7 @@
   <sys:String x:Key="PlumbingStatus.Fail">No cumple</sys:String>
 
   <!-- Status bar and properties -->
-  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic donde entra el servicio. Espacio cambia entre medidor y salida; Esc termina.</sys:String>
+  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic para colocarlo. Espacio cambia entre medidor, salida a cloaca y columna de ventilación; Esc termina.</sys:String>
   <sys:String x:Key="Status.PlumbingPlaced">{0} colocado.</sys:String>
   <sys:String x:Key="Status.PipingPickSource">Tubería: haz clic en un medidor (agua fría), un calentador (agua caliente) o una salida a cloaca (desagüe).</sys:String>
   <sys:String x:Key="Status.PipingPickFixture">Haz clic en los aparatos sanitarios para conectarlos o desconectarlos; Esc termina.</sys:String>
@@ -67,7 +75,7 @@
   <sys:String x:Key="PlumbingSchedule.Rename">Renombrar sistema</sys:String>
   <sys:String x:Key="PlumbingSchedule.Remove">Eliminar sistema</sys:String>
   <sys:String x:Key="PlumbingSchedule.Unserved">Aparatos sin conectar:</sys:String>
-  <sys:String x:Key="PlumbingSchedule.Notes">Unidades de consumo (UMH) y de descarga (UD) según el IPC; caudal probable por la curva de Hunter; diámetros por velocidad (2,4 m/s fría, 1,5 m/s caliente); pérdidas por Hazen-Williams (C = 150) con 25 % por accesorios; presiones mínimas de la tabla 604.3 del IPC; desagües a 2 % desde la salida. No se modelan ventilaciones ni trampas.</sys:String>
+  <sys:String x:Key="PlumbingSchedule.Notes">Unidades de consumo (UMH) y de descarga (UD) según el IPC; caudal probable por la curva de Hunter; diámetros por velocidad (2,4 m/s fría, 1,5 m/s caliente); pérdidas por Hazen-Williams (C = 150) con 25 % por accesorios; presiones mínimas de la tabla 604.3 del IPC; desagües a 2 % desde la salida; cada trampa debe tener una columna de ventilación dentro de la longitud de brazo de la tabla 909.1 del IPC (1,8 m para 1½", 2,4 m para 2", 3,6 m para 3").</sys:String>
 
   <!-- Undo history -->
   <sys:String x:Key="Transaction.AddPlumbingPoint">Colocar medidor o salida</sys:String>

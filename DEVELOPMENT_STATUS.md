@@ -1,6 +1,18 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.18.0.
+Last updated: 2026-10-27. Version: 0.19.0.
+
+## Traps and vents, minisplit air conditioning (0.19, 2026-10-27)
+
+- P-traps and standpipes modelled per fixture.
+- Vent stacks: sized by DFU, through the roof, added automatically where a trap has none in reach, with the IPC
+  909.1 trap-arm check.
+- Minisplit air conditioners:
+  - sized for their room;
+  - outdoor condenser and line set placed outside the wall;
+  - capacity steps;
+  - 240 V circuits with a wrong-voltage fault.
+- Fix: buried pipes no longer lower the render's ground plane and lift the house out of it.
 
 ## Plumbing systems and ceiling fans (0.18, 2026-10-27)
 

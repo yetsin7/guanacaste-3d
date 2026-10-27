@@ -250,7 +250,9 @@ public static class BuildingMesher
         }
 
         // Plumbing follows the hydraulic layout: pipes sized and routed by the analysis.
+        var buriedFrom = mesh.Positions.Count;
         PlumbingGeometry.AppendTo(mesh, document, PlumbingAnalysis.Analyze(document));
+        var buriedTo = mesh.Positions.Count;
 
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
@@ -279,7 +281,12 @@ public static class BuildingMesher
             var center = (min + max) / 2;
             // Large enough that the ground meets the sky at the horizon from typical orbit distances.
             var extent = MathF.Max(500, (max - min).Length() * 20);
-            var z = siteEdge is { } site ? (float)site - 0.02f : MathF.Min(0, min.Z) - 0.01f;
+            // Pipes are buried below grade: they must not drag the ground down with them and lift the house out of it.
+            var lowest = float.MaxValue;
+            for (var index = 0; index < mesh.Positions.Count; index++)
+                if (index < buriedFrom || index >= buriedTo) lowest = MathF.Min(lowest, mesh.Positions[index].Z);
+            if (lowest == float.MaxValue) lowest = 0;
+            var z = siteEdge is { } site ? (float)site - 0.02f : MathF.Min(0, lowest) - 0.01f;
             mesh.AddQuad(
                 new(center.X - extent, center.Y - extent, z), new(center.X + extent, center.Y - extent, z),
                 new(center.X + extent, center.Y + extent, z), new(center.X - extent, center.Y + extent, z),

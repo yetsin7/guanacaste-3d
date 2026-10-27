@@ -63,6 +63,41 @@ public static class ElectricalGeometry
                 Box(mesh, position, along, outward, 0.05f, 0.012f, 0.012f, -0.08f, 0.08f, SurfaceKind.Metal);
                 Box(mesh, position + outward * 0.06f, along, outward, 0.07f, 0.05f, 0.05f, -0.12f, 0.12f, glow);
                 break;
+            case ElectricalDeviceKind.MiniSplit:
+            {
+                // Indoor unit: a rounded white casing on the wall, its louvre, and the line set leaving from behind its
+                // left end, through the wall and down the outside to the condenser.
+                Box(mesh, position, along, outward, 0.40f, 0.095f, 0.10f, -0.14f, 0.14f, SurfaceKind.Ceramic);
+                Box(mesh, position, along, outward, 0.39f, 0.08f, 0.11f, 0.14f, 0.15f, SurfaceKind.Ceramic);
+                Box(mesh, position, along, outward, 0.36f, 0.012f, 0.20f, -0.13f, -0.09f, SurfaceKind.OpeningFrame);
+                Box(mesh, position + along * 0.30f, along, outward, 0.012f, 0.004f, 0.196f, 0.02f, 0.035f, SurfaceKind.LightEmitter);
+                if (device.OutdoorPosition is not Point2 outdoorAt) break;
+                var outdoor = new Vector3((float)outdoorAt.X, (float)outdoorAt.Y, (float)datum);
+                var front = -outward;
+                var lineZ = position.Z - 0.05f;
+                foreach (var (offset, radius) in new[] { (-0.33f, 0.011f), (-0.29f, 0.015f) })
+                {
+                    // The condenser stands 45 cm out from the wall, so 41 cm back toward the wall is just outside its face.
+                    var start = position + along * offset + outward * 0.03f;
+                    var face = outdoor + outward * 0.41f + along * offset;
+                    face.Z = lineZ;
+                    var low = face with { Z = (float)datum + 0.40f };
+                    var into = outdoor + outward * 0.12f + along * offset;
+                    into.Z = (float)datum + 0.40f;
+                    start.Z = lineZ;
+                    PlumbingGeometry.Tube(mesh, start, face, radius, SurfaceKind.OpeningFrame);
+                    PlumbingGeometry.Tube(mesh, face, low, radius, SurfaceKind.OpeningFrame);
+                    PlumbingGeometry.Tube(mesh, low, into, radius, SurfaceKind.OpeningFrame);
+                }
+                // Outdoor condenser on its concrete pad: casing, the dark fan grille on its front and a side service cover.
+                Box(mesh, outdoor, along, front, 0.46f, 0.22f, 0.02f, 0, 0.08f, SurfaceKind.Structure);
+                Box(mesh, outdoor, along, front, 0.40f, 0.15f, 0.02f, 0.10f, 0.66f, SurfaceKind.Ceramic);
+                Box(mesh, outdoor - along * 0.08f, along, front, 0.22f, 0.006f, 0.172f, 0.16f, 0.60f, SurfaceKind.OpeningFrame);
+                Box(mesh, outdoor + along * 0.30f, along, front, 0.07f, 0.006f, 0.172f, 0.20f, 0.45f, SurfaceKind.Metal);
+                foreach (var side in new[] { -0.36f, 0.36f })
+                    Box(mesh, outdoor + along * side, along, front, 0.02f, 0.17f, 0.02f, 0.08f, 0.10f, SurfaceKind.Metal);
+                break;
+            }
             case ElectricalDeviceKind.CeilingFan:
             {
                 // Canopy, a 30 cm downrod, the motor housing, five blades on their irons, and the light kit under it.

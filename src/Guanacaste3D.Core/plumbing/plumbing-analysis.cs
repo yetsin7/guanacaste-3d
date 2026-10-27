@@ -14,7 +14,14 @@ public sealed record PipeRun(PlumbingSystemKind Kind, Point2 From, double FromZ,
     double OutsideMillimeters)
 {
     public double Length => Math.Sqrt(Math.Pow(To.X - From.X, 2) + Math.Pow(To.Y - From.Y, 2) + Math.Pow(ToZ - FromZ, 2));
+
+    /// <summary>A fitting-scale piece (a trap) modelled in 3D but too small to draw in plan.</summary>
+    public bool Detail { get; init; }
 }
+
+/// <summary>A vent stack serving the fixtures of a sanitary system: where it stands, from its foot to above the roof.</summary>
+public sealed record VentReport(Guid Id, string Name, Point2 Position, double Bottom, double Top, string Nominal,
+    double OutsideMillimeters, double Units);
 
 /// <summary>
 /// One fixture on one system. Supply systems give the flowing pressure at the fixture's stop and, for hot water, how many
@@ -22,12 +29,24 @@ public sealed record PipeRun(PlumbingSystemKind Kind, Point2 From, double FromZ,
 /// <see cref="Issue"/> is a localization key, empty when the fixture is fine.
 /// </summary>
 public sealed record FixtureReport(Guid FixtureId, string Name, double Units, string Nominal, double PressureKPa,
-    double RequiredKPa, double WaitSeconds, double Invert, double Cover, double PathLength, PlumbingStatus Status, string Issue);
+    double RequiredKPa, double WaitSeconds, double Invert, double Cover, double PathLength, PlumbingStatus Status, string Issue)
+{
+    /// <summary>Drains: the vent stack that protects the fixture's trap, empty when there is none.</summary>
+    public string Vent { get; init; } = string.Empty;
+
+    /// <summary>Drains: length of the trap arm to that vent, and the longest allowed for the trap's size, in meters.</summary>
+    public double TrapArm { get; init; } = double.NaN;
+    public double TrapArmLimit { get; init; } = double.NaN;
+}
 
 /// <summary>A system's routed pipes, design flow, main size and the check of every fixture on it.</summary>
 public sealed record PlumbingSystemReport(PlumbingSystem System, string SourceName, PlumbingStatus Status,
     IReadOnlyList<PipeRun> Runs, IReadOnlyList<FixtureReport> Fixtures, double Units, double DesignFlow, string MainNominal,
-    double LengthMeters);
+    double LengthMeters)
+{
+    /// <summary>Sanitary systems: the vent stacks that serve its fixtures.</summary>
+    public IReadOnlyList<VentReport> Vents { get; init; } = [];
+}
 
 /// <summary>
 /// Routes and checks the plumbing. Each system is laid out as a tree from its source, growing toward the nearest
@@ -62,7 +81,7 @@ public sealed class PlumbingAnalysis
         .SelectMany(report => report.Fixtures).FirstOrDefault(fixture => fixture.FixtureId == fixtureId);
 
     private sealed record Node(Guid? Id, string Name, Point2 Point, double Level, double Units, PlumbingFixtureSpec? Spec,
-        double InletZ, double OutletZ);
+        double InletZ, double OutletZ, Point2 Center);
 
     public static PlumbingAnalysis Analyze(BuildingDocument document)
     {
@@ -71,6 +90,11 @@ public sealed class PlumbingAnalysis
             .ToDictionary(element => element.Id);
         var points = document.PlumbingPoints.ToDictionary(point => point.Id);
         var defaultPressure = document.PlumbingPoints.FirstOrDefault(point => point.Kind == PlumbingPointKind.WaterMeter)?.SupplyPressureKPa ?? 280;
+        var vents = document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.VentStack).ToList();
+        // Vent stacks rise through the roof: above the highest wall top of the building.
+        var roofTop = document.Walls.Where(wall => elevations.ContainsKey(wall.LevelId))
+            .Select(wall => elevations[wall.LevelId] + wall.Height).DefaultIfEmpty(elevations.Values.Max() + 3).Max() +
+            PlumbingStandards.VentAboveRoof;
 
         // The cold demand of a water heater is all the hot demand it serves.
         var heaterUnits = new Dictionary<Guid, double>();
@@ -100,14 +124,14 @@ public sealed class PlumbingAnalysis
                         elevations.TryGetValue(heater.LevelId, out var level))
                     {
                         root = new Node(heater.Id, heater.Name, PlumbingStandards.Connection(heater), level, 0, null,
-                            level + heater.Offset + heater.Height, 0);
+                            level + heater.Offset + heater.Height, 0, heater.Start);
                         start = heaterPressure.GetValueOrDefault(heater.Id, defaultPressure);
                     }
                 }
                 else if (points.TryGetValue(system.SourceId, out var point) && elevations.TryGetValue(point.LevelId, out var level) &&
                          point.Kind == (kind == PlumbingSystemKind.ColdWater ? PlumbingPointKind.WaterMeter : PlumbingPointKind.SewerOutlet))
                 {
-                    root = new Node(point.Id, point.Name, point.Position, level, 0, null, level, level - point.InvertDepth);
+                    root = new Node(point.Id, point.Name, point.Position, level, 0, null, level, level - point.InvertDepth, point.Position);
                     start = kind == PlumbingSystemKind.ColdWater ? point.SupplyPressureKPa : level - point.InvertDepth;
                 }
                 if (root is null)
@@ -124,10 +148,13 @@ public sealed class PlumbingAnalysis
                         continue;
                     var units = UnitsOf(element, spec, kind);
                     if (units <= 0) continue;
+                    // A drain leaves the fixture at its trap: under the basin, below the floor for a shower, or from
+                    // the fixture's own outlet when the trap is built in.
+                    var outlet = level + Math.Max(0, element.Offset) + (double.IsNaN(spec.TrapHeight) ? 0 : spec.TrapHeight);
                     nodes.Add(new Node(element.Id, element.Name, PlumbingStandards.Connection(element), level, units, spec,
-                        level + element.Offset + spec.InletHeight, level + Math.Max(0, element.Offset)));
+                        level + element.Offset + spec.InletHeight, outlet, element.Start));
                 }
-                var report = kind == PlumbingSystemKind.Sanitary ? Drain(system, nodes, start) : Supply(system, nodes, start);
+                var report = kind == PlumbingSystemKind.Sanitary ? Drain(system, nodes, start, vents, roofTop) : Supply(system, nodes, start);
                 if (kind == PlumbingSystemKind.ColdWater)
                     foreach (var fixture in report.Fixtures.Where(fixture => components.TryGetValue(fixture.FixtureId, out var element) &&
                                                                              PlumbingStandards.IsWaterHeater(element)))
@@ -223,7 +250,8 @@ public sealed class PlumbingAnalysis
     /// The sanitary drain: tree from the outlet, sizes by the drainage fixture units downstream and the largest trap
     /// among them, inverts rising at 2 % away from the outlet, and the cover left under each fixture's floor.
     /// </summary>
-    private static PlumbingSystemReport Drain(PlumbingSystem system, List<Node> nodes, double outletInvert)
+    private static PlumbingSystemReport Drain(PlumbingSystem system, List<Node> nodes, double outletInvert, List<PlumbingPoint> vents,
+        double roofTop)
     {
         var root = nodes[0];
         var (parent, order) = Tree(nodes);
@@ -261,16 +289,63 @@ public sealed class PlumbingAnalysis
             var size = PlumbingStandards.DrainSize(node.Units, spec.MinDrainSize);
             runs.Add(new PipeRun(PlumbingSystemKind.Sanitary, node.Point, node.OutletZ, node.Point, invert[index], sizes[size].Nominal,
                 sizes[size].Outside));
+            if (!double.IsNaN(spec.TrapHeight)) AddTrap(runs, node, spec, sizes[Math.Max(0, spec.MinDrainSize)]);
             var cover = node.Level - invert[index];
             var (status, issue) = cover < 0.10
                 ? (PlumbingStatus.Fail, "Plumbing.Issue.NoFall")
                 : cover < 0.15
                     ? (PlumbingStatus.Warning, "Plumbing.Issue.ShallowDrain")
                     : (PlumbingStatus.Ok, string.Empty);
+            // The trap must be vented within its trap-arm length, or a draining fixture siphons it dry.
+            var vent = vents.MinBy(candidate => Manhattan(candidate.Position, node.Point));
+            var arm = vent is null ? double.NaN : Manhattan(vent.Position, node.Point);
+            var limit = PlumbingStandards.TrapArmLimit(size);
+            var (ventStatus, ventIssue) = vent is null
+                ? (PlumbingStatus.Fail, "Plumbing.Issue.NoVent")
+                : arm > limit ? (PlumbingStatus.Fail, "Plumbing.Issue.TrapArmTooLong") : (PlumbingStatus.Ok, string.Empty);
+            if (ventStatus > status) (status, issue) = (ventStatus, ventIssue);
             fixtures.Add(new FixtureReport(node.Id!.Value, node.Name, node.Units, sizes[size].Nominal, double.NaN, double.NaN,
-                double.NaN, invert[index], cover, path[index], status, issue));
+                double.NaN, invert[index], cover, path[index], status, issue)
+            {
+                Vent = vent?.Name ?? string.Empty, TrapArm = arm, TrapArmLimit = limit
+            });
         }
-        return Report(system, root.Name, runs, fixtures, units[0], 0, sizes[mainSize].Nominal);
+        // Each vent stack carries the fixture units of the traps it vents and stands from the drain to above the roof.
+        var ventReports = new List<VentReport>();
+        foreach (var group in fixtures.Where(fixture => fixture.Vent.Length > 0)
+                     .GroupBy(fixture => vents.MinBy(candidate => Manhattan(candidate.Position,
+                         nodes.First(node => node.Id == fixture.FixtureId).Point))!))
+        {
+            var ventUnits = group.Sum(fixture => fixture.Units);
+            var ventSize = sizes[PlumbingStandards.VentSize(ventUnits)];
+            ventReports.Add(new VentReport(group.Key.Id, group.Key.Name, group.Key.Position, group.Min(fixture => fixture.Invert),
+                roofTop, ventSize.Nominal, ventSize.Outside, ventUnits));
+        }
+        return Report(system, root.Name, runs, fixtures, units[0], 0, sizes[mainSize].Nominal) with { Vents = ventReports };
+    }
+
+    /// <summary>
+    /// A P-trap at the fixture: tailpiece down from the fixture, the U bend, and the trap arm back to the wall where the
+    /// drain drops. The fixture's front is from its connection toward its centre.
+    /// </summary>
+    private static void AddTrap(List<PipeRun> runs, Node node, PlumbingFixtureSpec spec,
+        (string Nominal, double Inside, double Outside, double Capacity) size)
+    {
+        var dx = node.Center.X - node.Point.X;
+        var dy = node.Center.Y - node.Point.Y;
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        var (fx, fy) = length > 1e-6 ? (dx / length, dy / length) : (0.0, -1.0);
+        Point2 Out(double distance) => new(node.Point.X + fx * distance, node.Point.Y + fy * distance);
+        var arm = node.OutletZ;
+        var bottom = arm - 0.08;
+        var tail = Out(0.14);
+        var weir = Out(0.05);
+        void Piece(Point2 from, double fromZ, Point2 to, double toZ) =>
+            runs.Add(new PipeRun(PlumbingSystemKind.Sanitary, from, fromZ, to, toZ, size.Nominal, size.Outside) { Detail = true });
+        Piece(tail, arm + spec.Tailpiece, tail, bottom);
+        Piece(tail, bottom, weir, bottom);
+        Piece(weir, bottom, weir, arm);
+        Piece(weir, arm, node.Point, arm);
     }
 
     private static PlumbingSystemReport Report(PlumbingSystem system, string source, List<PipeRun> runs, List<FixtureReport> fixtures,

@@ -55,7 +55,12 @@ public partial class MainWindow
     private bool TryPlumbingSpace()
     {
         if (_plumbingPointTool is not PlumbingPointKind kind) return false;
-        var next = kind == PlumbingPointKind.WaterMeter ? PlumbingPointKind.SewerOutlet : PlumbingPointKind.WaterMeter;
+        var next = kind switch
+        {
+            PlumbingPointKind.WaterMeter => PlumbingPointKind.SewerOutlet,
+            PlumbingPointKind.SewerOutlet => PlumbingPointKind.VentStack,
+            _ => PlumbingPointKind.WaterMeter
+        };
         _plumbingPointTool = next;
         StatusText.Text = FormatText("Status.PlumbingPlace", PlumbingName(next));
         RenderPlan();
@@ -99,6 +104,11 @@ public partial class MainWindow
         var source = HitPlumbing(point);
         var fixture = source is null ? HitFixture(point) : null;
         var active = _session.Document.PlumbingSystems.FirstOrDefault(system => system.Id == _pipingSystem);
+        if (source is { Kind: PlumbingPointKind.VentStack })
+        {
+            StatusText.Text = GetText("Status.VentIsAutomatic");
+            return;
+        }
         if (source is not null)
         {
             SelectPipingSystem(source.Kind == PlumbingPointKind.WaterMeter ? PlumbingSystemKind.ColdWater : PlumbingSystemKind.Sanitary,
@@ -149,7 +159,8 @@ public partial class MainWindow
     {
         try
         {
-            var count = _session.ConnectPlumbing((kind, number) => FormatText($"Plumbing.SystemName.{kind}", number));
+            var count = _session.ConnectPlumbing((kind, number) => FormatText($"Plumbing.SystemName.{kind}", number),
+                number => FormatText("Plumbing.VentName", number));
             var analysis = PlumbingAnalysis.Analyze(_session.Document);
             StatusText.Text = FormatText("Status.PlumbingConnectedAll", count,
                 analysis.Systems.Sum(report => report.Fixtures.Count(fixture => fixture.Status == PlumbingStatus.Fail)),
@@ -210,9 +221,15 @@ public partial class MainWindow
     {
         if (_session.Document.PlumbingPoints.FirstOrDefault(point => point.Id == _selectedPlumbingId) is not { } point) return false;
         var systems = _session.Document.PlumbingSystems.Count(system => system.SourceId == point.Id);
-        PropertiesText.Text = point.Kind == PlumbingPointKind.WaterMeter
-            ? FormatText("Properties.WaterMeterSummary", point.Name, point.SupplyPressureKPa, point.SupplyPressureKPa / 6.895, systems)
-            : FormatText("Properties.SewerOutletSummary", point.Name, point.InvertDepth, systems);
+        var vent = PlumbingAnalysis.Analyze(_session.Document).Systems.SelectMany(report => report.Vents)
+            .FirstOrDefault(candidate => candidate.Id == point.Id);
+        PropertiesText.Text = point.Kind switch
+        {
+            PlumbingPointKind.WaterMeter => FormatText("Properties.WaterMeterSummary", point.Name, point.SupplyPressureKPa,
+                point.SupplyPressureKPa / 6.895, systems),
+            PlumbingPointKind.SewerOutlet => FormatText("Properties.SewerOutletSummary", point.Name, point.InvertDepth, systems),
+            _ => FormatText("Properties.VentStackSummary", point.Name, vent?.Nominal ?? "—", vent?.Units ?? 0, vent?.Top ?? 0)
+        };
         return true;
     }
 
@@ -223,6 +240,7 @@ public partial class MainWindow
     private static readonly Brush ColdInk = new SolidColorBrush(Color.FromRgb(30, 90, 200));
     private static readonly Brush HotInk = new SolidColorBrush(Color.FromRgb(200, 40, 30));
     private static readonly Brush DrainInk = new SolidColorBrush(Color.FromRgb(120, 90, 40));
+    private static readonly Brush VentInk = new SolidColorBrush(Color.FromRgb(40, 140, 70));
 
     private static Brush PlumbingBrush(PlumbingSystemKind kind) => kind switch
     {
@@ -265,7 +283,7 @@ public partial class MainWindow
             var lane = report.System.Kind switch { PlumbingSystemKind.ColdWater => -1, PlumbingSystemKind.HotWater => 0, _ => 1 };
             var shiftWorld = lane * 4 / _scale;
             Point2 Shift(Point2 point) => new(point.X + shiftWorld, point.Y - shiftWorld);
-            foreach (var run in report.Runs.Where(run => run.From.DistanceTo(run.To) > 1e-6))
+            foreach (var run in report.Runs.Where(run => !run.Detail && run.From.DistanceTo(run.To) > 1e-6))
             {
                 // Only the runs under this level's floor (mains) belong to its plan.
                 if (Math.Abs(run.FromZ - level) > 1.2) continue;
@@ -289,6 +307,10 @@ public partial class MainWindow
                     element.LevelId != _activeLevelId)
                     continue;
                 var at = WorldToCanvas(PlumbingStandards.Connection(element));
+                // The trap arm to its vent: dotted green, red when it is too long.
+                if (report.Vents.FirstOrDefault(vent => vent.Name == fixture.Vent) is { } vent)
+                    AddPlanPath(PlumbingStandards.Connection(element), vent.Position,
+                        fixture.TrapArm > fixture.TrapArmLimit ? Brushes.Red : VentInk, 0.9, new DoubleCollection { 1, 2 }, bend: 0.15);
                 var shift = report.System.Kind switch { PlumbingSystemKind.ColdWater => -6.0, PlumbingSystemKind.HotWater => 0.0, _ => 6.0 };
                 var dot = new Ellipse
                 {
@@ -323,7 +345,12 @@ public partial class MainWindow
     {
         var center = WorldToCanvas(position);
         var size = Math.Clamp(0.25 * _scale, 10, 20);
-        var brush = highlight ?? (kind == PlumbingPointKind.WaterMeter ? ColdInk : DrainInk);
+        var brush = highlight ?? kind switch
+        {
+            PlumbingPointKind.WaterMeter => ColdInk,
+            PlumbingPointKind.SewerOutlet => DrainInk,
+            _ => VentInk
+        };
         Shape shape = kind == PlumbingPointKind.WaterMeter
             ? new Rectangle { Width = size, Height = size }
             : new Ellipse { Width = size, Height = size };
@@ -334,7 +361,8 @@ public partial class MainWindow
         Canvas.SetLeft(shape, center.X - size / 2);
         Canvas.SetTop(shape, center.Y - size / 2);
         PlanCanvas.Children.Add(shape);
-        AddCanvasLabel(kind == PlumbingPointKind.WaterMeter ? "M" : "S", center, brush, size * 0.6, tag);
+        AddCanvasLabel(kind switch { PlumbingPointKind.WaterMeter => "M", PlumbingPointKind.SewerOutlet => "S", _ => "V" }, center, brush,
+            size * 0.6, tag);
     }
 
     /// <summary>Opens the plumbing schedule: every system with its fixtures, sizes, pressures, waits and drain cover.</summary>

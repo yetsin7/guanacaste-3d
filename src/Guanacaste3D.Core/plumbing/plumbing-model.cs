@@ -14,7 +14,12 @@ public enum PlumbingPointKind
     /// <summary>Water meter and service entry: the source of every cold-water system.</summary>
     WaterMeter,
     /// <summary>Building sewer outlet: where the drain leaves for the street sewer or the septic tank.</summary>
-    SewerOutlet
+    SewerOutlet,
+    /// <summary>
+    /// Vent stack: a pipe from the drain up through the roof that lets air into the drains, so a draining fixture does
+    /// not siphon the water seal out of the traps near it.
+    /// </summary>
+    VentStack
 }
 
 /// <summary>A water meter or sewer outlet on a level, at the edge of the building.</summary>
@@ -45,6 +50,15 @@ public sealed record PlumbingSystem(Guid Id, PlumbingSystemKind Kind, Guid Sourc
 public sealed record PlumbingFixtureSpec(double ColdUnits, double HotUnits, double DrainUnits, int MinDrainSize,
     double InletHeight, double MinPressureKPa)
 {
+    /// <summary>
+    /// Height of the trap's outlet (the trap arm) above the floor; negative for a trap under the floor (showers, tubs),
+    /// NaN for a fixture with an integral trap (toilets, urinals).
+    /// </summary>
+    public double TrapHeight { get; init; } = double.NaN;
+
+    /// <summary>Length of the tailpiece above the trap; a washing machine's standpipe is much longer.</summary>
+    public double Tailpiece { get; init; } = 0.15;
+
     public bool NeedsCold => ColdUnits > 0;
     public bool NeedsHot => HotUnits > 0;
     public bool Drains => DrainUnits > 0;
@@ -92,14 +106,15 @@ public static class PlumbingStandards
         return element.ComponentShape switch
         {
             ResidentialComponentShape.Toilet => new(2.2, 0, 3, 2, 0.20, 138),
-            ResidentialComponentShape.Vanity when element.Width >= 1.3 => new(1.0, 1.0, 2, 0, 0.50, 55),
-            ResidentialComponentShape.Vanity or ResidentialComponentShape.PedestalSink => new(0.5, 0.5, 1, 0, 0.50, 55),
-            ResidentialComponentShape.KitchenSink => new(1.0, 1.0, 2, 0, 0.50, 55),
-            ResidentialComponentShape.Bathtub => new(1.0, 1.0, 2, 0, 0.60, 138),
-            ResidentialComponentShape.Shower => new(1.0, 1.0, 2, 1, 1.00, 138),
-            ResidentialComponentShape.Dishwasher => new(0, 1.4, 2, 0, 0.15, 55),
-            ResidentialComponentShape.WasherDryer => new(1.0, 1.0, 3, 1, 1.10, 55),
-            ResidentialComponentShape.Bidet => new(0.5, 0.5, 1, 0, 0.20, 138),
+            ResidentialComponentShape.Vanity when element.Width >= 1.3 => new(1.0, 1.0, 2, 0, 0.50, 55) { TrapHeight = 0.45 },
+            ResidentialComponentShape.Vanity or ResidentialComponentShape.PedestalSink => new(0.5, 0.5, 1, 0, 0.50, 55) { TrapHeight = 0.45 },
+            ResidentialComponentShape.KitchenSink => new(1.0, 1.0, 2, 0, 0.50, 55) { TrapHeight = 0.45 },
+            ResidentialComponentShape.Bathtub => new(1.0, 1.0, 2, 0, 0.60, 138) { TrapHeight = -0.15 },
+            ResidentialComponentShape.Shower => new(1.0, 1.0, 2, 1, 1.00, 138) { TrapHeight = -0.15 },
+            ResidentialComponentShape.Dishwasher => new(0, 1.4, 2, 0, 0.15, 55) { TrapHeight = 0.30 },
+            // A washer drains into a 2" standpipe that rises about 60 cm above its trap.
+            ResidentialComponentShape.WasherDryer => new(1.0, 1.0, 3, 1, 1.10, 55) { TrapHeight = 0.30, Tailpiece = 0.60 },
+            ResidentialComponentShape.Bidet => new(0.5, 0.5, 1, 0, 0.20, 138) { TrapHeight = 0.10 },
             ResidentialComponentShape.Urinal => new(2.2, 0, 2, 1, 1.10, 55),
             // The heater's cold demand is the hot demand it serves; the analysis fills it in.
             ResidentialComponentShape.WaterHeater => new(0, 0, 0, 0, Math.Max(0.3, element.Height - 0.1), 55),
@@ -168,6 +183,24 @@ public static class PlumbingStandards
         var head = 10.67 * length * Math.Pow(q, 1.852) / (Math.Pow(HazenWilliams, 1.852) * Math.Pow(d, 4.8704));
         return head * 9.81;
     }
+
+    /// <summary>
+    /// Longest trap arm, from the trap weir to its vent, for a drain size (IPC table 909.1): 6 ft for 1 1/2", 8 ft for
+    /// 2", 12 ft for 3", 16 ft for 4", in meters. A longer arm lets the trap siphon dry.
+    /// </summary>
+    public static double TrapArmLimit(int drainSize) => drainSize switch
+    {
+        <= 0 => 1.8,
+        1 => 2.4,
+        2 => 3.6,
+        _ => 4.9
+    };
+
+    /// <summary>Vent stack size (an index into <see cref="DrainSizes"/>) for the drainage fixture units it vents.</summary>
+    public static int VentSize(double units) => units <= 8 ? 0 : units <= 24 ? 1 : 2;
+
+    /// <summary>A vent stack rises this far above the highest wall top, through the roof.</summary>
+    public const double VentAboveRoof = 0.30;
 
     /// <summary>The smallest drain that carries <paramref name="units"/> DFU and is at least <paramref name="minimum"/>.</summary>
     public static int DrainSize(double units, int minimum)

@@ -11,7 +11,12 @@ public enum CircuitStatus
     /// <summary>The breaker was switched off by hand.</summary>
     Off,
     /// <summary>Overloaded: the breaker has tripped and the circuit is dead.</summary>
-    Tripped
+    Tripped,
+    /// <summary>
+    /// A 240 V appliance on a 120 V circuit (it will not start) or a 120 V device on a 240 V circuit (it would burn):
+    /// the circuit is held dead until it is corrected.
+    /// </summary>
+    WrongVoltage
 }
 
 /// <summary>The result for one circuit.</summary>
@@ -158,8 +163,10 @@ public sealed class ElectricalAnalysis
         length *= 1.1;
         // Single phase: current flows out and back, so the conductor length counts twice.
         var drop = 2 * length / 1000 * ohms * current / Math.Max(1, circuit.Voltage) * 100;
+        var twoPole = circuit.Voltage >= 200;
         var status = devices.Count == 0 ? CircuitStatus.Empty
             : !circuit.BreakerOn ? CircuitStatus.Off
+            : devices.Any(device => device.Needs240 != twoPole) ? CircuitStatus.WrongVoltage
             : utilization > 1 ? CircuitStatus.Tripped
             : utilization > 0.8 ? CircuitStatus.Warning
             : CircuitStatus.Ok;

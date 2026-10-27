@@ -18,6 +18,15 @@ public static class PlumbingGeometry
             foreach (var run in report.Runs)
                 Tube(mesh, new Vector3((float)run.From.X, (float)run.From.Y, (float)run.FromZ),
                     new Vector3((float)run.To.X, (float)run.To.Y, (float)run.ToZ), (float)(run.OutsideMillimeters / 2000), kind);
+            foreach (var vent in report.Vents)
+            {
+                var foot = new Vector3((float)vent.Position.X, (float)vent.Position.Y, (float)vent.Bottom);
+                var top = foot with { Z = (float)vent.Top };
+                var radius = (float)(vent.OutsideMillimeters / 2000);
+                Tube(mesh, foot, top, radius, SurfaceKind.PipeDrain);
+                // The vent cap, a short wider sleeve that keeps rain out.
+                Tube(mesh, top - new Vector3(0, 0, 0.06f), top + new Vector3(0, 0, 0.04f), radius + 0.015f, SurfaceKind.PipeDrain);
+            }
             if (report.System.Kind == PlumbingSystemKind.Sanitary) continue;
             // An angle stop (llave de paso) at the top of each riser.
             foreach (var run in report.Runs.Where(run => run.From.DistanceTo(run.To) < 1e-9 && run.ToZ > run.FromZ))

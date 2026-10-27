@@ -70,6 +70,45 @@ static class ShowcaseShot
         }
     }
 
+    /// <summary>
+    /// Building services seen from outside: a minisplit on the wall beside the front door (its condenser and line set
+    /// outside), and a bathroom and kitchen piped automatically, whose vent stacks rise through the roof.
+    /// </summary>
+    private static void ApplyServices(Guanacaste3D.Core.DocumentSession session)
+    {
+        var document = session.Document;
+        var level = document.Levels[0].Id;
+        var door = document.Openings.First(opening => opening.Kind == Guanacaste3D.Core.OpeningKind.Door);
+        var host = document.Walls.Single(wall => wall.Id == door.WallId);
+        var (cx, cy) = (document.Walls.Average(wall => (wall.Start.X + wall.End.X) / 2), document.Walls.Average(wall => (wall.Start.Y + wall.End.Y) / 2));
+        var (dx, dy) = ((host.End.X - host.Start.X) / host.Length, (host.End.Y - host.Start.Y) / host.Length);
+        var (nx, ny) = (-dy, dx);
+        var mid = (door.Begin + door.End) / 2;
+        var at = new Guanacaste3D.Core.Point2(host.Start.X + dx * mid, host.Start.Y + dy * mid);
+        // The inward normal points toward the middle of the house.
+        if (nx * (cx - at.X) + ny * (cy - at.Y) < 0) (nx, ny) = (-nx, -ny);
+        var along = door.End + 1.0 < host.Length - 0.6 ? door.End + 1.0 : door.Begin - 1.0;
+        var inside = new Guanacaste3D.Core.Point2(host.Start.X + dx * along + nx * host.Thickness / 2, host.Start.Y + dy * along + ny * host.Thickness / 2);
+        session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.MiniSplit, "AC", inside, Math.Atan2(ny, nx));
+
+        Guanacaste3D.Core.ElementPreset Preset(string name) =>
+            Guanacaste3D.Core.ResidentialComponentCatalog.Presets.Single(preset => preset.Name == name);
+        // A bathroom along the south wall of the first bedroom: each fixture turned half round so its back is on the wall.
+        var bedroom = document.Rooms.Single(candidate => candidate.Name == "Dormitorio 1");
+        var (x0, south) = (Math.Min(bedroom.FirstCorner.X, bedroom.SecondCorner.X), Math.Min(bedroom.FirstCorner.Y, bedroom.SecondCorner.Y));
+        foreach (var (name, x) in new[] { ("Toilet", 0.8), ("Pedestal Sink", 1.8), ("Shower Enclosure", 3.1), ("Water Heater", 4.4) })
+        {
+            var preset = Preset(name);
+            var point = new Guanacaste3D.Core.Point2(x0 + x, south + preset.Depth / 2 + 0.02);
+            session.AddElementFromPreset(level, preset, point, point, Math.PI);
+        }
+        var y0 = south;
+        var (minX, minY) = (document.Walls.Min(wall => Math.Min(wall.Start.X, wall.End.X)), document.Walls.Min(wall => Math.Min(wall.Start.Y, wall.End.Y)));
+        session.AddPlumbingPoint(level, Guanacaste3D.Core.PlumbingPointKind.WaterMeter, "M", new Guanacaste3D.Core.Point2(minX - 1, minY - 1));
+        session.AddPlumbingPoint(level, Guanacaste3D.Core.PlumbingPointKind.SewerOutlet, "S", new Guanacaste3D.Core.Point2(minX - 1, y0 - 0.5));
+        session.ConnectPlumbing((kind, number) => $"{kind} {number}");
+    }
+
     /// <summary>The demonstration house at dusk, lit by a ceiling light in every room and a floor lamp, seen from inside.</summary>
     private static BenchmarkScene NightInterior()
     {
@@ -191,6 +230,7 @@ static class ShowcaseShot
             var stairId = session.AddElementFromPreset(level, spiral, new(wx1 + 2.5, wy0 - 1.5), new(wx1 + 3.5, wy0 - 1.5));
             session.AddRailingsOnHost(stairId);
         }
+        if (Environment.GetEnvironmentVariable("G3_SHOT_MEP") == "1") ApplyServices(session);
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true,
             plants: Environment.GetEnvironmentVariable("G3_SHOT_MODEL_TREES") == "1" ? Guanacaste3D.Core.Geometry.PlantDetail.Model : Guanacaste3D.Core.Geometry.PlantDetail.Render);
         var center = (min + max) / 2;

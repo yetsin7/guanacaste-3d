@@ -21,7 +21,7 @@ internal sealed class PlumbingScheduleWindow : Window
     private readonly StackPanel _content = new() { Margin = new Thickness(12) };
 
     private sealed record Row(string Fixture, string Units, string Branch, string Pressure, string Wait, string Invert,
-        string Path, string State, Brush StateBrush, string Note);
+        string Path, string State, Brush StateBrush, string Note, string Vent);
 
     public PlumbingScheduleWindow(DocumentSession session, Action changed, Action connectAll)
     {
@@ -95,7 +95,11 @@ internal sealed class PlumbingScheduleWindow : Window
             Column("PlumbingSchedule.Fixture", nameof(Row.Fixture), 190);
             Column("PlumbingSchedule.Units", nameof(Row.Units), 70);
             Column("PlumbingSchedule.Branch", nameof(Row.Branch), 70);
-            if (kind == PlumbingSystemKind.Sanitary) Column("PlumbingSchedule.Invert", nameof(Row.Invert), 170);
+            if (kind == PlumbingSystemKind.Sanitary)
+            {
+                Column("PlumbingSchedule.Invert", nameof(Row.Invert), 150);
+                Column("PlumbingSchedule.Vent", nameof(Row.Vent), 170);
+            }
             else Column("PlumbingSchedule.Pressure", nameof(Row.Pressure), 170);
             if (kind == PlumbingSystemKind.HotWater) Column("PlumbingSchedule.Wait", nameof(Row.Wait), 90);
             Column("PlumbingSchedule.Path", nameof(Row.Path), 80);
@@ -113,8 +117,14 @@ internal sealed class PlumbingScheduleWindow : Window
                 double.IsNaN(fixture.WaitSeconds) ? string.Empty : $"{fixture.WaitSeconds:0} s",
                 double.IsNaN(fixture.Invert) ? string.Empty : $"{fixture.Invert:0.00} m ({fixture.Cover * 100:0} cm)",
                 $"{fixture.PathLength:0.0} m", StateText(fixture.Status), StateBrush(fixture.Status),
-                string.IsNullOrEmpty(fixture.Issue) ? string.Empty : Text(fixture.Issue))).ToList();
+                string.IsNullOrEmpty(fixture.Issue) ? string.Empty : Text(fixture.Issue),
+                fixture.Vent.Length == 0 ? string.Empty : $"{fixture.Vent} · {fixture.TrapArm:0.0} / {fixture.TrapArmLimit:0.0} m")).ToList();
             _content.Children.Add(grid);
+            foreach (var vent in report.Vents)
+                _content.Children.Add(new TextBlock
+                {
+                    Text = Format("PlumbingSchedule.VentLine", vent.Name, vent.Nominal, vent.Units, vent.Top), Foreground = Brushes.DarkGreen
+                });
 
             var buttons = new WrapPanel { Margin = new Thickness(0, 4, 0, 4) };
             var systemId = report.System.Id;

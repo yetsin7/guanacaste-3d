@@ -19,7 +19,7 @@ internal sealed class ElectricalPanelWindow : Window
     private readonly StackPanel _content = new() { Margin = new Thickness(12) };
 
     private sealed record Row(Guid Id, int Number, string Name, double Breaker, int Devices, string Load, string Current,
-        string Use, string Conductor, string Length, string Drop, string State, Brush StateBrush);
+        string Use, string Conductor, string Length, string Drop, string State, Brush StateBrush, string Voltage);
 
     public ElectricalPanelWindow(DocumentSession session, Action changed)
     {
@@ -58,6 +58,7 @@ internal sealed class ElectricalPanelWindow : Window
             Column("PanelSchedule.Number", nameof(Row.Number), 40);
             Column("PanelSchedule.Name", nameof(Row.Name), 170);
             Column("PanelSchedule.Breaker", nameof(Row.Breaker), 80);
+            Column("PanelSchedule.VoltageColumn", nameof(Row.Voltage), 60);
             Column("PanelSchedule.Devices", nameof(Row.Devices), 80);
             Column("PanelSchedule.Load", nameof(Row.Load), 90);
             Column("PanelSchedule.Current", nameof(Row.Current), 90);
@@ -76,7 +77,7 @@ internal sealed class ElectricalPanelWindow : Window
                 report.Circuit.BreakerAmps, report.Devices.Count, $"{report.LoadWatts:0} W", $"{report.Current:0.0} A",
                 $"{report.Utilization * 100:0} %", $"{report.ConductorAwg} AWG ({report.ConductorSquareMillimeters:0.##} mm²)",
                 $"{report.LengthMeters:0.0} m", $"{report.VoltageDropPercent:0.0} %" + (report.VoltageDropPercent > 3 ? " ⚠" : string.Empty),
-                StateText(report.Status), StateBrush(report.Status))).ToList();
+                StateText(report.Status), StateBrush(report.Status), $"{report.Circuit.Voltage:0} V")).ToList();
             _content.Children.Add(grid);
 
             var buttons = new WrapPanel { Margin = new Thickness(0, 6, 0, 10) };
@@ -108,6 +109,12 @@ internal sealed class ElectricalPanelWindow : Window
             Add("PanelSchedule.Remove", row =>
             {
                 if (row is not null) _session.RemoveCircuit(row.Id);
+            });
+            Add("PanelSchedule.Voltage", row =>
+            {
+                if (row is null) return;
+                var circuit = _session.Document.ElectricalCircuits.Single(candidate => candidate.Id == row.Id);
+                _session.SetCircuitVoltage(row.Id, circuit.Voltage >= 200 ? 120 : 240);
             });
             Add("PanelSchedule.MainBreaker", _ => _session.ToggleSwitch(panelId));
             _content.Children.Add(buttons);
@@ -142,7 +149,7 @@ internal sealed class ElectricalPanelWindow : Window
 
     private static Brush StateBrush(CircuitStatus status) => status switch
     {
-        CircuitStatus.Tripped => Brushes.Red,
+        CircuitStatus.Tripped or CircuitStatus.WrongVoltage => Brushes.Red,
         CircuitStatus.Warning => Brushes.DarkOrange,
         CircuitStatus.Off => Brushes.Gray,
         CircuitStatus.Ok => Brushes.SeaGreen,

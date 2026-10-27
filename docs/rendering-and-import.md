@@ -66,6 +66,9 @@ A physically based CPU path tracer, tuned for architecture:
   colours (blue cold, red hot, PVC drain). They have angle stops at the risers,
   the meter box and the outlet cleanout. Mains run under the floor slab, as
   built, so only the risers show in an interior render.
+- **Vents and air conditioning**: vent stacks come out through the roof with
+  a rain cap. A minisplit shows its indoor unit high on the wall and its
+  condenser on a pad outside, with the insulated line set between them.
 - **Mirrors**: bathroom and wall mirrors are silvered glass (a smooth metal).
 - **Render-quality vegetation**: the render (not the 3D view, which keeps the
   light modelling canopies) grows every planting: a flared trunk splits into

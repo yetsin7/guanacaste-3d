@@ -30,7 +30,12 @@ public enum ElectricalDeviceKind
     /// <summary>Load center (breaker panel).</summary>
     Panel,
     /// <summary>Ceiling fan with a light kit: switched and dimmed like a luminaire, it also draws its motor load.</summary>
-    CeilingFan
+    CeilingFan,
+    /// <summary>
+    /// Ductless split air conditioner: the wall-mounted indoor unit, with its outdoor condenser outside the wall and the
+    /// refrigerant line set between them. It runs on 240 V.
+    /// </summary>
+    MiniSplit
 }
 
 /// <summary>
@@ -66,6 +71,15 @@ public sealed record ElectricalDevice(
     /// <summary>Panels: rating of the main breaker in amperes.</summary>
     public double MainBreakerAmps { get; init; }
 
+    /// <summary>Air conditioners: nominal cooling capacity in BTU per hour.</summary>
+    public double CoolingBtu { get; init; }
+
+    /// <summary>Air conditioners: where the outdoor condenser stands, outside the wall behind the indoor unit.</summary>
+    public Point2? OutdoorPosition { get; init; }
+
+    /// <summary>Equipment that runs only on 240 V; everything else is a 120 V device.</summary>
+    [JsonIgnore] public bool Needs240 => Kind is ElectricalDeviceKind.Outlet240 or ElectricalDeviceKind.MiniSplit;
+
     [JsonIgnore] public bool IsSwitch => Kind is ElectricalDeviceKind.Switch or ElectricalDeviceKind.ThreeWaySwitch or ElectricalDeviceKind.Dimmer;
 
     [JsonIgnore] public bool IsLuminaire => Kind is ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight
@@ -97,6 +111,8 @@ public static class ElectricalStandards
         ElectricalDeviceKind.Outlet240 => 0.60,
         ElectricalDeviceKind.Switch or ElectricalDeviceKind.ThreeWaySwitch or ElectricalDeviceKind.Dimmer => 1.20,
         ElectricalDeviceKind.WallSconce => 2.00,
+        // The centre of a minisplit's indoor unit, a little below a 2.4–2.7 m ceiling.
+        ElectricalDeviceKind.MiniSplit => 2.15,
         ElectricalDeviceKind.Panel => 1.50,
         _ => 0
     };
@@ -112,8 +128,25 @@ public static class ElectricalStandards
         ElectricalDeviceKind.CeilingFan => 75,
         ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet or ElectricalDeviceKind.UsbOutlet => 180,
         ElectricalDeviceKind.Outlet240 => 3500,
+        ElectricalDeviceKind.MiniSplit => CoolingWatts(12000),
         _ => 0
     };
+
+    /// <summary>Capacities in which minisplits are sold, in BTU/h (9000 is ¾ ton, 12000 one ton).</summary>
+    public static IReadOnlyList<double> CoolingCapacities { get; } = [9000, 12000, 18000, 24000, 36000];
+
+    /// <summary>
+    /// Cooling a hot, humid lowland room (Guanacaste, the coasts) takes about 600 BTU/h per square meter of floor:
+    /// one ton (12000 BTU/h) for 20 m².
+    /// </summary>
+    public const double CoolingPerSquareMeter = 600;
+
+    /// <summary>Electrical input of an air conditioner at an EER of 11 BTU/Wh, rounded to 10 W.</summary>
+    public static double CoolingWatts(double btu) => Math.Round(btu / 11 / 10) * 10;
+
+    /// <summary>The smallest standard capacity that cools a room of the given area, or the largest one.</summary>
+    public static double CoolingCapacityFor(double area) =>
+        CoolingCapacities.FirstOrDefault(capacity => capacity >= area * CoolingPerSquareMeter, CoolingCapacities[^1]);
 
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
         kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant

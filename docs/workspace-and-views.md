@@ -117,6 +117,33 @@ How the drawing area behaves in version 0.14. Everything here is covered by
 
   Street pressure and outlet depth are changed there and the results update at
   once.
+- **Traps and vents**:
+  - Every fixture without a built-in trap gets a P-trap. Basins and sinks have
+    it under the bowl, showers and tubs under the floor, and a washer drains
+    into a tall standpipe; toilets and urinals have their own.
+  - Each trap must reach a vent stack within its trap-arm length (IPC 909.1:
+    1.8 m for 1 1/2", 2.4 m for 2", 3.6 m for 3"). Otherwise it fails with *Sin
+    ventilación* or *Brazo de trampa demasiado largo*.
+  - *Conectar plomería* adds a vent stack at the back of any fixture that has
+    none in reach, and reuses existing ones. A stack can also be placed by hand
+    (third option of the service tool).
+  - Stacks are sized by the fixture units they vent and rise 30 cm above the
+    highest wall top, through the roof.
+  - The plan draws each trap arm as a dotted line to its vent, green or red;
+    the schedule lists vent, arm and limit per fixture.
+- **Air conditioning**: *Equipos mecánicos* places a minisplit on a wall.
+  - It is sized for the room it is in, at 600 BTU/h per m² (one ton per
+    20 m²). Its condenser goes outside the wall behind it, joined by the line
+    set through the wall and down the facade.
+  - SPACE on a selected unit steps through 9 000 to 36 000 BTU/h; its load
+    follows at an EER of 11.
+  - The plan labels the capacity: green when it matches the room, orange when
+    under- or oversized.
+  - Wiring it into an empty circuit makes that circuit 240 V (two poles). A
+    120 V device on a 240 V circuit, or the other way round, is a *Tensión
+    equivocada* fault and the circuit stays dead.
+  - The panel schedule shows each circuit's voltage and switches it between
+    120 and 240 V.
 - **Ceiling fans**: the *Luminaria* tool includes a ceiling fan with a light
   kit (SPACE). Its switch and dimmer control the light; it adds 75 W to its
   circuit.

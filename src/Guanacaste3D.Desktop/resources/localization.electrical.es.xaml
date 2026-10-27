@@ -25,6 +25,19 @@
   <sys:String x:Key="Electrical.Kind.Pendant">Lámpara colgante</sys:String>
   <sys:String x:Key="Electrical.Kind.Panel">Tablero eléctrico</sys:String>
   <sys:String x:Key="Electrical.Kind.CeilingFan">Ventilador de techo con luz</sys:String>
+  <sys:String x:Key="Electrical.Kind.MiniSplit">Aire acondicionado minisplit</sys:String>
+  <sys:String x:Key="CircuitStatus.WrongVoltage">¡Tensión equivocada!</sys:String>
+  <sys:String x:Key="PanelSchedule.Voltage">Cambiar 120 / 240 V</sys:String>
+  <sys:String x:Key="PanelSchedule.VoltageColumn">Tensión</sys:String>
+  <sys:String x:Key="Cooling.NoRoom">fuera de una habitación</sys:String>
+  <sys:String x:Key="Cooling.Status.NoRoom">sin habitación</sys:String>
+  <sys:String x:Key="Cooling.Status.Ok">capacidad adecuada</sys:String>
+  <sys:String x:Key="Cooling.Status.Undersized">subdimensionado: no alcanzará la temperatura en la tarde</sys:String>
+  <sys:String x:Key="Cooling.Status.Oversized">sobredimensionado: ciclos cortos, no deshumidifica bien</sys:String>
+  <sys:String x:Key="Status.CoolingCapacity">{0}: {1:0} BTU/h (la habitación pide {2:0}); {3}.</sys:String>
+  <sys:String x:Key="Properties.MiniSplitSummary">{0}&#x0a;Aire acondicionado minisplit&#x0a;Capacidad: {1:0} BTU/h&#x0a;Consumo: {2:0} W ({3:0.0} A a 240 V)&#x0a;Habitación: {4} ({5:0.0} m²)&#x0a;Carga de la habitación: {6:0} BTU/h, instalado {7:0}&#x0a;Estado: {8}&#x0a;Circuito: {9}&#x0a;Espacio cambia la capacidad.</sys:String>
+  <sys:String x:Key="Transaction.SetCoolingCapacity">Cambiar capacidad del aire acondicionado</sys:String>
+  <sys:String x:Key="Transaction.SetCircuitVoltage">Cambiar tensión del circuito</sys:String>
 
   <!-- States -->
   <sys:String x:Key="Electrical.Lit">Encendida</sys:String>

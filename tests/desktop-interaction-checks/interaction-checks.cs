@@ -284,6 +284,16 @@ internal static class InteractionChecks
         Pump();
         Check(_canvas.Children.OfType<System.Windows.Shapes.Ellipse>().Any(shape => shape.Tag is Guid id && id == light.Id),
             "Electrical devices are drawn in plan with their symbols");
+        Invoke("ExecuteApplicationCommand", "MechanicalEquipment");
+        Check(Field<ElectricalDeviceKind?>("_electricalTool") == ElectricalDeviceKind.MiniSplit,
+            "Mechanical equipment arms the air conditioner");
+        Invoke("PlaceElectricalDevice", ElectricalDeviceKind.MiniSplit, Near(2.5, 0.3));
+        Invoke("CancelElectricalTools");
+        var unit = session.Document.ElectricalDevices.Last();
+        Check(unit.Kind == ElectricalDeviceKind.MiniSplit && unit.OutdoorPosition is Point2 outdoor &&
+              Math.Sign(DistanceToLine(wall, outdoor)) != Math.Sign(DistanceToLine(wall, unit.Position)),
+            "An air conditioner placed on a wall gets its condenser on the other side of that wall");
+        session.RemoveElectricalDevice(unit.Id);
         foreach (var device in placed) session.RemoveElectricalDevice(device.Id);
     }
 

@@ -65,9 +65,36 @@ static class PlumbingChecks
         var sink3 = drainReport.Fixtures.Single(fixture => fixture.FixtureId == sink);
         check(drainReport.Fixtures.Single(fixture => fixture.FixtureId == toilet).Nominal == "3\"" &&
               drainReport.MainNominal is "3\"" or "4\"" && sink3.Invert > shower3.Invert && sink3.Cover > 0.1 &&
-              drainReport.Runs.Where(run => run.From.DistanceTo(run.To) > 1e-6)
+              drainReport.Runs.Where(run => !run.Detail && run.From.DistanceTo(run.To) > 1e-6)
                   .All(run => Math.Abs(Math.Abs(run.ToZ - run.FromZ) - PlumbingStandards.DrainSlope * run.From.DistanceTo(run.To)) < 1e-9),
             "Drains fall at 2 % toward the outlet, a toilet takes 3\", and the farthest fixture sits highest");
+
+        var vents = session.Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.VentStack).ToArray();
+        check(vents.Length >= 1 && drainReport.Fixtures.All(fixture => fixture.Vent.Length > 0 && fixture.TrapArm <= fixture.TrapArmLimit) &&
+              drainReport.Status != PlumbingStatus.Fail && drainReport.Vents.Count >= 1 &&
+              drainReport.Vents.All(vent => Math.Abs(vent.Top - (3 + PlumbingStandards.VentAboveRoof)) < 1e-9 && vent.Bottom < 0),
+            "Connecting plumbing adds vent stacks so every trap is vented within its trap-arm length, rising from the drain through the roof");
+        var trapPieces = drainReport.Runs.Where(run => run.Detail).ToArray();
+        var washerAt = PlumbingStandards.Connection(session.Document.StructuralElements.Single(element => element.Id == washer));
+        var washerTrap = trapPieces.Where(run => run.From.DistanceTo(washerAt) < 0.2).ToArray();
+        check(trapPieces.Length == 4 * 4 && washerTrap.Max(run => Math.Max(run.FromZ, run.ToZ)) > 0.85,
+            "Every fixture without a built-in trap gets a P-trap (the toilet has its own), and the washer drains into a tall standpipe");
+        session.ConnectPlumbing((kind, number) => $"{kind} {number}");
+        check(session.Document.PlumbingPoints.Count(point => point.Kind == PlumbingPointKind.VentStack) == vents.Length,
+            "Connecting again reuses the vent stacks already placed");
+        foreach (var vent in vents) session.RemovePlumbingPoint(vent.Id);
+        var unvented = PlumbingAnalysis.Analyze(session.Document).Systems.Single(report => report.System.Kind == PlumbingSystemKind.Sanitary);
+        check(unvented.Fixtures.All(fixture => fixture.Issue == "Plumbing.Issue.NoVent") && unvented.Status == PlumbingStatus.Fail,
+            "Without vent stacks every trap fails: a draining fixture would siphon it dry");
+        var far = session.AddPlumbingPoint(level, PlumbingPointKind.VentStack, "V lejos", new Point2(-20, 0));
+        check(PlumbingAnalysis.Analyze(session.Document).Systems.Single(report => report.System.Kind == PlumbingSystemKind.Sanitary)
+                .Fixtures.All(fixture => fixture.Issue == "Plumbing.Issue.TrapArmTooLong"),
+            "A vent too far from a trap does not protect it");
+        session.RemovePlumbingPoint(far);
+        session.ConnectPlumbing((kind, number) => $"{kind} {number}");
+        cold = session.Document.PlumbingSystems.Single(system => system.Kind == PlumbingSystemKind.ColdWater);
+        hot = session.Document.PlumbingSystems.Single(system => system.Kind == PlumbingSystemKind.HotWater);
+        drain = session.Document.PlumbingSystems.Single(system => system.Kind == PlumbingSystemKind.Sanitary);
 
         session.SetSupplyPressure(meter, 150);
         var low = PlumbingAnalysis.Analyze(session.Document).System(cold.Id)!;
@@ -86,6 +113,10 @@ static class PlumbingChecks
         check(mesh.TriangleKinds.Contains(SurfaceKind.PipeCold) && mesh.TriangleKinds.Contains(SurfaceKind.PipeHot) &&
               mesh.TriangleKinds.Contains(SurfaceKind.PipeDrain),
             "Cold, hot and drain pipes are modeled in 3D in their system colours");
+        var grounded = BuildingMesher.Build(session.Document, includeGround: true);
+        var groundZ = Enumerable.Range(0, grounded.TriangleCount).Where(index => grounded.TriangleKinds[index] == SurfaceKind.Ground)
+            .Select(index => grounded.Positions[grounded.Indices[index * 3]].Z).First();
+        check(groundZ > -0.05f && groundZ < 0.01f, "Buried pipes stay below grade instead of lowering the ground under the house");
 
         session.TogglePlumbingFixture(cold.Id, toilet);
         check(PlumbingAnalysis.Analyze(session.Document).Unserved.Any(item => item.Fixture.Id == toilet && item.Kind == PlumbingSystemKind.ColdWater),
@@ -103,7 +134,8 @@ static class PlumbingChecks
         {
             ProjectFile.Save(path, session.Document);
             var reloaded = ProjectFile.Load(path);
-            check(reloaded.PlumbingPoints.Count == 2 && reloaded.PlumbingSystems.Count == 3 &&
+            check(reloaded.PlumbingPoints.Count == session.Document.PlumbingPoints.Count && reloaded.PlumbingPoints.Count > 2 &&
+                  reloaded.PlumbingSystems.Count == 3 &&
                   reloaded.PlumbingSystems.Single(system => system.Id == cold.Id).Fixtures.Contains(toilet),
                 "Meters, outlets and systems survive a project round trip");
         }
