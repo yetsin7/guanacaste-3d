@@ -98,6 +98,19 @@ public static class ElectricalGeometry
                     Box(mesh, outdoor + along * side, along, front, 0.02f, 0.17f, 0.02f, 0.08f, 0.10f, SurfaceKind.Metal);
                 break;
             }
+            case ElectricalDeviceKind.WaterPump:
+            {
+                // Concrete pad, the blue pressure tank standing on it, and the pump with its motor lying beside it.
+                Box(mesh, position, along, outward, 0.45f, 0.30f, 0, 0, 0.08f, SurfaceKind.Structure);
+                Disc(mesh, position + along * 0.18f, 0.15f, 0.08f, 0.62f, SurfaceKind.PipeCold);
+                Disc(mesh, position + along * 0.18f, 0.03f, 0.62f, 0.66f, SurfaceKind.Metal);
+                var motor = position - along * 0.18f;
+                motor.Z += 0.20f;
+                PlumbingGeometry.Tube(mesh, motor - outward * 0.17f, motor + outward * 0.17f, 0.09f, SurfaceKind.Metal);
+                PlumbingGeometry.Tube(mesh, motor + outward * 0.17f, motor + outward * 0.26f, 0.07f, SurfaceKind.PipeCold);
+                Box(mesh, position - along * 0.18f, along, outward, 0.09f, 0.12f, 0, 0.08f, 0.12f, SurfaceKind.Metal);
+                break;
+            }
             case ElectricalDeviceKind.CeilingFan:
             {
                 // Canopy, a 30 cm downrod, the motor housing, five blades on their irons, and the light kit under it.

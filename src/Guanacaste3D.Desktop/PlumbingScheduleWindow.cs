@@ -65,6 +65,23 @@ internal sealed class PlumbingScheduleWindow : Window
             Tool("PlumbingSchedule.MorePercolation", () => _session.SetPercolation(id, Math.Min(200, tank.Percolation + 10)));
             Tool("PlumbingSchedule.LessPercolation", () => _session.SetPercolation(id, Math.Max(5, tank.Percolation - 10)));
         }
+        foreach (var tank in document.PlumbingPoints.Where(point => point.Kind is PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank))
+        {
+            var id = tank.Id;
+            var current = analysis.Storage.FirstOrDefault(storage => storage.Id == id)?.CapacityLiters ?? 0;
+            Tool("PlumbingSchedule.BiggerTank", () => _session.SetTankCapacity(id, WaterStorage.TankSizes.FirstOrDefault(size => size > current, current)));
+            if (tank.Kind == PlumbingPointKind.Cistern)
+            {
+                var sizes = WaterStorage.PumpSizes;
+                var next = sizes[(sizes.ToList().IndexOf(tank.PumpHorsepower) + 1) % sizes.Count];
+                Tool("PlumbingSchedule.PumpSize", () => _session.SetPump(id, next, tank.PumpPressureKPa));
+            }
+            else
+            {
+                Tool("PlumbingSchedule.HigherTank", () => _session.SetTankHeight(id, Math.Min(40, tank.TankHeight + 1)));
+                Tool("PlumbingSchedule.LowerTank", () => _session.SetTankHeight(id, Math.Max(1, tank.TankHeight - 1)));
+            }
+        }
         foreach (var storm in document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.StormOutlet))
         {
             var id = storm.Id;
@@ -171,6 +188,20 @@ internal sealed class PlumbingScheduleWindow : Window
             _content.Children.Add(buttons);
         }
 
+        foreach (var storage in analysis.Storage)
+            _content.Children.Add(new TextBlock
+            {
+                Text = storage.Kind == PlumbingPointKind.Cistern
+                    ? Format("PlumbingSchedule.CisternLine", storage.Name, storage.Occupants, storage.DailyLiters, storage.CapacityLiters,
+                        storage.PeakFlow, storage.PumpRequiredHorsepower, storage.PumpHorsepower,
+                        Text(storage.PumpPowered ? "Plumbing.PumpOn" : "Plumbing.PumpNoPower"))
+                      + (storage.Issue.Length > 0 ? " · " + Text(storage.Issue) : string.Empty)
+                    : Format("PlumbingSchedule.TankLine", storage.Name, storage.Occupants, storage.DailyLiters, storage.CapacityLiters,
+                        document.PlumbingPoints.First(point => point.Id == storage.Id).TankHeight)
+                      + (storage.Issue.Length > 0 ? " · " + Text(storage.Issue) : string.Empty),
+                FontWeight = FontWeights.SemiBold, Foreground = StateBrush(storage.Status), Margin = new Thickness(0, 12, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            });
         foreach (var septic in analysis.Septic)
             _content.Children.Add(new TextBlock
             {

@@ -57,7 +57,9 @@ public partial class MainWindow
         if (_plumbingPointTool is not PlumbingPointKind kind) return false;
         var next = kind switch
         {
-            PlumbingPointKind.WaterMeter => PlumbingPointKind.SewerOutlet,
+            PlumbingPointKind.WaterMeter => PlumbingPointKind.Cistern,
+            PlumbingPointKind.Cistern => PlumbingPointKind.ElevatedTank,
+            PlumbingPointKind.ElevatedTank => PlumbingPointKind.SewerOutlet,
             PlumbingPointKind.SewerOutlet => PlumbingPointKind.SepticTank,
             PlumbingPointKind.SepticTank => PlumbingPointKind.StormOutlet,
             PlumbingPointKind.StormOutlet => PlumbingPointKind.VentStack,
@@ -87,7 +89,8 @@ public partial class MainWindow
         var count = _session.Document.PlumbingPoints.Count(candidate => candidate.Kind == kind) + 1;
         try
         {
-            _selectedPlumbingId = _session.AddPlumbingPoint(_activeLevelId, kind, $"{PlumbingName(kind)} {count}", point);
+            var name = $"{PlumbingName(kind)} {count}";
+            _selectedPlumbingId = _session.AddPlumbingPoint(_activeLevelId, kind, name, point, FormatText("Plumbing.PumpName", name));
             StatusText.Text = FormatText("Status.PlumbingPlaced", PlumbingName(kind));
         }
         catch (InvalidDataException exception)
@@ -115,7 +118,7 @@ public partial class MainWindow
         {
             SelectPipingSystem(source.Kind switch
             {
-                PlumbingPointKind.WaterMeter => PlumbingSystemKind.ColdWater,
+                PlumbingPointKind.WaterMeter or PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank => PlumbingSystemKind.ColdWater,
                 PlumbingPointKind.StormOutlet => PlumbingSystemKind.StormWater,
                 _ => PlumbingSystemKind.Sanitary
             }, source.Id, source.Name);
@@ -228,8 +231,9 @@ public partial class MainWindow
     {
         if (_session.Document.PlumbingPoints.FirstOrDefault(point => point.Id == _selectedPlumbingId) is not { } point) return false;
         var systems = _session.Document.PlumbingSystems.Count(system => system.SourceId == point.Id);
-        var vent = PlumbingAnalysis.Analyze(_session.Document).Systems.SelectMany(report => report.Vents)
-            .FirstOrDefault(candidate => candidate.Id == point.Id);
+        var analysis = PlumbingAnalysis.Analyze(_session.Document);
+        var vent = analysis.Systems.SelectMany(report => report.Vents).FirstOrDefault(candidate => candidate.Id == point.Id);
+        var storage = analysis.Storage.FirstOrDefault(candidate => candidate.Id == point.Id);
         PropertiesText.Text = point.Kind switch
         {
             PlumbingPointKind.WaterMeter => FormatText("Properties.WaterMeterSummary", point.Name, point.SupplyPressureKPa,
@@ -238,6 +242,13 @@ public partial class MainWindow
             PlumbingPointKind.SepticTank when SiteDrainage.Septic(_session.Document, point) is var septic =>
                 FormatText("Properties.SepticSummary", point.Name, septic.Occupants, septic.DailyLiters, septic.VolumeLiters / 1000,
                     septic.Length, septic.Width, septic.LiquidDepth, point.Percolation, septic.FieldArea, septic.FieldLength, septic.Trenches),
+            PlumbingPointKind.Cistern when storage is not null => FormatText("Properties.CisternSummary", point.Name, storage.Occupants,
+                storage.DailyLiters, storage.CapacityLiters, point.PumpHorsepower, point.PumpPressureKPa, storage.PumpRequiredHorsepower,
+                GetText(storage.PumpPowered ? "Plumbing.PumpOn" : "Plumbing.PumpNoPower"),
+                storage.Issue.Length == 0 ? GetText("PlumbingStatus.Ok") : GetText(storage.Issue)),
+            PlumbingPointKind.ElevatedTank when storage is not null => FormatText("Properties.ElevatedTankSummary", point.Name, storage.Occupants,
+                storage.DailyLiters, storage.CapacityLiters, point.TankHeight, point.TankHeight * 9.81,
+                storage.Issue.Length == 0 ? GetText("PlumbingStatus.Ok") : GetText(storage.Issue)),
             PlumbingPointKind.StormOutlet => FormatText("Properties.StormOutletSummary", point.Name, point.RainfallMmPerHour, point.InvertDepth, systems),
             _ => FormatText("Properties.VentStackSummary", point.Name, vent?.Nominal ?? "—", vent?.Units ?? 0, vent?.Top ?? 0)
         };
@@ -374,7 +385,7 @@ public partial class MainWindow
         var size = Math.Clamp(0.25 * _scale, 10, 20);
         var brush = highlight ?? kind switch
         {
-            PlumbingPointKind.WaterMeter => ColdInk,
+            PlumbingPointKind.WaterMeter or PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank => ColdInk,
             PlumbingPointKind.SewerOutlet or PlumbingPointKind.SepticTank => DrainInk,
             PlumbingPointKind.StormOutlet => StormInk,
             _ => VentInk
@@ -392,8 +403,9 @@ public partial class MainWindow
         AddCanvasLabel(kind switch
         {
             PlumbingPointKind.WaterMeter => "M", PlumbingPointKind.SewerOutlet => "S", PlumbingPointKind.SepticTank => "TS",
+            PlumbingPointKind.Cistern => "CI", PlumbingPointKind.ElevatedTank => "TE",
             PlumbingPointKind.StormOutlet => "P", _ => "V"
-        }, center, brush, size * (kind == PlumbingPointKind.SepticTank ? 0.45 : 0.6), tag);
+        }, center, brush, size * (kind is PlumbingPointKind.SepticTank or PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank ? 0.45 : 0.6), tag);
     }
 
     /// <summary>The septic tank to scale, with its two chambers, and the trenches of its drain field dashed beyond it.</summary>

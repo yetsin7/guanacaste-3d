@@ -44,6 +44,12 @@ public static class PlumbingGeometry
         {
             if (!elevations.TryGetValue(point.LevelId, out var level)) continue;
             if (point.Kind is PlumbingPointKind.SepticTank or PlumbingPointKind.VentStack) continue;
+            if (point.Kind is PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank)
+            {
+                var design = analysis.Storage.FirstOrDefault(storage => storage.Id == point.Id);
+                AddTank(mesh, point, level, design?.CapacityLiters ?? 1100);
+                continue;
+            }
             var at = new Vector3((float)point.Position.X, (float)point.Position.Y, (float)level);
             if (point.Kind == PlumbingPointKind.WaterMeter)
             {
@@ -114,6 +120,38 @@ public static class PlumbingGeometry
         }
     }
 
+    /// <summary>
+    /// A black polyethylene tank: on a concrete pad for a cistern, or on a four-legged steel tower with braces and a
+    /// platform for an elevated tank, with its lid and the outlet down to the ground.
+    /// </summary>
+    private static void AddTank(SceneMesh mesh, PlumbingPoint point, double level, double liters)
+    {
+        var (diameter, height) = WaterStorage.TankShape(liters);
+        var radius = (float)diameter / 2;
+        var at = new Vector3((float)point.Position.X, (float)point.Position.Y, (float)level);
+        var floor = at.Z;
+        if (point.Kind == PlumbingPointKind.ElevatedTank)
+        {
+            floor = at.Z + (float)point.TankHeight;
+            var half = radius * 0.8f + 0.1f;
+            foreach (var (sx, sy) in new[] { (-1, -1), (1, -1), (1, 1), (-1, 1) })
+                Tube(mesh, at + new Vector3(sx * half, sy * half, 0), at + new Vector3(sx * half, sy * half, floor - at.Z), 0.05f, SurfaceKind.Metal, 4);
+            for (var z = 1.5f; z < floor - at.Z - 0.3f; z += 1.8f)
+                foreach (var ((ax, ay), (bx, by)) in new[] { ((-1, -1), (1, -1)), ((1, -1), (1, 1)), ((1, 1), (-1, 1)), ((-1, 1), (-1, -1)) })
+                    Tube(mesh, at + new Vector3(ax * half, ay * half, z), at + new Vector3(bx * half, by * half, z + 0.9f), 0.025f, SurfaceKind.Metal, 4);
+            Block(mesh, at, Vector3.UnitX, Vector3.UnitY, -half - 0.1f, half + 0.1f, -half - 0.1f, half + 0.1f, floor - at.Z - 0.08f, floor - at.Z,
+                SurfaceKind.Metal);
+            // The outlet pipe down the tower to the ground.
+            Tube(mesh, at + new Vector3(0, 0, floor - at.Z), at, 0.025f, SurfaceKind.PipeCold);
+        }
+        else
+            Block(mesh, at, Vector3.UnitX, Vector3.UnitY, -radius - 0.15f, radius + 0.15f, -radius - 0.15f, radius + 0.15f, 0, 0.10f, SurfaceKind.Structure);
+        var bottom = point.Kind == PlumbingPointKind.ElevatedTank ? floor : floor + 0.10f;
+        Tube(mesh, at with { Z = bottom }, at with { Z = bottom + (float)height }, radius, SurfaceKind.OpeningFrame, 20);
+        Tube(mesh, at with { Z = bottom + (float)height }, at with { Z = bottom + (float)height + 0.08f }, radius * 0.75f, SurfaceKind.OpeningFrame, 20);
+        Tube(mesh, at with { Z = bottom + (float)height + 0.08f }, at with { Z = bottom + (float)height + 0.14f }, 0.25f, SurfaceKind.OpeningFrame, 12);
+    }
+
     /// <summary>A box in a local frame: along <paramref name="d"/> from a0 to a1, across <paramref name="n"/> from b0 to b1.</summary>
     private static void Block(SceneMesh mesh, Vector3 origin, Vector3 d, Vector3 n, float a0, float a1, float b0, float b1,
         float bottom, float top, SurfaceKind kind)
@@ -131,7 +169,7 @@ public static class PlumbingGeometry
     }
 
     /// <summary>An eight-sided tube with closed ends from <paramref name="a"/> to <paramref name="b"/>.</summary>
-    public static void Tube(SceneMesh mesh, Vector3 a, Vector3 b, float radius, SurfaceKind kind)
+    public static void Tube(SceneMesh mesh, Vector3 a, Vector3 b, float radius, SurfaceKind kind, int sides = 8)
     {
         var axis = b - a;
         var length = axis.Length();
@@ -141,7 +179,6 @@ public static class PlumbingGeometry
         var u = Vector3.Normalize(Vector3.Cross(helper, direction));
         // (u, v, direction) is right-handed, so the rings below run counter-clockwise seen from b and the quads face out.
         var v = Vector3.Cross(direction, u);
-        const int sides = 8;
         var ringA = new Vector3[sides];
         var ringB = new Vector3[sides];
         for (var index = 0; index < sides; index++)

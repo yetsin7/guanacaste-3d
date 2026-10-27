@@ -27,7 +27,14 @@ public enum PlumbingPointKind
     /// <summary>Septic tank with its drain field, where there is no public sewer: a sanitary outlet that treats on site.</summary>
     SepticTank,
     /// <summary>Storm outlet: where the rainwater drain discharges to the street gutter (cuneta) or a soakaway.</summary>
-    StormOutlet
+    StormOutlet,
+    /// <summary>
+    /// Cistern with a pressure pump: a storage tank on the ground, filled by the meter, whose pump (an electrical device)
+    /// pressurises the house. Without power the pump stops and the house has no pressure.
+    /// </summary>
+    Cistern,
+    /// <summary>Elevated tank on a tower: feeds the house by gravity, with the pressure its height gives.</summary>
+    ElevatedTank
 }
 
 /// <summary>A water meter or sewer outlet on a level, at the edge of the building.</summary>
@@ -47,6 +54,22 @@ public sealed record PlumbingPoint(Guid Id, Guid LevelId, PlumbingPointKind Kind
 
     /// <summary>Storm outlets: design rainfall intensity in mm/h (a short tropical downpour; 150 mm/h in Guanacaste).</summary>
     public double RainfallMmPerHour { get; init; } = 150;
+
+    /// <summary>Storage tanks: nominal capacity in liters; zero takes the standard tank the occupants need.</summary>
+    public double CapacityLiters { get; init; }
+
+    /// <summary>Cisterns: the pump's cut-out pressure in kPa (a 40 psi pressure switch) and its motor power in HP.</summary>
+    public double PumpPressureKPa { get; init; } = 280;
+    public double PumpHorsepower { get; init; } = 1;
+
+    /// <summary>Cisterns: the electrical device that is the pump.</summary>
+    public Guid? PumpDeviceId { get; init; }
+
+    /// <summary>Elevated tanks: height of the tank's floor above the level, in meters.</summary>
+    public double TankHeight { get; init; } = 6;
+
+    /// <summary>Whether the point feeds a cold-water system: the meter, a cistern's pump or an elevated tank.</summary>
+    [JsonIgnore] public bool IsColdSource => Kind is PlumbingPointKind.WaterMeter or PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank;
 
     /// <summary>Whether the point receives the sanitary drain: a sewer connection or a septic tank.</summary>
     [JsonIgnore] public bool IsSanitaryOutlet => Kind is PlumbingPointKind.SewerOutlet or PlumbingPointKind.SepticTank;

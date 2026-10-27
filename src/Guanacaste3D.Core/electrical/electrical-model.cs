@@ -35,7 +35,9 @@ public enum ElectricalDeviceKind
     /// Ductless split air conditioner: the wall-mounted indoor unit, with its outdoor condenser outside the wall and the
     /// refrigerant line set between them. It runs on 240 V.
     /// </summary>
-    MiniSplit
+    MiniSplit,
+    /// <summary>A cistern's pressure pump: motor, pump and pressure tank on a pad; a 120 V motor load.</summary>
+    WaterPump
 }
 
 /// <summary>
@@ -150,7 +152,7 @@ public static class ElectricalStandards
 
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
         kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant
-            or ElectricalDeviceKind.CeilingFan);
+            or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump);
 
     /// <summary>Breaker ratings offered for branch circuits.</summary>
     public static IReadOnlyList<double> BreakerRatings { get; } = [15, 20, 30, 40, 50, 60];

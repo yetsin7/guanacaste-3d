@@ -14,6 +14,25 @@
   <sys:String x:Key="Plumbing.Point.SewerOutlet">Salida a cloaca</sys:String>
   <sys:String x:Key="Plumbing.Point.VentStack">Columna de ventilación</sys:String>
   <sys:String x:Key="Plumbing.Point.SepticTank">Tanque séptico</sys:String>
+  <sys:String x:Key="Plumbing.Point.Cistern">Cisterna con bomba</sys:String>
+  <sys:String x:Key="Plumbing.Point.ElevatedTank">Tanque elevado</sys:String>
+  <sys:String x:Key="Plumbing.PumpName">Bomba de {0}</sys:String>
+  <sys:String x:Key="Plumbing.PumpOn">con energía</sys:String>
+  <sys:String x:Key="Plumbing.PumpNoPower">¡sin energía!</sys:String>
+  <sys:String x:Key="Plumbing.Issue.PumpOff">La bomba no tiene energía: no hay presión</sys:String>
+  <sys:String x:Key="Plumbing.Issue.PumpSmall">La bomba es pequeña para el caudal de la casa</sys:String>
+  <sys:String x:Key="Plumbing.Issue.TankSmall">El tanque no guarda un día de reserva</sys:String>
+  <sys:String x:Key="Properties.CisternSummary">{0}&#x0a;Cisterna con bomba&#x0a;Personas: {1}, consumo {2:0} L/día&#x0a;Tanque: {3:0} L&#x0a;Bomba: {4:0.##} HP a {5:0} kPa (necesita {6:0.00} HP)&#x0a;Energía: {7}&#x0a;Estado: {8}&#x0a;Conecte la bomba a un circuito con la herramienta Cableado.</sys:String>
+  <sys:String x:Key="Properties.ElevatedTankSummary">{0}&#x0a;Tanque elevado&#x0a;Personas: {1}, consumo {2:0} L/día&#x0a;Tanque: {3:0} L&#x0a;Altura: {4:0.0} m ({5:0} kPa por gravedad)&#x0a;Estado: {6}</sys:String>
+  <sys:String x:Key="PlumbingSchedule.BiggerTank">Tanque mayor</sys:String>
+  <sys:String x:Key="PlumbingSchedule.PumpSize">Cambiar bomba</sys:String>
+  <sys:String x:Key="PlumbingSchedule.HigherTank">Tanque elevado +1 m</sys:String>
+  <sys:String x:Key="PlumbingSchedule.LowerTank">Tanque elevado −1 m</sys:String>
+  <sys:String x:Key="PlumbingSchedule.CisternLine">{0}: {1} personas, {2:0} L/día, tanque de {3:0} L; caudal pico {4:0.00} L/s pide {5:0.00} HP, bomba de {6:0.##} HP {7}</sys:String>
+  <sys:String x:Key="PlumbingSchedule.TankLine">{0}: {1} personas, {2:0} L/día, tanque de {3:0} L a {4:0.0} m de altura</sys:String>
+  <sys:String x:Key="Transaction.SetPump">Cambiar bomba</sys:String>
+  <sys:String x:Key="Transaction.SetTankHeight">Cambiar altura del tanque</sys:String>
+  <sys:String x:Key="Transaction.SetTankCapacity">Cambiar capacidad del tanque</sys:String>
   <sys:String x:Key="Plumbing.Point.StormOutlet">Salida pluvial</sys:String>
   <sys:String x:Key="Plumbing.Kind.StormWater">Pluvial</sys:String>
   <sys:String x:Key="Plumbing.SystemName.StormWater">Pluvial {0}</sys:String>
@@ -68,7 +87,7 @@
   <sys:String x:Key="PlumbingStatus.Fail">No cumple</sys:String>
 
   <!-- Status bar and properties -->
-  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic para colocarlo. Espacio cambia entre medidor, salida a cloaca, tanque séptico, salida pluvial y columna de ventilación; Esc termina.</sys:String>
+  <sys:String x:Key="Status.PlumbingPlace">{0}: haz clic para colocarlo. Espacio cambia entre medidor, cisterna con bomba, tanque elevado, salida a cloaca, tanque séptico, salida pluvial y columna de ventilación; Esc termina.</sys:String>
   <sys:String x:Key="Status.PlumbingPlaced">{0} colocado.</sys:String>
   <sys:String x:Key="Status.PipingPickSource">Tubería: haz clic en un medidor (agua fría), un calentador (agua caliente), una salida a cloaca o tanque séptico (desagüe) o una salida pluvial (bajantes).</sys:String>
   <sys:String x:Key="Status.PipingPickFixture">Haz clic en los aparatos sanitarios para conectarlos o desconectarlos; Esc termina.</sys:String>

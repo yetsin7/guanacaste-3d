@@ -8,7 +8,8 @@ public sealed partial class DocumentSession
         double? ceiling = null)
     {
         var id = Guid.NewGuid();
-        var elevation = ElectricalStandards.MountsOnWall(kind) ? ElectricalStandards.MountingHeight(kind) : ceiling ?? WallTopOf(levelId);
+        var elevation = kind == ElectricalDeviceKind.WaterPump ? 0
+            : ElectricalStandards.MountsOnWall(kind) ? ElectricalStandards.MountingHeight(kind) : ceiling ?? WallTopOf(levelId);
         // An air conditioner is sized for the room it is in, and its condenser goes outside the wall behind it.
         var capacity = 0.0;
         Point2? outdoor = null;

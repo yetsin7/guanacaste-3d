@@ -63,14 +63,18 @@ public sealed class PlumbingAnalysis
     private readonly Dictionary<Guid, PlumbingSystemReport> _byId;
 
     private PlumbingAnalysis(List<PlumbingSystemReport> systems, List<(StructuralElement, PlumbingSystemKind)> unserved,
-        List<SepticReport> septic, List<RoofDrainageReport> roofs)
+        List<SepticReport> septic, List<RoofDrainageReport> roofs, List<StorageReport> storage)
     {
+        Storage = storage;
         Systems = systems;
         Unserved = unserved;
         Septic = septic;
         Roofs = roofs;
         _byId = systems.ToDictionary(report => report.System.Id);
     }
+
+    /// <summary>Every cistern and elevated tank: reserve, tank size and pump.</summary>
+    public IReadOnlyList<StorageReport> Storage { get; }
 
     /// <summary>The design of every septic tank and its drain field.</summary>
     public IReadOnlyList<SepticReport> Septic { get; }
@@ -124,6 +128,11 @@ public sealed class PlumbingAnalysis
 
         var reports = new List<PlumbingSystemReport>();
         var heaterPressure = new Dictionary<Guid, double>();
+        // A cistern's pump is an electrical device: it runs only while its circuit and panel are live.
+        var electrical = ElectricalAnalysis.Analyze(document);
+        bool PumpPowered(PlumbingPoint cistern) =>
+            cistern.PumpDeviceId is Guid pump && document.ElectricalDevices.FirstOrDefault(device => device.Id == pump) is { } device &&
+            electrical.Energized(device);
         var rainfall = document.PlumbingPoints.FirstOrDefault(point => point.Kind == PlumbingPointKind.StormOutlet)?.RainfallMmPerHour ?? 150;
         var spoutFlows = SiteDrainage.DownspoutFlows(document, rainfall);
         var spouts = document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Downspout).ToDictionary(element => element.Id);
@@ -144,12 +153,21 @@ public sealed class PlumbingAnalysis
                     }
                 }
                 else if (points.TryGetValue(system.SourceId, out var point) && elevations.TryGetValue(point.LevelId, out var level) &&
-                         (kind == PlumbingSystemKind.ColdWater ? point.Kind == PlumbingPointKind.WaterMeter
+                         (kind == PlumbingSystemKind.ColdWater ? point.IsColdSource
                              : kind == PlumbingSystemKind.Sanitary ? point.IsSanitaryOutlet
                              : point.Kind == PlumbingPointKind.StormOutlet))
                 {
-                    root = new Node(point.Id, point.Name, point.Position, level, 0, null, level, level - point.InvertDepth, point.Position);
-                    start = kind == PlumbingSystemKind.ColdWater ? point.SupplyPressureKPa : level - point.InvertDepth;
+                    // A meter gives the street's pressure at grade; a cistern its pump's pressure, when the pump has power;
+                    // an elevated tank nothing but the height of water above each fixture.
+                    var entry = point.Kind == PlumbingPointKind.ElevatedTank ? level + point.TankHeight : level;
+                    root = new Node(point.Id, point.Name, point.Position, level, 0, null, entry, level - point.InvertDepth, point.Position);
+                    start = kind != PlumbingSystemKind.ColdWater ? level - point.InvertDepth
+                        : point.Kind switch
+                        {
+                            PlumbingPointKind.Cistern => PumpPowered(point) ? point.PumpPressureKPa : 0,
+                            PlumbingPointKind.ElevatedTank => 0,
+                            _ => point.SupplyPressureKPa
+                        };
                 }
                 if (root is null)
                 {
@@ -183,6 +201,13 @@ public sealed class PlumbingAnalysis
                         level + element.Offset + spec.InletHeight, outlet, element.Start));
                 }
                 var report = kind == PlumbingSystemKind.Sanitary ? Drain(system, nodes, start, vents, roofTop) : Supply(system, nodes, start);
+                if (kind == PlumbingSystemKind.ColdWater && points.TryGetValue(system.SourceId, out var source) &&
+                    source.Kind == PlumbingPointKind.Cistern && !PumpPowered(source))
+                    report = report with
+                    {
+                        Status = report.Fixtures.Count == 0 ? PlumbingStatus.Empty : PlumbingStatus.Fail,
+                        Fixtures = report.Fixtures.Select(fixture => fixture with { Status = PlumbingStatus.Fail, Issue = "Plumbing.Issue.PumpOff" }).ToList()
+                    };
                 if (kind == PlumbingSystemKind.ColdWater)
                     foreach (var fixture in report.Fixtures.Where(fixture => components.TryGetValue(fixture.FixtureId, out var element) &&
                                                                              PlumbingStandards.IsWaterHeater(element)))
@@ -219,7 +244,12 @@ public sealed class PlumbingAnalysis
             var status = draining.Count == 0 || capacity < flow ? PlumbingStatus.Fail : capacity < flow * 1.2 ? PlumbingStatus.Warning : PlumbingStatus.Ok;
             return new RoofDrainageReport(item.Roof.Id, item.Roof.Name, item.Area, flow, draining.Count, capacity, status);
         }).ToList();
-        return new PlumbingAnalysis(reports, unserved, septic, roofs);
+        var storage = document.PlumbingPoints.Where(point => point.Kind is PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank)
+            .Select(point => WaterStorage.Design(document, point,
+                reports.Where(report => report.System.SourceId == point.Id).Select(report => report.DesignFlow).DefaultIfEmpty(0).Max(),
+                point.Kind != PlumbingPointKind.Cistern || PumpPowered(point)))
+            .ToList();
+        return new PlumbingAnalysis(reports, unserved, septic, roofs, storage);
     }
 
     /// <summary>

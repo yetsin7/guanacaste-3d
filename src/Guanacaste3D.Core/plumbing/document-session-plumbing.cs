@@ -4,20 +4,66 @@ namespace Guanacaste3D.Core;
 public sealed partial class DocumentSession
 {
     /// <summary>Places a water meter or a sewer outlet.</summary>
-    public Guid AddPlumbingPoint(Guid levelId, PlumbingPointKind kind, string name, Point2 position)
+    public Guid AddPlumbingPoint(Guid levelId, PlumbingPointKind kind, string name, Point2 position, string? pumpName = null)
     {
         var id = Guid.NewGuid();
-        Commit("Transaction.AddPlumbingPoint", document => document.PlumbingPoints.Add(new PlumbingPoint(id, levelId, kind, name, position)));
+        Commit("Transaction.AddPlumbingPoint", document =>
+        {
+            Guid? pump = null;
+            if (kind == PlumbingPointKind.Cistern)
+            {
+                // The pump stands beside the tank on its own pad and is wired like any other load.
+                pump = Guid.NewGuid();
+                document.ElectricalDevices.Add(new ElectricalDevice(pump.Value, levelId, ElectricalDeviceKind.WaterPump,
+                    pumpName ?? $"{name} - pump", new Point2(position.X + 1.1, position.Y), 0)
+                {
+                    Watts = WaterStorage.PumpWatts(1)
+                });
+            }
+            document.PlumbingPoints.Add(new PlumbingPoint(id, levelId, kind, name, position) { PumpDeviceId = pump });
+        });
         return id;
+    }
+
+    /// <summary>Sets a cistern pump's motor size and pressure; its electrical load follows.</summary>
+    public void SetPump(Guid pointId, double horsepower, double kilopascals)
+    {
+        if (!WaterStorage.PumpSizes.Contains(horsepower) || !double.IsFinite(kilopascals) || kilopascals is < 100 or > 700)
+            throw new InvalidDataException("Invalid plumbing point.");
+        var point = Document.PlumbingPoints.FirstOrDefault(candidate => candidate.Id == pointId)
+            ?? throw new InvalidDataException("The plumbing point does not exist.");
+        Commit("Transaction.SetPump", document =>
+        {
+            var index = document.PlumbingPoints.FindIndex(candidate => candidate.Id == pointId);
+            document.PlumbingPoints[index] = point with { PumpHorsepower = horsepower, PumpPressureKPa = kilopascals };
+            var pump = document.ElectricalDevices.FindIndex(device => device.Id == point.PumpDeviceId);
+            if (pump >= 0) document.ElectricalDevices[pump] = document.ElectricalDevices[pump] with { Watts = WaterStorage.PumpWatts(horsepower) };
+        });
+    }
+
+    /// <summary>Sets an elevated tank's height above its level, in meters.</summary>
+    public void SetTankHeight(Guid pointId, double meters)
+    {
+        if (!double.IsFinite(meters) || meters is < 1 or > 40) throw new InvalidDataException("Invalid plumbing point.");
+        UpdatePoint("Transaction.SetTankHeight", pointId, point => point with { TankHeight = meters });
+    }
+
+    /// <summary>Sets a tank's capacity in liters (0 chooses the standard tank the occupants need).</summary>
+    public void SetTankCapacity(Guid pointId, double liters)
+    {
+        if (!double.IsFinite(liters) || liters is < 0 or > 200000) throw new InvalidDataException("Invalid plumbing point.");
+        UpdatePoint("Transaction.SetTankCapacity", pointId, point => point with { CapacityLiters = liters });
     }
 
     /// <summary>Removes a meter or outlet and the systems that start from it.</summary>
     public void RemovePlumbingPoint(Guid pointId)
     {
         if (Document.PlumbingPoints.All(point => point.Id != pointId)) return;
+        var pump = Document.PlumbingPoints.First(point => point.Id == pointId).PumpDeviceId;
         Commit("Transaction.RemovePlumbingPoint", document =>
         {
             document.PlumbingPoints.RemoveAll(point => point.Id == pointId);
+            if (pump is Guid pumpId) document.ElectricalDevices.RemoveAll(device => device.Id == pumpId);
             document.PlumbingSystems.RemoveAll(system => system.SourceId == pointId);
         });
     }
@@ -128,7 +174,9 @@ public sealed partial class DocumentSession
     {
         ventName ??= number => $"V{number}";
         downspoutName ??= number => $"BP{number}";
-        var meters = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.WaterMeter).ToArray();
+        // A house fed from a cistern or an elevated tank takes its cold water from there, not from the meter that fills it.
+        var stored = Document.PlumbingPoints.Where(point => point.Kind is PlumbingPointKind.Cistern or PlumbingPointKind.ElevatedTank).ToArray();
+        var meters = stored.Length > 0 ? stored : Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.WaterMeter).ToArray();
         var outlets = Document.PlumbingPoints.Where(point => point.IsSanitaryOutlet).ToArray();
         var stormOutlets = Document.PlumbingPoints.Where(point => point.Kind == PlumbingPointKind.StormOutlet).ToArray();
         var heaters = Document.StructuralElements.Where(PlumbingStandards.IsWaterHeater).ToArray();
@@ -243,7 +291,7 @@ public sealed partial class DocumentSession
     {
         var valid = kind switch
         {
-            PlumbingSystemKind.ColdWater => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.Kind == PlumbingPointKind.WaterMeter),
+            PlumbingSystemKind.ColdWater => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.IsColdSource),
             PlumbingSystemKind.HotWater => Document.StructuralElements.Any(element => element.Id == sourceId && PlumbingStandards.IsWaterHeater(element)),
             PlumbingSystemKind.StormWater => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.Kind == PlumbingPointKind.StormOutlet),
             _ => Document.PlumbingPoints.Any(point => point.Id == sourceId && point.IsSanitaryOutlet)
@@ -278,7 +326,11 @@ public static class PlumbingRules
                 !double.IsFinite(point.SupplyPressureKPa) || point.SupplyPressureKPa is < 50 or > 1000 ||
                 !double.IsFinite(point.InvertDepth) || point.InvertDepth is < 0.2 or > 5 ||
                 point.Occupants is < 0 or > 200 || !double.IsFinite(point.Percolation) || point.Percolation is < 5 or > 200 ||
-                !double.IsFinite(point.RainfallMmPerHour) || point.RainfallMmPerHour is < 20 or > 400)
+                !double.IsFinite(point.RainfallMmPerHour) || point.RainfallMmPerHour is < 20 or > 400 ||
+                !double.IsFinite(point.CapacityLiters) || point.CapacityLiters is < 0 or > 200000 ||
+                !double.IsFinite(point.PumpPressureKPa) || point.PumpPressureKPa is < 100 or > 700 ||
+                !double.IsFinite(point.PumpHorsepower) || point.PumpHorsepower is < 0 or > 50 ||
+                !double.IsFinite(point.TankHeight) || point.TankHeight is < 1 or > 40)
                 throw new InvalidDataException("Invalid plumbing point.");
         if (document.PlumbingSystems.Select(system => system.Id).Distinct().Count() != document.PlumbingSystems.Count)
             throw new InvalidDataException("Invalid plumbing system.");

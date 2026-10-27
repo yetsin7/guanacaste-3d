@@ -456,6 +456,15 @@ public partial class MainWindow
                 Text("AC", center + depth * 0.5);
                 break;
             }
+            case ElectricalDeviceKind.WaterPump:
+                // A pump: a circle with the impeller triangle, as on plumbing plans.
+                Place(Circle(size * 0.7, null), center);
+                PlanCanvas.Children.Add(new Polygon
+                {
+                    Points = [center + new Vector(-size * 0.4, size * 0.35), center + new Vector(size * 0.45, 0), center + new Vector(-size * 0.4, -size * 0.35)],
+                    Stroke = brush, StrokeThickness = 1.2, Tag = tag
+                });
+                break;
             case ElectricalDeviceKind.CeilingFan:
                 // Four blades around the hub, as in Revit's fan symbol, the hub yellow when its light is on.
                 foreach (var angle in new[] { 0.4, 0.4 + Math.PI / 2, 0.4 + Math.PI, 0.4 + 3 * Math.PI / 2 })

@@ -26,6 +26,7 @@
   <sys:String x:Key="Electrical.Kind.Panel">Tablero eléctrico</sys:String>
   <sys:String x:Key="Electrical.Kind.CeilingFan">Ventilador de techo con luz</sys:String>
   <sys:String x:Key="Electrical.Kind.MiniSplit">Aire acondicionado minisplit</sys:String>
+  <sys:String x:Key="Electrical.Kind.WaterPump">Bomba de agua</sys:String>
   <sys:String x:Key="CircuitStatus.WrongVoltage">¡Tensión equivocada!</sys:String>
   <sys:String x:Key="PanelSchedule.Voltage">Cambiar 120 / 240 V</sys:String>
   <sys:String x:Key="PanelSchedule.VoltageColumn">Tensión</sys:String>
