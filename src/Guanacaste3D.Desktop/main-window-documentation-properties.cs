@@ -90,7 +90,7 @@ public partial class MainWindow
     /// <summary>Synchronizes the properties identity when returning to an already open documentation tab.</summary>
     private void SynchronizeDocumentationView()
     {
-        if (_session is null || CurrentSelection() is not null || _selectedElectricalId is not null) return;
+        if (_session is null || CurrentSelection() is not null || _selectedElectricalId is not null || _selectedPlumbingId is not null) return;
         _selectedGridId = null;
         _selectedViewId = ViewTabs.SelectedIndex switch
         {

@@ -1,0 +1,179 @@
+namespace Guanacaste3D.Core;
+
+/// <summary>The three piped systems of a house: cold water, hot water and the sanitary drain.</summary>
+public enum PlumbingSystemKind
+{
+    ColdWater,
+    HotWater,
+    Sanitary
+}
+
+/// <summary>The points where the building meets the public networks.</summary>
+public enum PlumbingPointKind
+{
+    /// <summary>Water meter and service entry: the source of every cold-water system.</summary>
+    WaterMeter,
+    /// <summary>Building sewer outlet: where the drain leaves for the street sewer or the septic tank.</summary>
+    SewerOutlet
+}
+
+/// <summary>A water meter or sewer outlet on a level, at the edge of the building.</summary>
+public sealed record PlumbingPoint(Guid Id, Guid LevelId, PlumbingPointKind Kind, string Name, Point2 Position)
+{
+    /// <summary>Meters: static pressure of the street main in kilopascals (280 kPa is about 40 psi).</summary>
+    public double SupplyPressureKPa { get; init; } = 280;
+
+    /// <summary>Sewer outlets: depth of the drain invert below the level, in meters, where it meets the public sewer.</summary>
+    public double InvertDepth { get; init; } = 0.60;
+}
+
+/// <summary>
+/// One piped system from its source to the fixtures it serves. Cold water flows from a water meter, hot water from a
+/// water heater (a component), and the sanitary drain runs from the fixtures to a sewer outlet.
+/// </summary>
+public sealed record PlumbingSystem(Guid Id, PlumbingSystemKind Kind, Guid SourceId, string Name)
+{
+    /// <summary>The fixtures (residential components) connected to the system.</summary>
+    public List<Guid> Fixtures { get; init; } = [];
+}
+
+/// <summary>
+/// What a fixture draws and discharges: water supply fixture units (WSFU, IPC table E103.3(2), private use) for cold
+/// and hot water, drainage fixture units (DFU, IPC table 709.1), the smallest trap and drain, the height of its supply
+/// stop above the floor, and the minimum flowing pressure it needs (IPC table 604.3).
+/// </summary>
+public sealed record PlumbingFixtureSpec(double ColdUnits, double HotUnits, double DrainUnits, int MinDrainSize,
+    double InletHeight, double MinPressureKPa)
+{
+    public bool NeedsCold => ColdUnits > 0;
+    public bool NeedsHot => HotUnits > 0;
+    public bool Drains => DrainUnits > 0;
+}
+
+/// <summary>Fixture data, pipe sizes and hydraulic formulas used by the plumbing analysis.</summary>
+public static class PlumbingStandards
+{
+    /// <summary>Copper-tube-size supply pipe (PEX, CPVC or copper): nominal size, inside and outside diameters in mm.</summary>
+    public static IReadOnlyList<(string Nominal, double Inside, double Outside)> SupplySizes { get; } =
+    [
+        ("1/2\"", 13.8, 15.9), ("3/4\"", 19.9, 22.2), ("1\"", 26.0, 28.6), ("1 1/4\"", 32.1, 34.9),
+        ("1 1/2\"", 38.2, 41.3), ("2\"", 50.4, 54.0)
+    ];
+
+    /// <summary>
+    /// PVC drain pipe: nominal size, inside and outside diameters in mm, and the drainage fixture units a horizontal
+    /// drain of that size carries at 2 % slope (IPC tables 710.1(1) and 710.1(2)).
+    /// </summary>
+    public static IReadOnlyList<(string Nominal, double Inside, double Outside, double Capacity)> DrainSizes { get; } =
+    [
+        ("1 1/2\"", 38, 48, 3), ("2\"", 47, 60, 6), ("3\"", 72, 89, 42), ("4\"", 104, 114, 216), ("6\"", 152, 168, 840)
+    ];
+
+    /// <summary>The slope of every horizontal drain: 2 %, a quarter inch per foot.</summary>
+    public const double DrainSlope = 0.02;
+
+    /// <summary>Highest velocity allowed in cold-water pipe, m/s; hot water is held lower to limit erosion and noise.</summary>
+    public const double ColdVelocity = 2.4;
+    public const double HotVelocity = 1.5;
+
+    /// <summary>Hazen–Williams coefficient for plastic and copper tube.</summary>
+    public const double HazenWilliams = 150;
+
+    /// <summary>Equivalent length added for fittings and valves, as a fraction of the straight length.</summary>
+    public const double FittingAllowance = 0.25;
+
+    /// <summary>Hot water should reach a fixture within this many seconds (ASPE: up to 10 s good, 11–30 s marginal).</summary>
+    public const double HotWaitLimit = 30;
+
+    /// <summary>Data of a residential component as a plumbing fixture, or null when it has no water or drain.</summary>
+    public static PlumbingFixtureSpec? Fixture(StructuralElement element)
+    {
+        if (element.Kind != StructuralElementKind.Component) return null;
+        return element.ComponentShape switch
+        {
+            ResidentialComponentShape.Toilet => new(2.2, 0, 3, 2, 0.20, 138),
+            ResidentialComponentShape.Vanity when element.Width >= 1.3 => new(1.0, 1.0, 2, 0, 0.50, 55),
+            ResidentialComponentShape.Vanity or ResidentialComponentShape.PedestalSink => new(0.5, 0.5, 1, 0, 0.50, 55),
+            ResidentialComponentShape.KitchenSink => new(1.0, 1.0, 2, 0, 0.50, 55),
+            ResidentialComponentShape.Bathtub => new(1.0, 1.0, 2, 0, 0.60, 138),
+            ResidentialComponentShape.Shower => new(1.0, 1.0, 2, 1, 1.00, 138),
+            ResidentialComponentShape.Dishwasher => new(0, 1.4, 2, 0, 0.15, 55),
+            ResidentialComponentShape.WasherDryer => new(1.0, 1.0, 3, 1, 1.10, 55),
+            ResidentialComponentShape.Bidet => new(0.5, 0.5, 1, 0, 0.20, 138),
+            ResidentialComponentShape.Urinal => new(2.2, 0, 2, 1, 1.10, 55),
+            // The heater's cold demand is the hot demand it serves; the analysis fills it in.
+            ResidentialComponentShape.WaterHeater => new(0, 0, 0, 0, Math.Max(0.3, element.Height - 0.1), 55),
+            _ => null
+        };
+    }
+
+    public static bool IsWaterHeater(StructuralElement element) =>
+        element.Kind == StructuralElementKind.Component && element.ComponentShape == ResidentialComponentShape.WaterHeater;
+
+    /// <summary>
+    /// Where a fixture's pipes connect: the middle of its back, which stands against the wall where the stub-outs come
+    /// through. Families are authored with their front toward -Y, so the back is +Y turned by the instance's rotation.
+    /// </summary>
+    public static Point2 Connection(StructuralElement element)
+    {
+        var depth = element.Depth > 0 ? element.Depth : element.Width;
+        var back = Math.Max(0, depth / 2 - 0.06);
+        return new Point2(element.Start.X - Math.Sin(element.Rotation) * back, element.Start.Y + Math.Cos(element.Rotation) * back);
+    }
+
+    /// <summary>
+    /// Probable peak flow in liters per second for a number of water supply fixture units, by Hunter's curve for
+    /// flush-tank systems (IPC table E103.3(3)), interpolated.
+    /// </summary>
+    public static double PeakFlow(double units)
+    {
+        if (units <= 0) return 0;
+        double[] wsfu = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100];
+        double[] gpm = [3.0, 5.0, 6.5, 8.0, 9.4, 10.7, 11.8, 12.8, 13.7, 14.6, 16.0, 17.0, 18.0, 18.8, 19.6, 21.5, 23.3, 24.9, 26.3,
+            27.7, 29.1, 32.0, 35.0, 38.0, 41.0, 43.5];
+        double flow;
+        if (units <= 1) flow = 3.0 * units;
+        else if (units >= 100) flow = 43.5 + (units - 100) * 0.25;
+        else
+        {
+            var index = Array.FindIndex(wsfu, value => value >= units);
+            var t = (units - wsfu[index - 1]) / (wsfu[index] - wsfu[index - 1]);
+            flow = gpm[index - 1] + (gpm[index] - gpm[index - 1]) * t;
+        }
+        return flow * 0.0630902;
+    }
+
+    /// <summary>The smallest supply size that keeps the velocity of <paramref name="flow"/> (L/s) under the limit.</summary>
+    public static int SupplySize(double flow, bool hot)
+    {
+        var limit = hot ? HotVelocity : ColdVelocity;
+        for (var index = 0; index < SupplySizes.Count; index++)
+            if (Velocity(flow, SupplySizes[index].Inside) <= limit) return index;
+        return SupplySizes.Count - 1;
+    }
+
+    /// <summary>Mean velocity in m/s of <paramref name="flow"/> L/s in a pipe of the given inside diameter in mm.</summary>
+    public static double Velocity(double flow, double insideMillimeters)
+    {
+        var diameter = insideMillimeters / 1000;
+        return flow / 1000 / (Math.PI * diameter * diameter / 4);
+    }
+
+    /// <summary>Friction loss in kPa over <paramref name="length"/> m of pipe, by Hazen–Williams.</summary>
+    public static double FrictionLoss(double flow, double insideMillimeters, double length)
+    {
+        if (flow <= 0 || length <= 0) return 0;
+        var q = flow / 1000;
+        var d = insideMillimeters / 1000;
+        var head = 10.67 * length * Math.Pow(q, 1.852) / (Math.Pow(HazenWilliams, 1.852) * Math.Pow(d, 4.8704));
+        return head * 9.81;
+    }
+
+    /// <summary>The smallest drain that carries <paramref name="units"/> DFU and is at least <paramref name="minimum"/>.</summary>
+    public static int DrainSize(double units, int minimum)
+    {
+        for (var index = Math.Max(0, minimum); index < DrainSizes.Count; index++)
+            if (DrainSizes[index].Capacity >= units) return index;
+        return DrainSizes.Count - 1;
+    }
+}

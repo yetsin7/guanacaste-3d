@@ -13,6 +13,7 @@ public partial class MainWindow
     private bool TryRefreshExtendedProperties()
     {
         if (TryRefreshElectricalProperties()) return true;
+        if (TryRefreshPlumbingProperties()) return true;
         if (TryRefreshStructuralProperties()) return true;
         if (_session.Document.Grids.FirstOrDefault(axis => axis.Id == _selectedGridId) is { } axis)
         {

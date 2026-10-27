@@ -55,6 +55,7 @@ public sealed class ProjectTemplateDocument
             throw new InvalidDataException("The template contains an invalid named setting.");
     }
 
+    /// <summary>Creates an independent project and restores missing protected base datums from older templates.</summary>
     public BuildingDocument CreateProject(string projectName)
     {
         Validate();

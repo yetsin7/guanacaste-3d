@@ -107,6 +107,7 @@ internal static class InteractionChecks
             StairToolChecks(session);
             TexturedModelChecks(session);
             ElectricalToolChecks(session);
+            PlumbingToolChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -284,6 +285,60 @@ internal static class InteractionChecks
         Check(_canvas.Children.OfType<System.Windows.Shapes.Ellipse>().Any(shape => shape.Tag is Guid id && id == light.Id),
             "Electrical devices are drawn in plan with their symbols");
         foreach (var device in placed) session.RemoveElectricalDevice(device.Id);
+    }
+
+    /// <summary>
+    /// Places a meter and, after SPACE, an outlet with the real tool; pipes a toilet with the piping tool; connects the
+    /// rest automatically from the ribbon; and checks that the plan draws the meter.
+    /// </summary>
+    private static void PlumbingToolChecks(DocumentSession session)
+    {
+        var level = session.Document.Levels[0].Id;
+        Guid Place(string name, double x, double y) => session.AddElementFromPreset(level,
+            ResidentialComponentCatalog.Presets.Single(preset => preset.Name == name), new Point2(x, y), new Point2(x, y));
+        var toilet = Place("Toilet", 202, 204);
+        var vanity = Place("Bathroom Vanity", 203.5, 204);
+        var heater = Place("Water Heater", 206, 201);
+        var shower = Place("Shower Enclosure", 205.2, 204);
+        var sink = Place("Kitchen Sink Cabinet", 209, 204);
+        var pointsBefore = session.Document.PlumbingPoints.Count;
+        Invoke("ExecuteApplicationCommand", "PlumbingService");
+        Invoke("PlacePlumbingPoint", PlumbingPointKind.WaterMeter, new Point2(200, 200));
+        Invoke("TryPlumbingSpace");
+        Invoke("PlacePlumbingPoint", Field<PlumbingPointKind?>("_plumbingPointTool")!.Value, new Point2(200, 205));
+        Invoke("CancelPlumbingTools");
+        var points = session.Document.PlumbingPoints.Skip(pointsBefore).ToArray();
+        Check(points.Select(point => point.Kind).SequenceEqual([PlumbingPointKind.WaterMeter, PlumbingPointKind.SewerOutlet]),
+            "The service tool places a water meter, and SPACE switches it to the sewer outlet");
+
+        Invoke("ExecuteApplicationCommand", "Pipe");
+        Invoke("HandlePipingClick", points[0].Position);
+        Invoke("HandlePipingClick", session.Document.StructuralElements.Single(element => element.Id == toilet).Start);
+        Invoke("CancelPlumbingTools");
+        Check(session.Document.PlumbingSystems.Any(system => system.Kind == PlumbingSystemKind.ColdWater && system.Fixtures.Contains(toilet)),
+            "The piping tool starts a cold system at the meter and connects the toilet clicked next");
+
+        Invoke("ExecuteApplicationCommand", "ConnectPlumbing");
+        var systems = session.Document.PlumbingSystems;
+        Check(systems.Count == 3 && systems.Single(system => system.Kind == PlumbingSystemKind.HotWater).Fixtures.Contains(vanity),
+            "Connecting plumbing from the ribbon builds the cold, hot and sanitary systems");
+        Invoke("RenderPlan");
+        Pump();
+        Check(_canvas.Children.OfType<System.Windows.Shapes.Rectangle>().Any(shape => shape.Tag is Guid id && id == points[0].Id),
+            "The water meter is drawn in plan");
+        // Evidence: the plumbing plan of the little test house, framed on screen.
+        var (scale, pan) = (Field<double>("_scale"), Field<Point>("_panOffset"));
+        SetField("_scale", 70.0);
+        SetField("_panOffset", new Point(-204.5 * 70, 202.5 * 70));
+        Invoke("RenderPlan");
+        Pump();
+        Directory.CreateDirectory("artifacts/interaction-evidence");
+        SaveBitmap("artifacts/interaction-evidence/plumbing-plan.png");
+        SetField("_scale", scale);
+        SetField("_panOffset", pan);
+        foreach (var system in systems.ToArray()) session.RemovePlumbingSystem(system.Id);
+        foreach (var point in points) session.RemovePlumbingPoint(point.Id);
+        foreach (var id in new[] { toilet, vanity, heater, shower, sink }) session.RemoveStructuralElement(id);
     }
 
     private static double DistanceToLine(Wall wall, Point2 point)

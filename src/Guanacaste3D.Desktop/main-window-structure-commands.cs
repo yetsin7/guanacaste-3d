@@ -71,6 +71,14 @@ public partial class MainWindow
                 BeginWiringTool(); return true;
             case "RibbonCommand.PanelSchedule":
                 OpenPanelSchedule(); return true;
+            case "RibbonCommand.PlumbingService":
+                BeginPlumbingPointTool(); return true;
+            case "RibbonCommand.Pipe":
+                BeginPipingTool(); return true;
+            case "RibbonCommand.ConnectPlumbing":
+                ConnectAllPlumbing(); return true;
+            case "RibbonCommand.PlumbingSchedule":
+                OpenPlumbingSchedule(); return true;
             case "RibbonCommand.Toposolid":
                 BeginToposolidSketch(false); return true;
             case "RibbonCommand.GradedRegion":

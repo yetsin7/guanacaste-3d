@@ -71,6 +71,7 @@ public partial class MainWindow
         if (primitive is SheetText text)
         {
             var label = new TextBlock { Text = text.Text, FontSize = text.Size, Foreground = brush,
+                FontFamily = new FontFamily("Arial"),
                 FontWeight = text.Bold ? FontWeights.Bold : FontWeights.Normal, IsHitTestVisible = false };
             Canvas.SetLeft(label, text.Position.X);
             Canvas.SetTop(label, text.Position.Y);

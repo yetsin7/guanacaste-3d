@@ -63,8 +63,10 @@ public sealed class BuildingDocument
     public List<RenderMaterialAssignment> RenderMaterials { get; set; } = [];
     public List<ElectricalDevice> ElectricalDevices { get; set; } = [];
     public List<ElectricalCircuit> ElectricalCircuits { get; set; } = [];
+    public List<PlumbingPoint> PlumbingPoints { get; set; } = [];
+    public List<PlumbingSystem> PlumbingSystems { get; set; } = [];
 
-    /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
+    /// <summary>Creates a project with protected floor/roof datums and built-in architectural type catalogs.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
     {
         var levels = new List<Level>
@@ -115,7 +117,9 @@ public sealed class BuildingDocument
         InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList(),
         RenderMaterials = [.. RenderMaterials],
         ElectricalDevices = ElectricalDevices.Select(device => device with { Controls = [.. device.Controls] }).ToList(),
-        ElectricalCircuits = [.. ElectricalCircuits]
+        ElectricalCircuits = [.. ElectricalCircuits],
+        PlumbingPoints = [.. PlumbingPoints],
+        PlumbingSystems = PlumbingSystems.Select(system => system with { Fixtures = [.. system.Fixtures] }).ToList()
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
@@ -206,6 +210,7 @@ public sealed class BuildingDocument
         InPlaceFamilyRules.Validate(this);
         RenderMaterialRules.Validate(this);
         ElectricalRules.Validate(this);
+        PlumbingRules.Validate(this);
     }
 
     /// <summary>Checks the persisted color contract without coupling the core model to a UI framework.</summary>

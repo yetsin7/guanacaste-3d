@@ -86,6 +86,7 @@ public partial class MainWindow
             return;
         }
         if (TryHandleElectricalClick(e)) return;
+        if (TryHandlePlumbingClick(e)) return;
         if (TryHandleTopoPointClick(e)) return;
         if (TryHandleRoomPlacement(e)) return;
         if (TryHandleColumnPlacement(e)) return;
@@ -106,6 +107,7 @@ public partial class MainWindow
         {
             if (TrySelectOpeningSymbol(e)) return;
             if (TrySelectElectrical(e)) return;
+            if (TrySelectPlumbing(e)) return;
             if (TrySelectExtendedPlanElement(e)) return;
             _selectedViewId = null;
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
@@ -117,6 +119,7 @@ public partial class MainWindow
             _selectedStructuralId = null;
             _selectedColumnId = null;
             _selectedElectricalId = null;
+            _selectedPlumbingId = null;
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(candidate => candidate.Id == wallId);
@@ -137,7 +140,7 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (CancelElectricalTools())
+        if (CancelElectricalTools() | CancelPlumbingTools())
         {
             StatusText.Text = GetText("Status.SelectionMode");
             e.Handled = true;
@@ -298,6 +301,7 @@ public partial class MainWindow
             PlanCanvas.Children.Add(marker);
         }
         RenderElectricalPlan();
+        RenderPlumbingPlan();
         RenderMovePreview();
         RenderTemporaryDimensions();
         RenderWallSketchOverlay();

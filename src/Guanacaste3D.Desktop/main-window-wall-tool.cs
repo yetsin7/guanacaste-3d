@@ -43,7 +43,7 @@ public partial class MainWindow
         if (_lastPlanPointer == position) return;
         _lastPlanPointer = position;
         _placementPointer = CanvasToWorld(PlanPosition(e));
-        if (_placingOpening is not null || _drawingColumn || _drawingRoom || _electricalTool is not null)
+        if (_placingOpening is not null || _drawingColumn || _drawingRoom || _electricalTool is not null || _plumbingPointTool is not null)
         {
             RenderPlan();
             return;

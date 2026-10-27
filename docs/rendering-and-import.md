@@ -62,6 +62,10 @@ A physically based CPU path tracer, tuned for architecture:
   have a small, bright lens, and an open switch leaves the diffuser dark. A
   dimmer scales the light it controls: the render gives those triangles a copy
   of the emitter material at the dimmed radiance (in 1/64 steps).
+- **Plumbing**: pipes are modelled at their outside diameter in the system
+  colours (blue cold, red hot, PVC drain). They have angle stops at the risers,
+  the meter box and the outlet cleanout. Mains run under the floor slab, as
+  built, so only the risers show in an interior render.
 - **Mirrors**: bathroom and wall mirrors are silvered glass (a smooth metal).
 - **Render-quality vegetation**: the render (not the 3D view, which keeps the
   light modelling canopies) grows every planting: a flared trunk splits into

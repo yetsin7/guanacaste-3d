@@ -103,12 +103,12 @@ public partial class MainWindow
         RefreshAll();
     }
 
-    /// <summary>Adds an A1 drawing sheet and opens the sheet workspace.</summary>
+    /// <summary>Adds an A3 architectural drawing sheet and opens the editable paper workspace.</summary>
     private void AddSheet_Click(object sender, RoutedEventArgs e)
     {
         var index = _session.Document.Sheets.Count + 1;
         _selectedSheetId = _session.AddSheet(
-            SheetPaperSize.A1, $"{GetText("Entity.Sheet")} {index}");
+            SheetPaperSize.A3, $"{GetText("Entity.Sheet")} {index}");
         _selectedViewId = null;
         ViewTabs.SelectedIndex = 3;
         StatusText.Text = GetText("Status.SheetCreated");
@@ -263,6 +263,7 @@ public partial class MainWindow
         _selectedStructuralId = structuralId;
         _selectedGridId = null;
         _selectedElectricalId = null;
+        _selectedPlumbingId = null;
         _selectedViewId = null;
         _selectedWallId = null;
         _selectedOpeningId = null;

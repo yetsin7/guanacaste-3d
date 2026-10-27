@@ -41,9 +41,10 @@ elevations. Cut geometry includes the corresponding triangulated family solids.
 Level elevations remain absolute project coordinates, including below-grade
 foundations.
 
-The application's PDF export produces one page per level plan, section, and
-elevation. Plans include permanent dimensions, notes, axes, cut references, and
-family outlines. Generated pages use their saved view names and level datums.
+Without saved sheets, PDF export produces one page per level plan, section, and
+elevation. With saved sheets, it prints their editable compositions and reusable
+title-block families. Plans include permanent dimensions, notes, axes, cut
+references, and family outlines. Generated pages use their saved view names and level datums.
 `PdfPlanExporter.Export` remains available for plan-only callers;
 `ExportDocumentation` produces the coordinated set.
 
@@ -57,8 +58,8 @@ family outlines. Generated pages use their saved view names and level datums.
   angular/radial annotation editor.
 - Text notes use the existing model-text representation. A full view-owned
   annotation/tag-family system remains separate work.
-- Generated PDF pages are independent drawings with title blocks; this does not
-  implement arbitrary multi-viewport sheet composition or print-view selection.
+- Editable sheets support multiple placed views with independent scales. See
+  [editable sheet families](editable-sheet-families.md) for composition and family-file workflows.
 
 ## Reproducible checks
 

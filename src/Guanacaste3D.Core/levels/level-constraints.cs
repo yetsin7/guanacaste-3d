@@ -70,6 +70,7 @@ public static class LevelConstraints
         document.Columns.Count(column => column.LevelId == levelId) +
         document.StructuralElements.Count(element => element.LevelId == levelId) +
         document.ElectricalDevices.Count(device => device.LevelId == levelId) +
+        document.PlumbingPoints.Count(point => point.LevelId == levelId) +
         document.Sheets.SelectMany(sheet => sheet.Viewports).Count(viewport => document.Views.Any(view =>
             view.Id == viewport.ViewId && view.LevelId == levelId));
 }

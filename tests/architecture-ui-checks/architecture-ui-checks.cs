@@ -233,9 +233,10 @@ internal static class ArchitectureUiChecks
         var plan = (Canvas)_window.FindName("PlanCanvas");
         Check(plan.Children.OfType<System.Windows.Shapes.Line>().Any(line => Equals(line.Tag, familyId)),
             "An in-place family appears in the interactive floor plan");
-        Invoke("RenderPlanOnSheet", 45d, 55d, 780d, 610d);
+        SetField("_selectedSheetId", (Guid?)session.AddSheet(SheetPaperSize.A3));
+        Invoke("RenderSheet");
         var sheet = (Canvas)_window.FindName("SheetCanvas");
-        Check(sheet.Children.OfType<System.Windows.Shapes.Line>().Any(line => Equals(line.Tag, familyId)),
+        Check(sheet.Children.OfType<Canvas>().Single().Children.OfType<System.Windows.Shapes.Polyline>().Count() >= 4,
             "A family-only project appears in the drawing sheet viewport");
     }
 

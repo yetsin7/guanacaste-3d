@@ -41,6 +41,18 @@ public sealed record SheetViewport(Guid Id, Guid ViewId, double X, double Y, dou
 /// <summary>Builds editable architectural borders following the user's header/drawing/footer reference composition.</summary>
 public static class SheetFamilies
 {
+    /// <summary>Recognizes standard physical paper sizes in either orientation while allowing custom family dimensions.</summary>
+    public static SheetPaperSize? PaperSizeOf(SheetFamilyLayout layout)
+    {
+        foreach (var paper in Enum.GetValues<SheetPaperSize>())
+        {
+            var size = Interop.PdfPlanExporter.PaperSize(paper);
+            if (Math.Abs(Math.Max(layout.Width, layout.Height) - size.Width) < 0.1 &&
+                Math.Abs(Math.Min(layout.Width, layout.Height) - size.Height) < 0.1) return paper;
+        }
+        return null;
+    }
+
     /// <summary>Creates a native family that can be edited, saved as .g3df, and reused by multiple drawing sheets.</summary>
     public static FamilyDocument Create(SheetPaperSize paper, bool portrait = true)
     {

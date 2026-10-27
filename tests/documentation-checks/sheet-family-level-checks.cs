@@ -68,6 +68,7 @@ internal static partial class DocumentationChecks
         var secondId = session.AddSheetFromFamily(loadedFamily);
         var second = session.Document.Sheets.Single(sheet => sheet.Id == secondId);
         Check(second.TitleBlockFamilyId == sheet.TitleBlockFamilyId, "Imported native families can be shared between sheets");
+        Check(second.PaperSize == SheetPaperSize.A3, "Imported family paper metadata agrees with its physical dimensions");
         var changedFamily = loadedFamily.Clone();
         changedFamily.SheetLayout = changedFamily.SheetLayout! with { Graphics = changedFamily.SheetLayout.Graphics.Select(graphic =>
             graphic.Id == marker.Id ? graphic with { Text = "Shared family update" } : graphic).ToList() };
@@ -82,7 +83,7 @@ internal static partial class DocumentationChecks
         var landscape = SheetFamilies.Create(SheetPaperSize.A3, portrait: false);
         var north = session.Document.Views.Single(view => view.Id == BuiltInProjectViews.NorthElevationId);
         var east = session.Document.Views.First(view => view.Kind == ProjectViewKind.Elevation && view.Orientation == ViewOrientation.East);
-        session.UpdateSheet(second with { Name = "Architectural elevations", Number = "ARQ-02", TitleBlockFamilyId = landscape.Id,
+        session.UpdateSheet(second with { Name = "Architectural elevations", Number = "ARQ-02", DateText = "27/10/2026", TitleBlockFamilyId = landscape.Id,
             Viewports = [new(Guid.NewGuid(), north.Id, 20, 90, 185, 117, 100, "1"),
                 new(Guid.NewGuid(), east.Id, 215, 90, 185, 117, 150, "2")] }, landscape);
         var reopened = Reopen(session.Document, "sheet-families.g3d");
@@ -99,6 +100,29 @@ internal static partial class DocumentationChecks
             "PDF export prints the two saved compositions and clips viewports independently");
         var templatePath = Path.Combine(output, "sheet-family-template.g3dt"); TemplateFile.Save(templatePath, reopened);
         Check(TemplateFile.Load(templatePath).SheetFamilies.Count == 2, "Reusable sheet families survive template save and reopening");
+        WriteReferenceExample(reopened, output);
+    }
+
+    /// <summary>Produces a localized, editable project and matching PDF for review without test-only marker text.</summary>
+    private static void WriteReferenceExample(BuildingDocument source, string output)
+    {
+        var session = new DocumentSession(source);
+        var roof = session.Document.Levels.Single(level => level.Role == LevelRole.BaseRoof);
+        session.UpdateLevel(roof.Id, DefaultLabels.Get("LevelName", 2), roof.Elevation);
+        var example = session.Document.Clone(); example.Name = DefaultLabels.Get("ExampleProject");
+        example.Sheets = example.Sheets.Select((sheet, index) => sheet with
+        {
+            Name = DefaultLabels.Get(index == 0 ? "ExamplePlan" : "ExampleElevations"),
+            Description = index == 0 ? DefaultLabels.Get("ExampleDescription") : string.Empty,
+            Subtitle = DefaultLabels.Get("ExampleSubtitle"),
+            Viewports = sheet.Viewports.Select((viewport, viewIndex) => viewport with { Scale = viewIndex == 0 ? 75 : 100 }).ToList()
+        }).ToList();
+        foreach (var family in example.SheetFamilies)
+            family.SheetLayout = family.SheetLayout! with { Graphics = family.SheetLayout.Graphics.Select(graphic =>
+                graphic.Text == "Shared family update" ? graphic with { Text = DefaultLabels.Get("ExampleNote") } : graphic).ToList() };
+        var path = Path.Combine(output, "reference-style-example.g3d"); ProjectFile.Save(path, example);
+        File.WriteAllBytes(Path.Combine(output, "reference-style-example.pdf"), PdfPlanExporter.ExportSheets(example, DateTimeOffset.UnixEpoch));
+        Check(ProjectFile.Load(path).Sheets.Count == 2, "The review example opens as a native project with two editable sheet compositions");
     }
 
     /// <summary>Constructs an authentic historical compressed container to test migration after header integrity validation.</summary>

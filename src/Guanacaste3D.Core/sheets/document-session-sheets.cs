@@ -19,7 +19,8 @@ public sealed partial class DocumentSession
             var layout = family.SheetLayout;
             var inset = layout.Margin + 8;
             var plan = document.Views.First(view => view.Kind == ProjectViewKind.Plan);
-            document.Sheets.Add(new DrawingSheet(id, $"A{number:D3}", DefaultLabels.Get("SheetName", number), SheetPaperSize.A1)
+            document.Sheets.Add(new DrawingSheet(id, $"A{number:D3}", DefaultLabels.Get("SheetName", number),
+                SheetFamilies.PaperSizeOf(layout) ?? SheetPaperSize.A1)
             {
                 TitleBlockFamilyId = family.Id,
                 Viewports = [new(Guid.NewGuid(), plan.Id, inset, inset + layout.HeaderHeight,

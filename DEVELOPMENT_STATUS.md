@@ -1,6 +1,18 @@
 # Development status
 
-Last updated: 2026-10-26. Version: 0.17.0.
+Last updated: 2026-10-27. Version: 0.18.0.
+
+## Plumbing systems and ceiling fans (0.18, 2026-10-27)
+
+- Plumbing: water meter and sewer outlet; cold, hot and sanitary systems connected by hand or automatically;
+  tree routing along the axes.
+  - Supply: sized by Hunter's curve and velocity, with flowing pressure per fixture (Hazen–Williams) and the wait
+    for hot water.
+  - Drains: sized by DFU at 2 % slope from the outlet invert, with a cover check.
+  - Views: plan drawing by system, plumbing schedule, 3D pipes.
+  - Project schema 14.
+- Ceiling fan with light kit as a switchable, dimmable electrical device.
+- Dryer and microwave families have shapes of their own (a dryer needs no water).
 
 ## More families, component rotation and dimmed lights (0.17, 2026-10-26)
 

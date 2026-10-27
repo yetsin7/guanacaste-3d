@@ -66,12 +66,12 @@ How the drawing area behaves in version 0.14. Everything here is covered by
 - **Realistic 3D view**: with *Maqueta gris* off, the 3D view shows the render
   textures assigned in *Render → Materiales*, projected exactly as the renderer
   projects them.
-- **PDF sheets**: *Archivo → Exportar planos a PDF…* writes one vector sheet per
-  level on the paper of the project's first sheet (A3 otherwise): walls cut and
-  filled, doors with leaves and swings, windows, rooms with name and area,
-  stairs with their walking line, roofs with overhang and ridges, plantings,
-  contours, title block (project, view, scale, date, sheet number), scale bar
-  and north arrow, at the largest standard scale that fits.
+- **Editable PDF sheets**: *Archivo → Exportar planos a PDF…* prints the saved
+  sheet compositions using native `.g3df` title-block families, actual physical
+  paper dimensions, and independently scaled model views. Double-click a sheet
+  to edit its views, border, texts, and fields. Without saved sheets, the exporter
+  generates a coordinated set of plans, sections, and elevations. See
+  [editable sheet families](editable-sheet-families.md).
 - **Wall, door and window catalog**: about thirty wall types grouped by what
   they are built of (gypsum partitions 75–160 mm, moisture-resistant, acoustic
   and shaft-wall gypsum, glass partitions and storefronts, concrete block,
@@ -97,6 +97,29 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   SPACE turns the next component a quarter turn while placing, and turns the
   selected one afterwards (*Rotar* does the same). One undoable step; the turn
   is saved with the project.
+- **Plumbing**: *Medidor y salida* places the water meter (SPACE switches to
+  the sewer outlet). *Conectar plomería* connects the whole house in one
+  undoable step:
+  - cold water from the nearest meter to every fixture and water heater;
+  - hot water from the nearest heater to the fixtures that use it;
+  - every drain to the nearest outlet.
+
+  *Tubería* does the same by hand: click a meter, heater or outlet, then the
+  fixtures to connect or disconnect. Each system is routed as a tree along the
+  axes. The plan draws cold water solid blue, hot water dashed red and drains
+  long-dashed brown, with sizes and the 2 % slope. Every fixture connection gets
+  a green, orange or red dot, and fixtures still missing a system get a red
+  ring. *Cuadro de plomería* lists, for every system and fixture:
+  - fixture units, design flow and pipe sizes;
+  - flowing pressure against the fixture's minimum;
+  - the wait for hot water;
+  - the drain invert and its cover under the floor.
+
+  Street pressure and outlet depth are changed there and the results update at
+  once.
+- **Ceiling fans**: the *Luminaria* tool includes a ceiling fan with a light
+  kit (SPACE). Its switch and dimmer control the light; it adds 75 W to its
+  circuit.
 - **Electrical**: *Luminaria*, *Dispositivo eléctrico* (receptacles) and
   *Interruptor* place devices (SPACE cycles the kind; wall devices snap to the
   nearest wall within 0.8 m and take their standard height: receptacles 0.30 m,

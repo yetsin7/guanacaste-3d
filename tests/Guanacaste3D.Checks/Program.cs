@@ -1,7 +1,6 @@
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Rendering;
-
 /// <summary>Fails the executable check suite when an expected invariant is not satisfied.</summary>
 static void Check(bool valid, string explanation)
 {
@@ -395,6 +394,7 @@ SiteRoofStairChecks.Run(Check);
 RenderDetailChecks.Run(Check);
 ElectricalChecks.Run(Check);
 CatalogChecks.Run(Check);
+PlumbingChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 ModelViewIntegrationChecks.Run(Check);
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

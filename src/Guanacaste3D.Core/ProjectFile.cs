@@ -189,7 +189,14 @@ public static class ProjectFile
             document.SchemaVersion = 13;
             document.Grids ??= [];
         }
-        if (document.SchemaVersion == 13) document.SchemaVersion = 14;
+        // Schema 14 adds plumbing: water meters, sewer outlets and the cold, hot and sanitary systems.
+        if (document.SchemaVersion == 13)
+        {
+            document.SchemaVersion = 14;
+            document.PlumbingPoints ??= [];
+            document.PlumbingSystems ??= [];
+        }
+        // Schema 15 adds protected base datums and editable drawing-sheet families and compositions.
         if (document.SchemaVersion == 14)
         {
             document.SchemaVersion = 15;

@@ -23,6 +23,7 @@
   <sys:String x:Key="SheetEditor.Date">Fecha (vacío: actual)</sys:String>
   <sys:String x:Key="SheetEditor.Composition">Vistas y composición</sys:String>
   <sys:String x:Key="SheetEditor.Family">Familia de cajetín</sys:String>
+  <sys:String x:Key="SheetEditor.FamilyName">Nombre de la familia</sys:String>
   <sys:String x:Key="SheetEditor.AddView">Añadir vista</sys:String>
   <sys:String x:Key="SheetEditor.RemoveView">Quitar vista</sys:String>
   <sys:String x:Key="SheetEditor.Rows">Distribuir en filas</sys:String>

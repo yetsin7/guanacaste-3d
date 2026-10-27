@@ -50,14 +50,17 @@ internal static partial class DocumentationChecks
         var graphics = (ObservableCollection<SheetGraphicRow>)editorType.GetField("_graphics", PrivateInstance)!.GetValue(editor)!;
         editorType.GetMethod("AddText_Click", PrivateInstance)!.Invoke(editor, [editor, new RoutedEventArgs()]);
         graphics.Last().Text = "Family editor verification"; graphics.Last().StartY = 36;
+        ((TextBox)editorType.GetField("_familyName", PrivateInstance)!.GetValue(editor)!).Text = "Office drawing family";
         editorType.GetMethod("Apply_Click", PrivateInstance)!.Invoke(editor, [editor, new RoutedEventArgs()]);
         Pump();
         var sheet = session.Document.Sheets.Single(sheet => sheet.Id == id);
         Check(sheet.Viewports.Count == 2 && sheet.Viewports.Select(viewport => viewport.Scale).SequenceEqual(new[] { 100d, 50d }),
             "Applying the sheet editor stores independently scaled plan and elevation placements");
         var family = session.Document.SheetFamilies.Single(family => family.Id == sheet.TitleBlockFamilyId);
-        Check(family.SheetLayout!.Graphics.Any(graphic => graphic.Text == "Family editor verification"),
+        Check(family.Name == "Office drawing family" && family.SheetLayout!.Graphics.Any(graphic => graphic.Text == "Family editor verification"),
             "The family tab commits editable paper graphics to the native family definition");
+        ((DockPanel)editor.Content).Children.OfType<TabControl>().Single().SelectedIndex = 1; Pump();
+        SaveEditorEvidence(editor, "sheet-family-editor.png");
         editor.Close(); Pump();
         Check(canvas.Children.OfType<Canvas>().Count() == 2 && canvas.Children.OfType<TextBlock>().Any(label => label.Text == "Family editor verification"),
             "The sheet preview regenerates both placed drawings and edited family fields");
@@ -73,5 +76,17 @@ internal static partial class DocumentationChecks
         session.Undo();
         Check(session.Document.Sheets.All(sheet => sheet.Id != imported.Id),
             "Undo removes the imported sheet as one transaction without deleting its source file");
+    }
+
+    /// <summary>Captures the actual family editor controls independently of the owner's paper preview.</summary>
+    private static void SaveEditorEvidence(Window editor, string name)
+    {
+        editor.UpdateLayout();
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)editor.ActualWidth, (int)editor.ActualHeight,
+            96, 96, System.Windows.Media.PixelFormats.Pbgra32); bitmap.Render(editor);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using var stream = File.Create(Path.Combine(Path.GetFullPath("artifacts/documentation-evidence"), name));
+        encoder.Save(stream);
     }
 }

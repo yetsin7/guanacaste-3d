@@ -18,7 +18,7 @@ public partial class MainWindow
     private void BeginSectionTool()
     {
         SetWallTool(false);
-        _selectedElectricalId = null;
+        _selectedElectricalId = _selectedPlumbingId = null;
         _creatingSection = true;
         ViewTabs.SelectedIndex = 0;
         PlanCanvas.Cursor = Cursors.Cross;
@@ -111,7 +111,7 @@ public partial class MainWindow
         if ((e.OriginalSource as FrameworkElement)?.Tag is not Guid id ||
             !_session.Document.Views.Any(view => view.Id == id && view.Kind == ProjectViewKind.Section)) return false;
         _selectedViewId = id;
-        _selectedElectricalId = null;
+        _selectedElectricalId = _selectedPlumbingId = null;
         _selectedWallId = _selectedOpeningId = _selectedColumnId = _selectedStructuralId = null;
         _selectedRoomId = _selectedFloorId = null;
         if (e.ClickCount >= 2) SelectProjectView(id);

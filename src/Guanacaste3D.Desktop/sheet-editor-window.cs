@@ -23,6 +23,7 @@ public sealed class SheetEditorWindow : Window
     private readonly DataGrid _graphicGrid = new();
     private readonly TextBox _name = new(), _number = new(), _description = new(), _subtitle = new(), _date = new();
     private readonly TextBox _width = new(), _height = new(), _margin = new(), _header = new(), _footer = new();
+    private readonly TextBox _familyName = new();
     private readonly ComboBox _views = new(), _paper = new();
     private readonly CheckBox _portrait = new();
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8) };
@@ -97,6 +98,7 @@ public sealed class SheetEditorWindow : Window
         tools.Children.Add(Button("SheetEditor.AddText", AddText_Click)); tools.Children.Add(Button("SheetEditor.AddLine", AddLine_Click));
         tools.Children.Add(Button("SheetEditor.RemoveGraphic", RemoveGraphic_Click)); controls.Children.Add(tools);
         var dimensions = new WrapPanel();
+        AddField(dimensions, "SheetEditor.FamilyName", _familyName, 240);
         AddField(dimensions, "SheetEditor.Width", _width, 90); AddField(dimensions, "SheetEditor.Height", _height, 90);
         AddField(dimensions, "SheetEditor.Margin", _margin, 90); AddField(dimensions, "SheetEditor.Header", _header, 90);
         AddField(dimensions, "SheetEditor.Footer", _footer, 90); controls.Children.Add(dimensions);
@@ -144,6 +146,9 @@ public sealed class SheetEditorWindow : Window
     private void LoadFamilyRows()
     {
         var layout = _family.SheetLayout!; _graphics.Clear();
+        _familyName.Text = _family.Name;
+        _portrait.IsChecked = layout.Height >= layout.Width;
+        _paper.SelectedItem = SheetFamilies.PaperSizeOf(layout) ?? _paper.SelectedItem ?? SheetPaperSize.A3;
         foreach (var graphic in layout.Graphics) _graphics.Add(SheetGraphicRow.From(graphic));
         _width.Text = layout.Width.ToString(CultureInfo.CurrentCulture); _height.Text = layout.Height.ToString(CultureInfo.CurrentCulture);
         _margin.Text = layout.Margin.ToString(CultureInfo.CurrentCulture); _header.Text = layout.HeaderHeight.ToString(CultureInfo.CurrentCulture);
@@ -158,7 +163,8 @@ public sealed class SheetEditorWindow : Window
     private FamilyDocument ReadFamily()
     {
         CommitGrid(_graphicGrid);
-        var family = _family.Clone(); family.SheetLayout = new(Read(_width), Read(_height), Read(_margin), Read(_header), Read(_footer),
+        var family = _family.Clone(); family.Name = _familyName.Text.Trim();
+        family.SheetLayout = new(Read(_width), Read(_height), Read(_margin), Read(_header), Read(_footer),
             _graphics.Select(row => row.ToModel()).ToList()); family.Validate(); return family;
     }
 
@@ -171,7 +177,7 @@ public sealed class SheetEditorWindow : Window
             var family = ReadFamily(); var current = _session.Document.Sheets.Single(sheet => sheet.Id == _sheetId);
             _session.UpdateSheet(current with { Name = _name.Text.Trim(), Number = _number.Text.Trim(),
                 Description = _description.Text, Subtitle = _subtitle.Text, DateText = _date.Text,
-                PaperSize = (SheetPaperSize)_paper.SelectedItem, TitleBlockFamilyId = family.Id,
+                PaperSize = SheetFamilies.PaperSizeOf(family.SheetLayout!) ?? current.PaperSize, TitleBlockFamilyId = family.Id,
                 Viewports = _placements.Select(row => row.ToModel()).ToList() }, family);
             _family = family; _refresh(); _status.Text = Text("SheetEditor.Applied");
         }

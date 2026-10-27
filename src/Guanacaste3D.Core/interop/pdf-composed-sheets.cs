@@ -31,6 +31,7 @@ public static partial class PdfPlanExporter
     /// <summary>Maps the shared top-left paper coordinate system into PDF's bottom-left coordinate system.</summary>
     private static void DrawPaperPrimitive(PdfPage page, SheetPrimitive primitive, double height)
     {
+        /// <summary>Converts paper-space Y to the PDF baseline axis.</summary>
         (double, double) Map(Point2 point) => (point.X, height - point.Y);
         switch (primitive)
         {

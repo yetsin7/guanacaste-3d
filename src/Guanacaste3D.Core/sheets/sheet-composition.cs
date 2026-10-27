@@ -58,6 +58,7 @@ public static class SheetComposition
             var factor = 1000 / scale;
             var centerX = placement.X + placement.Width / 2;
             var centerY = placement.Y + (placement.Height - 14) / 2;
+            /// <summary>Places metric view coordinates inside the requested paper rectangle without changing its scale.</summary>
             Point2 Map(Point2 point) => new(centerX + (point.X - (minX + maxX) / 2) * factor,
                 centerY - (point.Y - (minY + maxY) / 2) * factor);
             var mapped = source.Select(primitive => MapPrimitive(primitive, Map)).ToArray();
@@ -81,6 +82,7 @@ public static class SheetComposition
         if (view.Kind == ProjectViewKind.Plan) return PdfPlanExporter.PlanPrimitives(document, view.LevelId!.Value);
         if (view.Kind != ProjectViewKind.Model3D) return PdfPlanExporter.GeneratedViewPrimitives(document, view, mesh);
         mesh ??= BuildingMesher.Build(document);
+        /// <summary>Projects model coordinates onto fixed orthographic isometric drawing axes.</summary>
         Point2 Project(System.Numerics.Vector3 point) => new((point.X - point.Y) * 0.70710678,
             (point.X + point.Y) * 0.40824829 + point.Z * 0.81649658);
         return FeatureEdges.Extract(mesh.Positions, mesh.Indices).Select(edge =>

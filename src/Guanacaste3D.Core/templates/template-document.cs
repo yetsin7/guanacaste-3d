@@ -100,7 +100,7 @@ public static class OfficialTemplates
     public const string ArchitecturalMetricName = "Guanacaste 3D — Arquitectura Métrica";
 
     /// <summary>
-    /// Builds the metric architecture template: one level, the built-in wall and opening
+    /// Builds the metric architecture template: protected floor/roof datums, built-in wall and opening
     /// catalogs, and the default views. Model lengths are meters; the template has no unit
     /// setting, so every project it creates stays metric.
     /// </summary>

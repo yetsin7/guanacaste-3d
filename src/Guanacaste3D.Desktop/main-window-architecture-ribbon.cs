@@ -161,6 +161,7 @@ public partial class MainWindow
     /// </summary>
     private void ArchitecturePropertiesEditType_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewTabs.SelectedIndex == 3) { EditSheet_Click(sender, e); return; }
         if (_selectedWallId is null && TryEditSelectedElementType()) return;
         var selectedTypeId = _selectedWallId is Guid wallId
             ? _session.Document.Walls.Single(wall => wall.Id == wallId).WallTypeId
