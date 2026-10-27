@@ -19,7 +19,8 @@ try
         projectId = document.Id,
         projectName = document.Name,
         issueCount = issues.Count,
-        issues
+        issues,
+        findings = ModelAuditReporting.Describe(issues)
     };
     var options = new JsonSerializerOptions { WriteIndented = true };
     options.Converters.Add(new JsonStringEnumConverter());
