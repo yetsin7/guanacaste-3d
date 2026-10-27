@@ -9,7 +9,11 @@ public abstract record SheetPrimitive(double Weight, (double R, double G, double
 
 /// <summary>A closed outline, optionally filled.</summary>
 public sealed record SheetPolygon(IReadOnlyList<Point2> Points, double Weight, (double R, double G, double B) Color,
-    (double R, double G, double B)? Fill) : SheetPrimitive(Weight, Color);
+    (double R, double G, double B)? Fill) : SheetPrimitive(Weight, Color)
+{
+    /// <summary>Optional annotation radius in paper millimeters, independent of the model/view scale.</summary>
+    public double? PaperRadius { get; init; }
+}
 
 /// <summary>An open polyline.</summary>
 public sealed record SheetPolyline(IReadOnlyList<Point2> Points, double Weight, (double R, double G, double B) Color,
@@ -17,7 +21,11 @@ public sealed record SheetPolyline(IReadOnlyList<Point2> Points, double Weight, 
 
 /// <summary>A line of text anchored at its lower left corner; size in sheet millimeters.</summary>
 public sealed record SheetText(Point2 Position, string Text, double Size, (double R, double G, double B) Color,
-    bool Bold = false) : SheetPrimitive(0, Color);
+    bool Bold = false) : SheetPrimitive(0, Color)
+{
+    /// <summary>Centers the label inside an annotation head instead of treating the anchor as a baseline.</summary>
+    public bool CenteredOnSymbol { get; init; }
+}
 
 /// <summary>
 /// Exports the floor plans of a project as a vector PDF, one sheet per level, the way Revit prints plan views on
@@ -196,14 +204,16 @@ public static partial class PdfPlanExporter
                 switch (primitive)
                 {
                     case SheetPolygon polygon:
-                        page.Path(polygon.Points.Select(Map).ToArray(), closed: true, polygon.Weight, polygon.Color, polygon.Fill);
+                        var paperPolygon = SheetComposition.MapPolygon(polygon, point => { var mapped = Map(point); return new(mapped.Item1, mapped.Item2); });
+                        page.Path(paperPolygon.Points.Select(point => (point.X, point.Y)).ToArray(), closed: true, polygon.Weight, polygon.Color, polygon.Fill);
                         break;
                     case SheetPolyline line:
                         page.Path(line.Points.Select(Map).ToArray(), closed: false, line.Weight, line.Color, null, line.Dashed);
                         break;
                     case SheetText text:
                         var (tx, ty) = Map(text.Position);
-                        page.Text(tx - text.Text.Length * text.Size * 0.25, ty, text.Text, text.Size, text.Color, text.Bold);
+                        page.Text(tx - text.Text.Length * text.Size * 0.25, ty - (text.CenteredOnSymbol ? text.Size * 0.35 : 0),
+                            text.Text, text.Size, text.Color, text.Bold);
                         break;
                 }
             }
@@ -272,6 +282,13 @@ public static partial class PdfPlanExporter
         private readonly StringBuilder _content = new();
 
         public string Content => _content.ToString();
+
+        /// <summary>Starts a paper-space viewport clip, retaining the surrounding drawing state.</summary>
+        public void BeginClip(double x, double y, double width, double height) =>
+            Append($"q {Number(x * PointsPerMillimeter)} {Number(y * PointsPerMillimeter)} {Number(width * PointsPerMillimeter)} {Number(height * PointsPerMillimeter)} re W n ");
+
+        /// <summary>Restores drawing state after an independently clipped viewport.</summary>
+        public void EndClip() => Append("Q ");
 
         public void Rectangle(double x, double y, double width, double height, double weight, (double R, double G, double B) color) =>
             Path([(x, y), (x + width, y), (x + width, y + height), (x, y + height)], true, weight, color, null);

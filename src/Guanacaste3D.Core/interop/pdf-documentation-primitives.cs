@@ -12,8 +12,8 @@ public static partial class PdfPlanExporter
             items.Add(new SheetPolyline([axis.Start, axis.End], 0.13, Grey, Dashed: true));
             foreach (var point in new[] { axis.Start, axis.End })
             {
-                items.Add(new SheetPolygon(Circle(point, 0.18, 32), 0.18, Black, (1, 1, 1)));
-                items.Add(new SheetText(new(point.X, point.Y - 0.05), axis.Name, 2.5, Black));
+                items.Add(new SheetPolygon(Circle(point, 0.18, 32), 0.18, Black, (1, 1, 1)) { PaperRadius = 3 });
+                items.Add(new SheetText(point, axis.Name, 2.5, Black) { CenteredOnSymbol = true });
             }
         }
         foreach (var dimension in document.Dimensions.Where(dimension => dimension.LevelId == levelId))

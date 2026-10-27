@@ -24,6 +24,7 @@
         <ResourceDictionary Source="resources/localization.view3d.es.xaml"/>
         <ResourceDictionary Source="resources/localization.architecture.es.xaml"/>
         <ResourceDictionary Source="resources/localization.documentation.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.sheets.es.xaml"/>
         <ResourceDictionary Source="resources/localization.electrical.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <Style TargetType="{x:Type ToolTip}">

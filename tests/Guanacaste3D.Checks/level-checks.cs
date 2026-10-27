@@ -22,7 +22,7 @@ static class LevelChecks
     {
         var session = new DocumentSession(BuildingDocument.Create("Levels"));
         var ground = session.Document.Levels[0].Id;
-        var upper = session.AddLevel();
+        var upper = session.Document.Levels.Single(level => level.Role == LevelRole.BaseRoof).Id;
         var wallA = session.AddWall(ground, new Point2(0, 0), new Point2(6, 0), height: 2.5);
         var wallB = session.AddWall(ground, new Point2(6, 0), new Point2(6, 4), height: 2.5);
         return (session, ground, upper, wallA, wallB);
@@ -78,15 +78,19 @@ static class LevelChecks
         try { session.RemoveLevel(upper); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "A level that constrains walls cannot be deleted");
         session.DetachWallsFromLevelAbove(ground);
-        session.RemoveLevel(upper);
-        check(session.Document.Levels.Count == 1 && session.Document.Views.All(view => view.LevelId != upper),
-            "An unused level is deleted together with its plan views");
+        rejected = false;
+        try { session.RemoveLevel(upper); } catch (InvalidDataException) { rejected = true; }
+        check(rejected && session.Document.Levels.Count == 2,
+            "The renamed base roof remains protected even after releasing every dependent wall");
         rejected = false;
         try { session.RemoveLevel(ground); } catch (InvalidDataException) { rejected = true; }
-        check(rejected, "The last level cannot be deleted");
+        check(rejected, "The base floor cannot be deleted");
         var added = session.AddLevel();
-        check(session.Document.Levels.Single(l => l.Id == added).Name == "Nivel 2",
+        check(session.Document.Levels.Single(l => l.Id == added).Name == DefaultLabels.Get("LevelName", 3),
             "New levels receive a name that is not already taken");
+        session.RemoveLevel(added);
+        check(session.Document.Levels.Count == 2 && session.Document.Views.All(view => view.LevelId != added),
+            "Unused additional levels can be deleted together with their plan views");
     }
 
     /// <summary>Verifies schedule columns, formulas over constraints, round trip, and migration.</summary>

@@ -189,6 +189,14 @@ public static class ProjectFile
             document.SchemaVersion = 13;
             document.Grids ??= [];
         }
+        if (document.SchemaVersion == 13) document.SchemaVersion = 14;
+        if (document.SchemaVersion == 14)
+        {
+            document.SchemaVersion = 15;
+            BaseLevels.Ensure(document);
+            document.SheetFamilies ??= [];
+            SheetFamilies.Ensure(document);
+        }
 
     }
 

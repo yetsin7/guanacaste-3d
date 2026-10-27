@@ -10,7 +10,11 @@ public readonly record struct Point2(double X, double Y)
 }
 
 /// <summary>A named vertical building datum, measured in meters from the project origin.</summary>
-public sealed record Level(Guid Id, string Name, double Elevation);
+public sealed record Level(Guid Id, string Name, double Elevation)
+{
+    /// <summary>Protected base roles survive renaming and elevation changes.</summary>
+    public LevelRole Role { get; init; }
+}
 
 /// <summary>A straight metric wall, tied to a building level.</summary>
 public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, double Thickness, double Height)
@@ -33,7 +37,7 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 public sealed class BuildingDocument
 {
     /// <summary>The schema written by this build; older files are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 13;
+    public const int CurrentSchemaVersion = 15;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -50,6 +54,7 @@ public sealed class BuildingDocument
     public List<Column> Columns { get; set; } = [];
     public List<StructuralElement> StructuralElements { get; set; } = [];
     public List<DrawingSheet> Sheets { get; set; } = [];
+    public List<FamilyDocument> SheetFamilies { get; set; } = [];
     public List<ProjectView> Views { get; set; } = [];
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
     public List<ParameterValue> ParameterValues { get; set; } = [];
@@ -62,7 +67,11 @@ public sealed class BuildingDocument
     /// <summary>Creates a new project with one level and a built-in wall-type catalog.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
     {
-        var levels = new List<Level> { new(Guid.NewGuid(), "Nivel 1", 0) };
+        var levels = new List<Level>
+        {
+            new(Guid.NewGuid(), DefaultLabels.Get("LevelName", 1), 0) { Role = LevelRole.BaseFloor },
+            new(Guid.NewGuid(), DefaultLabels.Get("LevelName", 2), 3) { Role = LevelRole.BaseRoof }
+        };
         return new BuildingDocument
         {
             Name = name,
@@ -93,7 +102,8 @@ public sealed class BuildingDocument
         }).ToList(),
         Columns = [.. Columns],
         StructuralElements = [.. StructuralElements],
-        Sheets = [.. Sheets],
+        Sheets = Sheets.Select(sheet => sheet with { Viewports = [.. sheet.Viewports] }).ToList(),
+        SheetFamilies = SheetFamilies.Select(family => family.Clone()).ToList(),
         Views = [.. Views],
         ParameterDefinitions = ParameterDefinitions
             .Select(definition => definition with { Categories = [.. definition.Categories] }).ToList(),
@@ -129,6 +139,7 @@ public sealed class BuildingDocument
             Levels.Select(l => l.Id).Distinct().Count() != Levels.Count)
             throw new InvalidDataException("The level collection is invalid.");
         var levelIds = Levels.Select(l => l.Id).ToHashSet();
+        BaseLevels.Validate(this);
         if (Grids.Count > 10000 || Grids.Any(axis => axis is null || !axis.IsValid) ||
             Grids.Select(axis => axis.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Grids.Count)
             throw new InvalidDataException("Invalid grid axis definitions.");
@@ -159,6 +170,7 @@ public sealed class BuildingDocument
         ValidateFloors(levelIds);
         ValidateColumns(levelIds);
         ValidateSheets();
+        DocumentSession.ValidateSheetLayouts(this);
         ValidateViews(levelIds);
         if (Dimensions.Any(item => item is null) || StructuralElements.Any(item => item is null))
             throw new InvalidDataException("Invalid plan dimension references.");
@@ -173,6 +185,8 @@ public sealed class BuildingDocument
             .Concat(Dimensions.Select(dimension => dimension.Id))
             .Concat(StructuralElements.Select(element => element.Id))
             .Concat(Sheets.Select(sheet => sheet.Id))
+            .Concat(Sheets.SelectMany(sheet => sheet.Viewports).Select(viewport => viewport.Id))
+            .Concat(SheetFamilies.Select(family => family.Id))
             .Concat(Views.Select(view => view.Id))
             .Concat((ParameterDefinitions ?? []).Select(definition => definition.Id))
             .Concat((OpeningTypes ?? []).Select(type => type.Id))

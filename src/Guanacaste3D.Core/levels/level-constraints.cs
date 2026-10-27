@@ -66,5 +66,10 @@ public static class LevelConstraints
     public static int CountDependents(BuildingDocument document, Guid levelId) =>
         document.Walls.Count(wall => wall.LevelId == levelId || wall.TopLevelId == levelId) +
         document.Rooms.Count(room => room.LevelId == levelId) +
-        document.Floors.Count(floor => floor.LevelId == levelId);
+        document.Floors.Count(floor => floor.LevelId == levelId) +
+        document.Columns.Count(column => column.LevelId == levelId) +
+        document.StructuralElements.Count(element => element.LevelId == levelId) +
+        document.ElectricalDevices.Count(device => device.LevelId == levelId) +
+        document.Sheets.SelectMany(sheet => sheet.Viewports).Count(viewport => document.Views.Any(view =>
+            view.Id == viewport.ViewId && view.LevelId == levelId));
 }

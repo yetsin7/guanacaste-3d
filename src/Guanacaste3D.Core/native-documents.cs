@@ -47,6 +47,7 @@ public static class NativeDocumentStore
         Save(path, NativeDocumentKind.Project, document.SchemaVersion, document.Id, document);
     }
 
+    /// <summary>Checks the stored header before migrating the verified payload to the current project schema.</summary>
     public static BuildingDocument LoadProject(string path)
     {
         var (info, json) = Read(path);
@@ -54,8 +55,7 @@ public static class NativeDocumentStore
         var document = Deserialize<BuildingDocument>(json);
         if (document.Id != info.DocumentId || document.SchemaVersion != info.SchemaVersion)
             throw new InvalidDataException("The project header and payload identity do not match.");
-        document.Validate();
-        return document;
+        return ProjectFile.DeserializeDocument(Encoding.UTF8.GetString(json));
     }
 
     public static void SaveFamily(string path, FamilyDocument document)

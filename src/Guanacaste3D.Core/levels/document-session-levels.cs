@@ -33,12 +33,12 @@ public sealed partial class DocumentSession
         });
     }
 
-    /// <summary>Deletes a level and its plan views; levels with dependent elements or the last level are protected.</summary>
+    /// <summary>Deletes unused optional levels; the project's permanent floor and roof datums are protected by identity.</summary>
     public void RemoveLevel(Guid levelId)
     {
         if (!Document.Levels.Any(level => level.Id == levelId)) return;
-        if (Document.Levels.Count == 1)
-            throw new InvalidDataException("A project needs at least one level.");
+        if (BaseLevels.IsProtected(Document.Levels.Single(level => level.Id == levelId)))
+            throw new InvalidDataException("The base floor and roof levels cannot be deleted.");
         if (LevelConstraints.CountDependents(Document, levelId) > 0)
             throw new InvalidDataException("The level still hosts or constrains elements.");
         Commit("Transaction.RemoveLevel", document =>

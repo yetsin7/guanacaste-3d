@@ -64,6 +64,7 @@ public sealed class ProjectTemplateDocument
         var document = BuildingDocument.Create(projectName);
         document.Levels = Levels.Select(level => new Level(Guid.NewGuid(), level.Name, level.Elevation)).ToList();
         document.Views = BuiltInProjectViews.CreateDefaults(document.Levels);
+        BaseLevels.Ensure(document);
         document.Validate();
         return document;
     }

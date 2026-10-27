@@ -104,7 +104,7 @@ internal static partial class DocumentationChecks
                 "Foundations appear in elevation instead of disappearing from documentation");
             SaveBitmap("elevation-with-structure.png");
             ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 0;
-            Check(Field<Guid?>("_selectedViewId") == session.Document.Views.Single(view => view.Kind == ProjectViewKind.Plan).Id,
+            Check(Field<Guid?>("_selectedViewId") == session.Document.Views.Single(view => view.Kind == ProjectViewKind.Plan && view.LevelId == level).Id,
                 "Returning to the plan clears stale elevation identity from the properties palette");
             session.AddDimension(PlanDimensions.ForSelection(session.Document, wall)
                 .First(dimension => dimension.Kind == PlanDimensionKind.WallLength));
@@ -115,6 +115,7 @@ internal static partial class DocumentationChecks
             var reopened = Reopen(session.Document, "desktop-documentation.g3d");
             Check(reopened.Grids.Count == 1 && reopened.Views.Single(view => view.Id == section.Id).Cut is not null &&
                 reopened.Dimensions.Count == 1, "The interactively authored documentation survives official save and reopen");
+            CheckSheetDesktop(session);
         }
         finally
         {

@@ -37,8 +37,8 @@ public sealed partial class DocumentSession
         {
             var elevation = doc.Levels.Max(l => l.Elevation) + 3;
             var number = doc.Levels.Count + 1;
-            while (doc.Levels.Any(existing => existing.Name == $"Nivel {number}")) number++;
-            var level = new Level(id, $"Nivel {number}", elevation);
+            while (doc.Levels.Any(existing => existing.Name == DefaultLabels.Get("LevelName", number))) number++;
+            var level = new Level(id, DefaultLabels.Get("LevelName", number), elevation);
             doc.Levels.Add(level);
             doc.Views.Add(BuiltInProjectViews.CreatePlan(level));
         });
@@ -185,7 +185,18 @@ public sealed partial class DocumentSession
         Commit("Transaction.AddSheet", document =>
         {
             var index = document.Sheets.Count + 1;
-            document.Sheets.Add(new DrawingSheet(id, $"A{index:D3}", name ?? $"Sheet {index}", paperSize));
+            while (document.Sheets.Any(sheet => sheet.Number == $"A{index:D3}")) index++;
+            var family = SheetFamilies.Create(paperSize);
+            document.SheetFamilies.Add(family);
+            var layout = family.SheetLayout!;
+            var plan = document.Views.First(view => view.Kind == ProjectViewKind.Plan);
+            var inset = layout.Margin + 8;
+            document.Sheets.Add(new DrawingSheet(id, $"A{index:D3}", name ?? DefaultLabels.Get("SheetName", index), paperSize)
+            {
+                TitleBlockFamilyId = family.Id,
+                Viewports = [new(Guid.NewGuid(), plan.Id, inset, inset + layout.HeaderHeight,
+                    layout.Width - 2 * inset, layout.Height - 2 * inset - layout.HeaderHeight - layout.FooterHeight)]
+            });
         });
         return id;
     }

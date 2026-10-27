@@ -19,6 +19,7 @@ internal static partial class DocumentationChecks
             CheckAxes();
             CheckElectricalMigration();
             CheckPrintedDocumentation();
+            CheckBaseLevelsAndSheetFamilies();
             CheckDesktop();
             Console.WriteLine($"Documentation checks passed: {_checks}.");
             return 0;
@@ -173,7 +174,7 @@ internal static partial class DocumentationChecks
         var previous = session.Document.Clone();
         previous.SchemaVersion = 12;
         var migrated = ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(previous));
-        Check(migrated.SchemaVersion == 13 && migrated.ElectricalDevices.Single().Id == id && migrated.Grids.Count == 0,
+        Check(migrated.SchemaVersion == BuildingDocument.CurrentSchemaVersion && migrated.ElectricalDevices.Single().Id == id && migrated.Grids.Count == 0,
             "Schema 12 electrical projects retain their devices when upgraded for documentation");
     }
 
