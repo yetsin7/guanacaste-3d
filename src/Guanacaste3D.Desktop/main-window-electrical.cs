@@ -23,7 +23,7 @@ public partial class MainWindow
         [ElectricalDeviceKind.Switch, ElectricalDeviceKind.ThreeWaySwitch, ElectricalDeviceKind.Dimmer];
     private static readonly ElectricalDeviceKind[] Luminaires =
         [ElectricalDeviceKind.CeilingFixture, ElectricalDeviceKind.Downlight, ElectricalDeviceKind.WallSconce, ElectricalDeviceKind.Pendant,
-            ElectricalDeviceKind.CeilingFan];
+            ElectricalDeviceKind.CeilingFan, ElectricalDeviceKind.SmokeDetector];
 
     private static readonly ElectricalDeviceKind[] Cooling = [ElectricalDeviceKind.MiniSplit];
     private static readonly ElectricalDeviceKind[] Solar = [ElectricalDeviceKind.SolarArray, ElectricalDeviceKind.Inverter];
@@ -396,6 +396,29 @@ public partial class MainWindow
             if (report is not null)
                 AddPlanLabel(device.Position, $"C{report.Circuit.Number}", brush, 9, 8, 6);
         }
+        // Lighting: each room's average illuminance against what its use needs, and bedrooms missing a smoke alarm.
+        foreach (var room in LightingAnalysis.Analyze(_session.Document, analysis).Where(room => room.Room.LevelId == _activeLevelId))
+        {
+            var corner = new Point2(Math.Min(room.Room.FirstCorner.X, room.Room.SecondCorner.X) + 0.15,
+                Math.Max(room.Room.FirstCorner.Y, room.Room.SecondCorner.Y) - 0.15);
+            var brush = room.Status switch
+            {
+                LightingStatus.Ok => Brushes.SeaGreen,
+                LightingStatus.Dark => Brushes.SlateGray,
+                _ => Brushes.DarkOrange
+            };
+            var label = FormatText("Lighting.RoomLabel", room.Lux, room.RequiredLux);
+            if (room.NeedsSmokeDetector && !room.HasSmokeDetector) label += " · " + GetText("Lighting.NoSmokeDetector");
+            var at = WorldToCanvas(corner);
+            var text = new TextBlock
+            {
+                Text = label, FontSize = 10, FontWeight = FontWeights.SemiBold, IsHitTestVisible = false,
+                Foreground = room.NeedsSmokeDetector && !room.HasSmokeDetector ? Brushes.Red : brush
+            };
+            Canvas.SetLeft(text, at.X);
+            Canvas.SetTop(text, at.Y);
+            PlanCanvas.Children.Add(text);
+        }
         // Air conditioners: the condenser outside, the line set to it, and the capacity coloured by the room's load.
         foreach (var cooling in CoolingAnalysis.Analyze(_session.Document).Where(report => report.Unit.LevelId == _activeLevelId))
         {
@@ -507,6 +530,10 @@ public partial class MainWindow
                 Text("AC", center + depth * 0.5);
                 break;
             }
+            case ElectricalDeviceKind.SmokeDetector:
+                Place(Circle(size * 0.45, null), center);
+                Text("SD", center);
+                break;
             case ElectricalDeviceKind.SolarArray:
             {
                 // The array's outline in plan, with the diagonal that marks PV modules, and an arrow toward where it faces.

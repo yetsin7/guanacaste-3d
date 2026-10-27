@@ -28,6 +28,9 @@
   <sys:String x:Key="Electrical.Kind.MiniSplit">Aire acondicionado minisplit</sys:String>
   <sys:String x:Key="Electrical.Kind.WaterPump">Bomba de agua</sys:String>
   <sys:String x:Key="Electrical.Kind.SolarArray">Paneles solares</sys:String>
+  <sys:String x:Key="Electrical.Kind.SmokeDetector">Detector de humo</sys:String>
+  <sys:String x:Key="Lighting.RoomLabel">{0:0} lx / {1:0} lx</sys:String>
+  <sys:String x:Key="Lighting.NoSmokeDetector">¡falta detector de humo!</sys:String>
   <sys:String x:Key="Electrical.Kind.Inverter">Inversor solar</sys:String>
   <sys:String x:Key="RibbonCommand.PhotovoltaicSystem">Sistema fotovoltaico</sys:String>
   <sys:String x:Key="Compass.0">norte</sys:String>

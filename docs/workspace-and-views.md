@@ -161,6 +161,16 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   - An elevated tank on its tower gives only the pressure of its height, about
     10 kPa per metre.
   - Tank size, pump and tank height change in the plumbing schedule.
+- **Lighting design**: on a level with electrical devices, every room is
+  labelled with its average illuminance against what its use needs.
+  - Illuminance follows the lumen method, E = Φ·UF·MF / A with UF 0.5 and MF
+    0.8.
+  - Recommended levels by room name: kitchens and studies 300 lx, bathrooms and
+    living rooms 200 lx, bedrooms 150 lx, corridors 100 lx.
+  - The label is green when the room is well lit, orange when under-lit or over
+    three times the need. It follows switches and dimmers at once.
+  - *Detector de humo* (in the *Luminaria* tool) goes on the ceiling. A bedroom
+    without one is marked in red.
 - **Solar power**: *Sistema fotovoltaico* places solar arrays and grid-tie
   inverters.
   - An array lies on the roof under it, tilted with the slope and facing

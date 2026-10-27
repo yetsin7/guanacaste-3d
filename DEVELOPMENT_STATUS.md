@@ -1,6 +1,11 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.21.0.
+Last updated: 2026-10-27. Version: 0.22.0.
+
+## Lighting design and smoke alarms (0.22, 2026-10-27)
+
+- Room illuminance by the lumen method against recommended levels by room use, live with switches and dimmers.
+- Smoke detectors, and bedrooms without one flagged in plan.
 
 ## Water storage, solar power, icon ribbon and area table (0.21, 2026-10-27)
 

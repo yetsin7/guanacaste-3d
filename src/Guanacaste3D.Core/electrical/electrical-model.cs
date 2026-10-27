@@ -44,7 +44,9 @@ public enum ElectricalDeviceKind
     /// Grid-tie inverter: turns the arrays' direct current into 240 V alternating current fed back through a two-pole
     /// breaker in the panel. It shuts down whenever the grid side is dead (anti-islanding).
     /// </summary>
-    Inverter
+    Inverter,
+    /// <summary>Smoke alarm on the ceiling, 120 V with battery back-up, interconnected with the others.</summary>
+    SmokeDetector
 }
 
 /// <summary>
@@ -153,6 +155,7 @@ public static class ElectricalStandards
         ElectricalDeviceKind.Outlet240 => 3500,
         ElectricalDeviceKind.MiniSplit => CoolingWatts(12000),
         ElectricalDeviceKind.Inverter => 5000,
+        ElectricalDeviceKind.SmokeDetector => 1,
         _ => 0
     };
 
@@ -185,7 +188,8 @@ public static class ElectricalStandards
 
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
         kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant
-            or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump or ElectricalDeviceKind.SolarArray);
+            or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump or ElectricalDeviceKind.SolarArray
+            or ElectricalDeviceKind.SmokeDetector);
 
     /// <summary>Breaker ratings offered for branch circuits.</summary>
     public static IReadOnlyList<double> BreakerRatings { get; } = [15, 20, 30, 40, 50, 60];

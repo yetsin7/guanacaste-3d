@@ -107,6 +107,12 @@ public static class ElectricalGeometry
                 Box(mesh, position + along * 0.10f, along, outward, 0.03f, 0.004f, 0.182f, 0.18f, 0.22f, SurfaceKind.LightEmitter);
                 Box(mesh, position - along * 0.38f, along, outward, 0.09f, 0.06f, 0.06f, -0.20f, 0.05f, SurfaceKind.Metal);
                 break;
+            case ElectricalDeviceKind.SmokeDetector:
+                // A white dome on the ceiling with its small red indicator.
+                Disc(mesh, position, 0.065f, -0.035f, 0, SurfaceKind.Ceramic);
+                Disc(mesh, position, 0.05f, -0.045f, -0.035f, SurfaceKind.Ceramic);
+                Disc(mesh, position + new Vector3(0.03f, 0, 0), 0.004f, -0.047f, -0.044f, SurfaceKind.OpeningFrame);
+                break;
             case ElectricalDeviceKind.WaterPump:
             {
                 // Concrete pad, the blue pressure tank standing on it, and the pump with its motor lying beside it.
