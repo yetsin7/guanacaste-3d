@@ -14,9 +14,26 @@ public enum ModelAuditSeverity { Information, Warning, Critical }
 public sealed record ModelAuditFinding(ModelAuditIssue Issue, ModelAuditSeverity Severity,
     string Description, string SuggestedAction);
 
+/// <summary>Issue counts grouped by level and severity for project health dashboards.</summary>
+public sealed record ModelAuditLevelSummary(Guid LevelId, int Total, int Information,
+    int Warnings, int Critical);
+
 /// <summary>Converts measured audit issues into actionable coordination findings.</summary>
 public static class ModelAuditReporting
 {
+    /// <summary>Produces stable per-level totals without changing the model.</summary>
+    public static IReadOnlyList<ModelAuditLevelSummary> SummarizeByLevel(IEnumerable<ModelAuditFinding> findings)
+    {
+        ArgumentNullException.ThrowIfNull(findings);
+        return findings.GroupBy(finding => finding.Issue.LevelId)
+            .OrderBy(group => group.Key)
+            .Select(group => new ModelAuditLevelSummary(group.Key, group.Count(),
+                group.Count(f => f.Severity == ModelAuditSeverity.Information),
+                group.Count(f => f.Severity == ModelAuditSeverity.Warning),
+                group.Count(f => f.Severity == ModelAuditSeverity.Critical)))
+            .ToArray();
+    }
+
     public static IReadOnlyList<ModelAuditFinding> Describe(IEnumerable<ModelAuditIssue> issues)
     {
         ArgumentNullException.ThrowIfNull(issues);
