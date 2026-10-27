@@ -355,6 +355,13 @@
     <GeometryDrawing Brush="#D7D7D7" Pen="{StaticResource CmdOrangePen}" Geometry="M2,9 H16 V15 H2 Z"/>
     <GeometryDrawing Pen="{StaticResource CmdOrangePen}" Geometry="M16,12 C19,12 20,14 20,17 V21"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.ConnectPlumbing"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#B7DFBF" Pen="{StaticResource CmdGreenPen}" Geometry="M2,9 H22 V15 H2 Z"/>
+    <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M6,9 L6,15 M18,9 L18,15"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeGreen}" Geometry="M16.4,18.4 L17.9,20.0 L20.599999999999998,16.599999999999998"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.Connection"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
     <GeometryDrawing Brush="#ECECEC" Pen="{StaticResource CadOutlinePen}" Geometry="M7,4 L17,4 L20,9 L17,14 L7,14 L4,9 Z"/>
@@ -1308,6 +1315,24 @@
     <GeometryDrawing Brush="#A9D9F5" Pen="{StaticResource CadAccentPen}" Geometry="M9,3 H15 V8 H9 Z"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CadOutlinePen}" Geometry="M4,10 L20,10 L17,20 L7,20 Z"/>
     <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M10,14 L14,14"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.PlumbingSchedule"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CadOutlinePen}" Geometry="M3,3 H21 V21 H3 Z"/>
+    <GeometryDrawing Brush="#A9D9F5" Pen="{StaticResource CadOutlinePen}" Geometry="M3,3 H21 V7.5 H3 Z"/>
+    <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M3,12 L21,12"/>
+    <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M3,16.5 L21,16.5"/>
+    <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M9.5,3 L9.5,21"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeGreen}" Geometry="M16.4,18.4 L17.9,20.0 L20.599999999999998,16.599999999999998"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.PlumbingService"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#A9D9F5" Pen="{StaticResource CadAccentPen}" Geometry="M9,3 H15 V8 H9 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CadOutlinePen}" Geometry="M4,10 L20,10 L17,20 L7,20 Z"/>
+    <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M10,14 L14,14"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeAccent}" Geometry="M18.4,16.4 L18.4,20.4 M17.14,18.60 L18.4,20.4 L19.66,18.60"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.PointCloud"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>

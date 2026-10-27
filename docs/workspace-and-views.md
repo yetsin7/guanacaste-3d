@@ -97,6 +97,29 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   SPACE turns the next component a quarter turn while placing, and turns the
   selected one afterwards (*Rotar* does the same). One undoable step; the turn
   is saved with the project.
+- **Plumbing**: *Medidor y salida* places the water meter (SPACE switches to
+  the sewer outlet). *Conectar plomería* connects the whole house in one
+  undoable step:
+  - cold water from the nearest meter to every fixture and water heater;
+  - hot water from the nearest heater to the fixtures that use it;
+  - every drain to the nearest outlet.
+
+  *Tubería* does the same by hand: click a meter, heater or outlet, then the
+  fixtures to connect or disconnect. Each system is routed as a tree along the
+  axes. The plan draws cold water solid blue, hot water dashed red and drains
+  long-dashed brown, with sizes and the 2 % slope. Every fixture connection gets
+  a green, orange or red dot, and fixtures still missing a system get a red
+  ring. *Cuadro de plomería* lists, for every system and fixture:
+  - fixture units, design flow and pipe sizes;
+  - flowing pressure against the fixture's minimum;
+  - the wait for hot water;
+  - the drain invert and its cover under the floor.
+
+  Street pressure and outlet depth are changed there and the results update at
+  once.
+- **Ceiling fans**: the *Luminaria* tool includes a ceiling fan with a light
+  kit (SPACE). Its switch and dimmer control the light; it adds 75 W to its
+  circuit.
 - **Electrical**: *Luminaria*, *Dispositivo eléctrico* (receptacles) and
   *Interruptor* place devices (SPACE cycles the kind; wall devices snap to the
   nearest wall within 0.8 m and take their standard height: receptacles 0.30 m,

@@ -22,7 +22,8 @@ public partial class MainWindow
     private static readonly ElectricalDeviceKind[] Switches =
         [ElectricalDeviceKind.Switch, ElectricalDeviceKind.ThreeWaySwitch, ElectricalDeviceKind.Dimmer];
     private static readonly ElectricalDeviceKind[] Luminaires =
-        [ElectricalDeviceKind.CeilingFixture, ElectricalDeviceKind.Downlight, ElectricalDeviceKind.WallSconce, ElectricalDeviceKind.Pendant];
+        [ElectricalDeviceKind.CeilingFixture, ElectricalDeviceKind.Downlight, ElectricalDeviceKind.WallSconce, ElectricalDeviceKind.Pendant,
+            ElectricalDeviceKind.CeilingFan];
 
     private ElectricalDeviceKind? _electricalTool;
     private ElectricalDeviceKind[] _electricalFamily = [];
@@ -395,6 +396,20 @@ public partial class MainWindow
             case ElectricalDeviceKind.WallSconce:
                 Place(Circle(size * 0.5, glow), symbolCenter);
                 Stroke(center, symbolCenter);
+                break;
+            case ElectricalDeviceKind.CeilingFan:
+                // Four blades around the hub, as in Revit's fan symbol, the hub yellow when its light is on.
+                foreach (var angle in new[] { 0.4, 0.4 + Math.PI / 2, 0.4 + Math.PI, 0.4 + 3 * Math.PI / 2 })
+                {
+                    var tip = new Vector(Math.Cos(angle), Math.Sin(angle)) * size * 1.6;
+                    var side = new Vector(-tip.Y, tip.X) * 0.18;
+                    PlanCanvas.Children.Add(new Polygon
+                    {
+                        Points = [center + tip * 0.3 - side, center + tip - side * 0.6, center + tip + side * 0.6, center + tip * 0.3 + side],
+                        Stroke = brush, StrokeThickness = 1.1, Fill = Brushes.White, Tag = tag
+                    });
+                }
+                Place(Circle(size * 0.4, glow), center);
                 break;
             case ElectricalDeviceKind.Pendant:
                 Place(Circle(size * 0.7, glow), center);

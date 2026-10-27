@@ -24,6 +24,7 @@
   <sys:String x:Key="Electrical.Kind.WallSconce">Aplique de pared</sys:String>
   <sys:String x:Key="Electrical.Kind.Pendant">Lámpara colgante</sys:String>
   <sys:String x:Key="Electrical.Kind.Panel">Tablero eléctrico</sys:String>
+  <sys:String x:Key="Electrical.Kind.CeilingFan">Ventilador de techo con luz</sys:String>
 
   <!-- States -->
   <sys:String x:Key="Electrical.Lit">Encendida</sys:String>

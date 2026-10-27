@@ -74,6 +74,7 @@ public partial class MainWindow
         _structuralPreset = null;
         _placingTopoPoints = false;
         CancelElectricalTools();
+        CancelPlumbingTools();
         _tagTarget = null;
         CancelArchitectureTools();
         _pendingStructuralStart = null;

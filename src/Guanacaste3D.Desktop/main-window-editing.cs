@@ -146,6 +146,7 @@ public partial class MainWindow
             return;
         }
         if (DeleteElectricalSelection()) return;
+        if (DeletePlumbingSelection()) return;
         if (DeleteExtendedSelection()) return;
         if (_selectedWallId is not Guid id) return;
         _session.RemoveWall(id);

@@ -28,7 +28,8 @@ public static class ResidentialComponentGeometry
         ResidentialComponentShape.Cabinet or ResidentialComponentShape.WallCabinet => Cabinet(element),
         ResidentialComponentShape.Refrigerator => Refrigerator(element),
         ResidentialComponentShape.Range => Range(element),
-        ResidentialComponentShape.Dishwasher or ResidentialComponentShape.WasherDryer => Appliance(element),
+        ResidentialComponentShape.Dishwasher or ResidentialComponentShape.WasherDryer or ResidentialComponentShape.ClothesDryer or
+            ResidentialComponentShape.Microwave => Appliance(element),
         ResidentialComponentShape.Toilet => Toilet(element),
         ResidentialComponentShape.Vanity => Vanity(element),
         ResidentialComponentShape.Bathtub => Bathtub(element),
@@ -186,7 +187,7 @@ public static class ResidentialComponentGeometry
         yield return Block(element, 0, 0, Width(element), Depth(element), 0, element.Height, SurfaceKind.OpeningFrame);
         yield return Block(element, 0, -Depth(element) / 2 - 0.012, Width(element) * 0.86, 0.024,
             element.Height * 0.12, element.Height * 0.82, SurfaceKind.Structure);
-        if (element.ComponentShape == ResidentialComponentShape.WasherDryer)
+        if (element.ComponentShape is ResidentialComponentShape.WasherDryer or ResidentialComponentShape.ClothesDryer)
             yield return RoundBlock(element, 0, -Depth(element) / 2 - 0.032, Width(element) * 0.52,
                 element.Height * 0.22, element.Height * 0.68, SurfaceKind.Glass);
     }

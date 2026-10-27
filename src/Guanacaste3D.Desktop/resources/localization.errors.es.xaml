@@ -24,6 +24,13 @@
   <sys:String x:Key="Error.Invalid electrical device.">El dispositivo eléctrico no es válido.</sys:String>
   <sys:String x:Key="Error.The circuit does not exist.">El circuito no existe.</sys:String>
   <sys:String x:Key="Error.Invalid circuit.">El circuito no es válido.</sys:String>
+  <sys:String x:Key="Error.Invalid plumbing point.">El medidor o la salida no son válidos.</sys:String>
+  <sys:String x:Key="Error.Invalid plumbing system.">El sistema de plomería no es válido.</sys:String>
+  <sys:String x:Key="Error.The plumbing system does not exist.">El sistema de plomería no existe.</sys:String>
+  <sys:String x:Key="Error.The plumbing point does not exist.">El medidor o la salida no existen.</sys:String>
+  <sys:String x:Key="Error.The plumbing source does not exist.">El origen del sistema (medidor, calentador o salida) no existe.</sys:String>
+  <sys:String x:Key="Error.The fixture does not use this system.">Ese aparato no usa este sistema (por ejemplo, un inodoro no lleva agua caliente).</sys:String>
+  <sys:String x:Key="Error.Place a water meter or a sewer outlet first.">Coloque primero un medidor de agua o una salida a cloaca.</sys:String>
   <sys:String x:Key="Error.Only point-hosted elements turn about their insertion point.">Solo los elementos de punto (muebles, aparatos, equipos) giran sobre su punto de inserción.</sys:String>
   <sys:String x:Key="Error.Invalid floor slab.">El suelo no es válido.</sys:String>
   <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>

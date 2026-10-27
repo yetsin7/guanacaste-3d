@@ -51,7 +51,13 @@ public enum SurfaceKind : byte
     /// <summary>Metal panel cladding.</summary>
     WallMetal,
     /// <summary>Silvered glass: bathroom and wall mirrors.</summary>
-    Mirror
+    Mirror,
+    /// <summary>Cold-water pipe, blue as in Revit's domestic cold water system.</summary>
+    PipeCold,
+    /// <summary>Hot-water pipe, red.</summary>
+    PipeHot,
+    /// <summary>PVC sanitary drain.</summary>
+    PipeDrain
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -242,6 +248,9 @@ public static class BuildingMesher
             ElectricalGeometry.AppendTo(mesh, device, elevations[device.LevelId], brightness);
             if (brightness > 0) mesh.Dim(first, brightness);
         }
+
+        // Plumbing follows the hydraulic layout: pipes sized and routed by the analysis.
+        PlumbingGeometry.AppendTo(mesh, document, PlumbingAnalysis.Analyze(document));
 
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {

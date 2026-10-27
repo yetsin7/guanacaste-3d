@@ -28,7 +28,9 @@ public enum ElectricalDeviceKind
     /// <summary>Pendant hanging from the ceiling.</summary>
     Pendant,
     /// <summary>Load center (breaker panel).</summary>
-    Panel
+    Panel,
+    /// <summary>Ceiling fan with a light kit: switched and dimmed like a luminaire, it also draws its motor load.</summary>
+    CeilingFan
 }
 
 /// <summary>
@@ -67,7 +69,7 @@ public sealed record ElectricalDevice(
     [JsonIgnore] public bool IsSwitch => Kind is ElectricalDeviceKind.Switch or ElectricalDeviceKind.ThreeWaySwitch or ElectricalDeviceKind.Dimmer;
 
     [JsonIgnore] public bool IsLuminaire => Kind is ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight
-        or ElectricalDeviceKind.WallSconce or ElectricalDeviceKind.Pendant;
+        or ElectricalDeviceKind.WallSconce or ElectricalDeviceKind.Pendant or ElectricalDeviceKind.CeilingFan;
 
     [JsonIgnore] public bool IsReceptacle => Kind is ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet
         or ElectricalDeviceKind.UsbOutlet or ElectricalDeviceKind.Outlet240;
@@ -106,13 +108,16 @@ public static class ElectricalStandards
         ElectricalDeviceKind.Downlight => 12,
         ElectricalDeviceKind.WallSconce => 9,
         ElectricalDeviceKind.Pendant => 15,
+        // A 52" fan draws about 60 W at high speed, plus its 15 W LED light kit.
+        ElectricalDeviceKind.CeilingFan => 75,
         ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet or ElectricalDeviceKind.UsbOutlet => 180,
         ElectricalDeviceKind.Outlet240 => 3500,
         _ => 0
     };
 
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
-        kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant);
+        kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant
+            or ElectricalDeviceKind.CeilingFan);
 
     /// <summary>Breaker ratings offered for branch circuits.</summary>
     public static IReadOnlyList<double> BreakerRatings { get; } = [15, 20, 30, 40, 50, 60];

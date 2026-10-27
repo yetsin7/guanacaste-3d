@@ -110,6 +110,7 @@ static class ShowcaseShot
                 session.ToggleSwitchLink(dimmer, pendant);
                 session.SetDimLevel(dimmer, dim);
             }
+            session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.CeilingFan, "V", new Guanacaste3D.Core.Point2(fx + 2.2, gy - 2.3), ceiling: 2.7);
             var sconce = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.WallSconce, "A", new Guanacaste3D.Core.Point2(fx + 0.1, (fy + gy) / 2), facing: 0);
             var sw = session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.Switch, "S", new Guanacaste3D.Core.Point2(fx + 0.1, fy + 0.8), facing: 0);
             session.ToggleSwitchLink(sw, sconce);

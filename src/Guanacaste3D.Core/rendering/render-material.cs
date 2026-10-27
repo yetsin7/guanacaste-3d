@@ -175,6 +175,18 @@ public static class MaterialLibrary
         {
             Name = "Revestimiento de madera", BaseColor = new(0.50f, 0.34f, 0.20f), Roughness = 0.7f, Pattern = SurfacePattern.Planks, PatternScale = 1
         },
+        SurfaceKind.PipeCold => new RenderMaterial
+        {
+            Name = "Tubería agua fría", BaseColor = new(0.16f, 0.36f, 0.72f), Roughness = 0.35f
+        },
+        SurfaceKind.PipeHot => new RenderMaterial
+        {
+            Name = "Tubería agua caliente", BaseColor = new(0.72f, 0.16f, 0.12f), Roughness = 0.35f
+        },
+        SurfaceKind.PipeDrain => new RenderMaterial
+        {
+            Name = "PVC sanitario", BaseColor = new(0.78f, 0.76f, 0.70f), Roughness = 0.4f
+        },
         SurfaceKind.Mirror => new RenderMaterial
         {
             Name = "Espejo", BaseColor = new(0.92f, 0.93f, 0.93f), Roughness = 0.02f, Metallic = 1

@@ -59,7 +59,9 @@ public enum ResidentialComponentShape
     WaterHeater,
     Hammock,
     SunLounger,
-    Parasol
+    Parasol,
+    ClothesDryer,
+    Microwave
 }
 
 /// <summary>
@@ -119,7 +121,7 @@ public static class ResidentialComponentCatalog
             ResidentialComponentCategory.Appliances, "Residential.Dishwasher"),
         Component("Washing Machine", 0.68, 0.90, 0.70, ResidentialComponentShape.WasherDryer,
             ResidentialComponentCategory.Appliances, "Residential.WashingMachine"),
-        Component("Clothes Dryer", 0.68, 0.90, 0.70, ResidentialComponentShape.WasherDryer,
+        Component("Clothes Dryer", 0.68, 0.90, 0.70, ResidentialComponentShape.ClothesDryer,
             ResidentialComponentCategory.Appliances, "Residential.ClothesDryer"),
         Component("Toilet", 0.42, 0.78, 0.72, ResidentialComponentShape.Toilet,
             ResidentialComponentCategory.Bathroom, "Residential.Toilet"),
@@ -175,7 +177,7 @@ public static class ResidentialComponentCatalog
             ResidentialComponentCategory.Kitchen, "Residential.WallCabinet60", 1.45),
         Component("Range Hood", 0.76, 0.95, 0.50, ResidentialComponentShape.RangeHood,
             ResidentialComponentCategory.Kitchen, "Residential.RangeHood", 1.55),
-        Component("Microwave", 0.55, 0.32, 0.40, ResidentialComponentShape.Dishwasher,
+        Component("Microwave", 0.55, 0.32, 0.40, ResidentialComponentShape.Microwave,
             ResidentialComponentCategory.Appliances, "Residential.Microwave", 0.92),
         Component("Water Heater", 0.50, 1.20, 0.50, ResidentialComponentShape.WaterHeater,
             ResidentialComponentCategory.Appliances, "Residential.WaterHeater"),

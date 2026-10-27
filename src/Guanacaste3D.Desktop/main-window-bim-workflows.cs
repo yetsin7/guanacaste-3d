@@ -263,6 +263,7 @@ public partial class MainWindow
         _selectedStructuralId = structuralId;
         _selectedGridId = null;
         _selectedElectricalId = null;
+        _selectedPlumbingId = null;
         _selectedViewId = null;
         _selectedWallId = null;
         _selectedOpeningId = null;

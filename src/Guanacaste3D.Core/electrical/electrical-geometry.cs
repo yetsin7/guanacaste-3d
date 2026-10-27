@@ -63,6 +63,23 @@ public static class ElectricalGeometry
                 Box(mesh, position, along, outward, 0.05f, 0.012f, 0.012f, -0.08f, 0.08f, SurfaceKind.Metal);
                 Box(mesh, position + outward * 0.06f, along, outward, 0.07f, 0.05f, 0.05f, -0.12f, 0.12f, glow);
                 break;
+            case ElectricalDeviceKind.CeilingFan:
+            {
+                // Canopy, a 30 cm downrod, the motor housing, five blades on their irons, and the light kit under it.
+                Disc(mesh, position, 0.07f, -0.05f, 0f, SurfaceKind.Metal);
+                Disc(mesh, position, 0.012f, -0.32f, -0.05f, SurfaceKind.Metal);
+                Disc(mesh, position, 0.10f, -0.44f, -0.32f, SurfaceKind.Metal);
+                for (var blade = 0; blade < 5; blade++)
+                {
+                    var angle = blade * MathF.Tau / 5 + 0.3f;
+                    var radial = new Vector3(MathF.Cos(angle), MathF.Sin(angle), 0);
+                    var tangent = new Vector3(-radial.Y, radial.X, 0);
+                    Box(mesh, position, tangent, radial, 0.012f, 0.06f, 0.14f, -0.42f, -0.41f, SurfaceKind.Metal);
+                    Box(mesh, position, tangent, radial, 0.065f, 0.27f, 0.42f, -0.425f, -0.415f, SurfaceKind.DoorLeaf);
+                }
+                Disc(mesh, position, 0.09f, -0.50f, -0.44f, glow);
+                break;
+            }
             case ElectricalDeviceKind.Pendant:
                 Disc(mesh, position, 0.05f, -0.02f, 0, SurfaceKind.Metal);
                 Disc(mesh, position, 0.004f, -0.70f, -0.02f, SurfaceKind.OpeningFrame);
