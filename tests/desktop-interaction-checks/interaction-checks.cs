@@ -315,11 +315,14 @@ internal static class InteractionChecks
         Invoke("ExecuteApplicationCommand", "PlumbingService");
         Invoke("PlacePlumbingPoint", PlumbingPointKind.WaterMeter, new Point2(200, 200));
         Invoke("TryPlumbingSpace");
+        var afterMeter = Field<PlumbingPointKind?>("_plumbingPointTool");
+        while (Field<PlumbingPointKind?>("_plumbingPointTool") != PlumbingPointKind.SewerOutlet) Invoke("TryPlumbingSpace");
         Invoke("PlacePlumbingPoint", Field<PlumbingPointKind?>("_plumbingPointTool")!.Value, new Point2(200, 205));
         Invoke("CancelPlumbingTools");
         var points = session.Document.PlumbingPoints.Skip(pointsBefore).ToArray();
         Check(points.Select(point => point.Kind).SequenceEqual([PlumbingPointKind.WaterMeter, PlumbingPointKind.SewerOutlet]),
-            "The service tool places a water meter, and SPACE switches it to the sewer outlet");
+            "The service tool places a water meter, and SPACE steps through the other services to the sewer outlet");
+        Check(afterMeter == PlumbingPointKind.Cistern, "After the meter, SPACE offers the cistern with its pump");
 
         Invoke("ExecuteApplicationCommand", "Pipe");
         Invoke("HandlePipingClick", points[0].Position);

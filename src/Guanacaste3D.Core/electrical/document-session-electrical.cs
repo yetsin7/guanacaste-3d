@@ -23,9 +23,17 @@ public sealed partial class DocumentSession
                 .DefaultIfEmpty(0.20).First();
             outdoor = new Point2(position.X - Math.Cos(facing) * (thickness + 0.45), position.Y - Math.Sin(facing) * (thickness + 0.45));
         }
+        // A solar array lies on the roof under it, tilted with the slope and facing downhill; with no roof it stands on a
+        // ground rack tilted 10° to the south, the best fixed tilt at Costa Rica's latitude.
+        var tilt = 0.0;
+        if (kind == ElectricalDeviceKind.SolarArray)
+            (elevation, tilt, facing) = SolarGeometry.Mounting(Document, levelId, position);
         Commit("Transaction.AddElectricalDevice", document => document.ElectricalDevices.Add(
             new ElectricalDevice(id, levelId, kind, name, position, elevation)
             {
+                PanelCount = kind == ElectricalDeviceKind.SolarArray ? 10 : 0,
+                PanelWatts = kind == ElectricalDeviceKind.SolarArray ? ElectricalStandards.PanelRating : 0,
+                Tilt = tilt,
                 Facing = facing,
                 Watts = kind == ElectricalDeviceKind.MiniSplit ? ElectricalStandards.CoolingWatts(capacity) : ElectricalStandards.DefaultWatts(kind),
                 MainBreakerAmps = kind == ElectricalDeviceKind.Panel ? 100 : 0,
@@ -42,6 +50,24 @@ public sealed partial class DocumentSession
         Update("Transaction.SetCoolingCapacity", deviceId, existing => existing.Kind != ElectricalDeviceKind.MiniSplit
             ? throw new InvalidDataException("Invalid electrical device.")
             : existing with { CoolingBtu = btu, Watts = ElectricalStandards.CoolingWatts(btu) });
+    }
+
+    /// <summary>Sets how many panels a solar array has.</summary>
+    public void SetPanelCount(Guid deviceId, int count)
+    {
+        if (count is < 1 or > 500) throw new InvalidDataException("Invalid electrical device.");
+        Update("Transaction.SetPanelCount", deviceId, existing => existing.Kind != ElectricalDeviceKind.SolarArray
+            ? throw new InvalidDataException("Invalid electrical device.")
+            : existing with { PanelCount = count });
+    }
+
+    /// <summary>Sets an inverter's AC rating in watts.</summary>
+    public void SetInverterRating(Guid deviceId, double watts)
+    {
+        if (!ElectricalStandards.InverterRatings.Contains(watts)) throw new InvalidDataException("Invalid electrical device.");
+        Update("Transaction.SetInverterRating", deviceId, existing => existing.Kind != ElectricalDeviceKind.Inverter
+            ? throw new InvalidDataException("Invalid electrical device.")
+            : existing with { Watts = watts });
     }
 
     /// <summary>Sets a circuit to 120 V (one pole) or 240 V (two poles).</summary>
@@ -234,6 +260,8 @@ public static class ElectricalRules
                 device.Controls is null || device.Controls.Count > 200 || device.Controls.Count > 0 && !device.IsSwitch ||
                 !double.IsFinite(device.MainBreakerAmps) || device.MainBreakerAmps is < 0 or > 1200 ||
                 !double.IsFinite(device.CoolingBtu) || device.CoolingBtu is < 0 or > 200000 ||
+                device.PanelCount is < 0 or > 500 || !double.IsFinite(device.PanelWatts) || device.PanelWatts is < 0 or > 1000 ||
+                !double.IsFinite(device.Tilt) || device.Tilt is < 0 or > 70 || device.IsDirectCurrent && device.CircuitId is not null ||
                 device.OutdoorPosition is Point2 outdoor && (!double.IsFinite(outdoor.X) || !double.IsFinite(outdoor.Y)))
                 throw new InvalidDataException("Invalid electrical device.");
         foreach (var circuit in document.ElectricalCircuits)

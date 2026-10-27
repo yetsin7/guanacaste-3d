@@ -59,7 +59,9 @@ public enum SurfaceKind : byte
     /// <summary>PVC sanitary drain.</summary>
     PipeDrain,
     /// <summary>Rainwater drain, green as in Revit's storm system.</summary>
-    PipeStorm
+    PipeStorm,
+    /// <summary>The glass face of a photovoltaic module: deep blue cells under smooth glass.</summary>
+    SolarCell
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>

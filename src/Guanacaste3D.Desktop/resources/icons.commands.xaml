@@ -1275,6 +1275,13 @@
     <GeometryDrawing Pen="{StaticResource CadAccentPen}" Geometry="M3,12 L12,17 L21,12 Z"/>
     <GeometryDrawing Pen="{StaticResource CadOutlinePen}" Geometry="M3,16 L12,21 L21,16 Z"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.PhotovoltaicSystem"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFE19A" Pen="{StaticResource CadOutlinePen}" Geometry="M7.6,12 A4.4,4.4 0 1 0 16.4,12 A4.4,4.4 0 1 0 7.6,12 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdOrangePen}" Geometry="M12,2 L12,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeGreen}" Geometry="M16.4,18.4 L20.4,18.4 M18.4,16.4 L18.4,20.4"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.PidModeler"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CadOutlinePen}" Geometry="M3,12 A3,3 0 1 0 9,12 A3,3 0 1 0 3,12 Z"/>

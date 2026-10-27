@@ -150,6 +150,28 @@ How the drawing area behaves in version 0.14. Everything here is covered by
   - Each downspout drops into a buried drain sized by Manning at 1 % to the
     outlet, and its leader's capacity is checked against its share of the roof.
   - The schedule lists every roof's area, runoff and downspouts.
+- **Water storage**: the service tool also places a *cisterna con bomba* and a
+  *tanque elevado*.
+  - Tanks hold a day of reserve at 200 L per person, in the standard tank
+    size.
+  - A cistern's pump is an electrical device that you wire like any load. While
+    its circuit is live it pressurises the house at its pressure switch; when the
+    circuit dies, every fixture shows *sin presión*. Its power is checked
+    against the house's peak flow.
+  - An elevated tank on its tower gives only the pressure of its height, about
+    10 kPa per metre.
+  - Tank size, pump and tank height change in the plumbing schedule.
+- **Solar power**: *Sistema fotovoltaico* places solar arrays and grid-tie
+  inverters.
+  - An array lies on the roof under it, tilted with the slope and facing
+    downhill, or on a 10° ground rack. SPACE changes its panel count.
+  - Arrays wire themselves to the nearest inverter. The inverter goes on a 240 V
+    two-pole breaker and produces only while that circuit and the panel are live
+    (anti-islanding).
+  - The analysis gives DC/AC ratio, daily yield (5.2 peak sun hours, 80 %
+    performance, orientation) and the share of the house's estimated use.
+  - The panel schedule shows the solar generation and checks the 120 % rule
+    (NEC 705.12).
 - **Air conditioning**: *Equipos mecánicos* places a minisplit on a wall.
   - It is sized for the room it is in, at 600 BTU/h per m² (one ton per
     20 m²). Its condenser goes outside the wall behind it, joined by the line

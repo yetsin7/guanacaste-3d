@@ -35,11 +35,24 @@ public sealed record CircuitReport(
 {
     /// <summary>Whether the circuit carries power.</summary>
     public bool Energized => Status is CircuitStatus.Ok or CircuitStatus.Warning;
+
+    /// <summary>Power fed back into the panel by inverters on this circuit, in watts (included in <see cref="Current"/>).</summary>
+    public double GenerationWatts { get; init; }
 }
 
 /// <summary>The result for one panel.</summary>
 public sealed record PanelReport(ElectricalDevice Panel, IReadOnlyList<CircuitReport> Circuits, double LoadWatts,
-    double Current, double Utilization, CircuitStatus Status);
+    double Current, double Utilization, CircuitStatus Status)
+{
+    /// <summary>Inverter output fed into the panel, in watts.</summary>
+    public double GenerationWatts { get; init; }
+
+    /// <summary>
+    /// The 120 % rule (NEC 705.12(B)(3)): the breakers feeding the bus — the main plus every inverter breaker — may add up
+    /// to no more than 120 % of the bus rating (taken as the main's rating).
+    /// </summary>
+    public bool BackfeedWithinLimit { get; init; } = true;
+}
 
 /// <summary>
 /// Load calculation and live simulation of the electrical system. Each circuit adds the connected load of its devices
@@ -77,7 +90,8 @@ public sealed class ElectricalAnalysis
         {
             var reports = document.ElectricalCircuits.Where(circuit => circuit.PanelId == panel.Id).OrderBy(circuit => circuit.Number)
                 .Select(circuit => Report(document, panel, circuit)).ToList();
-            var load = reports.Sum(report => report.LoadWatts);
+            var load = reports.Sum(report => report.LoadWatts - report.GenerationWatts);
+            var generation = reports.Sum(report => report.GenerationWatts);
             var current = load / 240.0;
             var main = panel.MainBreakerAmps > 0 ? panel.MainBreakerAmps : 100;
             var utilization = current / main;
@@ -89,7 +103,11 @@ public sealed class ElectricalAnalysis
                 reports = reports.Select(report => report with { Status = report.Status == CircuitStatus.Empty ? CircuitStatus.Empty : status }).ToList();
             else _livePanels.Add(panel.Id);
             foreach (var report in reports) _circuits[report.Circuit.Id] = report;
-            panels.Add(new PanelReport(panel, reports, load, current, utilization, status));
+            var backfeed = reports.Where(report => report.GenerationWatts > 0).Sum(report => report.Circuit.BreakerAmps);
+            panels.Add(new PanelReport(panel, reports, load, current, utilization, status)
+            {
+                GenerationWatts = generation, BackfeedWithinLimit = main + backfeed <= 1.2 * main
+            });
         }
         Panels = panels;
     }
@@ -170,6 +188,9 @@ public sealed class ElectricalAnalysis
             : utilization > 1 ? CircuitStatus.Tripped
             : utilization > 0.8 ? CircuitStatus.Warning
             : CircuitStatus.Ok;
-        return new CircuitReport(circuit, devices, load, current, utilization, awg, area, length, drop, status, route);
+        return new CircuitReport(circuit, devices, load, current, utilization, awg, area, length, drop, status, route)
+        {
+            GenerationWatts = devices.Where(device => device.IsGenerator).Sum(device => Math.Max(0, device.Watts))
+        };
     }
 }

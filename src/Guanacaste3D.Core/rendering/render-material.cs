@@ -183,6 +183,10 @@ public static class MaterialLibrary
         {
             Name = "Tubería agua caliente", BaseColor = new(0.72f, 0.16f, 0.12f), Roughness = 0.35f
         },
+        SurfaceKind.SolarCell => new RenderMaterial
+        {
+            Name = "Celda solar", BaseColor = new(0.02f, 0.04f, 0.10f), Roughness = 0.06f, Metallic = 0.2f
+        },
         SurfaceKind.PipeStorm => new RenderMaterial
         {
             Name = "PVC pluvial", BaseColor = new(0.30f, 0.55f, 0.32f), Roughness = 0.4f

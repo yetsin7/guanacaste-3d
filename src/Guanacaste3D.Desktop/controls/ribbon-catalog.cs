@@ -159,6 +159,7 @@ public static partial class RibbonCatalog
             L("ElectricalDevice", "RibbonCommand.ElectricalDevice", "Icon.Wire"),
             L("LightSwitch", "RibbonCommand.LightSwitch", "Icon.Wire"),
             L("Wire", "RibbonCommand.Wire", "Icon.Wire"),
+            L("PhotovoltaicSystem", "RibbonCommand.PhotovoltaicSystem", "Icon.Wire"),
             S("ElectricalEquipment", "RibbonCommand.ElectricalEquipment", "Icon.Wire"),
             S("PanelSchedule", "RibbonCommand.PanelSchedule", "Icon.Wire"),
             S("CableTray", "RibbonCommand.CableTray", "Icon.Wire"),

@@ -231,6 +231,16 @@ static class ShowcaseShot
             session.AddRailingsOnHost(stairId);
         }
         if (Environment.GetEnvironmentVariable("G3_SHOT_MEP") == "1") ApplyServices(session);
+        if (Environment.GetEnvironmentVariable("G3_SHOT_SOLAR") == "1")
+        {
+            // Two arrays on the south slope of the roof, wired to an inverter on the west wall.
+            var walls = session.Document.Walls;
+            var (wx0, wx1) = (walls.Min(w => Math.Min(w.Start.X, w.End.X)), walls.Max(w => Math.Max(w.Start.X, w.End.X)));
+            var (wy0, wy1) = (walls.Min(w => Math.Min(w.Start.Y, w.End.Y)), walls.Max(w => Math.Max(w.Start.Y, w.End.Y)));
+            var southY = wy0 + (wy1 - wy0) * 0.27;
+            foreach (var x in new[] { wx0 + (wx1 - wx0) * 0.3, wx0 + (wx1 - wx0) * 0.7 })
+                session.AddElectricalDevice(level, Guanacaste3D.Core.ElectricalDeviceKind.SolarArray, "FV", new Guanacaste3D.Core.Point2(x, southY));
+        }
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true,
             plants: Environment.GetEnvironmentVariable("G3_SHOT_MODEL_TREES") == "1" ? Guanacaste3D.Core.Geometry.PlantDetail.Model : Guanacaste3D.Core.Geometry.PlantDetail.Render);
         var center = (min + max) / 2;

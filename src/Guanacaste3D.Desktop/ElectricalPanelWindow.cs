@@ -46,6 +46,13 @@ internal sealed class ElectricalPanelWindow : Window
                 FontSize = 15, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 6),
                 Foreground = StateBrush(panel.Status)
             });
+            if (panel.GenerationWatts > 0)
+                _content.Children.Add(new TextBlock
+                {
+                    Text = string.Format(CultureInfo.CurrentCulture, Text(panel.BackfeedWithinLimit ? "PanelSchedule.SolarOk" : "PanelSchedule.SolarBackfeed"),
+                        panel.GenerationWatts / 1000, panel.Panel.MainBreakerAmps * 1.2),
+                    Foreground = panel.BackfeedWithinLimit ? Brushes.SeaGreen : Brushes.DarkOrange, Margin = new Thickness(0, 0, 0, 6)
+                });
             var grid = new DataGrid
             {
                 AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true, SelectionMode = DataGridSelectionMode.Single,

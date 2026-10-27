@@ -26,6 +26,7 @@ public partial class MainWindow
             ElectricalDeviceKind.CeilingFan];
 
     private static readonly ElectricalDeviceKind[] Cooling = [ElectricalDeviceKind.MiniSplit];
+    private static readonly ElectricalDeviceKind[] Solar = [ElectricalDeviceKind.SolarArray, ElectricalDeviceKind.Inverter];
 
     private ElectricalDeviceKind? _electricalTool;
     private ElectricalDeviceKind[] _electricalFamily = [];
@@ -85,6 +86,24 @@ public partial class MainWindow
                 { } device && (device.IsSwitch || device.Kind == ElectricalDeviceKind.Panel))
         {
             FlipSwitch(id);
+            return true;
+        }
+        if (_selectedElectricalId is Guid solarId &&
+            _session.Document.ElectricalDevices.FirstOrDefault(device => device.Id == solarId) is
+                { Kind: ElectricalDeviceKind.SolarArray or ElectricalDeviceKind.Inverter } solar)
+        {
+            // SPACE steps an array through panel counts and an inverter through its AC ratings.
+            if (solar.Kind == ElectricalDeviceKind.SolarArray)
+            {
+                var counts = ElectricalStandards.PanelCounts;
+                _session.SetPanelCount(solarId, counts.FirstOrDefault(count => count > solar.PanelCount, counts[0]));
+            }
+            else
+            {
+                var ratings = ElectricalStandards.InverterRatings;
+                _session.SetInverterRating(solarId, ratings.FirstOrDefault(rating => rating > solar.Watts, ratings[0]));
+            }
+            RefreshAll();
             return true;
         }
         if (_selectedElectricalId is Guid unitId &&
@@ -203,6 +222,11 @@ public partial class MainWindow
         }
         if (_wiringCircuit is Guid circuitId)
         {
+            if (device is { IsDirectCurrent: true })
+            {
+                StatusText.Text = GetText("Status.ArrayToInverter");
+                return;
+            }
             if (device is null || device.Kind == ElectricalDeviceKind.Panel)
             {
                 StatusText.Text = GetText("Status.WiringPickDevice");
@@ -279,6 +303,26 @@ public partial class MainWindow
             return false;
         var analysis = ElectricalAnalysis.Analyze(_session.Document);
         var circuit = device.CircuitId is Guid id ? analysis.Circuit(id) : null;
+        if (device.Kind is ElectricalDeviceKind.SolarArray or ElectricalDeviceKind.Inverter)
+        {
+            var solar = SolarAnalysis.Analyze(_session.Document, analysis);
+            if (device.Kind == ElectricalDeviceKind.SolarArray)
+            {
+                var owner = solar.FirstOrDefault(report => report.Arrays.Any(array => array.Id == device.Id));
+                PropertiesText.Text = FormatText("Properties.SolarArraySummary", device.Name, device.PanelCount, device.PanelWatts,
+                    device.PanelCount * device.PanelWatts / 1000, device.Tilt, Compass(device.Facing),
+                    SolarAnalysis.OrientationFactor(device.Tilt, device.Facing) * 100, SolarAnalysis.DailyYield(device),
+                    owner?.Inverter.Name ?? GetText("Solar.NoInverter"));
+            }
+            else if (solar.FirstOrDefault(report => report.Inverter.Id == device.Id) is { } report)
+                PropertiesText.Text = FormatText("Properties.InverterSummary", device.Name, device.Watts / 1000, report.Arrays.Count,
+                    report.DcWatts / 1000, report.DcToAc, GetText(report.Producing ? "Solar.Producing" : "Solar.Off"), report.DailyKilowattHours,
+                    report.ConsumptionKilowattHours, report.Coverage * 100,
+                    report.Issue.Length == 0 ? GetText("PlumbingStatus.Ok") : GetText(report.Issue),
+                    circuit is null ? GetText("Electrical.NoCircuit")
+                        : $"{FormatText("Electrical.CircuitName", circuit.Circuit.Number)} · {circuit.Circuit.Voltage:0} V · {circuit.Circuit.BreakerAmps:0} A");
+            return true;
+        }
         if (device.Kind == ElectricalDeviceKind.MiniSplit)
         {
             var cooling = CoolingAnalysis.Analyze(_session.Document).First(report => report.Unit.Id == device.Id);
@@ -299,6 +343,13 @@ public partial class MainWindow
     }
 
     private string ElectricalName(ElectricalDeviceKind kind) => GetText($"Electrical.Kind.{kind}");
+
+    /// <summary>The compass direction a plan angle points to (plan +Y is north).</summary>
+    private string Compass(double angle)
+    {
+        var degrees = (90 - angle * 180 / Math.PI + 360) % 360;
+        return GetText($"Compass.{(int)Math.Round(degrees / 45) % 8}");
+    }
 
     // ---------------------------------------------------------------- plan
 
@@ -454,6 +505,40 @@ public partial class MainWindow
                     Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.4, Tag = tag
                 });
                 Text("AC", center + depth * 0.5);
+                break;
+            }
+            case ElectricalDeviceKind.SolarArray:
+            {
+                // The array's outline in plan, with the diagonal that marks PV modules, and an arrow toward where it faces.
+                var device = _session.Document.ElectricalDevices.FirstOrDefault(candidate => candidate.Id == tag);
+                var count = device?.PanelCount ?? 10;
+                var tilt = (device?.Tilt ?? 10) * Math.PI / 180;
+                var (rows, columns) = SolarGeometry.Layout(count);
+                var halfAcross = columns * ElectricalStandards.PanelWidth / 2 * _scale;
+                var halfUp = rows * ElectricalStandards.PanelLength * Math.Cos(tilt) / 2 * _scale;
+                var face = new Vector(Math.Cos(facing), -Math.Sin(facing));
+                var side = new Vector(-face.Y, face.X);
+                Point C(double a, double u) => center + side * a - face * u;
+                PlanCanvas.Children.Add(new Polygon
+                {
+                    Points = [C(-halfAcross, -halfUp), C(halfAcross, -halfUp), C(halfAcross, halfUp), C(-halfAcross, halfUp)],
+                    Stroke = brush, StrokeThickness = 1.3, Fill = new SolidColorBrush(Color.FromArgb(60, 20, 40, 110)), Tag = tag
+                });
+                Stroke(C(-halfAcross, -halfUp), C(halfAcross, halfUp), 0.8);
+                Stroke(center, center + face * (halfUp + size), 1.2);
+                Text("FV", center);
+                break;
+            }
+            case ElectricalDeviceKind.Inverter:
+            {
+                var across = new Vector(outward.Y, -outward.X) * size * 0.9;
+                var depth = outward * size * 0.8;
+                PlanCanvas.Children.Add(new Polygon
+                {
+                    Points = [center - across, center + across, center + across + depth, center - across + depth],
+                    Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.4, Tag = tag
+                });
+                Text("~", center + depth * 0.5);
                 break;
             }
             case ElectricalDeviceKind.WaterPump:

@@ -78,6 +78,7 @@ MAP = {
     "Conduit": ("conduit", None), "ElectricalEquipment": ("panel_board", None),
     "LightingFixture": ("luminaire", None), "ElectricalDevice": ("outlet", None), "LightSwitch": ("light_switch", None),
     "PanelSchedule": ("schedule", "star"),
+    "PhotovoltaicSystem": ("sun", "plus"),
     "PlumbingService": ("plumbing_fixture", "down"), "ConnectPlumbing": ("pipe", "check"), "PlumbingSchedule": ("schedule", "check"),
     # Insert
     "ManageLinks": ("link", "gear"), "LinkNativeProject": ("link", "plus"), "LinkIfc": ("ifc", "link"), "LinkCad": ("link_cad", None),

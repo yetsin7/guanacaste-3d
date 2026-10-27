@@ -1,6 +1,16 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.20.0.
+Last updated: 2026-10-27. Version: 0.21.0.
+
+## Water storage, solar power, icon ribbon and area table (0.21, 2026-10-27)
+
+- Cistern with an electric pump: the house's pressure depends on the pump's circuit in real time. Elevated tank with
+  gravity pressure.
+- Photovoltaic arrays on roof slopes and grid-tie inverters:
+  - yield and DC/AC ratio;
+  - anti-islanding;
+  - 120 % backfeed rule.
+- Icon-only ribbon with named, animated tooltips; floor hatching by finish; area table on sheets.
 
 ## X-ray view, septic tank and storm drainage (0.20, 2026-10-27)
 

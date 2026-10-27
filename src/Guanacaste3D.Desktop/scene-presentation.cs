@@ -44,7 +44,7 @@ internal static class ScenePresentation
         }
         foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Leaf, SurfaceKind.InteriorWall, SurfaceKind.Metal, SurfaceKind.LightEmitter, SurfaceKind.Upholstery, SurfaceKind.Bedding, SurfaceKind.Ceramic, SurfaceKind.LightOff, SurfaceKind.SpotEmitter, SurfaceKind.WallBrick, SurfaceKind.WallBlock,
             SurfaceKind.WallConcrete, SurfaceKind.WallStone, SurfaceKind.WallWood, SurfaceKind.WallMetal, SurfaceKind.Mirror, SurfaceKind.PipeCold, SurfaceKind.PipeHot, SurfaceKind.PipeDrain,
-            SurfaceKind.PipeStorm, SurfaceKind.Glass })
+            SurfaceKind.PipeStorm, SurfaceKind.SolarCell, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
             mesh.Freeze();
@@ -307,6 +307,7 @@ internal static class ScenePresentation
         SurfaceKind.PipeHot => Diffuse(Color.FromRgb(200, 45, 35)),
         SurfaceKind.PipeDrain => Diffuse(Color.FromRgb(150, 120, 80)),
         SurfaceKind.PipeStorm => Diffuse(Color.FromRgb(60, 150, 70)),
+        SurfaceKind.SolarCell => new MaterialGroup { Children = { Diffuse(Color.FromRgb(18, 28, 60)), new SpecularMaterial(new SolidColorBrush(Color.FromRgb(120, 130, 150)), 60) } },
         SurfaceKind.SpotEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 240, 210))),
         SurfaceKind.LightEmitter => new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(255, 236, 200))),
         SurfaceKind.Glass => new MaterialGroup

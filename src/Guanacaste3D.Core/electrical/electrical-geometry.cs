@@ -98,6 +98,15 @@ public static class ElectricalGeometry
                     Box(mesh, outdoor + along * side, along, front, 0.02f, 0.17f, 0.02f, 0.08f, 0.10f, SurfaceKind.Metal);
                 break;
             }
+            case ElectricalDeviceKind.SolarArray:
+                AddArray(mesh, device, datum);
+                break;
+            case ElectricalDeviceKind.Inverter:
+                // A white inverter box on the wall with its status light, and the grey AC disconnect beside it.
+                Box(mesh, position, along, outward, 0.22f, 0.09f, 0.09f, -0.30f, 0.30f, SurfaceKind.Ceramic);
+                Box(mesh, position + along * 0.10f, along, outward, 0.03f, 0.004f, 0.182f, 0.18f, 0.22f, SurfaceKind.LightEmitter);
+                Box(mesh, position - along * 0.38f, along, outward, 0.09f, 0.06f, 0.06f, -0.20f, 0.05f, SurfaceKind.Metal);
+                break;
             case ElectricalDeviceKind.WaterPump:
             {
                 // Concrete pad, the blue pressure tank standing on it, and the pump with its motor lying beside it.
@@ -135,6 +144,54 @@ public static class ElectricalGeometry
                 Disc(mesh, position, 0.15f, -0.96f, -0.93f, glow);
                 break;
         }
+    }
+
+    /// <summary>
+    /// A photovoltaic array: portrait modules in rows on aluminium rails, tilted up-slope away from the direction they face,
+    /// each a dark cell face in a slim metal frame.
+    /// </summary>
+    private static void AddArray(SceneMesh mesh, ElectricalDevice array, double datum)
+    {
+        var facing = new Vector3(MathF.Cos((float)array.Facing), MathF.Sin((float)array.Facing), 0);
+        var across = new Vector3(-facing.Y, facing.X, 0);
+        var tilt = (float)(array.Tilt * Math.PI / 180);
+        var upSlope = Vector3.Normalize(-facing * MathF.Cos(tilt) + Vector3.UnitZ * MathF.Sin(tilt));
+        var normal = Vector3.Normalize(facing * MathF.Sin(tilt) + Vector3.UnitZ * MathF.Cos(tilt));
+        var center = new Vector3((float)array.Position.X, (float)array.Position.Y, (float)(datum + array.Elevation));
+        var (rows, columns) = SolarGeometry.Layout(array.PanelCount);
+        const float gap = 0.02f;
+        var length = (float)ElectricalStandards.PanelLength;
+        var width = (float)ElectricalStandards.PanelWidth;
+        var placed = 0;
+        for (var row = 0; row < rows; row++)
+            for (var column = 0; column < columns && placed < array.PanelCount; column++, placed++)
+            {
+                var offsetAcross = (column - (columns - 1) / 2f) * (width + gap);
+                var offsetUp = (row - (rows - 1) / 2f) * (length + gap);
+                var middle = center + across * offsetAcross + upSlope * offsetUp;
+                Oriented(mesh, middle + normal * 0.02f, across, upSlope, normal, width / 2 - 0.02f, length / 2 - 0.02f, 0.004f, SurfaceKind.SolarCell);
+                Oriented(mesh, middle, across, upSlope, normal, width / 2, length / 2, 0.018f, SurfaceKind.Metal);
+            }
+        // Two rails under each row of modules, the full width of the array.
+        for (var row = 0; row < rows; row++)
+            foreach (var at in new[] { -0.25f, 0.25f })
+            {
+                var middle = center + upSlope * ((row - (rows - 1) / 2f) * (length + gap) + at * length) - normal * 0.04f;
+                Oriented(mesh, middle, across, upSlope, normal, columns * (width + gap) / 2, 0.02f, 0.02f, SurfaceKind.Metal);
+            }
+    }
+
+    /// <summary>A box with arbitrary axes: half-extents along each unit axis around its centre.</summary>
+    private static void Oriented(SceneMesh mesh, Vector3 center, Vector3 u, Vector3 v, Vector3 n, float hu, float hv, float hn, SurfaceKind kind)
+    {
+        Vector3 P(int su, int sv, int sn) => center + u * (su * hu) + v * (sv * hv) + n * (sn * hn);
+        void Face(Vector3 a, Vector3 b, Vector3 c, Vector3 d) => mesh.AddQuad(a, b, c, d, kind);
+        Face(P(-1, -1, 1), P(1, -1, 1), P(1, 1, 1), P(-1, 1, 1));
+        Face(P(-1, 1, -1), P(1, 1, -1), P(1, -1, -1), P(-1, -1, -1));
+        Face(P(-1, -1, -1), P(1, -1, -1), P(1, -1, 1), P(-1, -1, 1));
+        Face(P(1, 1, -1), P(-1, 1, -1), P(-1, 1, 1), P(1, 1, 1));
+        Face(P(1, -1, -1), P(1, 1, -1), P(1, 1, 1), P(1, -1, 1));
+        Face(P(-1, 1, -1), P(-1, -1, -1), P(-1, -1, 1), P(-1, 1, 1));
     }
 
     /// <summary>A box centred on <paramref name="origin"/> along the wall, offset out from it, between two heights.</summary>

@@ -37,7 +37,14 @@ public enum ElectricalDeviceKind
     /// </summary>
     MiniSplit,
     /// <summary>A cistern's pressure pump: motor, pump and pressure tank on a pad; a 120 V motor load.</summary>
-    WaterPump
+    WaterPump,
+    /// <summary>A photovoltaic array: rows of panels on a roof slope (or on a ground rack), wired to an inverter.</summary>
+    SolarArray,
+    /// <summary>
+    /// Grid-tie inverter: turns the arrays' direct current into 240 V alternating current fed back through a two-pole
+    /// breaker in the panel. It shuts down whenever the grid side is dead (anti-islanding).
+    /// </summary>
+    Inverter
 }
 
 /// <summary>
@@ -79,8 +86,21 @@ public sealed record ElectricalDevice(
     /// <summary>Air conditioners: where the outdoor condenser stands, outside the wall behind the indoor unit.</summary>
     public Point2? OutdoorPosition { get; init; }
 
+    /// <summary>Solar arrays: number of panels and the rated power of each, in watts.</summary>
+    public int PanelCount { get; init; }
+    public double PanelWatts { get; init; }
+
+    /// <summary>Solar arrays: tilt of the panels from horizontal in degrees; they face along <see cref="Facing"/>.</summary>
+    public double Tilt { get; init; }
+
     /// <summary>Equipment that runs only on 240 V; everything else is a 120 V device.</summary>
-    [JsonIgnore] public bool Needs240 => Kind is ElectricalDeviceKind.Outlet240 or ElectricalDeviceKind.MiniSplit;
+    [JsonIgnore] public bool Needs240 => Kind is ElectricalDeviceKind.Outlet240 or ElectricalDeviceKind.MiniSplit or ElectricalDeviceKind.Inverter;
+
+    /// <summary>A source of power on its circuit (its <see cref="Watts"/> is its output) rather than a load.</summary>
+    [JsonIgnore] public bool IsGenerator => Kind == ElectricalDeviceKind.Inverter;
+
+    /// <summary>Equipment wired outside the branch-circuit logic: arrays connect to their inverter, not to a breaker.</summary>
+    [JsonIgnore] public bool IsDirectCurrent => Kind == ElectricalDeviceKind.SolarArray;
 
     [JsonIgnore] public bool IsSwitch => Kind is ElectricalDeviceKind.Switch or ElectricalDeviceKind.ThreeWaySwitch or ElectricalDeviceKind.Dimmer;
 
@@ -115,6 +135,7 @@ public static class ElectricalStandards
         ElectricalDeviceKind.WallSconce => 2.00,
         // The centre of a minisplit's indoor unit, a little below a 2.4–2.7 m ceiling.
         ElectricalDeviceKind.MiniSplit => 2.15,
+        ElectricalDeviceKind.Inverter => 1.40,
         ElectricalDeviceKind.Panel => 1.50,
         _ => 0
     };
@@ -131,8 +152,20 @@ public static class ElectricalStandards
         ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet or ElectricalDeviceKind.UsbOutlet => 180,
         ElectricalDeviceKind.Outlet240 => 3500,
         ElectricalDeviceKind.MiniSplit => CoolingWatts(12000),
+        ElectricalDeviceKind.Inverter => 5000,
         _ => 0
     };
+
+    /// <summary>Rated power of a modern monocrystalline module, in watts, and its size (2.28 × 1.13 m).</summary>
+    public const double PanelRating = 550;
+    public const double PanelLength = 2.28;
+    public const double PanelWidth = 1.13;
+
+    /// <summary>Panel counts a selected array steps through.</summary>
+    public static IReadOnlyList<int> PanelCounts { get; } = [4, 6, 8, 10, 12, 16, 20, 24, 30];
+
+    /// <summary>AC ratings in which residential grid-tie inverters are sold, in watts.</summary>
+    public static IReadOnlyList<double> InverterRatings { get; } = [3000, 3800, 5000, 6000, 7600, 10000, 11400];
 
     /// <summary>Capacities in which minisplits are sold, in BTU/h (9000 is ¾ ton, 12000 one ton).</summary>
     public static IReadOnlyList<double> CoolingCapacities { get; } = [9000, 12000, 18000, 24000, 36000];
@@ -152,7 +185,7 @@ public static class ElectricalStandards
 
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
         kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant
-            or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump);
+            or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump or ElectricalDeviceKind.SolarArray);
 
     /// <summary>Breaker ratings offered for branch circuits.</summary>
     public static IReadOnlyList<double> BreakerRatings { get; } = [15, 20, 30, 40, 50, 60];
