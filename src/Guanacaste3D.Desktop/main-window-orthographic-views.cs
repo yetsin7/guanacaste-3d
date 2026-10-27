@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
 
 namespace Guanacaste3D.Desktop;
 
@@ -15,7 +16,7 @@ public partial class MainWindow
 
     /// <summary>Displays the generated section view.</summary>
     private void ShowSection_Click(object sender, RoutedEventArgs e) =>
-        SelectProjectView(BuiltInProjectViews.SectionAId);
+        SelectProjectView(_sectionViewId);
 
     /// <summary>Redraws generated elevation and section views when their viewport changes.</summary>
     private void OrthographicCanvas_SizeChanged(object sender, SizeChangedEventArgs e) =>
@@ -28,7 +29,9 @@ public partial class MainWindow
         if (view is null) return;
         _selectedViewId = view.Id;
         if (view.Kind == ProjectViewKind.Elevation) _elevationViewId = view.Id;
+        if (view.Kind == ProjectViewKind.Section) _sectionViewId = view.Id;
         _selectedWallId = null;
+        _selectedColumnId = _selectedStructuralId = null;
         _selectedOpeningId = null;
         _selectedRoomId = null;
         _selectedFloorId = null;
@@ -58,28 +61,26 @@ public partial class MainWindow
         var (elevation, name) = CurrentElevation();
         // The Elevation tab carries the name of the elevation it shows, so a renamed view is renamed everywhere.
         if (ViewTabs.Items.Count > 4 && ViewTabs.Items[4] is TabItem elevationTab) elevationTab.Header = name;
-        RenderProjectedView(ElevationCanvas, elevation);
-        RenderProjectedView(SectionCanvas, ViewOrientation.East);
+        var mesh = BuildingMesher.Build(_session.Document);
+        RenderProjectedView(ElevationCanvas, elevation, mesh);
+        RenderSectionView(mesh);
+        UpdateDocumentationCaption();
     }
 
     /// <summary>Projects model walls, openings, floors, and levels into one orthographic canvas.</summary>
-    private void RenderProjectedView(Canvas canvas, ViewOrientation orientation)
+    private void RenderProjectedView(Canvas canvas, ViewOrientation orientation, SceneMesh mesh)
     {
         canvas.Children.Clear();
         if (canvas.ActualWidth < 100 || canvas.ActualHeight < 100) return;
         var walls = _session.Document.Walls.ToArray();
-        var projectedPoints = walls.SelectMany(wall => new[]
-        {
-            ProjectCoordinate(wall.Start, orientation),
-            ProjectCoordinate(wall.End, orientation)
-        }).ToArray();
+        var projectedPoints = mesh.Positions.Select(point => ProjectCoordinate(new(point.X, point.Y), orientation))
+            .Concat(_session.Document.Grids.Where(axis => Math.Abs(ProjectCoordinate(axis.Start, orientation) -
+                ProjectCoordinate(axis.End, orientation)) < 0.00001).Select(axis => ProjectCoordinate(axis.Start, orientation))).ToArray();
         var minimumCoordinate = projectedPoints.Length == 0 ? -5 : projectedPoints.Min();
         var maximumCoordinate = projectedPoints.Length == 0 ? 5 : projectedPoints.Max();
-        var minimumElevation = Math.Min(-0.5, _session.Document.Levels.Min(level => level.Elevation) - 0.5);
-        var maximumElevation = walls.Length == 0
-            ? _session.Document.Levels.Max(level => level.Elevation) + 3
-            : walls.Max(wall =>
-                _session.Document.Levels.Single(level => level.Id == wall.LevelId).Elevation + wall.Height);
+        var (lower, upper) = mesh.Bounds();
+        var minimumElevation = Math.Min(lower.Z - 0.5, _session.Document.Levels.Min(level => level.Elevation) - 0.5);
+        var maximumElevation = Math.Max(upper.Z + 0.3, _session.Document.Levels.Max(level => level.Elevation) + 0.5);
         var horizontalRange = Math.Max(1, maximumCoordinate - minimumCoordinate);
         var verticalRange = Math.Max(1, maximumElevation - minimumElevation);
         var scale = Math.Min(
@@ -87,6 +88,7 @@ public partial class MainWindow
             (canvas.ActualHeight - 100) / verticalRange);
         var horizontalOffset = (canvas.ActualWidth - horizontalRange * scale) / 2;
 
+        DrawProjectedAxes(canvas, orientation, minimumCoordinate, minimumElevation, maximumElevation, horizontalOffset, scale);
         DrawProjectedLevels(canvas, minimumCoordinate, maximumCoordinate, minimumElevation,
             horizontalOffset, scale);
         DrawProjectedFloors(canvas, orientation, minimumCoordinate, minimumElevation,
@@ -96,6 +98,7 @@ public partial class MainWindow
             DrawProjectedWall(canvas, wall, orientation, minimumCoordinate, minimumElevation,
                 horizontalOffset, scale, ReferenceEquals(canvas, SectionCanvas));
         }
+        DrawProjectedElements(canvas, orientation, minimumCoordinate, minimumElevation, horizontalOffset, scale);
     }
 
     /// <summary>Draws persistent level datums across an orthographic view.</summary>

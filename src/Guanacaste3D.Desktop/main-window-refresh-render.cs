@@ -89,6 +89,7 @@ public partial class MainWindow
     private void RefreshProperties()
     {
         UpdateModelSelection(false);
+        UpdateDocumentationProperties();
         if (TryRefreshExtendedProperties()) return;
         var selectedOpening = _session.Document.Openings.FirstOrDefault(opening => opening.Id == _selectedOpeningId);
         if (selectedOpening is not null)
@@ -267,6 +268,7 @@ public partial class MainWindow
         else if (e.Key == Key.Escape && CancelTopoPointTool()) e.Handled = true;
         else if (e.Key == Key.Escape && _drawingWall) { HandleWallEscape(); e.Handled = true; }
         else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
+        else if (e.Key == Key.F2 && _selectedGridId is Guid gridId) { RenameGridAxis(gridId); e.Handled = true; }
         else if (e.Key == Key.F2 && _selectedViewId is Guid viewId) { RenameView(viewId); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }
         base.OnPreviewKeyDown(e);

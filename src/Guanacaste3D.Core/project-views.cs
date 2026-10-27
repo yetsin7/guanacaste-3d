@@ -29,7 +29,11 @@ public sealed record ProjectView(
     string Name,
     ProjectViewKind Kind,
     Guid? LevelId,
-    ViewOrientation Orientation);
+    ViewOrientation Orientation)
+{
+    /// <summary>Finite cutting line in model coordinates; null preserves the legacy centered section.</summary>
+    public SectionCut? Cut { get; init; }
+}
 
 /// <summary>Creates the standard coordinated views included in every project.</summary>
 public static class BuiltInProjectViews

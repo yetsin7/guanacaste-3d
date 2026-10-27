@@ -38,7 +38,7 @@ public static class PlanDimensions
         return null;
     }
 
-    /// <summary>Finds the nearest overlapping wall in each cardinal direction plus intrinsic measurements.</summary>
+    /// <summary>Finds the nearest overlapping wall or orthogonal axis in each direction plus intrinsic measurements.</summary>
     public static IReadOnlyList<PlanDimension> ForSelection(BuildingDocument document, Guid ownerId)
     {
         if (Bounds(document, ownerId) is not { } owner) return [];
@@ -53,14 +53,16 @@ public static class PlanDimensions
         {
             PlanDimension? nearest = null;
             var minimum = double.PositiveInfinity;
-            foreach (var wall in document.Walls.Where(wall => wall.LevelId == owner.LevelId &&
-                         wall.Id != ownerId && wall.Id != opening?.WallId))
+            var references = document.Walls.Where(wall => wall.LevelId == owner.LevelId &&
+                    wall.Id != ownerId && wall.Id != opening?.WallId).Select(wall => wall.Id)
+                .Concat(document.Grids.Select(axis => axis.Id));
+            foreach (var referenceId in references)
             {
-                var target = Bounds(document, wall.Id)!.Value.Bounds;
+                if (ReferenceBounds(document, referenceId, owner.LevelId, kind) is not { } target) continue;
                 var horizontal = kind is PlanDimensionKind.Left or PlanDimensionKind.Right;
                 if (horizontal ? target.MaxY <= owner.Bounds.MinY || target.MinY >= owner.Bounds.MaxY
                     : target.MaxX <= owner.Bounds.MinX || target.MinX >= owner.Bounds.MaxX) continue;
-                var candidate = new PlanDimension(Guid.Empty, owner.LevelId, ownerId, wall.Id, kind);
+                var candidate = new PlanDimension(Guid.Empty, owner.LevelId, ownerId, referenceId, kind);
                 var value = Resolve(document, candidate)?.Value ?? -1;
                 if (value < 0.01 || value >= minimum) continue;
                 nearest = candidate;
@@ -93,10 +95,9 @@ public static class PlanDimensions
             var across = (host.Thickness / 2 + 0.45) * (dimension.Kind == PlanDimensionKind.OpeningWidth ? -1 : 1);
             return new(At(host, begin, across), At(host, end, across), end - begin);
         }
-        if (dimension.ReferenceId is not Guid referenceId || Bounds(document, referenceId) is not { } reference ||
-            reference.LevelId != owner.LevelId) return null;
+        if (dimension.ReferenceId is not Guid referenceId ||
+            ReferenceBounds(document, referenceId, owner.LevelId, dimension.Kind) is not { } target) return null;
         var bounds = owner.Bounds;
-        var target = reference.Bounds;
         var x = (bounds.MinX + bounds.MaxX) / 2;
         var y = (bounds.MinY + bounds.MaxY) / 2;
         return dimension.Kind switch
@@ -107,6 +108,19 @@ public static class PlanDimensions
             PlanDimensionKind.Above => new(new(x, bounds.MaxY), new(x, target.MinY), target.MinY - bounds.MaxY),
             _ => null
         };
+    }
+
+    /// <summary>Resolves level-local faces and project-wide orthogonal grid lines without treating a grid as a solid.</summary>
+    private static PlanBounds? ReferenceBounds(BuildingDocument document, Guid id, Guid levelId, PlanDimensionKind kind)
+    {
+        if (document.Grids.FirstOrDefault(axis => axis.Id == id) is { } axis)
+        {
+            var horizontal = kind is PlanDimensionKind.Left or PlanDimensionKind.Right;
+            if (horizontal ? Math.Abs(axis.End.X - axis.Start.X) > 0.00001 :
+                Math.Abs(axis.End.Y - axis.Start.Y) > 0.00001) return null;
+            return Enclose([axis.Start, axis.End]);
+        }
+        return Bounds(document, id) is { } reference && reference.LevelId == levelId ? reference.Bounds : null;
     }
 
     /// <summary>Rejects invalid annotation identities, references and unsupported measurement kinds.</summary>

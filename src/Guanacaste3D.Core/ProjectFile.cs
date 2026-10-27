@@ -176,6 +176,13 @@ public static class ProjectFile
             document.SchemaVersion = 11;
             document.RenderMaterials ??= [];
         }
+        if (document.SchemaVersion == 11) document.SchemaVersion = 12;
+        // Schema 13 adds finite section cutting lines and project-wide reference axes.
+        if (document.SchemaVersion == 12)
+        {
+            document.SchemaVersion = 13;
+            document.Grids ??= [];
+        }
 
     }
 

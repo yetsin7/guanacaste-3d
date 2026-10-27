@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using Guanacaste3D.Core;
 using Guanacaste3D.Desktop.Controls;
 
 namespace Guanacaste3D.Desktop;
@@ -40,7 +41,8 @@ public partial class MainWindow
             case "Room": Room_Click(this, eventArguments); return true;
             case "Floor": Floor_Click(this, eventArguments); return true;
             case "Level": AddLevel_Click(this, eventArguments); return true;
-            case "Grid": ToggleGrid_Click(this, eventArguments); return true;
+            case "Grid": BeginGridTool(); return true;
+            case "Text": BeginKindTool(StructuralElementKind.ModelText); return true;
             case "Viewer":
             case "Model3D": ShowModel_Click(this, eventArguments); return true;
             case "RenderView": ShowRender_Click(this, eventArguments); return true;
@@ -51,7 +53,7 @@ public partial class MainWindow
             case "Delete": Delete_Click(this, eventArguments); return true;
             case "Plan": ShowPlan_Click(this, eventArguments); return true;
             case "Elevation": ShowElevation_Click(this, eventArguments); return true;
-            case "Section": ShowSection_Click(this, eventArguments); return true;
+            case "Section": BeginSectionTool(); return true;
             case "Schedule": ShowSchedule_Click(this, eventArguments); return true;
             case "Sheet": AddSheet_Click(this, eventArguments); return true;
             case "Render": StartRender_Click(this, eventArguments); return true;

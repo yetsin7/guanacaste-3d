@@ -13,11 +13,17 @@ public partial class MainWindow
     private bool TryRefreshExtendedProperties()
     {
         if (TryRefreshStructuralProperties()) return true;
+        if (_session.Document.Grids.FirstOrDefault(axis => axis.Id == _selectedGridId) is { } axis)
+        {
+            PropertiesText.Text = FormatText("Documentation.AxisSummary", axis.Name, axis.Start.DistanceTo(axis.End));
+            return true;
+        }
         var selectedView = _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId);
         if (selectedView is not null)
         {
             PropertiesText.Text = FormatText(
-                "Properties.ViewSummary", selectedView.Name, selectedView.Kind, selectedView.Orientation);
+                "Properties.ViewSummary", selectedView.Name, GetText("Documentation.ViewKind." + selectedView.Kind),
+                GetText("Documentation.Orientation." + selectedView.Orientation));
             return true;
         }
         var levelNames = _session.Document.Levels.ToDictionary(level => level.Id, level => level.Name);

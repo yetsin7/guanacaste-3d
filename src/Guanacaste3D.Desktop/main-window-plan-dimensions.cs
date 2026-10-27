@@ -15,8 +15,7 @@ public partial class MainWindow
     private void RenderTemporaryDimensions()
     {
         _dimensionEditorDrawn = false;
-        if (_drawingWall || _placingOpening is not null || _drawingColumn || _drawingRoom ||
-            _structuralTool is not null || _movingElement) return;
+        if (PlanToolArmed()) return;
         var selected = _selectedOpeningId ?? _selectedColumnId ?? _selectedStructuralId ??
             _selectedRoomId ?? _selectedFloorId ?? _selectedWallId;
         if (selected is not Guid id) return;

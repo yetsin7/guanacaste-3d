@@ -156,6 +156,8 @@ public partial class MainWindow
     /// <summary>Disarms the placement tool and drops its provisional geometry.</summary>
     private void CancelStructuralTool()
     {
+        CancelSectionTool();
+        CancelGridTool();
         _structuralTool = null;
         _structuralPreset = null;
         _placingTopoPoints = false;
@@ -168,7 +170,7 @@ public partial class MainWindow
     /// <summary>Tracks the pointer while a structural tool is armed so its preview follows the cursor.</summary>
     private bool TryUpdateStructuralPreview(MouseEventArgs e)
     {
-        if (TryUpdateSketchPreview(e)) return true;
+        if (TryUpdateGridPreview(e) || TryUpdateSectionPreview(e) || TryUpdateSketchPreview(e)) return true;
         if (_structuralTool is not { } tool) return false;
         var pointer = SnapWallPoint(CanvasToWorld(PlanPosition(e)));
         _structuralPreviewPoint = ResolveStructuralPoint(tool.Kind, pointer);
@@ -226,7 +228,7 @@ public partial class MainWindow
             return true;
         }
 
-        if (tool.Kind == StructuralElementKind.Beam)
+        if (tool.Kind == StructuralElementKind.Beam && tool.Mode == StructuralPlacementMode.Rectangle)
         {
             var count = _session.AddBeamSystem(_activeLevelId, GetStructuralName(tool.Kind),
                 start, point, StructuralBeamSpacing);
@@ -300,21 +302,6 @@ public partial class MainWindow
         }
         _selectedStructuralId = created;
         StatusText.Text = FormatText("Status.StructuralCreated", GetStructuralName(StructuralElementKind.Dormer));
-        RefreshAll();
-    }
-
-    /// <summary>Asks for the annotation text and places it at the clicked position; cancelling places nothing.</summary>
-    private void PlaceModelText(Point2 position)
-    {
-        var text = TextPrompt.Ask(this, GetText("Prompt.ModelText.Title"), GetText("Prompt.ModelText.Label"),
-            GetText("Prompt.Accept"), GetText("Prompt.Cancel"));
-        if (text is null)
-        {
-            StatusText.Text = GetText("Status.ModelTextCancelled");
-            return;
-        }
-        _selectedStructuralId = _session.AddModelText(_activeLevelId, position, text);
-        StatusText.Text = FormatText("Status.StructuralCreated", text);
         RefreshAll();
     }
 
