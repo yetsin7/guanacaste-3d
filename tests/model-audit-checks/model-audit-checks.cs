@@ -29,6 +29,15 @@ Check(issues.All(issue => issue.ElementId != joinedWall),
 Check(ModelAudit.Analyze(ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(snapshot)))
     .SequenceEqual(issues), "Audit findings are stable after native save and reopen");
 
+var findings = ModelAuditReporting.Describe(issues);
+Check(findings.Count == issues.Count && findings.All(finding =>
+    !string.IsNullOrWhiteSpace(finding.Description) &&
+    !string.IsNullOrWhiteSpace(finding.SuggestedAction)),
+    "Every audit issue has actionable repair guidance");
+Check(findings.Any(finding => finding.Issue.Code == ModelAuditCode.NearWallGap &&
+    finding.Severity == ModelAuditSeverity.Warning),
+    "Near wall gaps have warning severity");
+
 session.MoveWall(secondWall, 0.5, 0);
 Check(!ModelAudit.Analyze(session.Document).Any(issue => issue.Code == ModelAuditCode.NearWallGap),
     "Fixing the wall gap removes the finding");
