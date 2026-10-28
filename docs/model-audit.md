@@ -41,3 +41,13 @@ invalid argument or project file; advisory findings themselves exit normally.
 The CLI was run against a native saved family project and returned a valid
 empty JSON report. An older interaction fixture was rejected because its type
 catalog failed current project validation; the CLI returned a structured error.
+
+## Optional CI quality gate
+
+By default the command reports advisory findings and exits with code `0` for a valid model, even if it contains findings. To fail a CI job when the audit finds any issues, run:
+
+```powershell
+dotnet run --project tools/project-audit -c Release -- --fail-on-issues path/to/project.g3d
+```
+
+Exit codes: `0` means a valid model without findings (or advisory mode with findings); `1` means the model could not be loaded or audited; `2` means incorrect arguments; `3` means a valid model has one or more audit findings with `--fail-on-issues`. The JSON report is printed on stdout even when exit code is `3`, so CI can archive it. This flag is opt-in to avoid breaking existing automation.

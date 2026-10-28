@@ -29,6 +29,23 @@ Check(issues.All(issue => issue.ElementId != joinedWall),
 Check(ModelAudit.Analyze(ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(snapshot)))
     .SequenceEqual(issues), "Audit findings are stable after native save and reopen");
 
+var findings = ModelAuditReporting.Describe(issues);
+Check(findings.Count == issues.Count && findings.All(finding =>
+    !string.IsNullOrWhiteSpace(finding.Description) &&
+    !string.IsNullOrWhiteSpace(finding.SuggestedAction)),
+    "Every audit issue has actionable repair guidance");
+Check(findings.Any(finding => finding.Issue.Code == ModelAuditCode.NearWallGap &&
+    finding.Severity == ModelAuditSeverity.Warning),
+    "Near wall gaps have warning severity");
+
+var summaries = ModelAuditReporting.SummarizeByLevel(findings);
+Check(summaries.Count == 1 && summaries[0].LevelId == level &&
+    summaries[0].Total == findings.Count &&
+    summaries[0].Warnings == findings.Count(finding => finding.Severity == ModelAuditSeverity.Warning),
+    "Per-level BIM health dashboard totals match audit findings");
+Check(ModelAuditReporting.SummarizeByLevel(Array.Empty<ModelAuditFinding>()).Count == 0,
+    "Empty audit produces no phantom level summaries");
+
 session.MoveWall(secondWall, 0.5, 0);
 Check(!ModelAudit.Analyze(session.Document).Any(issue => issue.Code == ModelAuditCode.NearWallGap),
     "Fixing the wall gap removes the finding");

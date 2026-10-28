@@ -104,7 +104,16 @@ public static class QualityPlanner
         }
         if (reduced) notes.Add(PlanNote.OutputResolutionReduced);
 
-        var threads = Math.Min(RenderPresets.Threads(resources), Math.Max(1, hardware.LogicalCores));
+        var cores = Math.Max(1, hardware.LogicalCores);
+        // Plan against the supplied hardware, not the current process's CPU quota.
+        // RenderPresets.Threads uses Environment.ProcessorCount for live render defaults,
+        // which is unrelated to simulated profiles and can vary across CI runners.
+        var threads = resources switch
+        {
+            ResourceMode.Eco => Math.Max(1, cores / 2),
+            ResourceMode.Balanced => Math.Max(1, cores - 1),
+            _ => cores
+        };
         return new QualityPlan
         {
             Quality = quality,
