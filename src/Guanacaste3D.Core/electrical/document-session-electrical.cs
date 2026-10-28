@@ -261,7 +261,7 @@ public static class ElectricalRules
                 !double.IsFinite(device.MainBreakerAmps) || device.MainBreakerAmps is < 0 or > 1200 ||
                 !double.IsFinite(device.CoolingBtu) || device.CoolingBtu is < 0 or > 200000 ||
                 device.PanelCount is < 0 or > 500 || !double.IsFinite(device.PanelWatts) || device.PanelWatts is < 0 or > 1000 ||
-                !double.IsFinite(device.Tilt) || device.Tilt is < 0 or > 70 || device.IsDirectCurrent && device.CircuitId is not null ||
+                !double.IsFinite(device.Tilt) || device.Tilt is < 0 or > 70 || (device.IsDirectCurrent || device.IsFireProtection) && device.CircuitId is not null ||
                 device.OutdoorPosition is Point2 outdoor && (!double.IsFinite(outdoor.X) || !double.IsFinite(outdoor.Y)))
                 throw new InvalidDataException("Invalid electrical device.");
         foreach (var circuit in document.ElectricalCircuits)

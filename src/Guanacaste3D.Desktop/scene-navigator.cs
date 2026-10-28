@@ -46,6 +46,9 @@ internal sealed class SceneNavigator
     /// <summary>A left click that did not turn into a drag, at the pointer position in the surface; used to select.</summary>
     public event Action<Point>? Clicked;
 
+    /// <summary>A right click that did not turn into a look-around, at the pointer position; used to open the context menu.</summary>
+    public event Action<Point>? ContextRequested;
+
     /// <summary>A left double-click on the surface.</summary>
     public event Action<Point>? DoubleClicked;
 
@@ -89,6 +92,13 @@ internal sealed class SceneNavigator
     {
         _surface.Focus();
         if (_dragButton is not null) return;
+        if (e.ChangedButton == MouseButton.Middle && e.ClickCount == 2)
+        {
+            // A middle double-click brings a lost user back to the model; it does not start a pan.
+            CenterAll();
+            e.Handled = true;
+            return;
+        }
         _dragButton = e.ChangedButton;
         _last = _pressPoint = e.GetPosition(_surface);
         _dragged = false;
@@ -151,6 +161,8 @@ internal sealed class SceneNavigator
         _surface.Cursor = Cursors.Arrow;
         e.Handled = true;
         if (e.ChangedButton == MouseButton.Left && !_dragged && e.ClickCount < 2) Clicked?.Invoke(e.GetPosition(_surface));
+        // A right button released without a drag is a click, not a look-around, so it asks for the context menu.
+        if (e.ChangedButton == MouseButton.Right && !_dragged) ContextRequested?.Invoke(e.GetPosition(_surface));
     }
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
@@ -228,6 +240,34 @@ internal sealed class SceneNavigator
         Camera.YawDegrees = framed.YawDegrees;
         Camera.PitchDegrees = framed.PitchDegrees;
         Camera.FieldOfViewDegrees = framed.FieldOfViewDegrees;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Looks at the model from the side the given direction points to, keeping the whole model in view.</summary>
+    public void LookFrom(Vector3 direction)
+    {
+        var (min, max) = Bounds();
+        var center = (min + max) / 2;
+        var radius = MathF.Max(3, (max - min).Length() / 2);
+        var distance = radius / MathF.Tan(Camera.FieldOfViewDegrees * MathF.PI / 360) * 1.1f;
+        Camera.Position = center + Vector3.Normalize(direction) * distance;
+        Camera.LookAt(center);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Moves the camera toward (positive) or away from (negative) the model by a step scaled to its size.</summary>
+    public void ZoomBy(float sign)
+    {
+        MoveCamera(Camera.Forward * SceneRadius() * 0.2f * Math.Sign(sign));
+        Changed?.Invoke();
+    }
+
+    /// <summary>Recenters the view on the whole model, for when the user has lost it on screen.</summary>
+    public void CenterAll()
+    {
+        var (min, max) = Bounds();
+        var (width, height) = Size();
+        Camera.FrameBounds(min, max, width / height);
         Changed?.Invoke();
     }
 }

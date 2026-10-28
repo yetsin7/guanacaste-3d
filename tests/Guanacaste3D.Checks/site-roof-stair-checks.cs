@@ -110,6 +110,24 @@ static class SiteRoofStairChecks
         check(Vector3.Distance(texture.Sample(0.125f, 0.875f, 1e-4f), texture.Sample(1.125f, -0.125f, 1e-4f)) < 1e-5,
             "Textures repeat seamlessly in both directions");
 
+        var oddPixels = new byte[3 * 5 * 4];
+        for (var y = 0; y < 5; y++)
+        {
+            var white = (y * 3 + 2) * 4;
+            oddPixels[white] = oddPixels[white + 1] = oddPixels[white + 2] = 255;
+        }
+        var oddTexture = RenderTexture.FromBgra32(3, 5, oddPixels);
+        check(Math.Abs(oddTexture.Mean.X - 1f / 3) < 0.01f &&
+              Math.Abs(oddTexture.Sample(0.2f, 0.2f, 1).X - 1f / 3) < 0.01f,
+            "Odd-sized textures preserve their average brightness when viewed at a distance");
+        var tallPixels = new byte[8 * 4];
+        for (var y = 0; y < 8; y += 2)
+            tallPixels[y * 4] = tallPixels[y * 4 + 1] = tallPixels[y * 4 + 2] = 255;
+        var tallTexture = RenderTexture.FromBgra32(1, 8, tallPixels);
+        check(Math.Abs(tallTexture.Sample(0.5f, 0.9375f, 1).X - 0.5f) < 0.01f &&
+              tallTexture.TexelSize(1) == 1,
+            "Tall textures use both dimensions to choose their filtering level");
+
         var mesh = new SceneMesh();
         BenchmarkScenes.AddBox(mesh, new(-2, -0.1f, 0), new(2, 0.1f, 3), SurfaceKind.Wall);
         BenchmarkScenes.AddBox(mesh, new(-20, -20, -0.1f), new(20, 20, 0), SurfaceKind.Ground);

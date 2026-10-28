@@ -413,6 +413,10 @@
                       AutomationProperties.Name="{DynamicResource Action.Fit}">
                 <TextBlock Text="&#xE9A6;" FontFamily="{StaticResource GlyphFont}" FontSize="12"/>
               </Button>
+              <CheckBox x:Name="ElectricalPlanVisibility" Content="{DynamicResource PlanVisibility.Electrical}" IsChecked="True"
+                        Margin="12,0,0,0" VerticalAlignment="Center" Checked="PlanLayerVisibility_Changed" Unchecked="PlanLayerVisibility_Changed"/>
+              <CheckBox x:Name="PlumbingPlanVisibility" Content="{DynamicResource PlanVisibility.Plumbing}" IsChecked="True"
+                        Margin="12,0,0,0" VerticalAlignment="Center" Checked="PlanLayerVisibility_Changed" Unchecked="PlanLayerVisibility_Changed"/>
             </StackPanel>
           </Border>
           <TabControl x:Name="ViewTabs" Style="{StaticResource WorkspaceTabControlStyle}"
@@ -433,6 +437,16 @@
                   <Viewport3D x:Name="ModelViewport" ClipToBounds="True" SizeChanged="ModelViewport_SizeChanged"/>
                 </Border>
                 <Canvas x:Name="ModelOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
+                <!-- View cube: click a face to look at the model from that side. -->
+                <Canvas x:Name="ViewCubeCanvas" Width="110" Height="110" Background="Transparent"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,44,14,0"/>
+                <!-- Navigation wheel: the common commands, kept beside the cube. -->
+                <StackPanel x:Name="NavigationWheel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,164,14,0">
+                  <Button Content="{DynamicResource ViewCube.FrameAll}" Click="WheelFrameAll_Click" Margin="0,0,0,4"/>
+                  <Button Content="{DynamicResource ViewCube.ZoomIn}" Click="WheelZoomIn_Click" Margin="0,0,0,4"/>
+                  <Button Content="{DynamicResource ViewCube.ZoomOut}" Click="WheelZoomOut_Click" Margin="0,0,0,4"/>
+                  <Button Content="{DynamicResource ViewCube.Center}" Click="WheelCenter_Click"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8">
                   <TextBlock Text="{DynamicResource Model.OrbitHint}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11"
                              VerticalAlignment="Center" Margin="0,0,10,0"/>

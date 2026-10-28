@@ -123,6 +123,25 @@ public sealed class NavigationCamera
         float distanceScale = 1) =>
         FromRenderCamera(RenderCamera.FrameBounds(min, max, azimuthDegrees, elevationDegrees, distanceScale));
 
+    /// <summary>Fits every corner of a bounding box while preserving the camera orientation and field of view.</summary>
+    public void FrameBounds(Vector3 min, Vector3 max, float aspectRatio, float margin = 1.1f)
+    {
+        var center = (min + max) / 2;
+        var halfVertical = MathF.Tan(Math.Clamp(FieldOfViewDegrees, 5, 150) * MathF.PI / 360);
+        var halfHorizontal = halfVertical * Math.Clamp(aspectRatio, 0.1f, 10f);
+        var distance = 0.1f;
+        foreach (var x in new[] { min.X, max.X })
+        foreach (var y in new[] { min.Y, max.Y })
+        foreach (var z in new[] { min.Z, max.Z })
+        {
+            var offset = new Vector3(x, y, z) - center;
+            var depth = Vector3.Dot(offset, Forward);
+            distance = MathF.Max(distance, MathF.Max(MathF.Abs(Vector3.Dot(offset, Right)) / halfHorizontal,
+                MathF.Abs(Vector3.Dot(offset, Up)) / halfVertical) * MathF.Max(1, margin) - depth);
+        }
+        Position = center - Forward * (distance + 0.05f);
+    }
+
     public static NavigationCamera FromRenderCamera(RenderCamera camera)
     {
         var result = new NavigationCamera { Position = camera.Position, FieldOfViewDegrees = camera.VerticalFieldOfViewDegrees };

@@ -230,12 +230,9 @@ public partial class MainWindow
                 var preset = _structuralPreset is { Kind: StructuralElementKind.Stair } chosen
                     ? chosen
                     : ArchitecturalLibrary.PresetsFor(StructuralElementKind.Stair).First();
-                var here = _session.Document.Levels.First(level => level.Id == _activeLevelId).Elevation;
-                var above = _session.Document.Levels.Where(level => level.Elevation > here + 1).OrderBy(level => level.Elevation)
-                    .Select(level => level.Elevation - here).FirstOrDefault();
                 using var group = _session.BeginGroup("Transaction.AddStair");
                 _selectedStructuralId = _session.AddElementFromPreset(_activeLevelId,
-                    preset with { Height = above > 0 ? above : preset.Height }, start, end);
+                    preset with { Height = StairPlacementHeight(preset.Height) }, start, end);
                 _session.AddRailingsOnHost(_selectedStructuralId.Value);
                 group.Assimilate();
             }

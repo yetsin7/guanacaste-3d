@@ -91,7 +91,7 @@ public sealed class RenderTexture
     /// </summary>
     public Vector3 Sample(float u, float v, float footprint)
     {
-        var level = MathF.Log2(MathF.Max(footprint * _widths[0], 1e-6f));
+        var level = MathF.Log2(MathF.Max(footprint * Math.Max(_widths[0], _heights[0]), 1e-6f));
         if (level <= 0) return Bilinear(0, u, v);
         var last = _levels.Length - 1;
         if (level >= last) return Bilinear(last, u, v);
@@ -105,8 +105,8 @@ public sealed class RenderTexture
     /// <summary>Size in tiles of one texel at the detail level a footprint selects; the step for relief slopes.</summary>
     public float TexelSize(float footprint)
     {
-        var level = Math.Clamp((int)MathF.Log2(MathF.Max(footprint * _widths[0], 1e-6f)), 0, _levels.Length - 1);
-        return 1f / _widths[level];
+        var level = Math.Clamp((int)MathF.Log2(MathF.Max(footprint * Math.Max(_widths[0], _heights[0]), 1e-6f)), 0, _levels.Length - 1);
+        return 1f / Math.Max(_widths[level], _heights[level]);
     }
 
     private Vector3 Bilinear(int level, float u, float v)
@@ -136,7 +136,7 @@ public sealed class RenderTexture
         return new Vector3(Linear[data[index]], Linear[data[index + 1]], Linear[data[index + 2]]);
     }
 
-    /// <summary>Box-filters an image to half size in linear light (odd sizes round up).</summary>
+    /// <summary>Area-filters in linear light while preserving the average of odd-sized images.</summary>
     private static (byte[] Rgb, int Width, int Height) Halve(byte[] rgb, int width, int height)
     {
         var halfWidth = Math.Max(1, (width + 1) / 2);
@@ -146,17 +146,21 @@ public sealed class RenderTexture
             for (var x = 0; x < halfWidth; x++)
             {
                 var sum = Vector3.Zero;
-                var count = 0;
-                for (var dy = 0; dy < 2; dy++)
-                    for (var dx = 0; dx < 2; dx++)
+                var left = (double)x * width / halfWidth;
+                var right = (double)(x + 1) * width / halfWidth;
+                var top = (double)y * height / halfHeight;
+                var bottom = (double)(y + 1) * height / halfHeight;
+                var weightSum = 0.0;
+                for (var sy = (int)top; sy < Math.Ceiling(bottom); sy++)
+                    for (var sx = (int)left; sx < Math.Ceiling(right); sx++)
                     {
-                        var sx = Math.Min(width - 1, x * 2 + dx);
-                        var sy = Math.Min(height - 1, y * 2 + dy);
+                        var weight = (Math.Min(right, sx + 1) - Math.Max(left, sx)) *
+                            (Math.Min(bottom, sy + 1) - Math.Max(top, sy));
                         var index = (sy * width + sx) * 3;
-                        sum += new Vector3(Linear[rgb[index]], Linear[rgb[index + 1]], Linear[rgb[index + 2]]);
-                        count++;
+                        sum += new Vector3(Linear[rgb[index]], Linear[rgb[index + 1]], Linear[rgb[index + 2]]) * (float)weight;
+                        weightSum += weight;
                     }
-                var mean = sum / count;
+                var mean = sum / (float)weightSum;
                 var target = (y * halfWidth + x) * 3;
                 result[target] = Encode(mean.X);
                 result[target + 1] = Encode(mean.Y);

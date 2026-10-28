@@ -29,6 +29,8 @@ public partial class MainWindow
     private (int Version, (Vector3 Min, Vector3 Max) Bounds)? _boundsCache;
     private DispatcherTimer? _sceneDebounce;
     private bool _modelDirty = true;
+    private int _modelBuildRequest;
+    private readonly System.Threading.SemaphoreSlim _modelBuildGate = new(1, 1);
     private event Action? SceneChanged;
     private event Action? QueryChanged;
 
@@ -45,13 +47,14 @@ public partial class MainWindow
         InitializeModelSelection();
         InitializeViewTabs();
         InitializeProjectedViewZoom();
+        InitializeViewCube();
         InitializeToolbarDemos();
         _links.Changed += OnLinksChanged;
         _sceneDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(350) };
         _sceneDebounce.Tick += (_, _) =>
         {
             _sceneDebounce.Stop();
-            if (ViewTabs.SelectedIndex is Model3DTabIndex or RenderTabIndex) _ = GetSceneAsync();
+            if (ViewTabs.SelectedIndex == RenderTabIndex || (ViewTabs.SelectedIndex == Model3DTabIndex && !_modelDirty)) _ = GetSceneAsync();
             SceneChanged?.Invoke();
         };
         ViewTabs.SelectionChanged += (_, e) =>
@@ -63,7 +66,7 @@ public partial class MainWindow
                 else UpdateModelCamera();
             }
             UpdateModelSelection(true);
-            if (ViewTabs.SelectedIndex is Model3DTabIndex or RenderTabIndex) _ = GetSceneAsync();
+            if (ViewTabs.SelectedIndex == RenderTabIndex) _ = GetSceneAsync();
         };
     }
 
@@ -167,7 +170,8 @@ public partial class MainWindow
         // The document is copied here (records are immutable, so the copy is cheap) and meshed off-thread: the render
         // gets trees with branches and tens of thousands of leaves, which must not stall the interface. The 3D view
         // keeps the light modelling canopies.
-        var document = _session.Document.Clone();
+        // The 3D view draws its own visibility: elements hidden or isolated in that view are left out of the copy.
+        var document = ViewVisibility.Apply(_session.Document, Model3DView());
         var links = _links.Visible().ToList();
         var version = _sceneVersion;
         var materials = _session.Document.RenderMaterials.ToList();

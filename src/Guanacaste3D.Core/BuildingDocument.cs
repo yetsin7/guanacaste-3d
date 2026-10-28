@@ -56,6 +56,7 @@ public sealed class BuildingDocument
     public List<DrawingSheet> Sheets { get; set; } = [];
     public List<FamilyDocument> SheetFamilies { get; set; } = [];
     public List<ProjectView> Views { get; set; } = [];
+    public List<ViewTemplate> ViewTemplates { get; set; } = [];
     public List<ParameterDefinition> ParameterDefinitions { get; set; } = [];
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
@@ -110,6 +111,7 @@ public sealed class BuildingDocument
         Sheets = Sheets.Select(sheet => sheet with { Viewports = [.. sheet.Viewports] }).ToList(),
         SheetFamilies = SheetFamilies.Select(family => family.Clone()).ToList(),
         Views = [.. Views],
+        ViewTemplates = [.. ViewTemplates],
         ParameterDefinitions = ParameterDefinitions
             .Select(definition => definition with { Categories = [.. definition.Categories] }).ToList(),
         ParameterValues = [.. ParameterValues],

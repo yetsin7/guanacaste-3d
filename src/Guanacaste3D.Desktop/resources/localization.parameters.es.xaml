@@ -225,4 +225,12 @@
   <sys:String x:Key="OpeningTypes.DoorFamily">Puerta de una hoja</sys:String>
   <sys:String x:Key="OpeningTypes.WindowFamily">Ventana fija</sys:String>
   <sys:String x:Key="OpeningTypes.ImportHelp">RFA (Revit): se leen la categoría y el tamaño del tipo, no la geometría. IFC: exporta la puerta o ventana desde Revit. SketchUp: exporta un componente a OBJ. RVT y SKP no se abren directamente. Selecciona la categoría en el editor antes de importar.</sys:String>
+  <sys:String x:Key="Transaction.AddElevator">Crear ascensor</sys:String>
+  <sys:String x:Key="Transaction.AddFireProtection">Agregar protección contra incendios</sys:String>
+  <sys:String x:Key="Transaction.CopyLevelContent">Copiar elementos entre niveles</sys:String>
+  <sys:String x:Key="Transaction.SetViewVisibility">Cambiar visibilidad de la vista</sys:String>
+  <sys:String x:Key="Transaction.CreateViewTemplate">Crear plantilla de vista</sys:String>
+  <sys:String x:Key="Transaction.ApplyViewTemplate">Aplicar plantilla de vista</sys:String>
+  <sys:String x:Key="PlanVisibility.Electrical">Electricidad</sys:String>
+  <sys:String x:Key="PlanVisibility.Plumbing">Plomería</sys:String>
 </ResourceDictionary>

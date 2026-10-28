@@ -46,7 +46,24 @@ public enum ElectricalDeviceKind
     /// </summary>
     Inverter,
     /// <summary>Smoke alarm on the ceiling, 120 V with battery back-up, interconnected with the others.</summary>
-    SmokeDetector
+    SmokeDetector,
+    /// <summary>Emergency light: twin heads on the wall with a 90-minute battery that light the way out when power fails.</summary>
+    EmergencyLight,
+    /// <summary>Illuminated EXIT sign over a door on the way out, with battery back-up.</summary>
+    ExitSign,
+    /// <summary>Manual fire-alarm pull station beside an exit, wired to the fire-alarm panel.</summary>
+    FireAlarmPullStation,
+    /// <summary>Fire-alarm horn and strobe on the wall: the audible and visible notification of an alarm.</summary>
+    HornStrobe,
+    /// <summary>
+    /// Automatic sprinkler head on the ceiling (pendent, 68 °C bulb). It is piped to the fire-protection riser, not
+    /// wired: it has no circuit and no load.
+    /// </summary>
+    Sprinkler,
+    /// <summary>Portable extinguisher (ABC, 4.5 kg) hung on the wall in its cabinet; a fire-protection item without power.</summary>
+    FireExtinguisher,
+    /// <summary>Fire-hose cabinet on the standpipe: 30 m of 38 mm hose and a 64 mm valve for the fire brigade.</summary>
+    FireHoseCabinet
 }
 
 /// <summary>
@@ -109,6 +126,15 @@ public sealed record ElectricalDevice(
     [JsonIgnore] public bool IsLuminaire => Kind is ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight
         or ElectricalDeviceKind.WallSconce or ElectricalDeviceKind.Pendant or ElectricalDeviceKind.CeilingFan;
 
+    /// <summary>Life-safety equipment: alarms, emergency lighting, exit signs and the fire-protection items.</summary>
+    [JsonIgnore] public bool IsLifeSafety => Kind is ElectricalDeviceKind.SmokeDetector or ElectricalDeviceKind.EmergencyLight
+        or ElectricalDeviceKind.ExitSign or ElectricalDeviceKind.FireAlarmPullStation or ElectricalDeviceKind.HornStrobe
+        || IsFireProtection;
+
+    /// <summary>Fire-protection items that are piped or portable rather than wired: they never take a circuit.</summary>
+    [JsonIgnore] public bool IsFireProtection => Kind is ElectricalDeviceKind.Sprinkler or ElectricalDeviceKind.FireExtinguisher
+        or ElectricalDeviceKind.FireHoseCabinet;
+
     [JsonIgnore] public bool IsReceptacle => Kind is ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet
         or ElectricalDeviceKind.UsbOutlet or ElectricalDeviceKind.Outlet240;
 }
@@ -139,6 +165,13 @@ public static class ElectricalStandards
         ElectricalDeviceKind.MiniSplit => 2.15,
         ElectricalDeviceKind.Inverter => 1.40,
         ElectricalDeviceKind.Panel => 1.50,
+        // NFPA 72: manual stations 1.1–1.37 m, notification appliances 2.03–2.44 m; NFPA 10: extinguisher top ≤ 1.53 m.
+        ElectricalDeviceKind.FireAlarmPullStation => 1.20,
+        ElectricalDeviceKind.HornStrobe => 2.20,
+        ElectricalDeviceKind.EmergencyLight => 2.30,
+        ElectricalDeviceKind.ExitSign => 2.25,
+        ElectricalDeviceKind.FireExtinguisher => 1.00,
+        ElectricalDeviceKind.FireHoseCabinet => 0.90,
         _ => 0
     };
 
@@ -156,6 +189,10 @@ public static class ElectricalStandards
         ElectricalDeviceKind.MiniSplit => CoolingWatts(12000),
         ElectricalDeviceKind.Inverter => 5000,
         ElectricalDeviceKind.SmokeDetector => 1,
+        // LED heads and signs trickle-charge their batteries; a horn-strobe draws little until it sounds.
+        ElectricalDeviceKind.EmergencyLight => 4,
+        ElectricalDeviceKind.ExitSign => 3,
+        ElectricalDeviceKind.HornStrobe => 2,
         _ => 0
     };
 
@@ -189,7 +226,17 @@ public static class ElectricalStandards
     public static bool MountsOnWall(ElectricalDeviceKind kind) =>
         kind is not (ElectricalDeviceKind.CeilingFixture or ElectricalDeviceKind.Downlight or ElectricalDeviceKind.Pendant
             or ElectricalDeviceKind.CeilingFan or ElectricalDeviceKind.WaterPump or ElectricalDeviceKind.SolarArray
-            or ElectricalDeviceKind.SmokeDetector);
+            or ElectricalDeviceKind.SmokeDetector or ElectricalDeviceKind.Sprinkler);
+
+    /// <summary>NFPA 13, light hazard: the most floor one sprinkler protects (20.9 m², 225 ft²) and the widest spacing.</summary>
+    public const double SprinklerCoverage = 20.9;
+    public const double SprinklerSpacing = 4.6;
+
+    /// <summary>NFPA 10, class A ordinary hazard: the farthest anyone may walk to reach an extinguisher (22.9 m, 75 ft).</summary>
+    public const double ExtinguisherTravel = 22.9;
+
+    /// <summary>NFPA 14, class III standpipe: a 30 m hose plus a 9 m stream must reach every point of the storey.</summary>
+    public const double HoseReach = 39;
 
     /// <summary>Breaker ratings offered for branch circuits.</summary>
     public static IReadOnlyList<double> BreakerRatings { get; } = [15, 20, 30, 40, 50, 60];

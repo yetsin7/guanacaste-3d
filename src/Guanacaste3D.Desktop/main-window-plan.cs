@@ -106,8 +106,8 @@ public partial class MainWindow
         if (!_drawingWall)
         {
             if (TrySelectOpeningSymbol(e)) return;
-            if (TrySelectElectrical(e)) return;
-            if (TrySelectPlumbing(e)) return;
+            if (ElectricalPlanVisibility.IsChecked == true && TrySelectElectrical(e)) return;
+            if (PlumbingPlanVisibility.IsChecked == true && TrySelectPlumbing(e)) return;
             if (TrySelectExtendedPlanElement(e)) return;
             _selectedViewId = null;
             _selectedWallId = (e.OriginalSource as FrameworkElement)?.Tag is Guid id
@@ -217,7 +217,12 @@ public partial class MainWindow
     private void FitPlan_Click(object sender, RoutedEventArgs e)
     {
         var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();
-        if (walls.Length == 0)
+        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End })
+            .Concat(_session.Document.Floors.Where(floor => floor.LevelId == _activeLevelId).SelectMany(floor => floor.Boundary))
+            .Concat(_session.Document.Columns.Where(column => column.LevelId == _activeLevelId).SelectMany(column => column.Outline))
+            .Concat(_session.Document.StructuralElements.Where(element => element.LevelId == _activeLevelId && element.HasSolid)
+                .SelectMany(element => element.Footprint)).ToList();
+        if (points.Count == 0)
         {
             _scale = 36;
             _panOffset = new Point();
@@ -226,11 +231,10 @@ public partial class MainWindow
             return;
         }
         // The elevation symbols sit just outside the building, so framing the walls alone would cut them off.
-        var points = walls.SelectMany(wall => new[] { wall.Start, wall.End })
-            .Concat(ElevationSymbols().SelectMany(symbol => new[]
+        points.AddRange(ElevationSymbols().SelectMany(symbol => new[]
             {
                 new Point2(symbol.Position.X - 1.4, symbol.Position.Y - 1.4), new Point2(symbol.Position.X + 1.4, symbol.Position.Y + 1.4)
-            })).ToArray();
+            }));
         var minimumX = points.Min(point => point.X);
         var maximumX = points.Max(point => point.X);
         var minimumY = points.Min(point => point.Y);
@@ -276,17 +280,20 @@ public partial class MainWindow
         }
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
-        RenderExtendedPlanElements();
+        // The plan draws what its own view shows; hidden or isolated elements are left out of this plan only.
+        var planDocument = ViewVisibility.Apply(_session.Document, _session.Document.Views.FirstOrDefault(view =>
+            view.Kind == ProjectViewKind.Plan && view.LevelId == _activeLevelId));
+        RenderExtendedPlanElements(planDocument);
         RenderInPlaceFamilies();
-        var joins = WallJoinIndex.Build(_session.Document.Walls);
-        var levelWalls = _session.Document.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
+        var joins = WallJoinIndex.Build(planDocument.Walls);
+        var levelWalls = planDocument.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
         // Every outline sits beneath every fill, so a neighbour covers the shared faces and miter seams.
         var wallLayer = PlanCanvas.Children.Count;
         foreach (var wall in levelWalls) AddWallBody(wall, joins);
         RenderJoinedWallOutline(levelWalls, joins, wallLayer);
         foreach (var wall in levelWalls)
         {
-            foreach (var opening in _session.Document.Openings.Where(candidate => candidate.WallId == wall.Id))
+            foreach (var opening in planDocument.Openings.Where(candidate => candidate.WallId == wall.Id))
             {
                 if (IsOpeningInMotion(opening)) continue;
                 RenderOpeningSymbol(wall, opening);
@@ -300,8 +307,8 @@ public partial class MainWindow
             Canvas.SetTop(marker, canvasPoint.Y - 6);
             PlanCanvas.Children.Add(marker);
         }
-        RenderElectricalPlan();
-        RenderPlumbingPlan();
+        if (ElectricalPlanVisibility?.IsChecked == true) RenderElectricalPlan();
+        if (PlumbingPlanVisibility?.IsChecked == true) RenderPlumbingPlan();
         RenderMovePreview();
         RenderTemporaryDimensions();
         RenderWallSketchOverlay();

@@ -35,9 +35,32 @@ public static class SlabOpenings
         return pieces;
     }
 
-    /// <summary>Tests whether all four corners of a rectangle lie inside a simple polygon.</summary>
-    public static bool ContainsRectangle(IReadOnlyList<Point2> outline, PlanRectangle rectangle) =>
-        Corners(rectangle).All(corner => ContainsPoint(outline, corner));
+    /// <summary>
+    /// Tests whether the entire rectangle is covered by a simple polygon, including its boundary.
+    /// Comparing intersection areas also detects concave notches that lie between four interior corners.
+    /// </summary>
+    public static bool ContainsRectangle(IReadOnlyList<Point2> outline, PlanRectangle rectangle)
+    {
+        var width = rectangle.MaxX - rectangle.MinX;
+        var height = rectangle.MaxY - rectangle.MinY;
+        if (!double.IsFinite(width) || !double.IsFinite(height) || width <= 0 || height <= 0)
+            return false;
+
+        var intersectionArea = 0.0;
+        foreach (var (a, b, c) in PolygonTriangulator.Triangulate(outline))
+        {
+            var piece = new[] { outline[a], outline[b], outline[c] };
+            piece = ClipX(piece, rectangle.MinX, keepLess: false);
+            piece = ClipX(piece, rectangle.MaxX, keepLess: true);
+            piece = ClipY(piece, rectangle.MinY, keepLess: false);
+            piece = ClipY(piece, rectangle.MaxY, keepLess: true);
+            if (piece.Length >= 3)
+                intersectionArea += Math.Abs(PolygonTriangulator.SignedDoubleArea(piece)) / 2;
+        }
+
+        var area = width * height;
+        return Math.Abs(area - intersectionArea) <= Math.Max(1e-10, area * 1e-9);
+    }
 
     /// <summary>Ray-casting test that treats the polygon as simple (non self-intersecting).</summary>
     public static bool ContainsPoint(IReadOnlyList<Point2> polygon, Point2 point)

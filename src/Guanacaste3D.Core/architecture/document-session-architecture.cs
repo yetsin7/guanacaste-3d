@@ -119,6 +119,7 @@ public sealed partial class DocumentSession
             {
                 Name = name.Trim(), Width = width, Height = height, Offset = offset, Style = style
             };
+            RefreshHostedStairRailings(document, document.StructuralElements[index]);
         });
     }
 
@@ -160,6 +161,7 @@ public sealed partial class DocumentSession
         {
             var index = document.StructuralElements.FindIndex(element => element.Id == elementId);
             document.StructuralElements[index] = document.StructuralElements[index] with { Style = style };
+            RefreshHostedStairRailings(document, document.StructuralElements[index]);
         });
     }
 

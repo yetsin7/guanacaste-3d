@@ -121,6 +121,11 @@ public static partial class PdfPlanExporter
 
         foreach (var element in document.StructuralElements.Where(element => element.LevelId == levelId))
         {
+            if (element.Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft)
+            {
+                items.Add(new SheetPolygon(element.Footprint, 0.25, Black, null));
+                continue;
+            }
             if (element.Kind == StructuralElementKind.Planting)
             {
                 items.Add(new SheetPolygon(Circle(element.Start, element.Width / 2, 48), 0.18, (0.27, 0.45, 0.22), null));

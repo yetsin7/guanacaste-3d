@@ -48,7 +48,7 @@ public partial class MainWindow
     {
         ProjectTree.Items.Clear();
         var project = new TreeViewItem { Header = _session.Document.Name, IsExpanded = true };
-        var views = new TreeViewItem { Header = GetText("Tree.Views"), IsExpanded = true };
+        var views = new TreeViewItem { Header = GetText("Tree.Views"), IsExpanded = true, ContextMenu = CreateAllViewsMenu() };
         foreach (var view in _session.Document.Views.Where(view => MatchesProjectSearch(view.Name)))
             views.Items.Add(new TreeViewItem { Header = view.Name, Tag = view.Id, ContextMenu = CreateViewMenu(view.Id) });
         project.Items.Add(views);
@@ -132,10 +132,47 @@ public partial class MainWindow
         if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
     }
 
-    /// <summary>Rebuilds the 3D view's models: the BIM mesh plus a light proxy of every linked model.</summary>
-    private void RebuildModelVisual()
+    /// <summary>Builds the model off the UI thread and publishes only the most recent completed snapshot.</summary>
+    private async void RebuildModelVisual()
     {
+        _modelDirty = true;
+        var request = ++_modelBuildRequest;
+        var version = _sceneVersion;
+        var document = ViewVisibility.Apply(_session.Document, Model3DView());
+        var clay = _clayMode;
+        var xray = _xRay;
+        var showEdges = _showEdges;
+        var textures = clay || xray ? null : RenderTextureLibrary.Previews3D(document.RenderMaterials, _filePath);
+        await _modelBuildGate.WaitAsync().ConfigureAwait(false);
+        ModelSceneSnapshot snapshot;
+        try
+        {
+            if (request != Volatile.Read(ref _modelBuildRequest) || version != Volatile.Read(ref _sceneVersion)) return;
+            snapshot = await Task.Run(() => ModelSceneSnapshot.Build(document, clay, xray, showEdges, textures)).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("The interactive 3D scene could not be built: {0}", exception);
+            return;
+        }
+        finally { _modelBuildGate.Release(); }
+        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        try { await Dispatcher.InvokeAsync(() => PublishModelVisual(snapshot, request, version)); }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("The interactive 3D scene could not be published: {0}", exception);
+        }
+    }
+
+    /// <summary>Publishes frozen geometry on the owning dispatcher if it still represents the current view.</summary>
+    private void PublishModelVisual(ModelSceneSnapshot snapshot, int request, int version)
+    {
+        if (!IsLoaded || request != _modelBuildRequest || version != _sceneVersion || ViewTabs.SelectedIndex != Model3DTabIndex) return;
         _modelDirty = false;
+        var bounds = snapshot.Bounds;
+        if (_links.Bounds() is { } linked)
+            bounds = snapshot.HasGeometry ? (System.Numerics.Vector3.Min(bounds.Min, linked.Min), System.Numerics.Vector3.Max(bounds.Max, linked.Max)) : linked;
+        _boundsCache = (version, bounds);
         ModelViewport.Children.Clear();
         _selectionVisuals.Clear();
         _shownSelection = null;
@@ -148,27 +185,10 @@ public partial class MainWindow
         {
             Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
         });
-        var scene = BuildingMesher.Build(_session.Document, includeGround: true);
         var thickness = EdgeThickness();
-        var textures = _clayMode || _xRay ? null : RenderTextureLibrary.Previews3D(_session.Document.RenderMaterials, _filePath);
-        foreach (var group in _xRay ? ScenePresentation.ToWpfXRay(scene)
-                 : _clayMode ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures))
+        foreach (var group in snapshot.Models)
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
-        // Edges would draw the whole shell solid again, so X-ray shows none.
-        if (_showEdges && !_xRay)
-        {
-            // The ground plane would add four enormous lines at the horizon, so only the building contributes edges.
-            var positions = new List<System.Numerics.Vector3>(scene.Positions);
-            var indices = new List<int>();
-            for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
-            {
-                if (scene.TriangleKinds[triangle] == SurfaceKind.Ground) continue;
-                indices.Add(scene.Indices[triangle * 3]);
-                indices.Add(scene.Indices[triangle * 3 + 1]);
-                indices.Add(scene.Indices[triangle * 3 + 2]);
-            }
-            AddEdgeVisual(FeatureEdges.Extract(positions, indices), System.Numerics.Matrix4x4.Identity, thickness);
-        }
+        if (snapshot.Edges is { } edges) ModelViewport.Children.Add(new ModelVisual3D { Content = edges });
         foreach (var (link, loaded) in _links.Visible())
         {
             foreach (var group in ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement))
@@ -177,6 +197,7 @@ public partial class MainWindow
         }
         UpdateModelSelection(true);
         UpdateModelCamera();
+        _ = GetSceneAsync();
     }
 
     /// <summary>
@@ -226,12 +247,44 @@ public partial class MainWindow
         var radius = Math.Max(3, (max - min).Length() / 2);
         var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
         ModelViewport.Camera = ScenePresentation.ToWpfCamera(_navigation, aspect, radius);
+        RedrawViewCube();
         if (_dimensionChips.Count > 0) PositionDimensionChips();
+    }
+
+    /// <summary>When the E key was last pressed, for the E then H hide sequence.</summary>
+    private DateTime? _eKeyAt;
+
+    /// <summary>
+    /// E then H, pressed one after the other, hides the selection in the active view. E still flies the camera in 3D;
+    /// the H is taken only when it follows an E within a moment.
+    /// </summary>
+    private bool TryHideSequence(KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.None || Keyboard.FocusedElement is TextBox)
+        {
+            _eKeyAt = null;
+            return false;
+        }
+        if (e.Key == Key.E)
+        {
+            _eKeyAt = DateTime.UtcNow;
+            return false;
+        }
+        var pressedE = _eKeyAt is { } at && DateTime.UtcNow - at < TimeSpan.FromSeconds(1.5);
+        _eKeyAt = null;
+        if (e.Key != Key.H || !pressedE) return false;
+        HideSelectionInView();
+        return true;
     }
 
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        if (TryHideSequence(e))
+        {
+            e.Handled = true;
+            return;
+        }
         // While the pointer is over the 3D view or render preview, W A S D Q E fly the camera instead of triggering tools.
         if (NavigationOwnsKey(e.Key))
         {
@@ -282,6 +335,10 @@ public partial class MainWindow
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S) { SaveProject(false); e.Handled = true; }
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { _session.Undo(); e.Handled = true; }
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y) { _session.Redo(); e.Handled = true; }
+        // Per-view visibility: Ctrl+A selects what the view shows, Ctrl+H hides the selection in that view only.
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.A) { SelectAllInView(); e.Handled = true; }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.H) { HideSelectionInView(); e.Handled = true; }
+        else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.H) { ShowAllInView(); e.Handled = true; }
         else if (e.Key == Key.W) { SetWallTool(true); e.Handled = true; }
         else if (e.Key == Key.R) { Room_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F) { FitPlan_Click(this, new RoutedEventArgs()); e.Handled = true; }
@@ -292,7 +349,7 @@ public partial class MainWindow
         }
         else if (e.Key == Key.Escape && CancelTopoPointTool()) e.Handled = true;
         else if (e.Key == Key.Escape && _drawingWall) { HandleWallEscape(); e.Handled = true; }
-        else if (e.Key == Key.Escape) { SetWallTool(false); e.Handled = true; }
+        else if (e.Key == Key.Escape) { _viewSelection = null; SetWallTool(false); e.Handled = true; }
         else if (e.Key == Key.F2 && _selectedGridId is Guid gridId) { RenameGridAxis(gridId); e.Handled = true; }
         else if (e.Key == Key.F2 && _selectedViewId is Guid viewId) { RenameView(viewId); e.Handled = true; }
         else if (e.Key == Key.Delete) { Delete_Click(this, new RoutedEventArgs()); e.Handled = true; }

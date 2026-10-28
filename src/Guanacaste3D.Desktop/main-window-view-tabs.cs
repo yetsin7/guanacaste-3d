@@ -23,7 +23,10 @@ public partial class MainWindow
             tab.ContextMenu = CreateViewTabMenu(tab);
             tab.PreviewMouseDown += (_, e) =>
             {
-                if (e.ChangedButton == System.Windows.Input.MouseButton.Middle)
+                // The event tunnels through the whole tab, so ignore clicks on the view's content (a middle click in the
+                // 3D view must not close it); only a middle click on the tab header closes the view.
+                var header = tab.Template?.FindName("ViewTabSurface", tab);
+                if (e.ChangedButton == System.Windows.Input.MouseButton.Middle && IsInside(e.OriginalSource, header))
                 {
                     CloseViewTab(tab);
                     e.Handled = true;
@@ -36,6 +39,17 @@ public partial class MainWindow
             if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
             if (ViewTabs.SelectedItem is TabItem selected) selected.Visibility = Visibility.Visible;
         };
+    }
+
+    /// <summary>Whether a visual is the given element or one of its descendants.</summary>
+    private static bool IsInside(object? source, object? container)
+    {
+        if (source is not DependencyObject start || container is not DependencyObject root) return false;
+        for (DependencyObject? node = start; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (ReferenceEquals(node, root)) return true;
+        }
+        return false;
     }
 
     private ContextMenu CreateViewTabMenu(TabItem tab)

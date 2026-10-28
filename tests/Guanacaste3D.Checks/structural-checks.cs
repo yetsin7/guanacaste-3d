@@ -57,8 +57,35 @@ static class StructuralChecks
             "Derived geometry is not written to project files");
 
         RunOpeningChecks(check);
+        RunConcaveOpeningChecks(check);
         RunGroupAndTextChecks(check);
         RunDormerChecks(check);
+    }
+
+    /// <summary>Rejects openings crossing a concave notch even when all four corners are inside the slab.</summary>
+    private static void RunConcaveOpeningChecks(Action<bool, string> check)
+    {
+        var boundary = new Point2[]
+        {
+            new(0, 0), new(10, 0), new(10, 10), new(6, 10),
+            new(6, 4), new(4, 4), new(4, 10), new(0, 10)
+        };
+        var crossing = new PlanRectangle(3, 3, 7, 8);
+        var inside = new PlanRectangle(1, 1, 3, 8);
+        var touching = new PlanRectangle(0, 0, 3, 3);
+        check(SlabOpenings.Corners(crossing).All(point => SlabOpenings.ContainsPoint(boundary, point)) &&
+              !SlabOpenings.ContainsRectangle(boundary, crossing) &&
+              !SlabOpenings.ContainsRectangle(boundary.Reverse().ToArray(), crossing),
+            "A rectangular opening cannot cross a concave notch between its corners");
+        check(SlabOpenings.ContainsRectangle(boundary, inside) && SlabOpenings.ContainsRectangle(boundary, touching),
+            "A contained opening remains valid, including one touching the slab boundary");
+
+        var session = new DocumentSession(BuildingDocument.Create());
+        var level = session.Document.Levels[0].Id;
+        session.AddFloor(level, boundary);
+        var rejected = session.AddOpening(level, StructuralElementKind.Opening, "Opening", new(3, 3), new(7, 8));
+        check(rejected is null && session.Document.StructuralElements.Count == 0,
+            "An invalid concave slab opening is rejected without changing the document");
     }
 
     /// <summary>A dormer must sit fully on a roof slab, cut that roof, and stand on the roof's raised top face.</summary>

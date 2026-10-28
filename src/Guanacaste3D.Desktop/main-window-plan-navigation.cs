@@ -21,10 +21,24 @@ public partial class MainWindow
     private Guid? _pressedElementId;
     private bool _dragMove;
 
+    /// <summary>Refreshes the plan when a building-services overlay is shown or hidden.</summary>
+    private void PlanLayerVisibility_Changed(object sender, RoutedEventArgs e)
+    {
+        if (PlanCanvas is not null && _session is not null) RenderPlan();
+    }
+
     /// <summary>Starts panning when the middle button goes down over the plan.</summary>
     private void PlanCanvas_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Middle) return;
+        if (e.ClickCount >= 2)
+        {
+            _panAnchor = null;
+            if (PlanCanvas.IsMouseCaptured) PlanCanvas.ReleaseMouseCapture();
+            FitPlan_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
         _panAnchor = e.GetPosition(PlanCanvas);
         PlanCanvas.CaptureMouse();
         e.Handled = true;

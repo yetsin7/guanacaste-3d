@@ -67,6 +67,20 @@ static class NavigationChecks
         var framed = NavigationCamera.Frame(new Vector3(0, 0, 0), new Vector3(12, 8, 3));
         check((framed.Position - new Vector3(6, 4, 1.5f)).Length() > 5 && Near(Vector3.Normalize(new Vector3(6, 4, 1.5f) - framed.Position), framed.Forward, 0.02f),
             "Framing a model puts the camera away from it and aims at its center");
+        var framing = new NavigationCamera { YawDegrees = 37, PitchDegrees = -24, FieldOfViewDegrees = 45 };
+        var minimum = new Vector3(-16, -4, -1);
+        var maximum = new Vector3(16, 4, 20);
+        framing.FrameBounds(minimum, maximum, 0.7f);
+        var fits = true;
+        foreach (var x in new[] { minimum.X, maximum.X })
+        foreach (var y in new[] { minimum.Y, maximum.Y })
+        foreach (var z in new[] { minimum.Z, maximum.Z })
+        {
+            var projected = framing.Project(new Vector3(x, y, z), 700, 1000);
+            fits &= projected is { X: >= 0 and <= 700, Y: >= 0 and <= 1000 };
+        }
+        check(fits && framing.YawDegrees == 37 && framing.PitchDegrees == -24,
+            "Centering fits every box corner in a narrow viewport without changing orientation");
         var pan = new NavigationCamera { Position = Vector3.Zero, YawDegrees = 0, PitchDegrees = 0 };
         pan.Pan(10, 0, 0.1f);
         check(Near(pan.Position, new Vector3(0, 1, 0)), "Dragging the middle button to the right slides the scene right (camera moves left)");

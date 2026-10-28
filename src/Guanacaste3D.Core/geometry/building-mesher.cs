@@ -61,7 +61,9 @@ public enum SurfaceKind : byte
     /// <summary>Rainwater drain, green as in Revit's storm system.</summary>
     PipeStorm,
     /// <summary>The glass face of a photovoltaic module: deep blue cells under smooth glass.</summary>
-    SolarCell
+    SolarCell,
+    /// <summary>Fire-protection red enamel: sprinkler mains, extinguishers, hose cabinets and alarm devices.</summary>
+    FireRed
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -867,8 +869,11 @@ public static class BuildingMesher
     {
         var floorElevation = elevations[floor.LevelId];
         return document.StructuralElements
-            .Where(element => (element.Kind == StructuralElementKind.Opening && element.LevelId == floor.LevelId) ||
+            .Where(element => (element.Kind == StructuralElementKind.Opening && floor.Kind == FloorKind.Floor && element.LevelId == floor.LevelId) ||
                 (element.Kind == StructuralElementKind.Shaft && elevations[element.LevelId] <= floorElevation) ||
+                // The hoistway passes through every floor above the elevator's own level, up to its top landing.
+                (element.Kind == StructuralElementKind.Elevator && elevations[element.LevelId] < floorElevation - 1e-6 &&
+                    floorElevation <= elevations[element.LevelId] + ElevatorGeometry.Travel(element) + 1e-6) ||
                 // A dormer opens the roof it stands on; other slabs keep their solid top.
                 (element.Kind is StructuralElementKind.Dormer or StructuralElementKind.Skylight && floor.Kind == FloorKind.Roof &&
                     element.LevelId == floor.LevelId))

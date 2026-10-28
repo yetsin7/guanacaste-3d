@@ -113,6 +113,47 @@ public static class ElectricalGeometry
                 Disc(mesh, position, 0.05f, -0.045f, -0.035f, SurfaceKind.Ceramic);
                 Disc(mesh, position + new Vector3(0.03f, 0, 0), 0.004f, -0.047f, -0.044f, SurfaceKind.OpeningFrame);
                 break;
+            case ElectricalDeviceKind.Sprinkler:
+                // A pendent head: the red drop from the branch above the ceiling, the brass body and its deflector disc.
+                Disc(mesh, position, 0.012f, 0f, 0.25f, SurfaceKind.FireRed);
+                Disc(mesh, position, 0.04f, -0.008f, 0f, SurfaceKind.Metal);
+                Disc(mesh, position, 0.01f, -0.045f, -0.008f, SurfaceKind.Metal);
+                Disc(mesh, position, 0.028f, -0.05f, -0.045f, SurfaceKind.Metal);
+                break;
+            case ElectricalDeviceKind.EmergencyLight:
+                // A white battery box with two adjustable lamp heads on top.
+                Box(mesh, position, along, outward, 0.17f, 0.04f, 0.04f, -0.06f, 0.06f, SurfaceKind.Ceramic);
+                foreach (var side in new[] { -0.10f, 0.10f })
+                    Box(mesh, position + along * side, along, outward, 0.035f, 0.035f, 0.07f, 0.06f, 0.11f, glow);
+                break;
+            case ElectricalDeviceKind.ExitSign:
+                // A green-lit sign panel on its wall bracket, always lit from its battery.
+                Box(mesh, position, along, outward, 0.17f, 0.012f, 0.012f, -0.10f, 0.10f, SurfaceKind.Metal);
+                Box(mesh, position, along, outward, 0.15f, 0.004f, 0.026f, -0.08f, 0.08f, SurfaceKind.LightEmitter);
+                break;
+            case ElectricalDeviceKind.FireAlarmPullStation:
+                Box(mesh, position, along, outward, 0.065f, 0.03f, 0.03f, -0.085f, 0.085f, SurfaceKind.FireRed);
+                Box(mesh, position, along, outward, 0.03f, 0.006f, 0.064f, -0.02f, 0.02f, SurfaceKind.Ceramic);
+                break;
+            case ElectricalDeviceKind.HornStrobe:
+                Box(mesh, position, along, outward, 0.07f, 0.03f, 0.03f, -0.07f, 0.07f, SurfaceKind.FireRed);
+                Box(mesh, position, along, outward, 0.03f, 0.012f, 0.07f, 0.01f, 0.05f, SurfaceKind.LightOff);
+                break;
+            case ElectricalDeviceKind.FireExtinguisher:
+            {
+                // The red cylinder on its wall hook, with the black valve and hose on top.
+                var cylinder = position + outward * 0.11f;
+                Disc(mesh, cylinder, 0.08f, -0.55f, 0f, SurfaceKind.FireRed);
+                Disc(mesh, cylinder, 0.025f, 0f, 0.09f, SurfaceKind.OpeningFrame);
+                Box(mesh, position, along, outward, 0.03f, 0.015f, 0.015f, -0.10f, -0.02f, SurfaceKind.Metal);
+                break;
+            }
+            case ElectricalDeviceKind.FireHoseCabinet:
+                // A recessed red cabinet with its glazed door and the hose reel visible behind it.
+                Box(mesh, position, along, outward, 0.40f, 0.10f, 0.08f, 0f, 0.80f, SurfaceKind.FireRed);
+                Box(mesh, position, along, outward, 0.34f, 0.004f, 0.182f, 0.06f, 0.74f, SurfaceKind.Glass);
+                Box(mesh, position, along, outward, 0.22f, 0.06f, 0.09f, 0.18f, 0.62f, SurfaceKind.FireRed);
+                break;
             case ElectricalDeviceKind.WaterPump:
             {
                 // Concrete pad, the blue pressure tank standing on it, and the pump with its motor lying beside it.

@@ -44,6 +44,7 @@ public static class MeshExporter
         SurfaceKind.PipeDrain => ("G3D_PipeDrain", new Vector3(0.78f, 0.76f, 0.70f), 1, 0.4f),
         SurfaceKind.PipeStorm => ("G3D_PipeStorm", new Vector3(0.30f, 0.55f, 0.32f), 1, 0.4f),
         SurfaceKind.SolarCell => ("G3D_SolarCell", new Vector3(0.02f, 0.04f, 0.10f), 1, 0.06f),
+        SurfaceKind.FireRed => ("G3D_FireRed", new Vector3(0.70f, 0.05f, 0.04f), 1, 0.25f),
         SurfaceKind.LightOff => ("G3D_LightOff", new Vector3(0.9f, 0.88f, 0.84f), 1, 0.6f),
         SurfaceKind.Upholstery => ("G3D_Upholstery", new Vector3(0.30f, 0.28f, 0.25f), 1, 0.95f),
         SurfaceKind.Bedding => ("G3D_Bedding", new Vector3(0.80f, 0.79f, 0.76f), 1, 0.92f),

@@ -101,7 +101,7 @@ public sealed partial class DocumentSession
         var cutsFloor = Document.Floors.Any(floor =>
             (kind == StructuralElementKind.Shaft
                 ? Document.Levels.Single(level => level.Id == floor.LevelId).Elevation >= levelElevation
-                : floor.LevelId == levelId) &&
+                : floor.LevelId == levelId && floor.Kind == FloorKind.Floor) &&
             Geometry.SlabOpenings.ContainsRectangle(floor.Boundary, extent));
         if (!cutsFloor) return null;
 
@@ -155,8 +155,12 @@ public sealed partial class DocumentSession
         if (element is null) return;
         var groupId = element.GroupId;
         Commit("Transaction.RemoveStructuralElement", document =>
-            document.StructuralElements.RemoveAll(candidate =>
-                candidate.Id == id || (groupId is Guid group && candidate.GroupId == group)));
+        {
+            var removed = document.StructuralElements.Where(candidate => candidate.Id == id ||
+                (groupId is Guid group && candidate.GroupId == group)).Select(candidate => candidate.Id).ToHashSet();
+            document.StructuralElements.RemoveAll(candidate => removed.Contains(candidate.Id) ||
+                (candidate.RailingHostId is Guid host && removed.Contains(host)));
+        });
     }
 
     /// <summary>Translates a structural element by a metric offset without changing its section. Group members move together.</summary>
@@ -167,10 +171,13 @@ public sealed partial class DocumentSession
         var groupId = element.GroupId;
         Commit("Transaction.MoveStructuralElement", document =>
         {
+            var moved = document.StructuralElements.Where(candidate => candidate.Id == id ||
+                (groupId is Guid group && candidate.GroupId == group)).Select(candidate => candidate.Id).ToHashSet();
             for (var index = 0; index < document.StructuralElements.Count; index++)
             {
                 var existing = document.StructuralElements[index];
-                if (existing.Id != id && !(groupId is Guid group && existing.GroupId == group)) continue;
+                if (!moved.Contains(existing.Id) &&
+                    !(existing.RailingHostId is Guid host && moved.Contains(host))) continue;
                 document.StructuralElements[index] = existing with
                 {
                     Start = new Point2(existing.Start.X + deltaX, existing.Start.Y + deltaY),

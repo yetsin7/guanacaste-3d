@@ -61,7 +61,7 @@ public sealed partial class DocumentSession
             {
                 foreach (var (start, end, offset, rise) in lines)
                     document.StructuralElements.Add(CreateStructuralElement(Guid.NewGuid(), document, host.LevelId,
-                        StructuralElementKind.Railing, "Guard", start, end) with { Rise = rise, Offset = offset });
+                        StructuralElementKind.Railing, "Guard", start, end) with { Rise = rise, Offset = offset, RailingHostId = host.Id });
             });
             return lines.Count;
         }
@@ -77,7 +77,7 @@ public sealed partial class DocumentSession
                     new Point2(host.Start.X + normalX * lateral * side, host.Start.Y + normalY * lateral * side),
                     new Point2(host.End.X + normalX * lateral * side, host.End.Y + normalY * lateral * side)) with
                 {
-                    Rise = host.Height, Offset = host.Offset
+                    Rise = host.Height, Offset = host.Offset, RailingHostId = host.Id
                 });
         });
         return 2;
@@ -179,12 +179,15 @@ public sealed partial class DocumentSession
         var members = Document.StructuralElements.Where(element => element.GroupId == groupId).ToArray();
         if (members.Length == 0) throw new InvalidDataException("The element does not exist.");
         var copy = Guid.NewGuid();
+        var copiedIds = members.ToDictionary(member => member.Id, _ => Guid.NewGuid());
         Commit("Transaction.DuplicateStructuralGroup", document =>
         {
             foreach (var member in members)
                 document.StructuralElements.Add(member with
                 {
-                    Id = Guid.NewGuid(), GroupId = copy,
+                    Id = copiedIds[member.Id], GroupId = copy,
+                    RailingHostId = member.RailingHostId is Guid hostId && copiedIds.TryGetValue(hostId, out var copiedHost)
+                        ? copiedHost : null,
                     Start = new Point2(member.Start.X + deltaX, member.Start.Y + deltaY),
                     End = new Point2(member.End.X + deltaX, member.End.Y + deltaY)
                 });

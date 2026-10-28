@@ -37,10 +37,12 @@ public partial class MainWindow
         if (_modelNavigator is null) return;
         _modelNavigator.Clicked += position => HandleViewClick(position, ModelSurface);
         _modelNavigator.DoubleClicked += _ => OpenSelectionEditor();
+        _modelNavigator.ContextRequested += _ => ShowViewContextMenu(ModelSurface);
         if (RenderPanelControl.Navigator is { } renderNavigator)
         {
             renderNavigator.Clicked += position => HandleViewClick(position, RenderPanelControl.Surface);
             renderNavigator.DoubleClicked += _ => OpenSelectionEditor();
+            renderNavigator.ContextRequested += _ => ShowViewContextMenu(RenderPanelControl.Surface);
         }
     }
 
@@ -81,7 +83,8 @@ public partial class MainWindow
         _pickWallAction is not null || _structuralTool is not null || _slabSketch is not null || _placingTopoPoints ||
         _electricalTool is not null || _wiring || _plumbingPointTool is not null || _piping;
 
-    private ElementPicker Picker => _picker ??= new ElementPicker(_session.Document);
+    // Clicks in the 3D view pick only what that view shows, so an element hidden in it cannot be selected there.
+    private ElementPicker Picker => _picker ??= new ElementPicker(ViewVisibility.Apply(_session.Document, Model3DView()));
 
     /// <summary>The element that currently owns selection, whichever view selected it.</summary>
     private (PickedKind Kind, Guid Id)? CurrentSelection()

@@ -81,6 +81,40 @@
   <sys:String x:Key="RenderPanel.Collisions">Chocar con muros y objetos</sys:String>
   <sys:String x:Key="RenderPanel.CollisionsHint">Apagado: la cámara atraviesa muros. Encendido: se detiene y se desliza junto a ellos.</sys:String>
   <sys:String x:Key="RenderPanel.FrameAll">Ver todo el proyecto</sys:String>
+
+  <!-- View cube and navigation wheel -->
+  <sys:String x:Key="ViewCube.Front">Frontal</sys:String>
+  <sys:String x:Key="ViewCube.Back">Posterior</sys:String>
+  <sys:String x:Key="ViewCube.Left">Izquierda</sys:String>
+  <sys:String x:Key="ViewCube.Right">Derecha</sys:String>
+  <sys:String x:Key="ViewCube.Top">Superior</sys:String>
+  <sys:String x:Key="ViewCube.Bottom">Inferior</sys:String>
+  <sys:String x:Key="ViewCube.FrameAll">Ver todo</sys:String>
+  <sys:String x:Key="ViewCube.ZoomIn">Acercar</sys:String>
+  <sys:String x:Key="ViewCube.ZoomOut">Alejar</sys:String>
+  <sys:String x:Key="ViewCube.Center">Centrar</sys:String>
+
+  <!-- Context menu of the 3D view -->
+  <sys:String x:Key="ViewMenu.EditSelection">Editar selección</sys:String>
+  <sys:String x:Key="ViewMenu.FrameAll">Ver todo</sys:String>
+  <sys:String x:Key="ViewMenu.Center">Centrar en el edificio</sys:String>
+  <sys:String x:Key="ViewMenu.Render">Renderizar vista</sys:String>
+  <sys:String x:Key="ViewMenu.Plan">Ir a la planta</sys:String>
+  <sys:String x:Key="ViewMenu.HideInView">Ocultar en esta vista</sys:String>
+  <sys:String x:Key="ViewMenu.IsolateInView">Aislar en esta vista</sys:String>
+  <sys:String x:Key="ViewMenu.ShowAllInView">Mostrar todo en esta vista</sys:String>
+
+  <!-- View templates -->
+  <sys:String x:Key="ViewTemplate.SaveMenu">Guardar vista como plantilla…</sys:String>
+  <sys:String x:Key="ViewTemplate.SaveTitle">Nombre de la plantilla</sys:String>
+  <sys:String x:Key="ViewTemplate.DefaultName">Plantilla de vista</sys:String>
+  <sys:String x:Key="ViewTemplate.Saved">Plantilla de vista guardada.</sys:String>
+  <sys:String x:Key="ViewTemplate.Apply">Aplicar plantilla</sys:String>
+  <sys:String x:Key="ViewTemplate.ApplyAll">Aplicar plantilla a todas las vistas</sys:String>
+  <sys:String x:Key="ViewTemplate.None">No hay plantillas guardadas</sys:String>
+
+  <!-- Keyboard selection in a view -->
+  <sys:String x:Key="ViewSelection.Count">{0} elementos seleccionados en esta vista (Ctrl+H ocultar, Ctrl+Mayús+H mostrar todo)</sys:String>
   <sys:String x:Key="RenderPanel.Controls">Clic derecho: mirar · Rueda: acercar al cursor · Botón central: mover · Clic izquierdo: orbitar · W A S D: volar · Q E: bajar y subir · Shift: rápido · Ctrl: lento</sys:String>
   <sys:String x:Key="RenderPanel.Output">Resultado</sys:String>
   <sys:String x:Key="RenderPanel.SaveImage">Guardar imagen…</sys:String>

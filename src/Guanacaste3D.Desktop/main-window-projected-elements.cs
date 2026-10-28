@@ -29,9 +29,8 @@ public partial class MainWindow
     }
 
     /// <summary>Includes structural members, foundations, columns, and family edges in coordinated elevations.</summary>
-    private void DrawProjectedElements(Canvas canvas, ViewOrientation orientation, double minX, double minZ, double left, double scale)
+    private void DrawProjectedElements(Canvas canvas, BuildingDocument document, ViewOrientation orientation, double minX, double minZ, double left, double scale)
     {
-        var document = _session.Document;
         foreach (var column in document.Columns)
         {
             var elevation = document.Levels.Single(level => level.Id == column.LevelId).Elevation;

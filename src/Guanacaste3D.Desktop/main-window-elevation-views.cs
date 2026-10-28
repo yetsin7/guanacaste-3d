@@ -109,7 +109,9 @@ public partial class MainWindow
         open.Click += (_, _) => SelectProjectView(viewId);
         var rename = new MenuItem { Header = GetText("Elevation.Rename"), InputGestureText = "F2" };
         rename.Click += (_, _) => RenameView(viewId);
-        return new ContextMenu { Items = { open, rename } };
+        var apply = new MenuItem { Header = GetText("ViewTemplate.Apply") };
+        AddTemplateItems(apply, [viewId]);
+        return new ContextMenu { Items = { open, rename, apply } };
     }
 
     /// <summary>Selects an elevation symbol clicked in the plan; a double-click opens its view.</summary>

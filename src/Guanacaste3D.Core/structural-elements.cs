@@ -78,7 +78,15 @@ public enum StructuralElementKind
     /// A tree or shrub of the site, at a point. <see cref="StructuralElement.Width"/> is the canopy spread and
     /// <see cref="StructuralElement.Height"/> the overall height; the style is the kind of growth.
     /// </summary>
-    Planting
+    Planting,
+
+    /// <summary>
+    /// A traction elevator in its hoistway, drawn as the rectangle between two corners. <see cref="StructuralElement.Height"/>
+    /// is the hoistway from the pit floor (<see cref="StructuralElement.Offset"/>, below the level) to the overhead;
+    /// <see cref="StructuralElement.GridHeight"/> is the spacing of its landings and <see cref="StructuralElement.Width"/>
+    /// the clear width of its doors. The hoistway cuts every floor above its own level that it serves.
+    /// </summary>
+    Elevator
 }
 
 /// <summary>Variant of an element's geometry. Which values apply depends on the element kind.</summary>
@@ -171,10 +179,16 @@ public sealed record StructuralElement(
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }
 
+    /// <summary>Stair or ramp that generated this railing, if it remains associated with a host.</summary>
+    public Guid? RailingHostId { get; init; }
+
     /// <summary>Curtain wall only: center-to-center spacing of mullions in meters; zero means the 1.5 m default.</summary>
     public double GridWidth { get; init; }
 
-    /// <summary>Curtain wall only: center-to-center spacing of transoms in meters; zero means the 1.2 m default.</summary>
+    /// <summary>
+    /// Curtain wall only: center-to-center spacing of transoms in meters; zero means the 1.2 m default.
+    /// Elevator only: the floor-to-floor spacing of its landings.
+    /// </summary>
     public double GridHeight { get; init; }
 
     /// <summary>Guards only: vertical rise from the start to the end, so a guard can follow a stair or ramp.</summary>
@@ -207,7 +221,7 @@ public sealed record StructuralElement(
             var halfDepth = (Depth > 0 ? Depth : Width) / 2;
             var length = Start.DistanceTo(End);
             if (Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft or StructuralElementKind.Dormer
-                    or StructuralElementKind.Skylight or StructuralElementKind.Area && length >= 1e-9)
+                    or StructuralElementKind.Skylight or StructuralElementKind.Area or StructuralElementKind.Elevator && length >= 1e-9)
                 return Geometry.SlabOpenings.Corners(PlanExtent);
             if (length < 1e-9)
             {
@@ -273,6 +287,8 @@ public static class StructuralElementStandards
         StructuralElementKind.SlabEdge => (0.20, 0.30, -0.30),
         // A broadleaf tree 8 m tall with a 6 m canopy, standing on the level.
         StructuralElementKind.Planting => (6.0, 8.0, 0),
+        // A 900 mm door, a 1.2 m pit, one 3 m storey and a 3.6 m overhead; placing it between levels sets the real travel.
+        StructuralElementKind.Elevator => (0.90, 1.20 + 3.0 + 3.6, -1.20),
         _ => (0.02, 0, 0)
     };
 }

@@ -3,7 +3,7 @@ using Guanacaste3D.Core.Geometry;
 namespace Guanacaste3D.Core;
 
 /// <summary>Builds lightweight, recognizable solids for the default residential component families.</summary>
-public static class ResidentialComponentGeometry
+public static partial class ResidentialComponentGeometry
 {
     /// <summary>Returns the coordinated plan and 3D solids for one residential component instance, turned to its rotation.</summary>
     public static IEnumerable<ElementPart> Parts(StructuralElement element)
@@ -190,15 +190,6 @@ public static class ResidentialComponentGeometry
         if (element.ComponentShape is ResidentialComponentShape.WasherDryer or ResidentialComponentShape.ClothesDryer)
             yield return RoundBlock(element, 0, -Depth(element) / 2 - 0.032, Width(element) * 0.52,
                 element.Height * 0.22, element.Height * 0.68, SurfaceKind.Glass);
-    }
-
-    /// <summary>Builds a toilet bowl, pedestal, seat, and rear tank.</summary>
-    private static IEnumerable<ElementPart> Toilet(StructuralElement element)
-    {
-        yield return Block(element, 0, 0.08, Width(element) * 0.58, Depth(element) * 0.48, 0, 0.34);
-        yield return RoundBlock(element, 0, -Depth(element) * 0.08, Width(element), 0.28, 0.46, SurfaceKind.Ceramic);
-        yield return Block(element, 0, Depth(element) * 0.34, Width(element), Depth(element) * 0.24,
-            0.30, element.Height, SurfaceKind.Ceramic);
     }
 
     /// <summary>Builds a vanity cabinet and counter with one basin and mixer, or two on a vanity of 1.3 m or more.</summary>

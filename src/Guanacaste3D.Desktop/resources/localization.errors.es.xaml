@@ -217,4 +217,12 @@
   <sys:String x:Key="Error.Guanacaste 3D projects must use .g3 or the legacy .g3d.json extension.">Los proyectos de Guanacaste 3D deben usar la extensión .g3 o la heredada .g3d.json.</sys:String>
   <sys:String x:Key="Error.Native Guanacaste 3D projects must use the .g3 extension.">Los proyectos nativos de Guanacaste 3D deben usar la extensión .g3.</sys:String>
   <sys:String x:Key="Error.The .g3 project header is missing or unsupported.">El encabezado del proyecto .g3 falta o no es compatible.</sys:String>
+  <sys:String x:Key="Error.An elevator must rise to a higher level.">El ascensor debe subir a un nivel superior.</sys:String>
+  <sys:String x:Key="Error.The elevator hoistway is too small.">El hueco del ascensor es demasiado pequeño.</sys:String>
+  <sys:String x:Key="Error.Elevator landing levels must be evenly spaced.">Los niveles del ascensor deben tener una separación uniforme.</sys:String>
+  <sys:String x:Key="Error.The source level does not exist.">El nivel de origen no existe.</sys:String>
+  <sys:String x:Key="Error.A target level does not exist.">Uno de los niveles de destino no existe.</sys:String>
+  <sys:String x:Key="Error.The services shaft does not fit the floors.">El ducto de instalaciones no cabe en las losas.</sys:String>
+  <sys:String x:Key="Error.The stair opening does not fit the floor.">El hueco de escalera no cabe en la losa.</sys:String>
+  <sys:String x:Key="Error.A wall device needs a wall.">El dispositivo necesita un muro para alojarse.</sys:String>
 </ResourceDictionary>

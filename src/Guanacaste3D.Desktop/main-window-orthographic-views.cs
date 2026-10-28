@@ -62,18 +62,22 @@ public partial class MainWindow
         var (elevation, name) = CurrentElevation();
         // The Elevation tab carries the name of the elevation it shows, so a renamed view is renamed everywhere.
         if (ViewTabs.Items.Count > 4 && ViewTabs.Items[4] is TabItem elevationTab) elevationTab.Header = name;
-        var mesh = BuildingMesher.Build(_session.Document);
-        RenderProjectedView(ElevationCanvas, elevation, mesh);
-        RenderSectionView(mesh);
+        // Each generated view draws what its own visibility shows: hidden or isolated elements are left out per view.
+        var elevationDocument = ViewVisibility.Apply(_session.Document, ProjectViewById(_elevationViewId));
+        RenderProjectedView(ElevationCanvas, elevation, BuildingMesher.Build(elevationDocument), elevationDocument);
+        RenderSectionView(BuildingMesher.Build(ViewVisibility.Apply(_session.Document, ProjectViewById(_sectionViewId))));
         UpdateDocumentationCaption();
     }
 
+    /// <summary>The project view with this id, or null when it is not in the document.</summary>
+    private ProjectView? ProjectViewById(Guid viewId) => _session.Document.Views.FirstOrDefault(view => view.Id == viewId);
+
     /// <summary>Projects model walls, openings, floors, and levels into one orthographic canvas.</summary>
-    private void RenderProjectedView(Canvas canvas, ViewOrientation orientation, SceneMesh mesh)
+    private void RenderProjectedView(Canvas canvas, ViewOrientation orientation, SceneMesh mesh, BuildingDocument document)
     {
         canvas.Children.Clear();
         if (canvas.ActualWidth < 100 || canvas.ActualHeight < 100) return;
-        var walls = _session.Document.Walls.ToArray();
+        var walls = document.Walls.ToArray();
         var projectedPoints = mesh.Positions.Select(point => ProjectCoordinate(new(point.X, point.Y), orientation))
             .Concat(_session.Document.Grids.Where(axis => Math.Abs(ProjectCoordinate(axis.Start, orientation) -
                 ProjectCoordinate(axis.End, orientation)) < 0.00001).Select(axis => ProjectCoordinate(axis.Start, orientation))).ToArray();
@@ -92,14 +96,14 @@ public partial class MainWindow
         DrawProjectedAxes(canvas, orientation, minimumCoordinate, minimumElevation, maximumElevation, horizontalOffset, scale);
         DrawProjectedLevels(canvas, minimumCoordinate, maximumCoordinate, minimumElevation,
             horizontalOffset, scale);
-        DrawProjectedFloors(canvas, orientation, minimumCoordinate, minimumElevation,
+        DrawProjectedFloors(canvas, document, orientation, minimumCoordinate, minimumElevation,
             horizontalOffset, scale);
         foreach (var wall in walls)
         {
-            DrawProjectedWall(canvas, wall, orientation, minimumCoordinate, minimumElevation,
+            DrawProjectedWall(canvas, document, wall, orientation, minimumCoordinate, minimumElevation,
                 horizontalOffset, scale, ReferenceEquals(canvas, SectionCanvas));
         }
-        DrawProjectedElements(canvas, orientation, minimumCoordinate, minimumElevation, horizontalOffset, scale);
+        DrawProjectedElements(canvas, document, orientation, minimumCoordinate, minimumElevation, horizontalOffset, scale);
     }
 
     /// <summary>Draws persistent level datums across an orthographic view.</summary>
@@ -141,13 +145,14 @@ public partial class MainWindow
     /// <summary>Draws floor slabs as coordinated horizontal profiles.</summary>
     private void DrawProjectedFloors(
         Canvas canvas,
+        BuildingDocument document,
         ViewOrientation orientation,
         double minimumCoordinate,
         double minimumElevation,
         double horizontalOffset,
         double scale)
     {
-        foreach (var floor in _session.Document.Floors)
+        foreach (var floor in document.Floors)
         {
             var level = _session.Document.Levels.Single(candidate => candidate.Id == floor.LevelId);
             if (floor.IsToposolid)
@@ -182,6 +187,7 @@ public partial class MainWindow
     /// <summary>Draws one wall profile and its hosted voids in an orthographic view.</summary>
     private void DrawProjectedWall(
         Canvas canvas,
+        BuildingDocument document,
         Wall wall,
         ViewOrientation orientation,
         double minimumCoordinate,
@@ -214,7 +220,7 @@ public partial class MainWindow
         canvas.Children.Add(wallShape);
 
         if (projectedLength < 0.01) return;
-        foreach (var opening in _session.Document.Openings.Where(candidate => candidate.WallId == wall.Id))
+        foreach (var opening in document.Openings.Where(candidate => candidate.WallId == wall.Id))
         {
             var direction = (end - start) / wall.Length;
             var openingCenter = start + direction * opening.Offset;

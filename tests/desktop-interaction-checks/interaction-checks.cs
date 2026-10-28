@@ -106,8 +106,10 @@ internal static class InteractionChecks
             PlantingChecks(session);
             StairToolChecks(session);
             TexturedModelChecks(session);
+            MiddleClickViewChecks();
             ElectricalToolChecks(session);
             PlumbingToolChecks(session);
+            PlanServiceVisibilityChecks(session);
             CaptureDemoToolTip();
             IconChecks();
             RenderJoinScene();
@@ -224,9 +226,14 @@ internal static class InteractionChecks
     {
         // The grey study model ignores materials on purpose; project colors show them, like Revit's Realistic style.
         var clay = Field<bool>("_clayMode");
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        var previousTab = tabs.SelectedIndex;
+        tabs.SelectedIndex = 1;
         SetField("_clayMode", false);
         Invoke("AssignRenderMaterial", SurfaceKind.Wall, "builtin:brick-red", 1.0, 0.6);
         Invoke("RebuildModelVisual");
+        var deadline = DateTime.UtcNow.AddSeconds(20);
+        while (Field<bool>("_modelDirty") && DateTime.UtcNow < deadline) Pump();
         var viewport = (System.Windows.Controls.Viewport3D)_window.FindName("ModelViewport");
         var textured = viewport.Children.OfType<System.Windows.Media.Media3D.ModelVisual3D>()
             .Select(visual => visual.Content).OfType<System.Windows.Media.Media3D.GeometryModel3D>()
@@ -237,6 +244,42 @@ internal static class InteractionChecks
         Check(session.Document.RenderMaterials.Count == 0, "Choosing the stock material clears the assignment");
         SetField("_clayMode", clay);
         Invoke("RebuildModelVisual");
+        tabs.SelectedIndex = previousTab;
+    }
+
+    /// <summary>Checks that electrical overlays can be hidden without deleting the corresponding model devices.</summary>
+    private static void PlanServiceVisibilityChecks(DocumentSession session)
+    {
+        var visibility = (CheckBox)_window.FindName("ElectricalPlanVisibility");
+        session.AddElectricalDevice(session.Document.Levels[0].Id, ElectricalDeviceKind.CeilingFixture,
+            "Test fixture", new Point2(1, 1));
+        var before = session.Document.ElectricalDevices.Count;
+        Invoke("RenderPlan");
+        var shown = _canvas.Children.Count;
+        visibility.IsChecked = false;
+        var hidden = _canvas.Children.Count;
+        Check(hidden < shown && session.Document.ElectricalDevices.Count == before,
+            "Electrical plan graphics can be hidden without deleting devices");
+        visibility.IsChecked = true;
+        Check(_canvas.Children.Count == shown, "Electrical plan graphics return when the overlay is enabled");
+    }
+
+    /// <summary>Verifies a middle click over the 3D content does not close its tab or return to the plan.</summary>
+    private static void MiddleClickViewChecks()
+    {
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        tabs.SelectedIndex = 1;
+        Pump();
+        var surface = (FrameworkElement)_window.FindName("ModelSurface");
+        var mouse = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Middle)
+        {
+            RoutedEvent = UIElement.PreviewMouseDownEvent
+        };
+        surface.RaiseEvent(mouse);
+        Check(tabs.SelectedIndex == 1 && ((TabItem)tabs.Items[1]).Visibility == Visibility.Visible,
+            "A middle click on the 3D surface keeps the active 3D tab open");
+        Mouse.Capture(null);
+        tabs.SelectedIndex = 0;
     }
 
     /// <summary>
