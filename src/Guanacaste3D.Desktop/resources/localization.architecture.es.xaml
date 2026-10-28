@@ -64,6 +64,15 @@
   <sys:String x:Key="Editor.ColumnShape">Sección</sys:String>
   <sys:String x:Key="Editor.Width">Ancho o sección (m)</sys:String>
   <sys:String x:Key="Editor.Depth">Fondo (m)</sys:String>
+  <sys:String x:Key="Editor.StairRiser">Contrahuella (m)</sys:String>
+  <sys:String x:Key="Editor.StairTread">Huella (m)</sys:String>
+  <sys:String x:Key="Transaction.SetStairSteps">Editar contrahuella y huella de la escalera</sys:String>
+  <sys:String x:Key="Stair.Warning.RiserTooHigh">La contrahuella mide {0:0.0} cm; el máximo recomendado es {1:0.0} cm. La escalera sería cansada o insegura.</sys:String>
+  <sys:String x:Key="Stair.Warning.RiserTooLow">La contrahuella mide {0:0.0} cm; el mínimo recomendado es {1:0.0} cm. Los escalones serían difíciles de percibir.</sys:String>
+  <sys:String x:Key="Stair.Warning.TreadTooShallow">La huella mide {0:0.0} cm; el mínimo recomendado es {1:0.0} cm. El pie no cabe completo.</sys:String>
+  <sys:String x:Key="Stair.Warning.UncomfortablePace">Dos contrahuellas más una huella suman {0:0.0} cm; lo cómodo es cerca de {1:0.0} cm (regla de Blondel).</sys:String>
+  <sys:String x:Key="Stair.Warning.Ok">Contrahuella {0:0.0} cm · huella {1:0.0} cm: dentro de lo recomendado.</sys:String>
+  <sys:String x:Key="Status.WallOverlaps">Advertencia: el muro se solapa con otro muro existente a lo largo de {0:0.00} m. Elimine uno de los dos o muévalo.</sys:String>
   <sys:String x:Key="Editor.Height">Altura (m)</sys:String>
   <sys:String x:Key="Editor.Offset">Desfase de la cara inferior (m)</sys:String>
   <sys:String x:Key="Editor.PlanArea">Área medida</sys:String>

@@ -143,6 +143,7 @@ public partial class MainWindow
         var xray = _xRay;
         var style = _modelDisplayStyle;
         var detail = _modelDetail;
+        var thickLines = _thickLines;
         var shadowSun = _modelShadows && _modelSunPreset != "Off" ? ModelSunDirection() : (System.Numerics.Vector3?)null;
         var hiddenDocument = _revealHidden ? _session.Document.Clone() : null;
         var hiddenIds = _revealHidden ? ModelElementIds(_session.Document).Except(ModelElementIds(document)).ToHashSet() : null;
@@ -154,7 +155,7 @@ public partial class MainWindow
         try
         {
             if (request != Volatile.Read(ref _modelBuildRequest) || version != Volatile.Read(ref _sceneVersion)) return;
-            snapshot = await Task.Run(() => ModelSceneSnapshot.Build(document, false, xray, showEdges, textures, shadowSun, hiddenDocument, hiddenIds, detail)).ConfigureAwait(false);
+            snapshot = await Task.Run(() => ModelSceneSnapshot.Build(document, false, xray, showEdges, textures, shadowSun, hiddenDocument, hiddenIds, detail, thickLines)).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -219,11 +220,12 @@ public partial class MainWindow
     private float EdgeThickness()
     {
         var (min, max) = SceneBounds();
-        return ScenePresentation.EdgeThicknessForBounds(min, max);
+        return ScenePresentation.EdgeThicknessForBounds(min, max, _thickLines);
     }
 
     private bool _xRay;
     private bool _showEdges = true;
+    private bool _thickLines = true;
     private readonly Dictionary<Guid, List<EdgeSegment>> _linkEdges = [];
 
     /// <summary>Feature edges of a linked model's proxy, computed once and kept until the links change.</summary>
@@ -245,6 +247,7 @@ public partial class MainWindow
         if (_synchronizingGraphics) return;
         if (EdgesCheck is null) return;
         _showEdges = EdgesCheck.IsChecked == true;
+        _thickLines = ThickLinesCheck.IsChecked == true;
         _xRay = XRayCheck?.IsChecked == true;
         PersistModelViewGraphics();
         RefreshModelRealisticPreview();

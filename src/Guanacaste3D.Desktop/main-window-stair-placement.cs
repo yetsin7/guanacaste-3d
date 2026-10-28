@@ -8,7 +8,7 @@ public partial class MainWindow
     /// <summary>Reports the actual generated rise and going rather than a generic structural section.</summary>
     private string StairProperties(StructuralElement stair)
     {
-        var count = StairGeometry.RiserCount(stair.Height);
+        var count = StairGeometry.RiserCount(stair);
         if (stair.Style == ElementStyle.Spiral)
             return FormatText("Properties.SpiralStairSummary", stair.Name, stair.Height, count,
                 stair.Height / count, Math.Max(1.2, stair.Width), stair.Offset);

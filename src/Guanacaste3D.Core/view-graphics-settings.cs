@@ -20,6 +20,9 @@ public sealed record ViewGraphicsSettings
     public string Background { get; init; } = "White";
     public float FieldOfView { get; init; } = 45;
     public bool ShowEdges { get; init; } = true;
+
+    /// <summary>Revit's "Show line weights": true draws edges at their full model thickness, false draws them hairline-thin.</summary>
+    public bool ThickLines { get; init; } = true;
     public bool CameraLocked { get; init; }
     public ViewCameraPose? CameraPose { get; init; }
     public bool CropActive { get; init; }

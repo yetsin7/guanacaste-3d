@@ -5,6 +5,12 @@ namespace Guanacaste3D.Core;
 /// <summary>One straight flight of a stair: its run axis, the height its first step starts at and how much it rises.</summary>
 public readonly record struct StairFlight(Point2 Start, Point2 End, double Bottom, double Rise, int Risers);
 
+/// <summary>Kinds of advisory finding about a stair's comfort; the value is the measured meters, the limit the guideline.</summary>
+public enum StairWarningKind { RiserTooHigh, RiserTooLow, TreadTooShallow, UncomfortablePace }
+
+/// <summary>One advisory finding about a stair, with the measured value and the limit it crossed, in meters.</summary>
+public readonly record struct StairWarning(StairWarningKind Kind, double Value, double Limit);
+
 /// <summary>
 /// Stair layouts by component, as Revit offers them: straight runs, an L with a quarter landing, a U (switchback) with
 /// a half landing, and a spiral around a central column. The two placement points give the direction and the first
@@ -24,8 +30,58 @@ public static class StairGeometry
     private const double SwitchbackGap = 0.10;
     private const double ColumnRadius = 0.10;
 
+    /// <summary>Largest riser (contrahuella) a stair should have before the editor warns, in meters.</summary>
+    public const double RecommendedMaximumRiser = 0.18;
+
+    /// <summary>Smallest riser a stair should have before the editor warns, in meters.</summary>
+    public const double RecommendedMinimumRiser = 0.10;
+
+    /// <summary>Smallest tread going (huella) a stair should have before the editor warns, in meters.</summary>
+    public const double RecommendedMinimumTread = 0.28;
+
     /// <summary>Shares one riser count across solids, walking paths, and generated guards, including low stairs.</summary>
     public static int RiserCount(double height) => Math.Max(2, (int)Math.Ceiling(height / MaximumRiser - 1e-9));
+
+    /// <summary>Riser count that honors the stair's requested riser height when it has one.</summary>
+    public static int RiserCount(StructuralElement stair) => stair.RiserHeight > 0
+        ? Math.Max(2, (int)Math.Ceiling(stair.Height / stair.RiserHeight - 1e-9))
+        : RiserCount(stair.Height);
+
+    /// <summary>The going (huella) each tread actually has, per flight, in meters; a spiral reports its walking-line going.</summary>
+    public static double ActualTread(StructuralElement stair)
+    {
+        if (stair.Style == ElementStyle.Spiral)
+        {
+            var (_, radius, _, step, _) = Spiral(stair);
+            return radius * 0.6 * step;
+        }
+        var flights = Flights(stair);
+        return flights.Count == 0 ? 0 : flights.Min(flight => flight.Start.DistanceTo(flight.End) / flight.Risers);
+    }
+
+    /// <summary>Plan length the straight or composite run needs so every tread has the requested going.</summary>
+    public static double RunLengthForTread(StructuralElement stair, double tread)
+    {
+        var risers = RiserCount(stair);
+        return stair.Style is ElementStyle.LShaped or ElementStyle.UShaped
+            ? stair.Width + risers / 2 * tread : risers * tread;
+    }
+
+    /// <summary>Advisory findings for a stair's riser and tread; none of them blocks the design.</summary>
+    public static IReadOnlyList<StairWarning> Check(StructuralElement stair)
+    {
+        var warnings = new List<StairWarning>();
+        if (stair.Kind != StructuralElementKind.Stair || stair.Length < 0.05 && stair.Style != ElementStyle.Spiral) return warnings;
+        var riser = stair.Height / RiserCount(stair);
+        var tread = ActualTread(stair);
+        if (riser > RecommendedMaximumRiser + 1e-6) warnings.Add(new(StairWarningKind.RiserTooHigh, riser, RecommendedMaximumRiser));
+        if (riser < RecommendedMinimumRiser - 1e-6) warnings.Add(new(StairWarningKind.RiserTooLow, riser, RecommendedMinimumRiser));
+        if (tread < RecommendedMinimumTread - 1e-6) warnings.Add(new(StairWarningKind.TreadTooShallow, tread, RecommendedMinimumTread));
+        // Blondel's rule: two risers plus one tread should be a comfortable pace, 0.60 to 0.65 m.
+        var pace = 2 * riser + tread;
+        if (warnings.Count == 0 && tread > 0 && (pace < 0.57 || pace > 0.67)) warnings.Add(new(StairWarningKind.UncomfortablePace, pace, 0.63));
+        return warnings;
+    }
 
     /// <summary>Whether the stair is laid out by this class rather than as a single straight run.</summary>
     public static bool IsComposite(StructuralElement stair) =>
@@ -34,7 +90,7 @@ public static class StairGeometry
     /// <summary>The straight flights of a stair; a spiral has none.</summary>
     public static IReadOnlyList<StairFlight> Flights(StructuralElement stair)
     {
-        var risers = RiserCount(stair.Height);
+        var risers = RiserCount(stair);
         var riser = stair.Height / risers;
         if (stair.Style == ElementStyle.Spiral || stair.Length < 0.05) return [];
         if (stair.Style is not (ElementStyle.LShaped or ElementStyle.UShaped))
@@ -190,11 +246,12 @@ public static class StairGeometry
     /// <summary>Center, outer radius, start angle, angle per tread (counter-clockwise) and riser count of a spiral.</summary>
     private static (Point2 Center, double Radius, double StartAngle, double Step, int Risers) Spiral(StructuralElement stair)
     {
-        var risers = RiserCount(stair.Height);
+        var risers = RiserCount(stair);
         var radius = Math.Max(0.6, stair.Width / 2);
         var startAngle = stair.Length > 1e-6 ? Math.Atan2(stair.End.Y - stair.Start.Y, stair.End.X - stair.Start.X) : 0;
-        // About 22 cm of going on the walking line at 60 % of the radius, kept between 15° and 40° per tread.
-        var step = Math.Clamp(0.22 / (radius * 0.6), 15 * Math.PI / 180, 40 * Math.PI / 180);
+        // About 22 cm of going (or the requested tread) on the walking line at 60 % of the radius, kept between 15° and 40° per tread.
+        var step = Math.Clamp((stair.TreadDepth > 0 ? stair.TreadDepth : 0.22) / (radius * 0.6),
+            15 * Math.PI / 180, 40 * Math.PI / 180);
         return (stair.Start, radius, startAngle, step, risers);
     }
 

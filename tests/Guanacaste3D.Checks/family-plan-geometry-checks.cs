@@ -73,6 +73,28 @@ internal static class FamilyPlanGeometryChecks
         check(Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(family)) - 0.9) < 1e-6 &&
               FamilyPlanGeometry.ForLevel(family, 0, 3).Count == 4,
             "Changing a type value regenerates chained formulas in 3D and the low-solid plan");
+        var tallerType = new FamilyTypeDefinition(Guid.NewGuid(), "Tall", [new(baseLength.Id, 1, null)]);
+        family.Types.Add(tallerType);
+        family.Validate();
+        check(Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(family, tallerType.Id)) - 2.5) < 1e-6 &&
+              Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(family)) - 0.9) < 1e-6 &&
+              FamilyPlanGeometry.ForLevel(family, 0, 3, tallerType.Id).Count > 4,
+            "Each selected family type drives its own coordinated 3D and plan geometry");
+        var path = Path.Combine(Path.GetTempPath(), $"family-types-{Guid.NewGuid():N}.g3df");
+        try
+        {
+            NativeDocumentStore.SaveFamily(path, family);
+            var reopened = NativeDocumentStore.LoadFamily(path);
+            check(Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(reopened, tallerType.Id)) - 2.5) < 1e-6,
+                "Native family persistence preserves type identity and calculated geometry");
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+        tallerType.Values[0] = new(baseLength.Id, -1, null);
+        var invalidTypeRejected = false;
+        try { family.Validate(); }
+        catch (InvalidDataException) { invalidTypeRejected = true; }
+        check(invalidTypeRejected, "Invalid geometry in a non-default family type is rejected");
+        family.Types.Remove(tallerType);
         family.Parameters[2] = depth with { Formula = "Doubled / 0" };
         var rejected = false;
         try { family.Validate(); }

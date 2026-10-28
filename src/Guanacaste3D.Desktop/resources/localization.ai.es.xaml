@@ -34,4 +34,8 @@
 
 ¿Permitirlo?</sys:String>
   <sys:String x:Key="Ai.PriceNotice">Los precios por defecto son de referencia; confirma los precios locales antes de usar un presupuesto.</sys:String>
+  <sys:String x:Key="Status.TagsShown">Etiquetas mostradas en la planta: puertas (P), ventanas (V) y columnas (C).</sys:String>
+  <sys:String x:Key="Status.TagsHidden">Etiquetas ocultas.</sys:String>
+  <sys:String x:Key="Status.AutoDimensioned">Cotas agregadas al nivel: {0}.</sys:String>
+  <sys:String x:Key="Status.AutoDimensionedNone">Este nivel ya tiene todas las cotas automáticas.</sys:String>
 </ResourceDictionary>

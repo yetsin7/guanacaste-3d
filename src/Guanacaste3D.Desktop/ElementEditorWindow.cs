@@ -161,6 +161,36 @@ internal sealed class ElementEditorWindow : Window
         return window;
     }
 
+    /// <summary>
+    /// Shows the comfort warnings the typed riser and tread would trigger, without touching the project: the stair is
+    /// rebuilt on a copy, so the designer can see "too high" or "too shallow" before applying.
+    /// </summary>
+    private void PreviewStair(StructuralElement stair, TextBox? width, TextBox? height, TextBox riser, TextBox tread, ComboBox? style)
+    {
+        try
+        {
+            var trial = stair with
+            {
+                Width = width is null ? stair.Width : Number(width), Height = Number(height!),
+                Style = style is null ? stair.Style : Chosen<ElementStyle>(style),
+                RiserHeight = Number(riser), TreadDepth = Number(tread)
+            };
+            if (trial.Height <= 0 || trial.RiserHeight <= 0 || trial.TreadDepth <= 0) { _status.Text = ""; return; }
+            if (trial.Style != ElementStyle.Spiral && trial.Length > 1e-9)
+            {
+                var scale = StairGeometry.RunLengthForTread(trial, trial.TreadDepth) / trial.Length;
+                trial = trial with { End = new Point2(trial.Start.X + (trial.End.X - trial.Start.X) * scale,
+                    trial.Start.Y + (trial.End.Y - trial.Start.Y) * scale) };
+            }
+            var lines = StairGeometry.Check(trial).Select(warning => string.Format(CultureInfo.CurrentCulture,
+                Text("Stair.Warning." + warning.Kind), warning.Value * 100, warning.Limit * 100)).ToList();
+            _status.Text = lines.Count == 0 ? string.Format(CultureInfo.CurrentCulture, Text("Stair.Warning.Ok"),
+                trial.Height / StairGeometry.RiserCount(trial) * 100, StairGeometry.ActualTread(trial) * 100)
+                : "⚠ " + string.Join(Environment.NewLine + "⚠ ", lines);
+        }
+        catch (FormatException) { _status.Text = ""; }
+    }
+
     /// <summary>The editor for a structural or architectural element; only the fields that mean something for its kind show.</summary>
     public static ElementEditorWindow ForStructural(DocumentSession session, Guid elementId, bool gridFocus)
     {
@@ -184,9 +214,37 @@ internal sealed class ElementEditorWindow : Window
             gridHeight = window.AddNumber("Editor.GridHeight", element.GridHeight > 0 ? element.GridHeight : 1.2);
             (gridFocus ? gridWidth : width ?? gridWidth).Loaded += (_, _) => (gridFocus ? gridWidth : width ?? gridWidth).Focus();
         }
+        TextBox? riser = null, tread = null;
+        if (element.Kind == StructuralElementKind.Stair)
+        {
+            riser = window.AddNumber("Editor.StairRiser", element.Height / StairGeometry.RiserCount(element));
+            tread = window.AddNumber("Editor.StairTread", StairGeometry.ActualTread(element));
+            void Preview() => window.PreviewStair(element, width, height, riser, tread, style);
+            foreach (var box in new[] { riser, tread, height, width }.OfType<TextBox>()) box.TextChanged += (_, _) => Preview();
+            style?.SelectionChanged += (_, _) => Preview();
+            Preview();
+        }
         window._apply = () =>
         {
-            if (element.HasSolid)
+            if (riser is not null && tread is not null)
+            {
+                using var group = session.BeginGroup("Transaction.UpdateStructuralElement");
+                session.UpdateStructuralElement(elementId, name.Text, width is null ? element.Width : Number(width),
+                    Number(height!), Number(offset!), style is null ? element.Style : Chosen<ElementStyle>(style));
+                // Keep a dimension automatic unless the user actually changed it from the value shown.
+                var shown = session.Document.StructuralElements.Single(candidate => candidate.Id == elementId);
+                var wantedRiser = Number(riser);
+                var wantedTread = Number(tread);
+                var currentRiser = shown.Height / StairGeometry.RiserCount(shown);
+                var currentTread = StairGeometry.ActualTread(shown);
+                var riserChanged = Math.Abs(wantedRiser - currentRiser) > 5e-4;
+                var treadChanged = Math.Abs(wantedTread - currentTread) > 5e-4;
+                if (riserChanged || treadChanged)
+                    session.SetStairSteps(elementId, riserChanged ? wantedRiser : shown.RiserHeight,
+                        treadChanged ? wantedTread : shown.TreadDepth);
+                group.Assimilate();
+            }
+            else if (element.HasSolid)
                 session.UpdateStructuralElement(elementId, name.Text, width is null ? element.Width : Number(width),
                     Number(height!), Number(offset!), style is null ? element.Style : Chosen<ElementStyle>(style));
             else session.RenameStructuralElement(elementId, name.Text);

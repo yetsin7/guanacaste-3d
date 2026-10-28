@@ -79,6 +79,15 @@ pavilion, a white concrete upper volume that cantilevers past it, entrance steps
 golden-hour lighting preset; `tests/Guanacaste3D.RenderBench` renders it with `G3_SHOT_ONLY=villa ... -- --shot`. The
 assistant can build the same pieces with `add_curtain_wall`, `add_pool` and `add_planting`.
 
+## Annotation
+
+- **Tags:** the ribbon commands `TagAll` and `TagByCategory` toggle automatic plan tags for doors (P1...), windows (V1...)
+  and columns (C1...). They are computed from the model by `ElementTags`, numbered by type across the project, and never
+  stored, so they cannot go stale.
+- **Automatic dimensions:** `AlignedDimension` adds associative wall-length and opening-width dimensions to the active
+  level in one undo step (`DocumentSession.AutoDimensionLevel`); existing dimensions are kept.
+- **Assistant:** `get_tags`, `auto_dimension` and `get_area_schedule`. The area table itself is `AreaSchedule`.
+
 ## Publish for Windows
 
 ```powershell

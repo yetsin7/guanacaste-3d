@@ -103,6 +103,32 @@ internal static class ReadTools
                 return Json(budget);
             });
 
+        yield return new("get_tags",
+            "Returns the automatic tags of a level: door marks (P1...), window marks (V1...), columns (C1...) and optionally " +
+            "walls, slabs and rooms, each with its position and description. The marks are stable across levels.",
+            Schema.Object(
+                ("level", Schema.Str("Level id or name."), true),
+                ("categories", Schema.Str("Comma list of door, window, column, wall, slab, room. Default: door, window, column."), false)),
+            ToolRisk.Read, (context, args) =>
+            {
+                var requested = args.Text("categories", string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(name => Enum.TryParse<TagCategory>(name, true, out var category)
+                        ? category : throw new InvalidDataException($"Unknown tag category '{name}'."))
+                    .ToHashSet();
+                var tags = ElementTags.Build(context.Session.Document, args.Level(), requested.Count == 0 ? null : requested);
+                return Json(tags.Select(tag => new
+                {
+                    elementId = tag.ElementId, category = tag.Category.ToString(), mark = tag.Mark,
+                    description = tag.Description, x = Math.Round(tag.Position.X, 3), y = Math.Round(tag.Position.Y, 3)
+                }));
+            });
+
+        yield return new("get_area_schedule",
+            "Returns the area table: every room grouped by level with a subtotal per level and a grand total, in square meters.",
+            Schema.Object(), ToolRisk.Read, (context, _) => Json(AreaSchedule.Rows(context.Session.Document)
+                .Select(row => new { kind = row.Kind.ToString(), number = row.Number, name = row.Name, area = Math.Round(row.Area, 2) })));
+
         yield return new("get_unit_prices", "Returns the unit price list used by get_budget.",
             Schema.Object(), ToolRisk.Read,
             (context, _) => Json(new { currency = context.Prices.Currency, prices = context.Prices.Prices }));

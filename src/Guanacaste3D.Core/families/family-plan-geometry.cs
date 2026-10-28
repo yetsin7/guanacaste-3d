@@ -12,10 +12,11 @@ public static class FamilyPlanGeometry
 
     /// <summary>
     /// Cuts solids at the view plane. Low solids that lie wholly below the cut plane retain their
-    /// perimeter, so furniture remains visible in plan. Solids outside the story are excluded.
+    /// perimeter, so furniture remains visible in plan. Solids outside the story are excluded. When no
+    /// type is specified, the first family type is used.
     /// </summary>
     public static IReadOnlyList<FamilyPlanSegment> ForLevel(FamilyDocument family, double levelElevation,
-        double upperElevation)
+        double upperElevation, Guid? typeId = null)
     {
         if (!double.IsFinite(levelElevation) || !double.IsFinite(upperElevation) ||
             upperElevation <= levelElevation)
@@ -28,8 +29,8 @@ public static class FamilyPlanGeometry
                      candidate.Kind == FamilyOperationKind.SolidExtrusion && candidate.Profile.Count >= 3))
         {
             var plane = FamilyGeometry.PlaneOf(family, operation);
-            var offset = FamilyGeometry.Offset(family, operation);
-            var depth = FamilyGeometry.Depth(family, operation);
+            var offset = FamilyGeometry.Offset(family, operation, typeId);
+            var depth = FamilyGeometry.Depth(family, operation, typeId);
             var profile = operation.Profile;
             var bottom = profile.Select(point => WorldPoint(plane, point, offset)).ToArray();
             var top = profile.Select(point => WorldPoint(plane, point, offset + depth)).ToArray();

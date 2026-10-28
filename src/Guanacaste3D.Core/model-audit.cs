@@ -1,7 +1,7 @@
 namespace Guanacaste3D.Core;
 
 /// <summary>Geometric conditions that deserve a designer's review but do not invalidate a project.</summary>
-public enum ModelAuditCode { NearWallGap, OverlappingRooms, LowOpeningHeadClearance }
+public enum ModelAuditCode { NearWallGap, OverlappingRooms, LowOpeningHeadClearance, OverlappingWalls }
 
 /// <summary>A stable element reference and metric measurement for one advisory model finding.</summary>
 public sealed record ModelAuditIssue(ModelAuditCode Code, Guid ElementId, Guid? RelatedId,
@@ -49,6 +49,9 @@ public static class ModelAuditReporting
                 issue.ValueMeters < 0 ? ModelAuditSeverity.Critical : ModelAuditSeverity.Warning,
                 $"Remaining opening head clearance is {issue.ValueMeters * 1000:0.#} mm.",
                 "Review the opening sill, height and host wall elevation."),
+            ModelAuditCode.OverlappingWalls => new ModelAuditFinding(issue, ModelAuditSeverity.Warning,
+                $"Two walls overlap along {issue.ValueMeters:0.##} m.",
+                "Delete one of the walls or move it so they no longer share the same space."),
             _ => throw new ArgumentOutOfRangeException(nameof(issues), "Unknown model audit code.")
         }).ToArray();
     }
@@ -57,6 +60,18 @@ public static class ModelAuditReporting
 /// <summary>Finds drafting and coordination issues without changing the validated BIM document.</summary>
 public static class ModelAudit
 {
+    private static void FindWallOverlaps(BuildingDocument document, List<ModelAuditIssue> issues)
+    {
+        for (var first = 0; first < document.Walls.Count; first++)
+            for (var second = first + 1; second < document.Walls.Count; second++)
+            {
+                var (a, b) = (document.Walls[first], document.Walls[second]);
+                if (a.LevelId != b.LevelId) continue;
+                var shared = WallOverlap.SharedLength(a.Start, a.End, a.Thickness, b.Start, b.End, b.Thickness);
+                if (shared > 0) issues.Add(new ModelAuditIssue(ModelAuditCode.OverlappingWalls, a.Id, b.Id, a.LevelId, shared));
+            }
+    }
+
     /// <summary>
     /// Reviews near misses, room overlap, and opening head clearance. Distances use
     /// model meters; callers can use the returned ids to select affected elements.
@@ -73,6 +88,7 @@ public static class ModelAudit
 
         var issues = new List<ModelAuditIssue>();
         FindWallGaps(document, wallGapLimit, issues);
+        FindWallOverlaps(document, issues);
         FindRoomOverlaps(document, issues);
         FindLowOpeningHeads(document, openingHeadLimit, issues);
         return issues.OrderBy(issue => issue.LevelId).ThenBy(issue => issue.Code)

@@ -41,6 +41,8 @@
     <Border Width="1" Background="#D1D5D9" Margin="5,2"/>
     <CheckBox x:Name="EdgeSwitch" Content="{DynamicResource View3D.Edges}" IsChecked="True" VerticalAlignment="Center"
      Margin="5,0,8,0" Checked="Style_Changed" Unchecked="Style_Changed"/>
+    <CheckBox x:Name="ThickLinesSwitch" Content="{DynamicResource View3D.LineWeights}" IsChecked="True" VerticalAlignment="Center"
+     ToolTip="{DynamicResource View3D.LineWeightsTip}" Margin="0,0,8,0" Checked="Style_Changed" Unchecked="Style_Changed"/>
     <CheckBox x:Name="ServiceSwitch" Content="{DynamicResource View3D.XRay}" IsChecked="False" VerticalAlignment="Center"
      ToolTip="{DynamicResource View3D.XRayTip}" Margin="0,0,8,0" Checked="Style_Changed" Unchecked="Style_Changed"/>
     <Button Content="{DynamicResource Model.ResetCamera}" Click="Reset_Click" Margin="0,0,6,0"/>

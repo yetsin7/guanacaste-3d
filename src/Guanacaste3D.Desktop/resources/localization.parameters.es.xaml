@@ -67,6 +67,7 @@
   <sys:String x:Key="ElementCategory.Sheets">Láminas</sys:String>
 
   <sys:String x:Key="Transaction.AddWall">Crear muro</sys:String>
+  <sys:String x:Key="Transaction.AutoDimension">Acotar nivel</sys:String>
   <sys:String x:Key="Transaction.AiAssistant">Asistente de IA</sys:String>
   <sys:String x:Key="Transaction.AddLevel">Crear nivel</sys:String>
   <sys:String x:Key="Transaction.UpdateWall">Modificar muro</sys:String>

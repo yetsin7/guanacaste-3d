@@ -123,6 +123,35 @@ public sealed partial class DocumentSession
         });
     }
 
+    /// <summary>
+    /// Sets a stair's riser (contrahuella) and tread (huella); zero keeps that dimension automatic. A requested tread
+    /// resizes the plan run so every tread gets exactly that going. Dimensions outside the usual comfort range are
+    /// allowed — <see cref="StairGeometry.Check"/> reports them — but absurd values are rejected.
+    /// </summary>
+    public void SetStairSteps(Guid stairId, double riserHeight, double treadDepth)
+    {
+        var stair = Document.StructuralElements.FirstOrDefault(element => element.Id == stairId)
+            ?? throw new InvalidDataException("The element does not exist.");
+        if (stair.Kind != StructuralElementKind.Stair)
+            throw new InvalidDataException("The element is not a stair.");
+        if (!double.IsFinite(riserHeight) || !double.IsFinite(treadDepth) ||
+            riserHeight != 0 && riserHeight is < 0.05 or > 0.30 || treadDepth != 0 && treadDepth is < 0.10 or > 1.0)
+            throw new InvalidDataException("The stair riser or tread is invalid.");
+        Commit("Transaction.SetStairSteps", document =>
+        {
+            var index = document.StructuralElements.FindIndex(element => element.Id == stairId);
+            var updated = document.StructuralElements[index] with { RiserHeight = riserHeight, TreadDepth = treadDepth };
+            if (treadDepth > 0 && updated.Style != ElementStyle.Spiral && updated.Length > 1e-9)
+            {
+                var scale = StairGeometry.RunLengthForTread(updated, treadDepth) / updated.Length;
+                updated = updated with { End = new Point2(updated.Start.X + (updated.End.X - updated.Start.X) * scale,
+                    updated.Start.Y + (updated.End.Y - updated.Start.Y) * scale) };
+            }
+            document.StructuralElements[index] = updated;
+            RefreshHostedStairRailings(document, updated);
+        });
+    }
+
     /// <summary>Sets the mullion and transom spacing of a curtain wall; zero restores the default spacing.</summary>
     public void UpdateCurtainGrid(Guid elementId, double gridWidth, double gridHeight)
     {

@@ -150,6 +150,7 @@ public partial class MainWindow
         }
         var others = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId)
             .Select(wall => new WallCenterline(wall.Start, wall.End)).ToList();
+        var overlap = WallOverlap.Find(_session.Document.Walls, _activeLevelId, start, end, thickness);
         var id = _session.AddWall(_activeLevelId, start, end, height: height, wallTypeId: typeId);
         group.Assimilate();
         _selectedWallId = id;
@@ -166,6 +167,7 @@ public partial class MainWindow
         ClearDirectWallLength();
         StatusText.Text = GetText(continuesChain ? "Status.WallCreated"
             : closesLoop ? "Status.WallLoopClosed" : "Status.WallChainClosed");
+        if (overlap is { } overlapped) StatusText.Text = FormatText("Status.WallOverlaps", overlapped.Length);
         RefreshAll();
     }
 
@@ -176,6 +178,8 @@ public partial class MainWindow
         var centerlines = WallPlacementGeometry.Rectangle(
             first, opposite, type.Thickness, offset, SelectedWallLocationReference());
 
+        var overlap = centerlines.Select(centerline => WallOverlap.Find(_session.Document.Walls, _activeLevelId,
+            centerline.Start, centerline.End, type.Thickness)).FirstOrDefault(found => found is not null);
         using var group = _session.BeginGroup("Transaction.DrawRectangle");
         foreach (var centerline in centerlines)
             _selectedWallId = _session.AddWall(
@@ -187,7 +191,8 @@ public partial class MainWindow
         _wallPreviewPoint = null;
         _chainTail = null;
         _chainOrigin = null;
-        StatusText.Text = GetText("Status.WallRectangleCreated");
+        StatusText.Text = overlap is { } overlapped ? FormatText("Status.WallOverlaps", overlapped.Length)
+            : GetText("Status.WallRectangleCreated");
         RefreshAll();
     }
 

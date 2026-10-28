@@ -171,6 +171,11 @@ internal static class ModelingTools
                 return ReadTools.Json(new { id });
             });
 
+        yield return new("auto_dimension",
+            "Adds associative dimensions to every wall length and opening width of a level, as one undoable step. Existing dimensions are kept.",
+            Schema.Object(("level", Schema.Str("Level id or name."), true)), ToolRisk.Modify,
+            (context, args) => $"Added {context.Session.AutoDimensionLevel(args.Level())} dimensions.");
+
         yield return new("remove_element", "Deletes one element by id. It can be undone with the undo tool.",
             Schema.Object(
                 ("kind", Schema.Str("Element kind.", "wall", "opening", "room", "floor", "column", "level"), true),

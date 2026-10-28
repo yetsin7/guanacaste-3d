@@ -317,6 +317,7 @@ public partial class MainWindow
         AddAlignmentGuides();
         RenderPlacementPreview();
         RenderPermanentDimensions();
+        RenderElementTags();
         RenderElevationSymbols();
         RenderSectionSymbols();
         RenderGridAxes();

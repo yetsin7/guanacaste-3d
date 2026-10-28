@@ -17,7 +17,7 @@ internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models,
     public static ModelSceneSnapshot Build(BuildingDocument document, bool clay, bool xray, bool showEdges,
         IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>? textures,
         Vector3? shadowSun = null, BuildingDocument? hiddenDocument = null, IReadOnlySet<Guid>? hiddenIds = null,
-        ModelDetailLevel detail = ModelDetailLevel.Medium)
+        ModelDetailLevel detail = ModelDetailLevel.Medium, bool thickLines = true)
     {
         var scene = BuildingMesher.Build(document, includeGround: false, plants: detail == ModelDetailLevel.Fine ? PlantDetail.Render : PlantDetail.Model);
         if (detail == ModelDetailLevel.Coarse) scene = SceneDetailFilter.Coarse(scene);
@@ -37,7 +37,7 @@ internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models,
         }
         var hasGeometry = indices.Count > 0;
         if (!hasGeometry) { minimum = new(-5, -5, 0); maximum = new(5, 5, 3); }
-        var thickness = ScenePresentation.EdgeThicknessForBounds(minimum, maximum);
+        var thickness = ScenePresentation.EdgeThicknessForBounds(minimum, maximum, thickLines);
         var models = (xray ? ScenePresentation.ToWpfXRay(scene) : clay
             ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures)).ToArray();
         // Each edge becomes an eight-sided tube; bound the additional geometry on large models.

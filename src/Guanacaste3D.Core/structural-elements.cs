@@ -191,6 +191,12 @@ public sealed record StructuralElement(
     /// </summary>
     public double GridHeight { get; init; }
 
+    /// <summary>Stairs only: requested riser (contrahuella) in meters; zero lets the stair pick the tallest comfortable riser.</summary>
+    public double RiserHeight { get; init; }
+
+    /// <summary>Stairs only: requested tread going (huella) in meters; zero keeps the going the placed run gives.</summary>
+    public double TreadDepth { get; init; }
+
     /// <summary>Guards only: vertical rise from the start to the end, so a guard can follow a stair or ramp.</summary>
     public double Rise { get; init; }
 

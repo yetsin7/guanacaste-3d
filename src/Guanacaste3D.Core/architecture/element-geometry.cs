@@ -64,7 +64,7 @@ public static class ElementGeometry
                 yield return Block(element, step.Footprint, step.Offset, step.Offset + step.Height);
             yield break;
         }
-        var count = StairGeometry.RiserCount(element.Height);
+        var count = StairGeometry.RiserCount(element);
         var treadThickness = Math.Min(0.04, element.Height / count / 2);
         const double stringerWidth = 0.06;
         const double stringerDepth = 0.20;

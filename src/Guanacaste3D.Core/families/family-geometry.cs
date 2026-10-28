@@ -31,7 +31,7 @@ public static class FamilyGeometry
 
     /// <summary>
     /// Validates every extrusion that has a profile: its work plane, its profile, and that its depth and
-    /// offset evaluate to lengths in range. <see cref="FamilyDocument.Validate"/> calls this.
+    /// offset evaluate to lengths in range for every family type. <see cref="FamilyDocument.Validate"/> calls this.
     /// </summary>
     public static void ValidateSolids(FamilyDocument family)
     {
@@ -41,13 +41,16 @@ public static class FamilyGeometry
                 throw new InvalidDataException("Only extrusions can take a profile.");
             ValidatePlane(PlaneOf(family, operation));
             InPlaceProfileRules.Validate(operation.Profile);
-            var depth = Depth(family, operation);
-            if (!double.IsFinite(depth) || depth < MinimumDepth || depth > MaximumDepth)
-                throw new InvalidDataException(
-                    $"The depth of extrusion '{operation.Name}' must be between 1 mm and 1 km.");
-            var offset = Offset(family, operation);
-            if (!double.IsFinite(offset) || Math.Abs(offset) > MaximumOffset)
-                throw new InvalidDataException($"The start offset of extrusion '{operation.Name}' is out of range.");
+            foreach (var type in family.Types)
+            {
+                var depth = Depth(family, operation, type.Id);
+                if (!double.IsFinite(depth) || depth < MinimumDepth || depth > MaximumDepth)
+                    throw new InvalidDataException(
+                        $"The depth of extrusion '{operation.Name}' must be between 1 mm and 1 km.");
+                var offset = Offset(family, operation, type.Id);
+                if (!double.IsFinite(offset) || Math.Abs(offset) > MaximumOffset)
+                    throw new InvalidDataException($"The start offset of extrusion '{operation.Name}' is out of range.");
+            }
         }
     }
 
@@ -56,28 +59,30 @@ public static class FamilyGeometry
         family.WorkPlanes.FirstOrDefault(plane => plane.Id == operation.WorkPlaneId)
         ?? throw new InvalidDataException("An extrusion refers to a work plane that does not exist.");
 
-    /// <summary>Returns the depth of an extrusion in meters, evaluated from its depth expression.</summary>
-    public static double Depth(FamilyDocument family, FamilyOperation operation) =>
-        Length(family, operation, DepthKey) ?? throw new InvalidDataException("An extrusion has no depth expression.");
+    /// <summary>Returns the extrusion depth in meters for the selected type, or the first type by default.</summary>
+    public static double Depth(FamilyDocument family, FamilyOperation operation, Guid? typeId = null) =>
+        Length(family, operation, DepthKey, FindType(family, typeId))
+        ?? throw new InvalidDataException("An extrusion has no depth expression.");
 
-    /// <summary>Returns the start offset of an extrusion in meters; zero when the operation has none.</summary>
-    public static double Offset(FamilyDocument family, FamilyOperation operation) =>
-        Length(family, operation, OffsetKey) ?? 0;
+    /// <summary>Returns the start offset for the selected type in meters; zero when the operation has none.</summary>
+    public static double Offset(FamilyDocument family, FamilyOperation operation, Guid? typeId = null) =>
+        Length(family, operation, OffsetKey, FindType(family, typeId)) ?? 0;
 
-    /// <summary>Builds the family's triangle mesh by regenerating every solid extrusion.</summary>
-    public static SceneMesh Tessellate(FamilyDocument family)
+    /// <summary>Builds a triangle mesh for the selected type, or the first type when none is specified.</summary>
+    public static SceneMesh Tessellate(FamilyDocument family, Guid? typeId = null)
     {
         var mesh = new SceneMesh();
-        AppendTo(mesh, family);
+        AppendTo(mesh, family, typeId);
         return mesh;
     }
 
-    /// <summary>Appends a family's regenerated solids to a scene mesh. Views and mesh exports use this path.</summary>
-    public static void AppendTo(SceneMesh mesh, FamilyDocument family)
+    /// <summary>Appends the selected type's regenerated solids to a scene mesh used by views and exports.</summary>
+    public static void AppendTo(SceneMesh mesh, FamilyDocument family, Guid? typeId = null)
     {
+        FindType(family, typeId);
         foreach (var operation in family.Operations.Where(operation =>
                      operation.Kind == FamilyOperationKind.SolidExtrusion && operation.Profile.Count > 0))
-            AppendExtrusion(mesh, family, operation);
+            AppendExtrusion(mesh, family, operation, typeId);
     }
 
     /// <summary>
@@ -101,7 +106,7 @@ public static class FamilyGeometry
     /// Evaluates a length expression: a parameter name is read directly, anything else is parsed as a formula
     /// over the family's parameters. Returns null when the expression is absent.
     /// </summary>
-    private static double? Length(FamilyDocument family, FamilyOperation operation, string key)
+    private static double? Length(FamilyDocument family, FamilyOperation operation, string key, FamilyTypeDefinition type)
     {
         if (!operation.Expressions.TryGetValue(key, out var expression)) return null;
         var text = expression.Trim();
@@ -109,23 +114,23 @@ public static class FamilyGeometry
             string.Equals(candidate.Name, text, StringComparison.OrdinalIgnoreCase));
         if (parameter is not null)
         {
-            var resolved = Resolve(family, parameter.Name);
+            var resolved = Resolve(family, type, parameter.Name);
             if (resolved is not { Kind: FormulaKind.Number })
                 throw new InvalidDataException("An extrusion expression does not evaluate to a length.");
             return resolved.Value.Number;
         }
-        var value = FormulaEvaluator.Evaluate(FormulaParser.Parse(text), name => Resolve(family, name));
+        var value = FormulaEvaluator.Evaluate(FormulaParser.Parse(text), name => Resolve(family, type, name));
         if (value is not { Kind: FormulaKind.Number })
             throw new InvalidDataException("An extrusion expression does not evaluate to a length.");
         return value.Value.Number;
     }
 
     /// <summary>Resolves a parameter name for the formula evaluator; null when the family has no such parameter.</summary>
-    private static FormulaValue? Resolve(FamilyDocument family, string name) =>
-        ResolveParameter(family, name, new HashSet<Guid>());
+    private static FormulaValue? Resolve(FamilyDocument family, FamilyTypeDefinition type, string name) =>
+        ResolveParameter(family, type, name, new HashSet<Guid>());
 
     /// <summary>Evaluates calculated parameters recursively, detecting cycles even before document validation.</summary>
-    private static FormulaValue? ResolveParameter(FamilyDocument family, string name, HashSet<Guid> active)
+    private static FormulaValue? ResolveParameter(FamilyDocument family, FamilyTypeDefinition type, string name, HashSet<Guid> active)
     {
         var parameter = family.Parameters.FirstOrDefault(candidate =>
             string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -136,9 +141,8 @@ public static class FamilyGeometry
         {
             if (!string.IsNullOrWhiteSpace(parameter.Formula))
                 return FormulaEvaluator.Evaluate(FormulaParser.Parse(parameter.Formula),
-                    reference => ResolveParameter(family, reference, active));
-            var typed = family.Types.FirstOrDefault()?.Values
-                .FirstOrDefault(value => value.ParameterId == parameter.Id);
+                    reference => ResolveParameter(family, type, reference, active));
+            var typed = type.Values.FirstOrDefault(value => value.ParameterId == parameter.Id);
             if (parameter.Kind is FamilyParameterKind.Text or FamilyParameterKind.Material or
                 FamilyParameterKind.ElementReference or FamilyParameterKind.Enumeration)
             {
@@ -153,15 +157,20 @@ public static class FamilyGeometry
         finally { active.Remove(parameter.Id); }
     }
 
+    /// <summary>Resolves an explicit type or retains the historical first-type default.</summary>
+    private static FamilyTypeDefinition FindType(FamilyDocument family, Guid? typeId) =>
+        (typeId is null ? family.Types.FirstOrDefault() : family.Types.FirstOrDefault(type => type.Id == typeId))
+        ?? throw new InvalidDataException("A family type is invalid.");
+
     /// <summary>
     /// Emits the prism swept by a counter-clockwise profile: a bottom cap, a top cap and one quad per profile
     /// edge. Caps come from the ear-clipping triangulation of the same loop.
     /// </summary>
-    private static void AppendExtrusion(SceneMesh mesh, FamilyDocument family, FamilyOperation operation)
+    private static void AppendExtrusion(SceneMesh mesh, FamilyDocument family, FamilyOperation operation, Guid? typeId)
     {
         var plane = PlaneOf(family, operation);
-        var depth = Depth(family, operation);
-        var offset = Offset(family, operation);
+        var depth = Depth(family, operation, typeId);
+        var offset = Offset(family, operation, typeId);
         var profile = InPlaceProfileRules.CounterClockwise(operation.Profile);
         IReadOnlyList<(int A, int B, int C)> triangles;
         try

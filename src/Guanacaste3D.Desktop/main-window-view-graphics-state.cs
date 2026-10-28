@@ -34,8 +34,9 @@ public partial class MainWindow
             _navigation.PitchDegrees = pose.Pitch;
         }
         _showEdges = settings.ShowEdges;
+        _thickLines = settings.ThickLines;
         _synchronizingGraphics = true;
-        try { EdgesCheck.IsChecked = settings.ShowEdges; }
+        try { EdgesCheck.IsChecked = settings.ShowEdges; ThickLinesCheck.IsChecked = settings.ThickLines; }
         finally { _synchronizingGraphics = false; }
         if (_modelNavigator is not null) _modelNavigator.IsLocked = settings.CameraLocked;
         if (RenderPanelControl.Navigator is { } renderer) renderer.IsLocked = settings.CameraLocked;
@@ -60,7 +61,7 @@ public partial class MainWindow
         var settings = new ViewGraphicsSettings
         {
             Style = _modelDisplayStyle, Detail = _modelDetail, SunPreset = _modelSunPreset, Shadows = _modelShadows, Ambient = _modelAmbient,
-            Background = _modelBackground, FieldOfView = _navigation.FieldOfViewDegrees, ShowEdges = _showEdges,
+            Background = _modelBackground, FieldOfView = _navigation.FieldOfViewDegrees, ShowEdges = _showEdges, ThickLines = _thickLines,
             CameraLocked = _modelNavigator?.IsLocked == true, CropActive = _cropActive, CropBoundaryVisible = _cropBoundaryVisible,
             CameraPose = _modelNavigator?.IsLocked == true ? new ViewCameraPose(_navigation.Position.X, _navigation.Position.Y,
                 _navigation.Position.Z, _navigation.YawDegrees, _navigation.PitchDegrees) : null,
