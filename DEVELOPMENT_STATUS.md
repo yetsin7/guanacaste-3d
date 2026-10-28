@@ -1,6 +1,6 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.22.0.
+Last updated: 2026-10-27. Version: 0.22.1.
 
 ## Lighting design and smoke alarms (0.22, 2026-10-27)
 
