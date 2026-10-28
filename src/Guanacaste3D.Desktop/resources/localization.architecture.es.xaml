@@ -271,6 +271,7 @@
   <sys:String x:Key="Transaction.AddAutomaticRooms">Crear habitaciones automáticas</sys:String>
   <sys:String x:Key="Transaction.DuplicateStructuralGroup">Colocar grupo</sys:String>
   <sys:String x:Key="Error.A wall loop needs at least three corners.">Un lazo de muros necesita al menos tres esquinas.</sys:String>
+  <sys:String x:Key="Error.A unit price cannot be negative.">Un precio unitario no puede ser negativo.</sys:String>
   <sys:String x:Key="Entity.WallSweep">Barrido de muro</sys:String>
   <sys:String x:Key="Entity.WallReveal">Rebaje de muro</sys:String>
   <sys:String x:Key="Entity.Soffit">Plafón de alero</sys:String>

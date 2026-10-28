@@ -10,10 +10,12 @@ namespace Guanacaste3D.Desktop;
 /// </summary>
 public partial class MainWindow
 {
+    /// <summary>Exposes editing and navigation actions next to the element picked in a model surface.</summary>
     private void ShowViewContextMenu(FrameworkElement surface)
     {
         var menu = new ContextMenu { PlacementTarget = surface, Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
         menu.Items.Add(ViewMenuItem("ViewMenu.EditSelection", (_, _) => OpenSelectionEditor()));
+        menu.Items.Add(ViewMenuItem("Action.Move", (_, _) => BeginMoveTool(), SelectedMovableId() is not null));
         menu.Items.Add(new Separator());
         var hasSelection = CurrentSelection() is not null;
         menu.Items.Add(ViewMenuItem("ViewMenu.HideInView", (_, _) => HideSelectionInView(), hasSelection));
@@ -32,6 +34,7 @@ public partial class MainWindow
         menu.IsOpen = true;
     }
 
+    /// <summary>Creates a localized menu entry with an action and its current selection eligibility.</summary>
     private MenuItem ViewMenuItem(string textKey, RoutedEventHandler action, bool enabled = true)
     {
         var item = new MenuItem { Header = GetText(textKey), IsEnabled = enabled };

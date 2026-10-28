@@ -16,6 +16,7 @@ public partial class MainWindow
     private void RefreshAll()
     {
         if (_session is null) return;
+        SynchronizeModelViewGraphics();
         UpdateWindowTitle();
         if (!_session.Document.Levels.Any(level => level.Id == _activeLevelId))
             _activeLevelId = _session.Document.Levels[0].Id;
@@ -138,17 +139,22 @@ public partial class MainWindow
         _modelDirty = true;
         var request = ++_modelBuildRequest;
         var version = _sceneVersion;
-        var document = ViewVisibility.Apply(_session.Document, Model3DView());
-        var clay = _clayMode;
+        var document = ModelDisplayDocument();
         var xray = _xRay;
-        var showEdges = _showEdges;
-        var textures = clay || xray ? null : RenderTextureLibrary.Previews3D(document.RenderMaterials, _filePath);
+        var style = _modelDisplayStyle;
+        var detail = _modelDetail;
+        var shadowSun = _modelShadows && _modelSunPreset != "Off" ? ModelSunDirection() : (System.Numerics.Vector3?)null;
+        var hiddenDocument = _revealHidden ? _session.Document.Clone() : null;
+        var hiddenIds = _revealHidden ? ModelElementIds(_session.Document).Except(ModelElementIds(document)).ToHashSet() : null;
+        var showEdges = _showEdges || style is ModelDisplayStyle.Wireframe or ModelDisplayStyle.HiddenLine;
+        var textures = xray || style is ModelDisplayStyle.Wireframe or ModelDisplayStyle.HiddenLine or ModelDisplayStyle.Shaded or ModelDisplayStyle.ConsistentColors
+            ? null : RenderTextureLibrary.Previews3D(document.RenderMaterials, _filePath);
         await _modelBuildGate.WaitAsync().ConfigureAwait(false);
         ModelSceneSnapshot snapshot;
         try
         {
             if (request != Volatile.Read(ref _modelBuildRequest) || version != Volatile.Read(ref _sceneVersion)) return;
-            snapshot = await Task.Run(() => ModelSceneSnapshot.Build(document, clay, xray, showEdges, textures)).ConfigureAwait(false);
+            snapshot = await Task.Run(() => ModelSceneSnapshot.Build(document, false, xray, showEdges, textures, shadowSun, hiddenDocument, hiddenIds, detail)).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -177,27 +183,34 @@ public partial class MainWindow
         _selectionVisuals.Clear();
         _shownSelection = null;
         _picker = null;
+        var ambient = (byte)Math.Clamp(_modelAmbient * 255, 0, 255);
         ModelViewport.Children.Add(new ModelVisual3D
         {
-            Content = new AmbientLight(Color.FromRgb(150, 160, 156))
+            Content = new AmbientLight(Color.FromRgb(ambient, ambient, ambient))
         });
+        var sun = ModelSunDirection();
         ModelViewport.Children.Add(new ModelVisual3D
         {
-            Content = new DirectionalLight(Color.FromRgb(255, 246, 232), new Vector3D(0.45, -0.70, -0.55))
+            Content = new DirectionalLight(_modelSunPreset == "Off" ? Colors.Black : Color.FromRgb(255, 246, 232),
+                new Vector3D(-sun.X, -sun.Z, sun.Y))
         });
         var thickness = EdgeThickness();
-        foreach (var group in snapshot.Models)
+        foreach (var group in SceneDisplayStyles.Apply(snapshot.Models, _xRay ? ModelDisplayStyle.Textures : _modelDisplayStyle))
             ModelViewport.Children.Add(new ModelVisual3D { Content = group });
         if (snapshot.Edges is { } edges) ModelViewport.Children.Add(new ModelVisual3D { Content = edges });
         foreach (var (link, loaded) in _links.Visible())
         {
-            foreach (var group in ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement))
+            foreach (var group in SceneDisplayStyles.Apply(ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement), _xRay ? ModelDisplayStyle.Textures : _modelDisplayStyle))
                 ModelViewport.Children.Add(new ModelVisual3D { Content = group });
-            if (_showEdges) AddEdgeVisual(EdgesOf(link.Id, loaded), link.Placement.ToMatrix(), thickness);
+            if (_showEdges || _modelDisplayStyle is ModelDisplayStyle.Wireframe or ModelDisplayStyle.HiddenLine)
+                AddEdgeVisual(EdgesOf(link.Id, loaded), link.Placement.ToMatrix(), thickness);
         }
+        if (snapshot.GroundShadow is { } shadow) ModelViewport.Children.Add(new ModelVisual3D { Content = shadow });
+        foreach (var hidden in snapshot.Revealed) ModelViewport.Children.Add(new ModelVisual3D { Content = hidden });
         UpdateModelSelection(true);
         UpdateModelCamera();
         _ = GetSceneAsync();
+        RefreshModelRealisticPreview();
     }
 
     /// <summary>
@@ -210,7 +223,6 @@ public partial class MainWindow
         return Math.Clamp(0.0012f * Math.Max(3, (max - min).Length() / 2), 0.0025f, 0.012f);
     }
 
-    private bool _clayMode = true;
     private bool _xRay;
     private bool _showEdges = true;
     private readonly Dictionary<Guid, List<EdgeSegment>> _linkEdges = [];
@@ -228,13 +240,15 @@ public partial class MainWindow
         if (lines is not null) ModelViewport.Children.Add(new ModelVisual3D { Content = lines });
     }
 
-    /// <summary>Switches the 3D view between the grey study model and the project's colors, and edges on or off.</summary>
+    /// <summary>Updates model edges and service visibility while preserving project colors.</summary>
     private void ViewStyle_Changed(object sender, RoutedEventArgs e)
     {
-        if (ClayCheck is null || EdgesCheck is null) return;
-        _clayMode = ClayCheck.IsChecked == true;
+        if (_synchronizingGraphics) return;
+        if (EdgesCheck is null) return;
         _showEdges = EdgesCheck.IsChecked == true;
         _xRay = XRayCheck?.IsChecked == true;
+        PersistModelViewGraphics();
+        RefreshModelRealisticPreview();
         if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
         else _modelDirty = true;
     }
@@ -247,7 +261,8 @@ public partial class MainWindow
         var radius = Math.Max(3, (max - min).Length() / 2);
         var aspect = ModelViewport.ActualHeight > 0 ? ModelViewport.ActualWidth / ModelViewport.ActualHeight : 1.6;
         ModelViewport.Camera = ScenePresentation.ToWpfCamera(_navigation, aspect, radius);
-        RedrawViewCube();
+        ViewNavigation?.Redraw();
+        UpdateModelRealisticCamera();
         if (_dimensionChips.Count > 0) PositionDimensionChips();
     }
 
@@ -280,6 +295,15 @@ public partial class MainWindow
     /// <summary>Provides keyboard access to primary modeling, view, and history commands.</summary>
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        if (TryHandleViewNavigationKey(e)) { e.Handled = true; return; }
+        if (_movingElement && (e.Key == Key.Delete ||
+            (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key is Key.Z or Key.Y))) CancelMoveTool();
+        if (e.Key == Key.Escape && _movingElement)
+        {
+            CancelMoveTool();
+            e.Handled = true;
+            return;
+        }
         if (TryHideSequence(e))
         {
             e.Handled = true;

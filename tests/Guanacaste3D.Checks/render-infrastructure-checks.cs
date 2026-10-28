@@ -107,6 +107,37 @@ static class RenderInfrastructureChecks
               QualityPlanner.Plan(RenderQuality.High, Machine(16, 24), 1920, 1080).Threads == 15,
             "Balanced mode leaves one core to the interface");
 
+        HardwareProfile Measured(double megaTests, bool battery = false) => Machine(16, 24, battery).WithMeasurement(megaTests);
+        check(QualityPlanner.PreviewHeight(Machine(16, 24), ResourceMode.Balanced) == 288 &&
+              QualityPlanner.PreviewHeight(Measured(QualityPlanner.ReferenceMegaTests), ResourceMode.Balanced) == 288,
+            "Preview height keeps the hand-tuned size without a benchmark and at the reference speed");
+        check(QualityPlanner.PreviewHeight(Measured(QualityPlanner.ReferenceMegaTests / 4), ResourceMode.Balanced) == 144 &&
+              QualityPlanner.PreviewHeight(Measured(QualityPlanner.ReferenceMegaTests * 4), ResourceMode.Balanced) == 540 &&
+              QualityPlanner.PreviewHeight(Measured(QualityPlanner.ReferenceMegaTests, battery: true), ResourceMode.Balanced) < 288,
+            "Preview height follows the square root of measured speed, within 144–540 px, and shrinks on battery");
+
+        var hardware = new HardwareProfile { CpuName = "Test CPU", LogicalCores = 16 };
+        var now = new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc);
+        var stored = new MachineCalibration("Test CPU", 16, 2500, now.AddDays(-3));
+        check(MachineCalibrationStore.IsValidFor(stored, hardware, now) &&
+              !MachineCalibrationStore.IsValidFor(stored with { CpuName = "Other CPU" }, hardware, now) &&
+              !MachineCalibrationStore.IsValidFor(stored with { LogicalCores = 8 }, hardware, now) &&
+              !MachineCalibrationStore.IsValidFor(stored with { MeasuredUtc = now.AddDays(-40) }, hardware, now) &&
+              !MachineCalibrationStore.IsValidFor(stored with { MegaTests = 0 }, hardware, now),
+            "A stored benchmark is reused only on the same CPU and thread count, within 30 days");
+        var calibrationPath = Path.Combine(Path.GetTempPath(), $"g3d-calibration-{Guid.NewGuid():N}.json");
+        try
+        {
+            var first = MachineCalibrationStore.LoadOrMeasureAsync(calibrationPath).GetAwaiter().GetResult();
+            var second = MachineCalibrationStore.LoadOrMeasureAsync(calibrationPath).GetAwaiter().GetResult();
+            check(first.MicrobenchmarkMegaTests > 1 && second.MicrobenchmarkMegaTests == first.MicrobenchmarkMegaTests,
+                "Calibration measures once and reuses the stored result on the next start");
+        }
+        finally
+        {
+            File.Delete(calibrationPath);
+        }
+
         var settings = new RenderSettings();
         check(QualityPlanner.Plan(RenderQuality.Draft, Machine(8, 16), 800, 450).Configure(settings).UseRadianceCache &&
               QualityPlanner.Plan(RenderQuality.Standard, Machine(8, 16), 800, 450).Configure(settings).UseRadianceCache &&

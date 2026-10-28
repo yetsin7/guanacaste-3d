@@ -24,6 +24,7 @@
   <sys:String x:Key="RenderPanel.LatitudeHint">Latitud del sitio en grados (norte positivo). Managua: 12.1</sys:String>
   <sys:String x:Key="RenderPanel.Quality">Calidad y tamaño</sys:String>
   <sys:String x:Key="RenderPanel.QualityLabel">Calidad</sys:String>
+  <sys:String x:Key="RenderPanel.Auto">Automática · según el equipo</sys:String>
   <sys:String x:Key="RenderPanel.Draft">Borrador · rápido</sys:String>
   <sys:String x:Key="RenderPanel.Standard">Estándar · revisión</sys:String>
   <sys:String x:Key="RenderPanel.High">Alta · presentación</sys:String>
@@ -39,6 +40,11 @@
   <sys:String x:Key="RenderPanel.Balanced">Equilibrado</sys:String>
   <sys:String x:Key="RenderPanel.Maximum">Máximo · todos los núcleos</sys:String>
   <sys:String x:Key="RenderPanel.MemoryEstimate">Memoria estimada: {0} · disponible: {1}</sys:String>
+  <sys:String x:Key="RenderPanel.Calibrating">Midiendo el rendimiento del equipo…</sys:String>
+  <sys:String x:Key="RenderPanel.HardwareSummary">Equipo: {0} hilos · índice {1:0} · automática elige {2}</sys:String>
+  <sys:String x:Key="RenderPanel.HardwareBattery">con batería: menos núcleos para ahorrar energía</sys:String>
+  <sys:String x:Key="RenderPanel.Recalibrate">Medir de nuevo</sys:String>
+  <sys:String x:Key="RenderPanel.RecalibrateHint">Vuelve a medir la velocidad del procesador (medio segundo). Úsalo tras cambiar de plan de energía o de equipo.</sys:String>
   <sys:String x:Key="RenderPanel.Image">Imagen</sys:String>
   <sys:String x:Key="RenderPanel.Exposure">Exposición</sys:String>
   <sys:String x:Key="RenderPanel.AutoExposure">Exposición automática</sys:String>
@@ -115,7 +121,7 @@
 
   <!-- Keyboard selection in a view -->
   <sys:String x:Key="ViewSelection.Count">{0} elementos seleccionados en esta vista (Ctrl+H ocultar, Ctrl+Mayús+H mostrar todo)</sys:String>
-  <sys:String x:Key="RenderPanel.Controls">Clic derecho: mirar · Rueda: acercar al cursor · Botón central: mover · Clic izquierdo: orbitar · W A S D: volar · Q E: bajar y subir · Shift: rápido · Ctrl: lento</sys:String>
+  <sys:String x:Key="RenderPanel.Controls">Clic derecho: mirar · Rueda: acercar al cursor · Botón central: mover · Shift + central: orbitar selección o proyecto · Clic izquierdo: seleccionar · W A S D: volar · Q E: bajar y subir · Shift: rápido</sys:String>
   <sys:String x:Key="RenderPanel.Output">Resultado</sys:String>
   <sys:String x:Key="RenderPanel.SaveImage">Guardar imagen…</sys:String>
   <sys:String x:Key="RenderPanel.CopyImage">Copiar</sys:String>

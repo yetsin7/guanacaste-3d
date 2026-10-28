@@ -32,7 +32,9 @@ public static class WindowBoundToolTip
 
         var registration = Registrations.GetValue(toolTip, static current => new OwnerRegistration(current));
         registration.Attach(owner);
-        toolTip.StaysOpen = false;
+        // WPF's automatic tooltip service rejects reused tooltips when StaysOpen is false.
+        // Owner deactivation is handled explicitly rather than relying on popup mouse capture.
+        toolTip.StaysOpen = true;
         toolTip.MaxWidth = Math.Max(120, owner.ActualWidth - WindowMargin * 2);
         toolTip.MaxHeight = Math.Max(80, owner.ActualHeight - WindowMargin * 2);
         toolTip.Placement = PlacementMode.Custom;

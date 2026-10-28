@@ -101,7 +101,7 @@ public static class CommandDemoToolTip
     {
         var tip = new ToolTip
         {
-            Padding = new Thickness(10), Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, StaysOpen = false
+            Padding = new Thickness(10), Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, StaysOpen = true
         };
         Populate(tip, commandId, title);
         return tip;

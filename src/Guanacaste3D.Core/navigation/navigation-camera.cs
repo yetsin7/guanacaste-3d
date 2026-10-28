@@ -44,6 +44,7 @@ public sealed class NavigationCamera
 
     public Vector3 Up => Vector3.Cross(Right, Forward);
 
+    /// <summary>Captures an independent camera snapshot for navigation history and render requests.</summary>
     public NavigationCamera Clone() => new()
     {
         Position = Position, YawDegrees = YawDegrees, PitchDegrees = PitchDegrees, FieldOfViewDegrees = FieldOfViewDegrees
@@ -76,13 +77,20 @@ public sealed class NavigationCamera
     /// <summary>Moves along a ray, for wheel zoom toward the cursor.</summary>
     public void DollyToward(Vector3 rayDirection, float distance) => Position += Vector3.Normalize(rayDirection) * distance;
 
-    /// <summary>Swings the camera around a pivot point while keeping it aimed at the pivot (orbit).</summary>
+    /// <summary>
+    /// Rotates the camera and its position rigidly about a pivot, preserving its distance and screen position.
+    /// An off-center selection stays off-center, so switching from pan to orbit never reframes the view.
+    /// </summary>
     public void OrbitAround(Vector3 pivot, float deltaX, float deltaY, float degreesPerPixel = 0.4f)
     {
-        var distance = MathF.Max(0.05f, Vector3.Distance(Position, pivot));
+        if (deltaX == 0 && deltaY == 0) return;
+        var relative = Position - pivot;
+        var horizontal = Vector3.Dot(relative, Right);
+        var vertical = Vector3.Dot(relative, Up);
+        var depth = Vector3.Dot(relative, Forward);
         YawDegrees = Wrap(YawDegrees - deltaX * degreesPerPixel);
         PitchDegrees = Math.Clamp(PitchDegrees - deltaY * degreesPerPixel, -MaximumPitch, MaximumPitch);
-        Position = pivot - Forward * distance;
+        Position = pivot + Right * horizontal + Up * vertical + Forward * depth;
     }
 
     /// <summary>Aims the camera at a point without moving it.</summary>
@@ -91,8 +99,9 @@ public sealed class NavigationCamera
         var direction = target - Position;
         if (direction.LengthSquared() < 1e-10f) return;
         direction = Vector3.Normalize(direction);
-        PitchDegrees = Math.Clamp(MathF.Asin(Math.Clamp(direction.Z, -1f, 1f)) * 180 / MathF.PI, -MaximumPitch, MaximumPitch);
-        YawDegrees = Wrap(MathF.Atan2(direction.Y, direction.X) * 180 / MathF.PI);
+        PitchDegrees = Math.Clamp(MathF.Asin(Math.Clamp(direction.Z, -1f, 1f)) * 180 / MathF.PI, -90, 90);
+        if (direction.X * direction.X + direction.Y * direction.Y > 1e-10f)
+            YawDegrees = Wrap(MathF.Atan2(direction.Y, direction.X) * 180 / MathF.PI);
     }
 
     /// <summary>Direction of the ray through a pixel, for picking and cursor-centered zoom.</summary>
@@ -142,6 +151,7 @@ public sealed class NavigationCamera
         Position = center - Forward * (distance + 0.05f);
     }
 
+    /// <summary>Restores a navigation pose and lens from a renderer camera expressed in the same Z-up space.</summary>
     public static NavigationCamera FromRenderCamera(RenderCamera camera)
     {
         var result = new NavigationCamera { Position = camera.Position, FieldOfViewDegrees = camera.VerticalFieldOfViewDegrees };
@@ -153,6 +163,7 @@ public sealed class NavigationCamera
     public RenderCamera ToRenderCamera(float focusDistance = 10) =>
         new(Position, Position + Forward * MathF.Max(0.1f, focusDistance), FieldOfViewDegrees);
 
+    /// <summary>Normalizes heading angles to one positive revolution after incremental rotations.</summary>
     private static float Wrap(float degrees)
     {
         degrees %= 360;

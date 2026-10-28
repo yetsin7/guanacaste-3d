@@ -54,6 +54,9 @@
           <Border Style="{StaticResource SettingsCard}">
             <StackPanel>
               <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Scene}"/>
+              <CheckBox x:Name="RenderClayCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
+                  Content="{DynamicResource View3D.Clay}" ToolTip="{DynamicResource RenderPanel.ClayHint}"
+                  Checked="ClayMode_Changed" Unchecked="ClayMode_Changed"/>
               <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Scenario}" Margin="0,0,0,3"/>
               <ComboBox x:Name="ScenarioPicker" SelectedIndex="0" SelectionChanged="Lighting_Changed">
                 <ComboBoxItem Content="{DynamicResource RenderPanel.Sunny}" Tag="Sunny"/>
@@ -91,7 +94,8 @@
             <StackPanel>
               <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Quality}"/>
               <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.QualityLabel}" Margin="0,0,0,3"/>
-              <ComboBox x:Name="QualityPicker" SelectedIndex="1" SelectionChanged="Quality_Changed">
+              <ComboBox x:Name="QualityPicker" SelectedIndex="0" SelectionChanged="Quality_Changed">
+                <ComboBoxItem Content="{DynamicResource RenderPanel.Auto}" Tag="Auto"/>
                 <ComboBoxItem Content="{DynamicResource RenderPanel.Draft}" Tag="Draft"/>
                 <ComboBoxItem Content="{DynamicResource RenderPanel.Standard}" Tag="Standard"/>
                 <ComboBoxItem Content="{DynamicResource RenderPanel.High}" Tag="High"/>
@@ -113,6 +117,14 @@
               </ComboBox>
               <TextBlock x:Name="MemoryText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5"
                          Margin="0,7,0,0" TextWrapping="Wrap"/>
+              <DockPanel Margin="0,5,0,0">
+                <Button x:Name="RecalibrateButton" DockPanel.Dock="Right" Padding="8,1" FontSize="10.5"
+                        Content="{DynamicResource RenderPanel.Recalibrate}" ToolTip="{DynamicResource RenderPanel.RecalibrateHint}"
+                        Click="Recalibrate_Click"/>
+                <TextBlock x:Name="HardwareText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5"
+                           VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,6,0"
+                           Text="{DynamicResource RenderPanel.Calibrating}"/>
+              </DockPanel>
             </StackPanel>
           </Border>
           <Border Style="{StaticResource SettingsCard}">

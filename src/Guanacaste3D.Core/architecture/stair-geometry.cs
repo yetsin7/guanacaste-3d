@@ -14,16 +14,17 @@ public readonly record struct StairFlight(Point2 Start, Point2 End, double Botto
 /// </summary>
 public static class StairGeometry
 {
-    /// <summary>Highest riser accepted in a dwelling (17.5 cm); the count of risers follows from it.</summary>
+    /// <summary>Modeling default for the maximum riser, in meters; this is not a code-compliance certification.</summary>
     public const double MaximumRiser = 0.175;
 
-    /// <summary>Going of each tread of the second flight of an L or U stair.</summary>
+    /// <summary>Minimum fallback run when placement leaves no room before a landing.</summary>
     public const double Tread = 0.28;
 
     private const double TreadThickness = 0.05;
     private const double SwitchbackGap = 0.10;
     private const double ColumnRadius = 0.10;
 
+    /// <summary>Shares one riser count across solids, walking paths, and generated guards, including low stairs.</summary>
     public static int RiserCount(double height) => Math.Max(2, (int)Math.Ceiling(height / MaximumRiser - 1e-9));
 
     /// <summary>Whether the stair is laid out by this class rather than as a single straight run.</summary>
@@ -44,6 +45,7 @@ public static class StairGeometry
         var firstRun = Math.Max(Tread, stair.Length - width);
         var firstRisers = risers / 2;
         var secondRisers = risers - firstRisers;
+        var going = firstRun / firstRisers;
         var landingTop = stair.Offset + firstRisers * riser;
         var first = new StairFlight(stair.Start, Offset(stair.Start, direction, firstRun), stair.Offset, firstRisers * riser, firstRisers);
         var landingCenter = Offset(stair.Start, direction, firstRun + width / 2);
@@ -51,12 +53,12 @@ public static class StairGeometry
         if (stair.Style == ElementStyle.LShaped)
         {
             var start = Offset(landingCenter, left, width / 2);
-            second = new StairFlight(start, Offset(start, left, secondRisers * Tread), landingTop, secondRisers * riser, secondRisers);
+            second = new StairFlight(start, Offset(start, left, secondRisers * going), landingTop, secondRisers * riser, secondRisers);
         }
         else
         {
             var start = Offset(Offset(stair.Start, direction, firstRun), left, width + SwitchbackGap);
-            second = new StairFlight(start, Offset(start, direction, -secondRisers * Tread), landingTop, secondRisers * riser, secondRisers);
+            second = new StairFlight(start, Offset(start, direction, -secondRisers * going), landingTop, secondRisers * riser, secondRisers);
         }
         return [first, second];
     }
@@ -78,9 +80,8 @@ public static class StairGeometry
             {
                 var from = ArchitecturalShapes.Lerp(flight.Start, flight.End, (double)index / flight.Risers);
                 var to = ArchitecturalShapes.Lerp(flight.Start, flight.End, (double)(index + 1) / flight.Risers);
-                // The last riser of the first flight rises onto the landing, so its tread is the landing itself.
                 var top = flight.Bottom + riser * (index + 1);
-                yield return new ElementPart(ArchitecturalShapes.Strip(from, to, 0, stair.Width), stair.Offset, top, SurfaceKind.Structure);
+                yield return new ElementPart(ArchitecturalShapes.Strip(from, to, 0, stair.Width), flight.Bottom, top, SurfaceKind.Structure);
             }
         }
         if (flights.Count == 2) yield return Landing(stair, flights[0]);
@@ -111,7 +112,7 @@ public static class StairGeometry
     public static IReadOnlyList<(Point2 Start, Point2 End, double Offset, double Rise)> GuardLines(StructuralElement stair)
     {
         var lines = new List<(Point2, Point2, double, double)>();
-        var lateral = Math.Max(0.03, stair.Width / 2 - 0.03);
+        var lateral = stair.Width / 2;
         if (stair.Style == ElementStyle.Spiral)
         {
             var (center, radius, startAngle, step, risers) = Spiral(stair);
@@ -122,7 +123,7 @@ public static class StairGeometry
                 var a = startAngle + step * index;
                 var b = a + step;
                 lines.Add((new Point2(center.X + rail * Math.Cos(a), center.Y + rail * Math.Sin(a)),
-                    new Point2(center.X + rail * Math.Cos(b), center.Y + rail * Math.Sin(b)), stair.Offset + riser * (index + 1), riser));
+                    new Point2(center.X + rail * Math.Cos(b), center.Y + rail * Math.Sin(b)), stair.Offset + riser * index, riser));
             }
             return lines;
         }
@@ -140,20 +141,13 @@ public static class StairGeometry
         {
             var outline = Landing(stair, flights[0]).Footprint;
             var top = flights[0].Bottom + flights[0].Rise;
-            // The landing's open sides are those no flight arrives at or leaves from.
-            for (var index = 0; index < outline.Count; index++)
-            {
-                var a = outline[index];
-                var b = outline[(index + 1) % outline.Count];
-                var middle = ArchitecturalShapes.Lerp(a, b, 0.5);
-                var served = flights.Any(flight => middle.DistanceTo(flight.End) < stair.Width * 0.75 ||
-                                                   middle.DistanceTo(flight.Start) < stair.Width * 0.75);
-                if (!served) lines.Add((a, b, top, 0));
-            }
+            foreach (var edge in StairLandingGuards.OpenEdges(outline, flights, stair.Width, top))
+                lines.Add((edge.Start, edge.End, top, 0));
         }
         return lines;
     }
 
+    /// <summary>Builds the shared landing slab between the two flight mouths.</summary>
     private static ElementPart Landing(StructuralElement stair, StairFlight first)
     {
         var (direction, left) = Axes(stair);
@@ -169,6 +163,7 @@ public static class StairGeometry
         return new ElementPart(outline, Math.Max(stair.Offset, top - 0.20), top, SurfaceKind.Structure);
     }
 
+    /// <summary>Builds radial treads and their supporting central column from the shared spiral layout.</summary>
     private static IEnumerable<ElementPart> SpiralParts(StructuralElement stair)
     {
         var (center, radius, startAngle, step, risers) = Spiral(stair);
@@ -203,6 +198,7 @@ public static class StairGeometry
         return (stair.Start, radius, startAngle, step, risers);
     }
 
+    /// <summary>Resolves a horizontal orthonormal basis from the stair's placement direction.</summary>
     private static (Point2 Direction, Point2 Left) Axes(StructuralElement stair)
     {
         var length = Math.Max(stair.Length, 1e-9);
@@ -210,6 +206,7 @@ public static class StairGeometry
         return (direction, new Point2(-direction.Y, direction.X));
     }
 
+    /// <summary>Translates a layout point along a unit direction in model meters.</summary>
     private static Point2 Offset(Point2 point, Point2 direction, double distance) =>
         new(point.X + direction.X * distance, point.Y + direction.Y * distance);
 }

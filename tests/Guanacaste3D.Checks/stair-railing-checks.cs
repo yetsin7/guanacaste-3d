@@ -6,6 +6,7 @@ static class StairRailingChecks
     /// <summary>Exercises editing, movement, level copying, persistence, and undo of a hosted railing.</summary>
     public static void Run(Action<bool, string> check)
     {
+        StairContinuityChecks.Run(check);
         var session = new DocumentSession(BuildingDocument.Create("Stair association"));
         var ground = session.Document.Levels[0].Id;
         var upper = session.AddLevel();

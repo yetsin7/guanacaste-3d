@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using Microsoft.Win32;
 
@@ -61,9 +62,50 @@ public sealed class HardwareProfile
             TotalMemoryBytes = memory.TotalAvailableMemoryBytes,
             AvailableMemoryBytes = Math.Max(0, memory.TotalAvailableMemoryBytes - memory.MemoryLoadBytes),
             Gpus = ReadGpus(),
-            MicrobenchmarkMegaTests = measure ? MeasureTriangleTests(TimeSpan.FromMilliseconds(150)) : 0
+            MicrobenchmarkMegaTests = measure ? Measure() : 0,
+            IsOnBattery = ReadOnBattery()
         };
         return profile;
+    }
+
+    /// <summary>A copy of this profile carrying a throughput measured earlier (for example, read from the calibration file).</summary>
+    public HardwareProfile WithMeasurement(double megaTests) => new()
+    {
+        CpuName = CpuName, LogicalCores = LogicalCores, VectorHardwareAcceleration = VectorHardwareAcceleration,
+        VectorBits = VectorBits, TotalMemoryBytes = TotalMemoryBytes, AvailableMemoryBytes = AvailableMemoryBytes,
+        Gpus = Gpus, MicrobenchmarkMegaTests = Math.Max(0, megaTests), IsOnBattery = IsOnBattery
+    };
+
+    /// <summary>
+    /// Median of three short runs. A single run is easily skewed by turbo ramp-up or a background task, and the median
+    /// throws away one outlier in either direction without making the measurement noticeably longer.
+    /// </summary>
+    public static double Measure()
+    {
+        var runs = new double[3];
+        for (var i = 0; i < runs.Length; i++) runs[i] = MeasureTriangleTests(TimeSpan.FromMilliseconds(150));
+        Array.Sort(runs);
+        return runs[1];
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SystemPowerStatus
+    {
+        public byte AcLineStatus, BatteryFlag, BatteryLifePercent, SystemStatusFlag;
+        public int BatteryLifeTime, BatteryFullLifeTime;
+    }
+
+    [DllImport("kernel32.dll")]
+    private static extern bool GetSystemPowerStatus(out SystemPowerStatus status);
+
+    /// <summary>True only when Windows reports the machine unplugged; desktops and unknown states count as mains power.</summary>
+    private static bool ReadOnBattery()
+    {
+        try
+        {
+            return OperatingSystem.IsWindows() && GetSystemPowerStatus(out var status) && status.AcLineStatus == 0;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
 
     private static string ReadCpuName()

@@ -50,7 +50,7 @@ public sealed class CommandPreferenceService
 
     /// <summary>Returns the initial quick access tools and familiar two-key command sequences.</summary>
     public static CommandPreferences CreateDefaults() => new(
-        ["Save", "Undo", "Redo", "Wall", "Model3D", "RenderView"],
+        ["Save", "Undo", "Redo", "Wall", "Model3D", "RenderView", "AiAssistant"],
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Wall"] = "WA",
@@ -58,11 +58,12 @@ public sealed class CommandPreferenceService
             ["Window"] = "WN",
             ["Model3D"] = "3D",
             ["RenderView"] = "RN",
+            ["AiAssistant"] = "AI",
             ["VisibilityGraphics"] = "VG"
         }, CurrentVersion);
 
-    /// <summary>The layout of the defaults: version 2 added the Render view button beside the 3D view button.</summary>
-    private const int CurrentVersion = 2;
+    /// <summary>The layout of the defaults: version 2 added the Render view button beside the 3D view button; version 3 added the AI assistant button.</summary>
+    private const int CurrentVersion = 3;
 
     /// <summary>Removes duplicate identifiers and canonicalizes keyboard sequences.</summary>
     private static CommandPreferences Normalize(CommandPreferences preferences)
@@ -84,6 +85,12 @@ public sealed class CommandPreferenceService
             var model = quickAccess.IndexOf("Model3D");
             if (model >= 0 && !quickAccess.Contains("RenderView")) quickAccess.Insert(model + 1, "RenderView");
             shortcuts.TryAdd("RenderView", "RN");
+        }
+        if (preferences.Version < 3)
+        {
+            var render = quickAccess.IndexOf("RenderView");
+            if (!quickAccess.Contains("AiAssistant")) quickAccess.Insert(render >= 0 ? render + 1 : quickAccess.Count, "AiAssistant");
+            shortcuts.TryAdd("AiAssistant", "AI");
         }
         return new CommandPreferences(quickAccess, shortcuts, CurrentVersion);
     }

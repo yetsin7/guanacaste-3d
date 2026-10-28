@@ -132,6 +132,7 @@ public sealed class BuildingDocument
     public void Validate()
     {
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
+        foreach (var view in Views) view.Graphics?.Validate();
         if (Lot is not null && !Lot.IsValid) throw new InvalidDataException("The site lot is invalid.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");

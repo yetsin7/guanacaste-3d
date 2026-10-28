@@ -30,7 +30,7 @@ public partial class MainWindow
                 return true;
             case "VisualStyle":
                 ViewTabs.SelectedIndex = Model3DTabIndex;
-                ClayCheck.IsChecked = ClayCheck.IsChecked != true;
+                XRayCheck.IsChecked = XRayCheck.IsChecked != true;
                 return true;
             default:
                 return false;

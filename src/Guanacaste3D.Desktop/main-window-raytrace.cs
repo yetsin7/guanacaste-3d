@@ -29,6 +29,7 @@ public partial class MainWindow
     private (int Version, (Vector3 Min, Vector3 Max) Bounds)? _boundsCache;
     private DispatcherTimer? _sceneDebounce;
     private bool _modelDirty = true;
+    private bool _renderClay;
     private int _modelBuildRequest;
     private readonly System.Threading.SemaphoreSlim _modelBuildGate = new(1, 1);
     private event Action? SceneChanged;
@@ -80,6 +81,18 @@ public partial class MainWindow
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
 
+        /// <summary>Limits the neutral material override to rendered scenes.</summary>
+        public bool ClayMode
+        {
+            get => window._renderClay;
+            set
+            {
+                if (window._renderClay == value) return;
+                window._renderClay = value;
+                window.MarkSceneDirty();
+            }
+        }
+
         public bool ArtificialLights
         {
             get => window._artificialLights;
@@ -118,8 +131,8 @@ public partial class MainWindow
     private (Vector3 Min, Vector3 Max) SceneBounds()
     {
         if (_boundsCache is { } cached && cached.Version == _sceneVersion) return cached.Bounds;
-        var document = _session.Document;
-        var hasModel = HasModelElements();
+        var document = ModelDisplayDocument();
+        var hasModel = document.Walls.Count + document.Floors.Count + document.Columns.Count + document.StructuralElements.Count > 0;
         var min = new Vector3(-5, -5, 0);
         var max = new Vector3(5, 5, 3);
         if (hasModel) (min, max) = BuildingMesher.Build(document).Bounds();
@@ -171,18 +184,20 @@ public partial class MainWindow
         // gets trees with branches and tens of thousands of leaves, which must not stall the interface. The 3D view
         // keeps the light modelling canopies.
         // The 3D view draws its own visibility: elements hidden or isolated in that view are left out of the copy.
-        var document = ViewVisibility.Apply(_session.Document, Model3DView());
+        var document = ModelDisplayDocument();
         var links = _links.Visible().ToList();
         var version = _sceneVersion;
         var materials = _session.Document.RenderMaterials.ToList();
         var projectFile = _filePath;
         var lightsOn = _artificialLights;
+        var clay = _renderClay;
         var task = Task.Run<RenderScene?>(() =>
         {
             var mesh = BuildingMesher.Build(document, includeGround: true, plants: PlantDetail.Render);
             var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile, lightsOn));
             foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
             var scene = builder.Build();
+            if (clay) scene = RenderSceneStyles.Clay(scene);
             MemoryTrim.AfterHeavyBuild();
             return scene.TriangleCount == 0 ? null : scene;
         });
@@ -218,6 +233,7 @@ public partial class MainWindow
     /// <summary>Places the shared camera so the whole model is in view.</summary>
     private void FrameCameraToScene()
     {
+        if (_modelNavigator?.IsLocked == true) return;
         var (min, max) = SceneBounds();
         var framed = NavigationCamera.Frame(min, max);
         _navigation.Position = framed.Position;

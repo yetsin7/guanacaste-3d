@@ -71,6 +71,7 @@ public partial class MainWindow
             case "LinkIfc":
             case "InsertFromFile": ImportModel_Click(this, eventArguments); return true;
             case "ManageLinks": LinkedModels_Click(this, eventArguments); return true;
+            case "AiAssistant": OpenAiAssistant(); return true;
             case "ExportIfc": ExportIfc_Click(this, eventArguments); return true;
             case "ExportModel3D": ExportModel3D_Click(this, eventArguments); return true;
             case "CustomizeCommands": CustomizeCommands_Click(this, eventArguments); return true;

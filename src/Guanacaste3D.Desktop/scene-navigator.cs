@@ -10,10 +10,10 @@ namespace Guanacaste3D.Desktop;
 /// <summary>
 /// Walk-through navigation for a surface that shows the model (the 3D view or the render preview), in the manner of
 /// Revit: the wheel zooms toward the point under the cursor, the middle button pans, Shift plus the middle button
-/// orbits the model, the right button looks around, the left button only selects, W A S D fly, Q and E go down and up, Shift is fast and Ctrl is slow. Both views share one
+/// orbits the model, the right button looks around, the left button only selects, W A S D fly, Q and E go down and up, Shift increases speed and Ctrl shortcuts remain available. Both views share one
 /// <see cref="NavigationCamera"/>, so moving in either keeps the other in step.
 /// </summary>
-internal sealed class SceneNavigator
+internal sealed partial class SceneNavigator
 {
     private readonly FrameworkElement _surface;
     private Point _last;
@@ -22,16 +22,18 @@ internal sealed class SceneNavigator
     private TimeSpan _lastTick;
     private bool _ticking;
 
+    /// <summary>Connects shared camera navigation to the lifetime and pointer events of a model surface.</summary>
     public SceneNavigator(FrameworkElement surface, NavigationCamera camera)
     {
         _surface = surface;
         Camera = camera;
+        _history.Record(camera);
         surface.Focusable = true;
         surface.MouseDown += OnMouseDown;
         surface.MouseMove += OnMouseMove;
         surface.MouseUp += OnMouseUp;
         surface.MouseWheel += OnMouseWheel;
-        surface.LostMouseCapture += (_, _) => _dragButton = null;
+        surface.LostMouseCapture += OnLostMouseCapture;
         surface.IsVisibleChanged += (_, _) => UpdateTicking();
         surface.Loaded += (_, _) => UpdateTicking();
         surface.Unloaded += (_, _) => StopTicking();
@@ -52,6 +54,16 @@ internal sealed class SceneNavigator
     /// <summary>A left double-click on the surface.</summary>
     public event Action<Point>? DoubleClicked;
 
+    /// <summary>Lets the host claim a left drag that began over the current selection.</summary>
+    public Func<Point, bool>? BeginElementDrag { get; set; }
+
+    public event Action<Point>? ElementDragMoved;
+    public event Action<Point>? ElementDragCompleted;
+    public event Action? ElementDragCancelled;
+    public event Action<Point>? PointerMoved;
+    public Func<bool>? EditingActive { get; set; }
+    private bool _elementDragging;
+
     private Point _pressPoint;
     private bool _dragged;
     private bool _orbiting;
@@ -59,7 +71,10 @@ internal sealed class SceneNavigator
     /// <summary>Scene bounds, used for movement speed and for framing.</summary>
     public Func<(Vector3 Min, Vector3 Max)> Bounds { get; set; } = () => (new Vector3(-5, -5, 0), new Vector3(5, 5, 3));
 
-    /// <summary>Distance along a ray to the nearest surface, or null; drives cursor-centered zoom and orbit pivots.</summary>
+    /// <summary>Resolves the selection or whole-project pivot once when an orbit gesture starts.</summary>
+    public Func<Vector3>? OrbitPivot { get; set; }
+
+    /// <summary>Distance along a ray to the nearest surface, or null; drives cursor-centered zoom.</summary>
     public Func<Vector3, Vector3, float?>? Pick { get; set; }
 
     /// <summary>Stops the camera at walls when set; null or <see cref="CollisionEnabled"/> false lets it pass through.</summary>
@@ -72,27 +87,33 @@ internal sealed class SceneNavigator
                             Keyboard.FocusedElement is not TextBox;
 
     /// <summary>Whether a key press is a navigation key that the window must not treat as a command shortcut.</summary>
-    public bool OwnsKey(Key key) => IsActive && key is Key.W or Key.A or Key.S or Key.D or Key.Q or Key.E or Key.Up or Key.Down
+    public bool OwnsKey(Key key) => IsActive && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && key is Key.W or Key.A or Key.S or Key.D or Key.Q or Key.E or Key.Up or Key.Down
         or Key.Left or Key.Right or Key.LeftShift or Key.RightShift or Key.LeftCtrl or Key.RightCtrl;
 
+    /// <summary>Scales navigation speed from project bounds while keeping empty projects usable.</summary>
     private float SceneRadius()
     {
         var (min, max) = Bounds();
         return MathF.Max(3, (max - min).Length() / 2);
     }
 
+    /// <summary>Resolves a positive surface depth, falling back to project scale over empty background.</summary>
     private float PickDistance(Vector3 direction) =>
         Pick?.Invoke(Camera.Position, direction) is { } distance && distance > 0.01f ? distance : SceneRadius();
 
+    /// <summary>Returns nonzero surface dimensions for projection during loading and compact layouts.</summary>
     private (float Width, float Height) Size() => ((float)Math.Max(1, _surface.ActualWidth), (float)Math.Max(1, _surface.ActualHeight));
 
     // ---------------------------------------------------------------- mouse
 
+    /// <summary>Reserves the requested pointer gesture and captures its starting camera or selection position.</summary>
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
         _surface.Focus();
+        if (IsLocked && e.ChangedButton != MouseButton.Left) return;
+        _history.Record(Camera);
         if (_dragButton is not null) return;
-        if (e.ChangedButton == MouseButton.Middle && e.ClickCount == 2)
+        if (e.ChangedButton == MouseButton.Middle && e.ClickCount == 2 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
             // A middle double-click brings a lost user back to the model; it does not start a pan.
             CenterAll();
@@ -103,13 +124,8 @@ internal sealed class SceneNavigator
         _last = _pressPoint = e.GetPosition(_surface);
         _dragged = false;
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2) DoubleClicked?.Invoke(_pressPoint);
-        _orbiting = e.ChangedButton == MouseButton.Middle && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-        if (_orbiting)
-        {
-            var (width, height) = Size();
-            var ray = Camera.PixelRay((float)_last.X, (float)_last.Y, width, height);
-            _orbitPivot = Camera.Position + ray * PickDistance(ray);
-        }
+        _orbiting = false;
+        if (e.ChangedButton == MouseButton.Middle) UpdateOrbitMode(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
         if (e.ChangedButton is MouseButton.Right or MouseButton.Middle or MouseButton.Left)
         {
             _surface.CaptureMouse();
@@ -123,71 +139,59 @@ internal sealed class SceneNavigator
         e.Handled = true;
     }
 
+    /// <summary>Routes selected-element drags separately from pan, orbit, and look gestures.</summary>
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (_dragButton is not { } button) return;
-        var position = e.GetPosition(_surface);
-        if (!_dragged && (position - _pressPoint).Length > 4) _dragged = true;
-        var dx = (float)(position.X - _last.X);
-        var dy = (float)(position.Y - _last.Y);
-        _last = position;
-        switch (button)
-        {
-            case MouseButton.Right:
-                Camera.Look(dx, dy);
-                break;
-            case MouseButton.Middle when _orbiting:
-                Camera.OrbitAround(_orbitPivot, dx, dy);
-                break;
-            case MouseButton.Middle:
-            {
-                // Pan so the point under the cursor follows the cursor: world units per pixel at that depth.
-                var (width, height) = Size();
-                var distance = PickDistance(Camera.PixelRay((float)position.X, (float)position.Y, width, height));
-                var unitsPerPixel = 2 * distance * MathF.Tan(Camera.FieldOfViewDegrees * MathF.PI / 360) / height;
-                MoveCamera(Camera.PanDelta(dx, dy, unitsPerPixel));
-                break;
-            }
-        }
-        if (button != MouseButton.Left) Changed?.Invoke();
-        e.Handled = true;
+        e.Handled = ProcessPointerMove(e.GetPosition(_surface), Keyboard.Modifiers);
     }
 
+    /// <summary>Releases pointer capture and commits the completed gesture exactly once.</summary>
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (_dragButton != e.ChangedButton) return;
+        var elementDragging = _elementDragging;
+        _elementDragging = false;
         _dragButton = null;
+        _history.Record(Camera);
         _surface.ReleaseMouseCapture();
         _surface.Cursor = Cursors.Arrow;
         e.Handled = true;
+        if (elementDragging)
+        {
+            ElementDragCompleted?.Invoke(e.GetPosition(_surface));
+            return;
+        }
         if (e.ChangedButton == MouseButton.Left && !_dragged && e.ClickCount < 2) Clicked?.Invoke(e.GetPosition(_surface));
         // A right button released without a drag is a click, not a look-around, so it asks for the context menu.
         if (e.ChangedButton == MouseButton.Right && !_dragged) ContextRequested?.Invoke(e.GetPosition(_surface));
     }
 
+    /// <summary>Cancels a claimed model drag when another control or window steals mouse capture.</summary>
+    private void OnLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _dragButton = null;
+        _surface.Cursor = Cursors.Arrow;
+        if (!_elementDragging) return;
+        _elementDragging = false;
+        ElementDragCancelled?.Invoke();
+    }
+
+    /// <summary>Dollies toward the pointer's picked surface while retaining minimum camera clearance.</summary>
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        var position = e.GetPosition(_surface);
-        var (width, height) = Size();
-        var ray = Camera.PixelRay((float)position.X, (float)position.Y, width, height);
-        var distance = PickDistance(ray);
-        // Each notch covers a fifth of the way to whatever is under the cursor, so close-ups slow down and a distant
-        // view crosses the model quickly. Holding Shift doubles the step.
-        var step = distance * 0.2f * (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 2 : 1) * Math.Sign(e.Delta);
-        step = Math.Clamp(step, -SceneRadius() * 0.6f, distance - 0.05f);
-        MoveCamera(ray * step);
-        Changed?.Invoke();
-        e.Handled = true;
+        e.Handled = ProcessWheel(e.GetPosition(_surface), e.Delta, Keyboard.Modifiers);
     }
 
     // ---------------------------------------------------------------- keyboard flight
 
+    /// <summary>Runs flight updates only while the navigation surface participates in the visible window.</summary>
     private void UpdateTicking()
     {
         if (_surface.IsVisible && _surface.IsLoaded) StartTicking();
         else StopTicking();
     }
 
+    /// <summary>Attaches one rendering callback and resets elapsed-time tracking.</summary>
     private void StartTicking()
     {
         if (_ticking) return;
@@ -196,6 +200,7 @@ internal sealed class SceneNavigator
         CompositionTarget.Rendering += OnFrame;
     }
 
+    /// <summary>Releases the rendering subscription when its surface is hidden or unloaded.</summary>
     private void StopTicking()
     {
         if (!_ticking) return;
@@ -203,13 +208,15 @@ internal sealed class SceneNavigator
         CompositionTarget.Rendering -= OnFrame;
     }
 
+    /// <summary>Applies elapsed-time keyboard flight unless an editor, shortcut, or locked camera owns input.</summary>
     private void OnFrame(object? sender, EventArgs e)
     {
         var now = (e as RenderingEventArgs)?.RenderingTime ?? TimeSpan.Zero;
         var dt = _lastTick == TimeSpan.Zero ? 0 : Math.Min(0.1, (now - _lastTick).TotalSeconds);
         _lastTick = now;
-        if (dt <= 0 || !IsActive) return;
+        if (dt <= 0 || IsLocked || !IsActive || EditingActive?.Invoke() == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
 
+        /// <summary>Samples one navigation key as a normalized movement contribution.</summary>
         float Key(Key key) => Keyboard.IsKeyDown(key) ? 1 : 0;
         var forward = Key(System.Windows.Input.Key.W) + Key(System.Windows.Input.Key.Up) - Key(System.Windows.Input.Key.S) - Key(System.Windows.Input.Key.Down);
         var right = Key(System.Windows.Input.Key.D) + Key(System.Windows.Input.Key.Right) - Key(System.Windows.Input.Key.A) - Key(System.Windows.Input.Key.Left);
@@ -220,7 +227,7 @@ internal sealed class SceneNavigator
         if (Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift) || Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift)) speed *= 3;
         if (Keyboard.IsKeyDown(System.Windows.Input.Key.LeftCtrl) || Keyboard.IsKeyDown(System.Windows.Input.Key.RightCtrl)) speed *= 0.25f;
         MoveCamera(Camera.FlyDelta(new Vector3(forward, right, up), speed * (float)dt));
-        Changed?.Invoke();
+        NotifyChanged();
     }
 
     /// <summary>Applies a displacement, stopping at surfaces when collisions are on.</summary>
@@ -234,40 +241,78 @@ internal sealed class SceneNavigator
     /// <summary>Places the camera so the whole model is in view, from the usual three-quarter angle.</summary>
     public void FrameAll()
     {
+        if (IsLocked) return;
+        _history.Record(Camera);
         var (min, max) = Bounds();
         var framed = NavigationCamera.Frame(min, max);
         Camera.Position = framed.Position;
         Camera.YawDegrees = framed.YawDegrees;
         Camera.PitchDegrees = framed.PitchDegrees;
         Camera.FieldOfViewDegrees = framed.FieldOfViewDegrees;
-        Changed?.Invoke();
+        var (width, height) = Size();
+        Camera.FrameBounds(min, max, width / height);
+        NotifyChanged();
     }
 
     /// <summary>Looks at the model from the side the given direction points to, keeping the whole model in view.</summary>
     public void LookFrom(Vector3 direction)
     {
+        if (IsLocked) return;
+        _history.Record(Camera);
         var (min, max) = Bounds();
         var center = (min + max) / 2;
         var radius = MathF.Max(3, (max - min).Length() / 2);
         var distance = radius / MathF.Tan(Camera.FieldOfViewDegrees * MathF.PI / 360) * 1.1f;
         Camera.Position = center + Vector3.Normalize(direction) * distance;
         Camera.LookAt(center);
-        Changed?.Invoke();
+        var (width, height) = Size();
+        Camera.FrameBounds(min, max, width / height);
+        NotifyChanged();
+    }
+
+    /// <summary>Switches between pan and orbit while freezing the pivot for each continuous orbit gesture.</summary>
+    private void UpdateOrbitMode(bool orbiting)
+    {
+        if (_orbiting == orbiting) return;
+        _orbiting = orbiting;
+        if (orbiting) _orbitPivot = ResolveOrbitPivot();
+        _surface.Cursor = orbiting ? Cursors.Hand : Cursors.SizeAll;
+    }
+
+    /// <summary>Uses the host's project selection policy, with scene framing bounds as the standalone fallback.</summary>
+    private Vector3 ResolveOrbitPivot()
+    {
+        if (OrbitPivot is { } resolve) return resolve();
+        var (min, max) = Bounds();
+        return (min + max) / 2;
+    }
+
+    /// <summary>Orbits around the selection or project center without resetting framing or the field of view.</summary>
+    public void OrbitBy(float horizontal, float vertical)
+    {
+        if (IsLocked) return;
+        if (!_externalGesture) _history.Record(Camera);
+        Camera.OrbitAround(ResolveOrbitPivot(), horizontal, vertical);
+        NotifyChanged();
     }
 
     /// <summary>Moves the camera toward (positive) or away from (negative) the model by a step scaled to its size.</summary>
     public void ZoomBy(float sign)
     {
+        if (IsLocked) return;
+        _history.Record(Camera);
         MoveCamera(Camera.Forward * SceneRadius() * 0.2f * Math.Sign(sign));
-        Changed?.Invoke();
+        NotifyChanged();
     }
 
     /// <summary>Recenters the view on the whole model, for when the user has lost it on screen.</summary>
     public void CenterAll()
     {
+        if (IsLocked) return;
+        _history.Record(Camera);
         var (min, max) = Bounds();
         var (width, height) = Size();
         Camera.FrameBounds(min, max, width / height);
-        Changed?.Invoke();
+        NotifyChanged();
     }
 }

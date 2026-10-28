@@ -15,6 +15,7 @@ static class NavigationChecks
     public static void Run(Action<bool, string> check)
     {
         Camera(check);
+        OrbitPivotChecks.Run(check);
         Collisions(check);
         Paths(check);
         Links(check);

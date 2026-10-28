@@ -8,12 +8,14 @@
     <AssemblyName>Guanacaste3D.Desktop</AssemblyName>
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
-    <Version>0.22.1</Version>
+    <Version>0.23.0</Version>
     <!-- Embedded in the .exe so Explorer, the Start menu shortcut and the taskbar show the brand mark. -->
     <ApplicationIcon>resources\brand\guanacaste3d.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+    <ProjectReference Include="../Guanacaste3D.Agent/Guanacaste3D.Agent.csproj" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Per-frame picture buffers (a few MB) are short-lived; keeping them out of the large-object heap lets cheap

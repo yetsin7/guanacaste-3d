@@ -79,7 +79,10 @@ public sealed partial class DocumentSession
     /// Moves an opening along its host or into another wall on the same level. The move is one
     /// transaction: an offset that overlaps a neighbour or leaves the wall rejects it and nothing changes.
     /// </summary>
-    public void MoveOpening(Guid id, Guid wallId, double offset)
+    public void MoveOpening(Guid id, Guid wallId, double offset) => MoveOpening(id, wallId, offset, null);
+
+    /// <summary>Changes the host, offset, and optional sill together; an invalid placement leaves geometry and history untouched.</summary>
+    public void MoveOpening(Guid id, Guid wallId, double offset, double? sill)
     {
         var opening = Document.Openings.FirstOrDefault(candidate => candidate.Id == id)
             ?? throw new InvalidDataException("The opening does not exist.");
@@ -91,7 +94,7 @@ public sealed partial class DocumentSession
         Commit("Transaction.MoveOpening", doc =>
         {
             var index = doc.Openings.FindIndex(candidate => candidate.Id == id);
-            doc.Openings[index] = doc.Openings[index] with { WallId = wallId, Offset = offset };
+            doc.Openings[index] = doc.Openings[index] with { WallId = wallId, Offset = offset, Sill = sill ?? opening.Sill };
         });
     }
 

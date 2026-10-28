@@ -129,6 +129,28 @@ public static class QualityPlanner
     }
 
     /// <summary>
+    /// Release-build benchmark of the development machine (i7-12650H, 16 threads, mains power), the point where the
+    /// hand-tuned preview sizes were chosen. Debug builds measure about 30× less, which is why calibrations are kept apart.
+    /// </summary>
+    public const double ReferenceMegaTests = 1900;
+
+    /// <summary>
+    /// Height in pixels of the live preview. Pixels per second scale with throughput, and height with its square root,
+    /// so a machine twice as fast gets about 1.4× the height at the same frame rate. Without a measurement it falls back
+    /// to the fixed sizes the panel used before calibration existed.
+    /// </summary>
+    public static int PreviewHeight(HardwareProfile hardware, ResourceMode resources)
+    {
+        ArgumentNullException.ThrowIfNull(hardware);
+        var baseHeight = resources switch { ResourceMode.Eco => 216.0, ResourceMode.Maximum => 360.0, _ => 288.0 };
+        if (hardware.MicrobenchmarkMegaTests <= 0) return (int)baseHeight;
+        var speed = Math.Sqrt(hardware.MicrobenchmarkMegaTests / ReferenceMegaTests);
+        if (hardware.IsOnBattery) speed *= 0.75;
+        // Rounded to a multiple of 8 so the preview's tile grid stays even.
+        return (int)Math.Clamp(Math.Round(baseHeight * speed / 8) * 8, 144, 540);
+    }
+
+    /// <summary>
     /// Standard is the sweet spot for most machines; strong ones start at High, and weak ones at Draft so the first image
     /// arrives quickly. AUTO never picks Final, which is the person's decision.
     /// </summary>
@@ -138,8 +160,9 @@ public static class QualityPlanner
 
         // TODO(human): decide how AUTO should weigh the machine. Today it counts logical cores and free memory, which is
         // a proxy: two 16-thread laptops can differ 3x in speed. HardwareProfile.MicrobenchmarkMegaTests holds a measured
-        // throughput (0 when Detect() ran without measure: true; about 3 000 on the development machine). Replace or
-        // combine the thresholds below so AUTO reflects real speed, and keep tests/.../render-infrastructure-checks.cs
+        // throughput (0 when not yet calibrated; about ReferenceMegaTests = 1 900 on the development machine in Release,
+        // ~70 in Debug). The panel now calibrates at startup, so in the app it is normally > 0. Replace or combine the
+        // thresholds below so AUTO reflects real speed, and keep tests/.../render-infrastructure-checks.cs
         // ("AUTO picks High … Standard … Draft") passing, or update it to your new rule.
         if (hardware.LogicalCores >= 12 && gigabytes >= 8) return RenderQuality.High;
         if (hardware.LogicalCores >= 6 && gigabytes >= 4) return RenderQuality.Standard;

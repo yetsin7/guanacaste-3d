@@ -29,17 +29,21 @@ public partial class MainWindow
     /// </summary>
     private Point? _planPointerOverride;
 
+    /// <summary>Uses a replayed 3D placement point when present, otherwise reads the actual plan pointer.</summary>
     private Point PlanPosition(MouseEventArgs e) => _planPointerOverride ?? e.GetPosition(PlanCanvas);
 
     /// <summary>Wires clicks in the 3D view and the render preview to selection and to the armed tool.</summary>
     private void InitializeModelSelection()
     {
         if (_modelNavigator is null) return;
+        _modelNavigator.OrbitPivot = ResolveModelOrbitPivot;
+        InitializeModelMovement();
         _modelNavigator.Clicked += position => HandleViewClick(position, ModelSurface);
         _modelNavigator.DoubleClicked += _ => OpenSelectionEditor();
         _modelNavigator.ContextRequested += _ => ShowViewContextMenu(ModelSurface);
         if (RenderPanelControl.Navigator is { } renderNavigator)
         {
+            renderNavigator.OrbitPivot = ResolveModelOrbitPivot;
             renderNavigator.Clicked += position => HandleViewClick(position, RenderPanelControl.Surface);
             renderNavigator.DoubleClicked += _ => OpenSelectionEditor();
             renderNavigator.ContextRequested += _ => ShowViewContextMenu(RenderPanelControl.Surface);
@@ -84,7 +88,7 @@ public partial class MainWindow
         _electricalTool is not null || _wiring || _plumbingPointTool is not null || _piping;
 
     // Clicks in the 3D view pick only what that view shows, so an element hidden in it cannot be selected there.
-    private ElementPicker Picker => _picker ??= new ElementPicker(ViewVisibility.Apply(_session.Document, Model3DView()));
+    private ElementPicker Picker => _picker ??= new ElementPicker(ModelDisplayDocument(_revealHidden));
 
     /// <summary>The element that currently owns selection, whichever view selected it.</summary>
     private (PickedKind Kind, Guid Id)? CurrentSelection()
@@ -103,6 +107,7 @@ public partial class MainWindow
     /// </summary>
     private void HandleViewClick(Point position, FrameworkElement surface)
     {
+        if (ReferenceEquals(surface, ModelSurface) && HandleModelMoveClick(position)) return;
         var ray = _navigation.PixelRay((float)position.X, (float)position.Y, (float)surface.ActualWidth, (float)surface.ActualHeight);
         var hit = Picker.Pick(_navigation.Position, ray);
         if (PlanToolArmed())
@@ -198,6 +203,7 @@ public partial class MainWindow
         PositionDimensionChips();
     }
 
+    /// <summary>Removes the previous selection overlay before rebuilding or leaving the modeling view.</summary>
     private void ClearModelSelectionVisuals()
     {
         foreach (var visual in _selectionVisuals) ModelViewport.Children.Remove(visual);
@@ -207,6 +213,7 @@ public partial class MainWindow
         _shownSelection = null;
     }
 
+    /// <summary>Builds the selected element outline and temporary measurements from its current geometry.</summary>
     private void RebuildModelSelection()
     {
         ClearModelSelectionVisuals();
@@ -239,6 +246,7 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Attaches one selection geometry instance and tracks it for subsequent removal.</summary>
     private void AddSelectionVisual(GeometryModel3D? model)
     {
         if (model is null) return;

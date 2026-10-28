@@ -231,8 +231,8 @@ public partial class MainWindow
     {
         var element = _session.Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == _selectedStructuralId);
         if (element is null) return false;
-        PropertiesText.Text = FormatText("Properties.StructuralSummary",
-            element.Name, element.Width, element.Height, element.Offset, element.Length);
+        PropertiesText.Text = element.Kind == StructuralElementKind.Stair ? StairProperties(element) :
+            FormatText("Properties.StructuralSummary", element.Name, element.Width, element.Height, element.Offset, element.Length);
         return true;
     }
 

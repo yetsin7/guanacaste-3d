@@ -40,4 +40,15 @@
   <sys:String x:Key="Status.ViewRenamed">Vista renombrada.</sys:String>
   <sys:String x:Key="Status.ViewsClosed">Solo queda abierta la vista actual.</sys:String>
   <sys:String x:Key="Status.View3DNoPoint">Apunta a una superficie o al suelo para colocar el elemento.</sys:String>
+  <sys:String x:Key="Navigation.Home">Vista inicial</sys:String>
+  <sys:String x:Key="Navigation.Left">Girar 90° a la izquierda</sys:String>
+  <sys:String x:Key="Navigation.Right">Girar 90° a la derecha</sys:String>
+  <sys:String x:Key="Navigation.CubeHint">Pulsa una cara, arista o esquina para orientar. Arrastra el cubo para orbitar.</sys:String>
+  <sys:String x:Key="Navigation.ModelHint">Rueda: zoom · botón central: desplazar · Mayús + central: orbitar</sys:String>
+  <sys:String x:Key="Status.ModelMovePlane">Gira la vista para ver de frente el plano de movimiento.</sys:String>
+  <sys:String x:Key="Status.ModelMoveDestination">Indica el destino o suelta el elemento. Esc cancela. Las ventanas también se mueven en altura.</sys:String>
+  <sys:String x:Key="ModelMove.Distance">{0} m</sys:String>
+  <sys:String x:Key="RenderPanel.ClayHint">Aplica materiales grises solo al render y al recorrido. La vista 3D conserva los colores del proyecto.</sys:String>
+  <sys:String x:Key="Error.A floor opening must remain inside a host slab.">El hueco debe permanecer dentro de una losa anfitriona.</sys:String>
+  <sys:String x:Key="Status.ModelMoveBlocked">No se puede colocar aquí. Revisa el anfitrión, los límites y los elementos vecinos.</sys:String>
 </ResourceDictionary>

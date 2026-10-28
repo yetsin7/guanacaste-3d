@@ -47,7 +47,9 @@ try {
         '-c', 'Release', '--no-build', '--no-restore')
     Invoke-Dotnet @('run', '--project', 'tests/documentation-checks/documentation-checks.csproj',
         '-c', 'Release', '--no-build', '--no-restore')
-    Write-Host 'Build, core, and documentation regression checks passed.' -ForegroundColor Green
+    Invoke-Dotnet @('run', '--project', 'tests/model-workspace-checks/model-workspace-checks.csproj',
+        '-c', 'Release', '--no-build', '--no-restore')
+    Write-Host 'Build, core, documentation, and model workspace regression checks passed.' -ForegroundColor Green
 
     if (-not $SkipPackage) {
         # Single-file bundling resolves the win-x64 runtime packs even when framework-dependent,

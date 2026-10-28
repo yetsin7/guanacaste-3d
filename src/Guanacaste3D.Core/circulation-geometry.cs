@@ -9,7 +9,7 @@ public static class CirculationGeometry
         if (element.Length < 0.05) yield break;
         if (element.Kind == StructuralElementKind.Stair)
         {
-            var count = (int)Math.Ceiling(element.Height / 0.175);
+            var count = StairGeometry.RiserCount(element.Height);
             for (var index = 0; index < count; index++)
                 yield return element with { Start = Along(element, (double)index / count),
                     End = Along(element, (double)(index + 1) / count), Height = element.Height * (index + 1) / count };

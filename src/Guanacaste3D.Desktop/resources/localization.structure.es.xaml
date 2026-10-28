@@ -18,6 +18,15 @@
   <sys:String x:Key="Status.BeamSystemCreated">Sistema de vigas: {0} vigas creadas.</sys:String>
   <sys:String x:Key="Status.ConnectionsCreated">Conexiones creadas: {0}.</sys:String>
   <sys:String x:Key="Status.ConnectionsNone">No hay nudos sin conexión en este nivel.</sys:String>
+  <sys:String x:Key="Properties.StairSummary">{0}
+Altura total {1:0.000} m · {2} contrahuellas
+Contrahuella {3:0.000} m · ancho {4:0.00} m
+Tramos {5} · huellas {6:0.000}–{7:0.000} m
+Desfase {8:0.00} m</sys:String>
+  <sys:String x:Key="Properties.SpiralStairSummary">{0}
+Altura total {1:0.000} m · {2} contrahuellas
+Contrahuella {3:0.000} m · diámetro {4:0.00} m
+Desfase {5:0.00} m</sys:String>
   <sys:String x:Key="Properties.StructuralSummary">{0}
 Sección {1:0.00} × {2:0.00} m
 Desfase {3:0.00} m

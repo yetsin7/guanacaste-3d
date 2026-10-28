@@ -1,6 +1,11 @@
 <Solution>
   <Project Path="tests/documentation-checks/documentation-checks.csproj" />
+  <Folder Name="/src/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/model-workspace-checks/model-workspace-checks.csproj" />
+  </Folder>
   <Project Path="src/Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+  <Project Path="src/Guanacaste3D.Agent/Guanacaste3D.Agent.csproj" />
   <Project Path="src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj" />
   <Project Path="tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj" />
   <Project Path="tests/Guanacaste3D.RenderBench/Guanacaste3D.RenderBench.csproj" />

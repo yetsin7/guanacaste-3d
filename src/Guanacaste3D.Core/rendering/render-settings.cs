@@ -44,6 +44,8 @@ public sealed record RenderSettings
     public Vector3 SunDirection { get; init; } = new(-0.45f, -0.55f, 0.70f);
     /// <summary>Sun strength as irradiance divided by π on a surface facing it; 0 turns the sun off.</summary>
     public float SunIntensity { get; init; } = 2.0f;
+    /// <summary>Tests direct-light visibility against geometry; disable for an unshadowed material study.</summary>
+    public bool CastShadows { get; init; } = true;
     /// <summary>Angular radius of the sun disk in degrees; larger values give softer shadows.</summary>
     public float SunAngularRadiusDegrees { get; init; } = 0.8f;
     public float SkyIntensity { get; init; } = 1.2f;

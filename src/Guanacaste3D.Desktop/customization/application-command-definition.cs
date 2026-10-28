@@ -57,6 +57,7 @@ public static class ApplicationCommandCatalog
         yield return new("Model3D", "Tool.Model3D", "Icon.Model3DEnhanced", "Menu.View");
         // Beside the 3D button, the only other view button outside the ribbons.
         yield return new("RenderView", "Tool.RenderView", "Icon.Render", "Menu.View");
+        yield return new("AiAssistant", "Tool.AiAssistant", "Icon.Assistant", "Menu.View");
         yield return new("ExportIfc", "Action.ExportIfc", "Icon.ExportCube", "Menu.File");
         yield return new("ExportModel3D", "Action.ExportModel3D", "Icon.Model3DEnhanced", "Menu.File");
         yield return new("CustomizeCommands", "CommandCustomization.Title", "Icon.Shortcut", "Ribbon.Manage");

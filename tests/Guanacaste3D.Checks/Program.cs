@@ -371,6 +371,7 @@ renderTimer.Stop();
 Console.WriteLine($"INFO: {houseScene.TriangleCount} triangles, 320x200 sample pass in {renderTimer.ElapsedMilliseconds} ms");
 Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel pass of the sample house in under 10 s");
 
+AgentChecks.Run(Check);
 ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
 OpeningHostingChecks.Run(Check);

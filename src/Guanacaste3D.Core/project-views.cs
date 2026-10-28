@@ -33,6 +33,7 @@ public sealed record ProjectView(
 {
     /// <summary>Finite cutting line in model coordinates; null preserves the legacy centered section.</summary>
     public SectionCut? Cut { get; init; }
+    public ViewGraphicsSettings? Graphics { get; init; }
 
     /// <summary>Elements this view hides. The building itself is unchanged; other views still show them.</summary>
     public List<Guid> HiddenElementIds { get; init; } = [];

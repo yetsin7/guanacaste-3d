@@ -28,6 +28,7 @@ public sealed class ElementPicker
 
     private readonly List<Prism> _prisms = [];
 
+    /// <summary>Indexes a document snapshot as world-space prisms for selection and element bounds.</summary>
     public ElementPicker(BuildingDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -71,6 +72,18 @@ public sealed class ElementPicker
             if (footprint.Length < 3) continue;
             _prisms.Add(new Prism(PickedKind.Column, column.Id, null, footprint, z, z + (float)column.Height, z, Vector2.UnitX, 0));
         }
+        // Voids have no rendered solid, but their cavity must remain selectable for editing.
+        foreach (var opening in document.StructuralElements.Where(element =>
+                     element.Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft))
+        {
+            foreach (var floor in SlabOpeningHosts.Resolve(document, opening))
+            {
+                var top = Elevation(floor.LevelId) + (float)floor.ElevationOffset;
+                var footprint = opening.Footprint.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray();
+                _prisms.Add(new Prism(PickedKind.Structural, opening.Id, floor.Id, footprint,
+                    top - (float)floor.Thickness, top, Elevation(opening.LevelId), Vector2.UnitX, -0.06f));
+            }
+        }
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
             var datum = Elevation(element.LevelId);
@@ -88,6 +101,33 @@ public sealed class ElementPicker
 
     public int Count => _prisms.Count;
 
+    /// <summary>Returns the world-space bounds of all solids belonging to one selectable element.</summary>
+    public (Vector3 Min, Vector3 Max)? Bounds(PickedKind kind, Guid id) => BoundsOf(Of(kind, id));
+
+    /// <summary>Combines a multiple-element selection into one orbit box, ignoring removed identifiers.</summary>
+    public (Vector3 Min, Vector3 Max)? Bounds(IEnumerable<Guid> elementIds)
+    {
+        var selected = elementIds.ToHashSet();
+        return BoundsOf(_prisms.Where(prism => selected.Contains(prism.Id)));
+    }
+
+    /// <summary>Accumulates component bounds without allocating selection outlines or temporary dimensions.</summary>
+    private static (Vector3 Min, Vector3 Max)? BoundsOf(IEnumerable<Prism> prisms)
+    {
+        var minimum = new Vector3(float.PositiveInfinity);
+        var maximum = new Vector3(float.NegativeInfinity);
+        var found = false;
+        foreach (var prism in prisms)
+        foreach (var point in prism.Footprint)
+        {
+            minimum = Vector3.Min(minimum, new Vector3(point, prism.Bottom));
+            maximum = Vector3.Max(maximum, new Vector3(point, prism.Top));
+            found = true;
+        }
+        return found ? (minimum, maximum) : null;
+    }
+
+    /// <summary>Builds a wall-aligned prism, retaining the level datum separately from a hosted opening's sill.</summary>
     private static Prism WallPrism(PickedKind kind, Guid id, Guid? host, Wall wall, double from, double to, float datum, float top,
         float bottomDatum, float preference, float sill = 0)
     {
@@ -119,9 +159,18 @@ public sealed class ElementPicker
 
     /// <summary>The edges of an element's prism, for drawing a highlight over it.</summary>
     public List<EdgeSegment> Outline(PickedKind kind, Guid id)
+        => OutlinePrisms(Of(kind, id));
+
+    /// <summary>Builds a hosted opening's preview edges without indexing the rest of the project.</summary>
+    public static List<EdgeSegment> OpeningOutline(Wall wall, WallOpening opening, float levelElevation) =>
+        OutlinePrisms([WallPrism(PickedKind.Opening, opening.Id, wall.Id, wall, opening.Begin, opening.End,
+            levelElevation, levelElevation + (float)(opening.Sill + opening.Height), levelElevation, 0, (float)opening.Sill)]);
+
+    /// <summary>Expands each prism into matching bottom, top, and vertical edge triples used by selection and previews.</summary>
+    private static List<EdgeSegment> OutlinePrisms(IEnumerable<Prism> prisms)
     {
         var result = new List<EdgeSegment>();
-        foreach (var prism in Of(kind, id))
+        foreach (var prism in prisms)
         {
             var ring = prism.Footprint;
             for (var i = 0; i < ring.Length; i++)
@@ -178,8 +227,10 @@ public sealed class ElementPicker
         return result;
     }
 
+    /// <summary>Collects all component prisms for one element without treating each stair tread as a selection.</summary>
     private IEnumerable<Prism> Of(PickedKind kind, Guid id) => _prisms.Where(prism => prism.Kind == kind && prism.Id == id);
 
+    /// <summary>Clips a forward ray against prism height and footprint, returning its nearest entry distance.</summary>
     private static float? Hit(Prism prism, Vector3 origin, Vector3 direction)
     {
         float t0 = 0, t1 = float.MaxValue;
@@ -219,8 +270,10 @@ public sealed class ElementPicker
         return best;
     }
 
+    /// <summary>Evaluates the signed planar determinant used to intersect a ray and a polygon edge.</summary>
     private static float Cross(Vector2 a, Vector2 b) => a.X * b.Y - a.Y * b.X;
 
+    /// <summary>Uses crossing parity to determine whether a ray's height entry is inside the footprint.</summary>
     private static bool Inside(Vector2[] ring, Vector2 point)
     {
         var inside = false;

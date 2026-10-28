@@ -10,11 +10,17 @@ namespace Guanacaste3D.Desktop;
 internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models, GeometryModel3D? Edges,
     (Vector3 Min, Vector3 Max) Bounds, bool HasGeometry)
 {
+    public GeometryModel3D? GroundShadow { get; init; }
+    public IReadOnlyList<GeometryModel3D> Revealed { get; init; } = [];
+
     /// <summary>Meshes a document snapshot, prepares frozen visuals, and derives bounds without the infinite ground.</summary>
     public static ModelSceneSnapshot Build(BuildingDocument document, bool clay, bool xray, bool showEdges,
-        IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>? textures)
+        IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>? textures,
+        Vector3? shadowSun = null, BuildingDocument? hiddenDocument = null, IReadOnlySet<Guid>? hiddenIds = null,
+        ModelDetailLevel detail = ModelDetailLevel.Medium)
     {
-        var scene = BuildingMesher.Build(document, includeGround: true);
+        var scene = BuildingMesher.Build(document, includeGround: false, plants: detail == ModelDetailLevel.Fine ? PlantDetail.Render : PlantDetail.Model);
+        if (detail == ModelDetailLevel.Coarse) scene = SceneDetailFilter.Coarse(scene);
         var indices = new List<int>();
         var minimum = new Vector3(float.PositiveInfinity);
         var maximum = new Vector3(float.NegativeInfinity);
@@ -40,6 +46,10 @@ internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models,
             ? ScenePresentation.ToWpfEdges(FeatureEdges.Extract(scene.Positions, indices, maximumEdges: edgeLimit), Matrix4x4.Identity,
                 thickness, Color.FromRgb(52, 56, 62))
             : null;
-        return new(models, edges, (minimum, maximum), hasGeometry);
+        return new(models, edges, (minimum, maximum), hasGeometry)
+        {
+            GroundShadow = shadowSun is { } sun ? ModelSceneEffects.GroundShadow(scene, sun, Math.Min(0, minimum.Z)) : null,
+            Revealed = hiddenDocument is null || hiddenIds is null ? [] : ModelSceneEffects.RevealEdges(hiddenDocument, hiddenIds, thickness)
+        };
     }
 }

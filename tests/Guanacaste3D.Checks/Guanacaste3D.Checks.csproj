@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+    <ProjectReference Include="../../src/Guanacaste3D.Agent/Guanacaste3D.Agent.csproj" />
   </ItemGroup>
 </Project>

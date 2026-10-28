@@ -3,9 +3,11 @@
 Guanacaste 3D is an independent Windows desktop BIM and architectural CAD
 application built in C# with .NET 10 and WPF.
 
+Current navigation and editing changes: [Modeling workspace](docs/model-workspace-navigation.md).
+
 ## Status
 
-Version 0.3.0 is a working technical preview, not a complete professional BIM
+Version 0.23.0 is a working technical preview, not a complete professional BIM
 system. It must not be used for certified structural calculations or issued
 construction documents without independent professional review.
 
@@ -53,6 +55,21 @@ dotnet run --project src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Rel
 ```powershell
 dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build
 ```
+
+## AI assistant
+
+The assistant (quick access button, command `AiAssistant`) is a chat that designs and calculates by calling the program's
+own tools on the open project: levels, walls, doors, windows, rooms, slabs, columns, quantities, a priced budget, the model
+audit, and file exports. Every model edit goes through `DocumentSession`, and one assistant step is a single undo step.
+Exports and saves write files, so the user confirms each one.
+
+- **Providers:** Claude (Anthropic API key), OpenAI (API key) and local servers with an OpenAI-compatible API such as
+  Ollama. API keys are stored encrypted for the current Windows user in `%LOCALAPPDATA%/Guanacaste3D/ai-settings.json`.
+- **No subscription login:** Anthropic does not allow third-party apps to sign users in with Claude subscriptions, so
+  Claude needs an API key. OpenAI's "Sign in with ChatGPT" is limited to approved clients and is not implemented.
+- **Code:** `src/Guanacaste3D.Agent` has no UI dependency (providers, tool registry, agent loop) and is covered by
+  `tests/Guanacaste3D.Checks/agent-checks.cs`. The budget lives in `src/Guanacaste3D.Core/budget`; its default unit
+  prices are placeholders to be replaced with local prices.
 
 ## Publish for Windows
 

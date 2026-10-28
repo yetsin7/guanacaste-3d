@@ -64,18 +64,20 @@ public static class ElementGeometry
                 yield return Block(element, step.Footprint, step.Offset, step.Offset + step.Height);
             yield break;
         }
-        var count = (int)Math.Ceiling(element.Height / 0.175);
-        const double tread = 0.04;
-        const double stringer = 0.06;
+        var count = StairGeometry.RiserCount(element.Height);
+        var treadThickness = Math.Min(0.04, element.Height / count / 2);
+        const double stringerWidth = 0.06;
+        const double stringerDepth = 0.20;
         for (var index = 0; index < count; index++)
         {
             var from = ArchitecturalShapes.Lerp(element.Start, element.End, (double)index / count);
             var to = ArchitecturalShapes.Lerp(element.Start, element.End, (double)(index + 1) / count);
             var top = element.Offset + element.Height * (index + 1) / count;
-            yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), top - tread, top);
+            yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), top - treadThickness, top);
             foreach (var side in new[] { -1, 1 })
                 yield return Block(element, ArchitecturalShapes.Strip(from, to,
-                    side * (element.Width / 2 - stringer / 2), stringer), element.Offset, top - tread);
+                    side * (element.Width / 2 - stringerWidth / 2), stringerWidth),
+                    Math.Max(element.Offset, top - treadThickness - stringerDepth), top - treadThickness);
         }
     }
 

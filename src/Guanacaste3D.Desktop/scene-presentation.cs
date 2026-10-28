@@ -271,6 +271,8 @@ internal static class ScenePresentation
     public static PerspectiveCamera ToWpfCamera(NavigationCamera camera, double aspectRatio, float sceneRadius)
     {
         var converted = ToWpfCamera(camera.ToRenderCamera(10), aspectRatio);
+        var up = ToWpf(camera.Up);
+        converted.UpDirection = new Vector3D(up.X, up.Y, up.Z);
         // Flying through rooms needs a close near plane; a long far plane keeps the horizon visible from outside.
         converted.NearPlaneDistance = Math.Max(0.02, sceneRadius * 0.0005);
         converted.FarPlaneDistance = Math.Max(500, sceneRadius * 40);

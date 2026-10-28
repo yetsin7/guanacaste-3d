@@ -260,10 +260,10 @@ internal static class ArchitectureUiChecks
         Check(((Expander)panel.FindName("TourExpander")).IsExpanded, "The walkthrough command expands its camera editor");
         Check(Invoke("ExecuteApplicationCommand", "Camera") is true, "Camera opens the navigable model view");
         Check(Invoke("ExecuteApplicationCommand", "ResetCamera") is true, "Reset camera frames the current project");
-        var clay = (CheckBox)_window.FindName("ClayCheck");
+        var clay = (CheckBox)_window.FindName("XRayCheck");
         var previous = clay.IsChecked;
         Check(Invoke("ExecuteApplicationCommand", "VisualStyle") is true && clay.IsChecked != previous,
-            "Visual style switches between the study model and project colors");
+            "Visual style switches service visibility while preserving project colors");
     }
 
     private static void Execute(ArchitectureCommand command)

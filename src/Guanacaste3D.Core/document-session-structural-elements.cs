@@ -183,6 +183,10 @@ public sealed partial class DocumentSession
                     Start = new Point2(existing.Start.X + deltaX, existing.Start.Y + deltaY),
                     End = new Point2(existing.End.X + deltaX, existing.End.Y + deltaY)
                 };
+                var translated = document.StructuralElements[index];
+                if (translated.Kind is StructuralElementKind.Opening or StructuralElementKind.Shaft &&
+                    Geometry.SlabOpeningHosts.Resolve(document, translated).Count == 0)
+                    throw new InvalidDataException("A floor opening must remain inside a host slab.");
             }
         });
     }

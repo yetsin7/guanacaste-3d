@@ -125,7 +125,7 @@ public partial class MainWindow
 
     /// <summary>Returns the one element the move tool translates; the most specific selection wins.</summary>
     private Guid? SelectedMovableId() =>
-        _selectedOpeningId ?? _selectedWallId ?? _selectedRoomId ?? _selectedFloorId ?? _selectedStructuralId;
+        _selectedOpeningId ?? _selectedWallId ?? _selectedRoomId ?? _selectedFloorId ?? _selectedColumnId ?? _selectedStructuralId;
 
     /// <summary>Returns the selected opening, or null when the selection is not an opening that still exists.</summary>
     private WallOpening? SelectedOpening() =>
@@ -151,6 +151,7 @@ public partial class MainWindow
         else if (_selectedWallId is Guid wallId) _session.MoveWall(wallId, deltaX, deltaY);
         else if (_selectedRoomId is Guid roomId) _session.MoveRoom(roomId, deltaX, deltaY);
         else if (_selectedFloorId is Guid floorId) _session.MoveFloor(floorId, deltaX, deltaY);
+        else if (_selectedColumnId is Guid columnId) _session.MoveColumn(columnId, deltaX, deltaY);
         else if (_selectedStructuralId is Guid structuralId) _session.MoveStructuralElement(structuralId, deltaX, deltaY);
         return true;
     }
@@ -259,12 +260,20 @@ public partial class MainWindow
         {
             return floor.Boundary.Select(Shift).ToArray();
         }
+        if (_selectedColumnId is Guid columnId &&
+            _session.Document.Columns.FirstOrDefault(candidate => candidate.Id == columnId) is { } column)
+            return column.Outline.Select(Shift).ToArray();
+        if (_selectedStructuralId is Guid structuralId &&
+            _session.Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == structuralId) is { } structural)
+            return structural.Footprint.Select(Shift).ToArray();
         return null;
     }
 
     /// <summary>Clears every piece of move-tool state, including the guides it was showing.</summary>
     private void ClearMoveState()
     {
+        ClearModelMovePreview();
+        _modelMovePlane = null;
         _movingElement = false;
         _moveBasePoint = null;
         _movePreviewPoint = null;
