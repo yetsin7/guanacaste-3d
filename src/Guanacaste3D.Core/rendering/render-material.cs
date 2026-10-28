@@ -126,7 +126,7 @@ public static class MaterialLibrary
         },
         SurfaceKind.Water => new RenderMaterial
         {
-            Name = "Agua", BaseColor = new(0.015f, 0.05f, 0.06f), Roughness = 0.025f, Ior = 1.33f
+            Name = "Agua", BaseColor = new(0.015f, 0.05f, 0.06f), Roughness = 0.01f, Ior = 1.33f
         },
         SurfaceKind.Glass => new RenderMaterial
         {

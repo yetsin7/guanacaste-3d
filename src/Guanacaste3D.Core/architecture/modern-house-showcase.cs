@@ -24,7 +24,9 @@ public static class ModernHouseShowcase
         var upper = session.AddLevel();
         session.UpdateLevel(upper, "Planta alta", 3.2);
 
-        var concrete = WallType("Reinforced Concrete 200 mm");
+        // Rendered (plastered) block reads as white paint in the render; fair-faced concrete would read grey.
+        var concrete = WallType("Rendered Block 150 mm");
+        var timber = WallType("Timber Clad Wall 200 mm");
         var curtain = Element("Curtain Wall 100 mm");
 
         // Ground floor: a solid service block on the west, a glazed living pavilion on the south and east.
@@ -48,9 +50,11 @@ public static class ModernHouseShowcase
         session.AddWall(upper, new Point2(3, 9), new Point2(3, -1.5), height: 3, wallTypeId: concrete);
         session.AddWall(upper, new Point2(17, -1.5), new Point2(17, 9), height: 3, wallTypeId: concrete);
         session.AddWall(upper, new Point2(13, -1.5), new Point2(17, -1.5), height: 3, wallTypeId: concrete);
-        session.AddElementFromPreset(upper, curtain, new Point2(3, -1.5), new Point2(13, -1.5));
+        // Vertical timber slats between the glazing and the solid end, as in the reference photograph.
+        session.AddWall(upper, new Point2(10.5, -1.5), new Point2(13, -1.5), height: 3, wallTypeId: timber);
+        session.AddElementFromPreset(upper, curtain, new Point2(3, -1.5), new Point2(10.5, -1.5));
         session.AddSlabFromPreset(upper, Rectangle(2.5, -2.0, 17.5, 9.5), Slab("Flat Concrete Roof 150 mm"), 3.15);
-        session.AddElementFromPreset(upper, Element("Glass Guard 1100 mm"), new Point2(3, -1.6), new Point2(13, -1.6));
+        session.AddElementFromPreset(upper, Element("Glass Guard 1100 mm"), new Point2(3, -1.6), new Point2(10.5, -1.6));
         session.AddRoom(upper, new Point2(3.2, -1.3), new Point2(16.8, 8.8), "Dormitorio principal y estudio");
 
         // Stairs: one inside the service block, and wide entrance steps toward the pool.

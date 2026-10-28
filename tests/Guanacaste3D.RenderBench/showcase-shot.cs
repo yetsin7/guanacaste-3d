@@ -43,7 +43,7 @@ static class ShowcaseShot
     private static BenchmarkScene Villa()
     {
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.ModernHouseShowcase.Create(), includeGround: true);
-        var settings = RenderPresets.Lighting(LightingScenario.GoldenHour, 10.6, 80, 12, RenderQuality.High);
+        var settings = RenderPresets.Lighting(LightingScenario.Sunny, 10.6, 80, 15.5, RenderQuality.High);
         return new BenchmarkScene("villa", mesh,
             new RenderCamera(new Vector3(-6, -21, 1.7f), new Vector3(9, -2, 3.4f), 58) { CorrectVerticals = true }, settings);
     }
