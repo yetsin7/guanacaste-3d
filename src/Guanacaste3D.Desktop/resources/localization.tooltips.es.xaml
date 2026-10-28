@@ -201,7 +201,7 @@
   <sys:String x:Key="Demo.ProjectParameters">Define los estilos de objeto del proyecto.</sys:String>
   <sys:String x:Key="Demo.ProjectUnits">Elige las unidades: metros, milímetros, grados.</sys:String>
   <sys:String x:Key="Demo.Properties">Muestra y edita las propiedades del elemento.</sys:String>
-  <sys:String x:Key="Demo.PropertyLine">Dibuja el límite del terreno.</sys:String>
+  <sys:String x:Key="Demo.PropertyLine">Define el ancho, el fondo y la calle del lote para el plano de localización.</sys:String>
   <sys:String x:Key="Demo.PublishSettings">Configura cómo se publican las láminas.</sys:String>
   <sys:String x:Key="Demo.RadialDimension">Mide el radio de un arco o círculo.</sys:String>
   <sys:String x:Key="Demo.Railing">Dibuja una barandilla siguiendo una trayectoria.</sys:String>

@@ -54,6 +54,7 @@ public partial class MainWindow
             case "Plan": ShowPlan_Click(this, eventArguments); return true;
             case "Elevation": ShowElevation_Click(this, eventArguments); return true;
             case "Section": BeginSectionTool(); return true;
+            case "PropertyLine": DefineLot(); return true;
             case "Schedule": ShowSchedule_Click(this, eventArguments); return true;
             case "Sheet": AddSheet_Click(this, eventArguments); return true;
             case "Render": StartRender_Click(this, eventArguments); return true;

@@ -8,6 +8,7 @@
   <sys:String x:Key="Error.Invalid sheet family collection.">La colección de familias de lámina no es válida.</sys:String>
   <sys:String x:Key="Error.The family is not a drawing sheet family.">El archivo seleccionado no es una familia de cajetín o lámina.</sys:String>
   <sys:String x:Key="Error.Invalid drawing sheet layout.">La lámina necesita una familia de cajetín válida.</sys:String>
+  <sys:String x:Key="Error.The site lot is invalid.">El lote debe medir entre 1 y 2000 m por lado y su calle tener un nombre válido.</sys:String>
   <sys:String x:Key="Error.Invalid sheet viewport placement.">Las vistas deben quedar dentro del área de dibujo. Revisa posiciones, tamaños y escalas; usa 0 para ajustar automáticamente.</sys:String>
   <sys:String x:Key="Error.The drawing sheet does not exist.">La lámina ya no existe.</sys:String>
   <sys:String x:Key="Transaction.EditSheet">Editar composición y familia de lámina</sys:String>
@@ -24,6 +25,11 @@
   <sys:String x:Key="SheetEditor.Composition">Vistas y composición</sys:String>
   <sys:String x:Key="SheetEditor.Family">Familia de cajetín</sys:String>
   <sys:String x:Key="SheetEditor.FamilyName">Nombre de la familia</sys:String>
+  <sys:String x:Key="Location.PromptTitle">Lote</sys:String>
+  <sys:String x:Key="Location.PromptSize">Ancho x fondo del lote, en metros (la calle va al frente):</sys:String>
+  <sys:String x:Key="Location.PromptStreet">Nombre de la calle:</sys:String>
+  <sys:String x:Key="Location.InvalidSize">Escribe las medidas así: 10 x 20 (metros, entre 1 y 2000).</sys:String>
+  <sys:String x:Key="Location.Saved">Lote guardado. Colócalo en una lámina con la vista Localización.</sys:String>
   <sys:String x:Key="SheetEditor.AddView">Añadir vista</sys:String>
   <sys:String x:Key="SheetEditor.RemoveView">Quitar vista</sys:String>
   <sys:String x:Key="SheetEditor.Rows">Distribuir en filas</sys:String>

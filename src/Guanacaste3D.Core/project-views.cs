@@ -46,6 +46,12 @@ public static class BuiltInProjectViews
     /// <summary>The area table view: rooms grouped by level, placeable on a sheet.</summary>
     public static readonly Guid AreaScheduleId = Guid.Parse("8d2f6a14-3b7e-4c59-a1d0-5e9c7b3f2a68");
 
+    /// <summary>The location plan view: plot, street, neighbours and north, placeable on a sheet.</summary>
+    public static readonly Guid LocationId = Guid.Parse("b41c9e07-6d25-4f83-8a1e-3c7d5f9b0e12");
+
+    /// <summary>Whether a view is a generated drawing that sheets can place without a model scale of its own.</summary>
+    public static bool IsGeneratedSheetView(ProjectView view) => view.Id == AreaScheduleId || view.Id == LocationId;
+
     public static readonly Guid SouthElevationId = Guid.Parse("7a1f0c52-5d4b-4f0e-8a9c-2b6e1d3f4a05");
     public static readonly Guid EastElevationId = Guid.Parse("c3d8e1b7-92a4-4c6f-b5e0-0f7a2d9c4b16");
     public static readonly Guid WestElevationId = Guid.Parse("e5b9a0d4-1c37-48fa-9d62-6a3c8f1e7b27");
@@ -69,7 +75,16 @@ public static class BuiltInProjectViews
         views.Add(new ProjectView(ProjectScheduleId, ScheduleName, ProjectViewKind.Schedule, null, ViewOrientation.None));
         EnsureElevations(views);
         EnsureAreaSchedule(views);
+        EnsureLocation(views);
         return views;
+    }
+
+    /// <summary>Adds the location plan view to projects made before it existed.</summary>
+    public static void EnsureLocation(List<ProjectView> views)
+    {
+        if (views.All(view => view.Id != LocationId))
+            views.Add(new ProjectView(LocationId, DefaultLabels.Get("Location.Title"), ProjectViewKind.Schedule, null,
+                ViewOrientation.None));
     }
 
     /// <summary>Adds the area table view to projects made before it existed.</summary>

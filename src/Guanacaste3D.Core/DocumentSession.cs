@@ -135,6 +135,13 @@ public sealed partial class DocumentSession
         });
     }
 
+    /// <summary>Sets the plot used by the location plan; null returns to the automatic proposal.</summary>
+    public void SetLot(SiteLot? lot)
+    {
+        if (lot is { IsValid: false }) throw new ArgumentException("The plot dimensions are invalid.", nameof(lot));
+        Commit("Transaction.SetLot", document => document.Lot = lot);
+    }
+
     /// <summary>Adds a rectangular room annotation to a level.</summary>
     public Guid AddRoom(Guid levelId, Point2 firstCorner, Point2 secondCorner, string? name = null)
     {

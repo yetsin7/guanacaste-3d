@@ -18,4 +18,7 @@
   <data name="AreaTable.Area" xml:space="preserve"><value>Área</value></data>
   <data name="AreaTable.LevelTotal" xml:space="preserve"><value>Subtotal del nivel</value></data>
   <data name="AreaTable.Total" xml:space="preserve"><value>Total construido</value></data>
+  <data name="Location.Title" xml:space="preserve"><value>Localización</value></data>
+  <data name="Location.Lot" xml:space="preserve"><value>LOTE</value></data>
+  <data name="Location.Street" xml:space="preserve"><value>Calle</value></data>
 </root>

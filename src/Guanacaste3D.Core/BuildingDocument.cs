@@ -66,6 +66,9 @@ public sealed class BuildingDocument
     public List<PlumbingPoint> PlumbingPoints { get; set; } = [];
     public List<PlumbingSystem> PlumbingSystems { get; set; } = [];
 
+    /// <summary>The plot for the location plan; null lets the plan propose one around the building.</summary>
+    public SiteLot? Lot { get; set; }
+
     /// <summary>Creates a project with protected floor/roof datums and built-in architectural type catalogs.</summary>
     public static BuildingDocument Create(string name = "Untitled Project")
     {
@@ -119,13 +122,15 @@ public sealed class BuildingDocument
         ElectricalDevices = ElectricalDevices.Select(device => device with { Controls = [.. device.Controls] }).ToList(),
         ElectricalCircuits = [.. ElectricalCircuits],
         PlumbingPoints = [.. PlumbingPoints],
-        PlumbingSystems = PlumbingSystems.Select(system => system with { Fixtures = [.. system.Fixtures] }).ToList()
+        PlumbingSystems = PlumbingSystems.Select(system => system with { Fixtures = [.. system.Fixtures] }).ToList(),
+        Lot = Lot
     };
 
     /// <summary>Rejects inconsistent projects before mutation, opening, or writing a file.</summary>
     public void Validate()
     {
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
+        if (Lot is not null && !Lot.IsValid) throw new InvalidDataException("The site lot is invalid.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
         if (Dimensions is null || Levels is null || Grids is null || Walls is null || Openings is null || WallTypes is null ||

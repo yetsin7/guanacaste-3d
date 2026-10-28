@@ -42,7 +42,7 @@ public static class SheetComposition
             else graphics.Add(new SheetPolyline([graphic.Start, graphic.End], graphic.Weight, Ink));
         }
         var mesh = sheet.Viewports.Any(viewport => document.Views.Any(view => view.Id == viewport.ViewId &&
-            view.Kind != ProjectViewKind.Plan && view.Id != BuiltInProjectViews.AreaScheduleId)) ? BuildingMesher.Build(document) : null;
+            view.Kind != ProjectViewKind.Plan && view.Id != BuiltInProjectViews.AreaScheduleId && view.Id != BuiltInProjectViews.LocationId)) ? BuildingMesher.Build(document) : null;
         var viewports = new List<ComposedViewport>();
         foreach (var placement in sheet.Viewports)
         {
@@ -89,6 +89,7 @@ public static class SheetComposition
     /// <summary>Reuses the same plan/cut geometry and adds a lightweight isometric line view for cover sheets.</summary>
     private static IReadOnlyList<SheetPrimitive> ViewGraphics(BuildingDocument document, ProjectView view, SceneMesh? mesh)
     {
+        if (view.Id == BuiltInProjectViews.LocationId) return LocationPlan.Primitives(document);
         if (view.Kind == ProjectViewKind.Plan) return PdfPlanExporter.PlanPrimitives(document, view.LevelId!.Value);
         if (view.Kind != ProjectViewKind.Model3D) return PdfPlanExporter.GeneratedViewPrimitives(document, view, mesh);
         mesh ??= BuildingMesher.Build(document);

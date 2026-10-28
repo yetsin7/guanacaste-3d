@@ -25,6 +25,20 @@ static class AreaScheduleChecks
         check(session.Document.Views.Any(view => view.Id == BuiltInProjectViews.AreaScheduleId),
             "New projects include the area table view");
 
+        var lotSession = new DocumentSession(BuildingDocument.Create("Lot"));
+        lotSession.AddWall(lotSession.Document.Levels[0].Id, new Point2(0, 0), new Point2(8, 0), height: 2.5);
+        lotSession.AddWall(lotSession.Document.Levels[0].Id, new Point2(8, 0), new Point2(8, 6), height: 2.5);
+        var auto = LocationPlan.LotFor(lotSession.Document);
+        check(auto.Width >= 14 && auto.Depth >= 9, "Without a saved plot the location plan proposes one around the building");
+        lotSession.SetLot(new SiteLot(10, 20, "Calle 103"));
+        check(lotSession.Document.Clone().Lot == new SiteLot(10, 20, "Calle 103"), "The plot survives cloning for undo and save");
+        lotSession.Undo();
+        check(lotSession.Document.Lot is null, "Undo removes the plot");
+        lotSession.Redo();
+        var locationTexts = LocationPlan.Primitives(lotSession.Document).OfType<SheetText>().Select(text => text.Text).ToList();
+        check(locationTexts.Contains("CALLE 103") && locationTexts.Contains("LOTE") && locationTexts.Contains("N"),
+            "The location plan labels the street, the plot and north");
+
         var sheetId = session.AddSheet();
         var sheet = session.Document.Sheets.Single(candidate => candidate.Id == sheetId);
         var layout = session.Document.SheetFamilies.Single(family => family.Id == sheet.TitleBlockFamilyId).SheetLayout!;
@@ -35,6 +49,10 @@ static class AreaScheduleChecks
         var texts = composed.Viewports.Single().Graphics.OfType<SheetText>().Select(text => text.Text).ToList();
         check(texts.Contains("Sala") && texts.Contains(AreaSchedule.Format(27)),
             "A sheet draws the area table with room names and the total");
+        session.UpdateSheet(session.Document.Sheets.Single() with { Viewports = [viewport with { ViewId = BuiltInProjectViews.LocationId }] });
+        var location = SheetComposition.Build(session.Document, session.Document.Sheets.Single(), DateTimeOffset.Now);
+        check(location.Viewports.Single().Graphics.OfType<SheetText>().Any(text => text.Text == "LOTE"),
+            "A sheet draws the location plan");
         check(PdfPlanExporter.ExportSheets(session.Document, DateTimeOffset.Now).Length > 0,
             "A sheet carrying the area table exports to PDF");
     }
