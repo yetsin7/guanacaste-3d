@@ -224,5 +224,7 @@
   <sys:String x:Key="Error.A target level does not exist.">Uno de los niveles de destino no existe.</sys:String>
   <sys:String x:Key="Error.The services shaft does not fit the floors.">El ducto de instalaciones no cabe en las losas.</sys:String>
   <sys:String x:Key="Error.The stair opening does not fit the floor.">El hueco de escalera no cabe en la losa.</sys:String>
+  <sys:String x:Key="Error.The element is not a stair.">El elemento no es una escalera.</sys:String>
+  <sys:String x:Key="Error.The stair riser or tread is invalid.">La contrahuella o la huella de la escalera no es válida.</sys:String>
   <sys:String x:Key="Error.A wall device needs a wall.">El dispositivo necesita un muro para alojarse.</sys:String>
 </ResourceDictionary>

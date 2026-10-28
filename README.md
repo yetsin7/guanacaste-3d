@@ -3,6 +3,18 @@
 Guanacaste 3D is an independent Windows desktop BIM and architectural CAD
 application built in C# with .NET 10 and WPF.
 
+Guanacaste 3D is free and open source under the [MIT License](LICENSE).
+Optional third-party AI providers may charge for their own services.
+
+## Download for Windows
+
+Download the Windows x64 portable package from the
+[releases page](https://github.com/yetsin7/guanacaste-3d/releases).
+Extract the ZIP and run `Guanacaste3D.Desktop.exe`. The portable package includes
+the .NET runtime and does not require an application subscription or an SDK.
+Windows 10 or 11 on a 64-bit PC is required. The package is an unsigned
+technical preview; Windows may display a reputation warning.
+
 Current navigation and editing changes: [Modeling workspace](docs/model-workspace-navigation.md).
 
 ## Status
