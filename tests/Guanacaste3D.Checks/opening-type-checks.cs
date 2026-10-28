@@ -32,6 +32,9 @@ static class OpeningTypeChecks
     {
         var (session, wallId) = NewWall();
         check(session.Document.OpeningTypes.Count == 6, "New projects include the built-in door and window catalog");
+        var sliding = session.Document.OpeningTypes.Single(type => type.Id == BuiltInOpeningTypes.SlidingWindow1600Id);
+        check(sliding.Operation == OpeningOperation.Sliding && sliding.GlazingLightCount == 2,
+            "The built-in sliding window uses two coordinated sliding sashes");
         var door = session.AddOpening(wallId, OpeningKind.Door, offset: 1.0);
         var window = session.AddOpening(wallId, OpeningKind.Window, offset: 3.0);
         var placedDoor = session.Document.Openings.Single(o => o.Id == door);

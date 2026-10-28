@@ -121,6 +121,7 @@ public static class BuiltInOpeningTypes
         new(FixedWindow600Id, OpeningKind.Window, "Fixed Window", "600 × 600 mm", 0.6, 0.6, 1.5),
         new(FixedWindow1200Id, OpeningKind.Window, "Fixed Window", "1200 × 1200 mm", 1.2, 1.2, 0.9),
         new(SlidingWindow1600Id, OpeningKind.Window, "Sliding Window", "1600 × 1400 mm", 1.6, 1.4, 0.9)
+            { Operation = OpeningOperation.Sliding, GlazingLightCount = 2 }
     ];
 
     /// <summary>Returns the type used when an opening is placed without an explicit type or size.</summary>
