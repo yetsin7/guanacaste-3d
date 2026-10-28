@@ -71,6 +71,14 @@ Exports and saves write files, so the user confirms each one.
   `tests/Guanacaste3D.Checks/agent-checks.cs`. The budget lives in `src/Guanacaste3D.Core/budget`; its default unit
   prices are placeholders to be replaced with local prices.
 
+## Modern villa sample
+
+`File > Abrir ejemplo: villa moderna` opens a two-storey villa built only through `DocumentSession`: a glazed ground-floor
+pavilion, a white concrete upper volume that cantilevers past it, entrance steps, a recessed reflecting pool
+(`FloorKind.Water`, rendered with the glossy `SurfaceKind.Water` material) and a planted garden. Render it with the
+golden-hour lighting preset; `tests/Guanacaste3D.RenderBench` renders it with `G3_SHOT_ONLY=villa ... -- --shot`. The
+assistant can build the same pieces with `add_curtain_wall`, `add_pool` and `add_planting`.
+
 ## Publish for Windows
 
 ```powershell

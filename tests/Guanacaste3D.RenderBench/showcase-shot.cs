@@ -21,7 +21,7 @@ static class ShowcaseShot
         var garden = GardenScene(min, max);
         var all = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") == "night"
             ? new[] { NightInterior() }
-            : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom() };
+            : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom(), Villa() };
         var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
             ? all.Where(scene => scene.Name == only).ToArray()
             : all;
@@ -37,6 +37,15 @@ static class ShowcaseShot
                 tracer.ToBgra32(true, new ImageFinish { AutoExposure = true, ToneMapper = ToneMapper.Aces })));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
+    }
+
+    /// <summary>The modern villa at golden hour, seen from the pool side: the look the photoreal pipeline aims for.</summary>
+    private static BenchmarkScene Villa()
+    {
+        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.ModernHouseShowcase.Create(), includeGround: true);
+        var settings = RenderPresets.Lighting(LightingScenario.GoldenHour, 10.6, 80, 12, RenderQuality.High);
+        return new BenchmarkScene("villa", mesh,
+            new RenderCamera(new Vector3(-6, -21, 1.7f), new Vector3(9, -2, 3.4f), 58) { CorrectVerticals = true }, settings);
     }
 
     /// <summary>

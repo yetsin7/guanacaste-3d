@@ -107,7 +107,13 @@ public static class FamilyGeometry
         var text = expression.Trim();
         var parameter = family.Parameters.FirstOrDefault(candidate =>
             string.Equals(candidate.Name, text, StringComparison.OrdinalIgnoreCase));
-        if (parameter is not null) return ParameterNumber(family, parameter);
+        if (parameter is not null)
+        {
+            var resolved = Resolve(family, parameter.Name);
+            if (resolved is not { Kind: FormulaKind.Number })
+                throw new InvalidDataException("An extrusion expression does not evaluate to a length.");
+            return resolved.Value.Number;
+        }
         var value = FormulaEvaluator.Evaluate(FormulaParser.Parse(text), name => Resolve(family, name));
         if (value is not { Kind: FormulaKind.Number })
             throw new InvalidDataException("An extrusion expression does not evaluate to a length.");
@@ -115,20 +121,36 @@ public static class FamilyGeometry
     }
 
     /// <summary>Resolves a parameter name for the formula evaluator; null when the family has no such parameter.</summary>
-    private static FormulaValue? Resolve(FamilyDocument family, string name)
+    private static FormulaValue? Resolve(FamilyDocument family, string name) =>
+        ResolveParameter(family, name, new HashSet<Guid>());
+
+    /// <summary>Evaluates calculated parameters recursively, detecting cycles even before document validation.</summary>
+    private static FormulaValue? ResolveParameter(FamilyDocument family, string name, HashSet<Guid> active)
     {
         var parameter = family.Parameters.FirstOrDefault(candidate =>
             string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase));
-        return parameter is null ? null : FormulaValue.Of(ParameterNumber(family, parameter));
-    }
-
-    /// <summary>Returns a parameter's number for the family's first type: that type's value, else the default.</summary>
-    private static double ParameterNumber(FamilyDocument family, FamilyParameterDefinition parameter)
-    {
-        var typed = family.Types.FirstOrDefault()?.Values
-            .FirstOrDefault(value => value.ParameterId == parameter.Id)?.Number;
-        return typed ?? parameter.DefaultNumber
-            ?? throw new InvalidDataException($"Parameter '{parameter.Name}' has no numeric value.");
+        if (parameter is null) return null;
+        if (!active.Add(parameter.Id))
+            throw new InvalidDataException($"Formula error: '{parameter.Name}' depends on itself through other formulas.");
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(parameter.Formula))
+                return FormulaEvaluator.Evaluate(FormulaParser.Parse(parameter.Formula),
+                    reference => ResolveParameter(family, reference, active));
+            var typed = family.Types.FirstOrDefault()?.Values
+                .FirstOrDefault(value => value.ParameterId == parameter.Id);
+            if (parameter.Kind is FamilyParameterKind.Text or FamilyParameterKind.Material or
+                FamilyParameterKind.ElementReference or FamilyParameterKind.Enumeration)
+            {
+                var value = typed?.Text ?? parameter.DefaultText;
+                return value is null ? null : FormulaValue.Of(value);
+            }
+            var number = typed?.Number ?? parameter.DefaultNumber;
+            if (number is null) return null;
+            return parameter.Kind is FamilyParameterKind.Boolean or FamilyParameterKind.Visibility
+                ? FormulaValue.Of(number.Value != 0) : FormulaValue.Of(number.Value);
+        }
+        finally { active.Remove(parameter.Id); }
     }
 
     /// <summary>

@@ -5,6 +5,7 @@
               <MenuItem Header="{DynamicResource Action.OpenProject}" Click="Command_Click" Tag="Open"/>
               <MenuItem Header="{DynamicResource Action.OpenSample}" Click="Command_Click" Tag="OpenSample"/>
               <MenuItem Header="{DynamicResource Action.NewArchitecturalMetric}" Click="Command_Click" Tag="NewArchitecturalMetric"/>
+              <MenuItem Header="{DynamicResource Action.OpenModernHouse}" Click="Command_Click" Tag="OpenModernHouse"/>
               <MenuItem Header="{DynamicResource Action.NewFromTemplate}" Click="Command_Click" Tag="NewFromTemplate"/>
               <Separator/>
               <MenuItem Header="{DynamicResource Action.Save}" Click="Command_Click" Tag="Save"/>

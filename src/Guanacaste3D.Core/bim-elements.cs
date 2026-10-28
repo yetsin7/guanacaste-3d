@@ -107,6 +107,8 @@ public enum FloorKind
     Floor,
     Ceiling,
     Roof,
+    /// <summary>A basin of still water: a thin slab whose top face renders as a reflective water surface.</summary>
+    Water,
     /// <summary>
     /// A solid of site terrain: its top passes through <see cref="FloorSlab.TopoPoints"/>, its boundary corners rest at
     /// <see cref="FloorSlab.ElevationOffset"/>, and it reaches <see cref="FloorSlab.Thickness"/> below its lowest point.

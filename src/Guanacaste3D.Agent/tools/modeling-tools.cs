@@ -119,6 +119,58 @@ internal static class ModelingTools
                 return ReadTools.Json(new { id });
             });
 
+        yield return new("add_curtain_wall",
+            "Adds a glazed curtain wall (glass with mullions) along a line, 3 m high. Use it for glass facades and pavilions.",
+            Schema.Object(
+                ("level", Schema.Str("Level id or name."), true),
+                ("x1", Schema.Num("Start X."), true), ("y1", Schema.Num("Start Y."), true),
+                ("x2", Schema.Num("End X."), true), ("y2", Schema.Num("End Y."), true)),
+            ToolRisk.Modify, (context, args) =>
+            {
+                var preset = ArchitecturalLibrary.PresetsFor(StructuralElementKind.CurtainWall).First();
+                var id = context.Session.AddElementFromPreset(args.Level(), preset,
+                    new Point2(args.Number("x1"), args.Number("y1")), new Point2(args.Number("x2"), args.Number("y2")));
+                return ReadTools.Json(new { id });
+            });
+
+        yield return new("add_pool",
+            "Adds a rectangular reflecting pool whose water surface sits 15 cm below the level, so surrounding paving frames it.",
+            Schema.Object(
+                ("level", Schema.Str("Level id or name."), true),
+                ("x", Schema.Num("Lower-left X."), true), ("y", Schema.Num("Lower-left Y."), true),
+                ("width", Schema.Num("Size along X."), true), ("depth", Schema.Num("Size along Y."), true)),
+            ToolRisk.Modify, (context, args) =>
+            {
+                double x = args.Number("x"), y = args.Number("y"), w = args.Number("width"), d = args.Number("depth");
+                if (w <= 0 || d <= 0) throw new InvalidDataException("width and depth must be positive.");
+                var preset = ArchitecturalLibrary.SlabPresets.Single(slab => slab.Kind == FloorKind.Water);
+                var id = context.Session.AddSlabFromPreset(args.Level(), [new(x, y), new(x + w, y), new(x + w, y + d), new(x, y + d)],
+                    preset, -0.15);
+                return ReadTools.Json(new { id });
+            });
+
+        yield return new("add_planting", "Plants a tree, palm, cypress or shrub at a plan position.",
+            Schema.Object(
+                ("level", Schema.Str("Level id or name."), true),
+                ("x", Schema.Num("X."), true), ("y", Schema.Num("Y."), true),
+                ("species", Schema.Str("Plant type.", "broadleaf", "guanacaste", "palm", "cypress", "shrub"), true)),
+            ToolRisk.Modify, (context, args) =>
+            {
+                var name = args.Text("species") switch
+                {
+                    "broadleaf" => "Broadleaf Tree 8 m",
+                    "guanacaste" => "Guanacaste Tree 15 m",
+                    "palm" => "Coconut Palm 9 m",
+                    "cypress" => "Cypress 12 m",
+                    "shrub" => "Shrub 1.5 m",
+                    _ => throw new InvalidDataException("Unknown species.")
+                };
+                var point = new Point2(args.Number("x"), args.Number("y"));
+                var id = context.Session.AddElementFromPreset(args.Level(),
+                    ArchitecturalLibrary.ElementPresets.Single(preset => preset.Name == name), point, point);
+                return ReadTools.Json(new { id });
+            });
+
         yield return new("remove_element", "Deletes one element by id. It can be undone with the undo tool.",
             Schema.Object(
                 ("kind", Schema.Str("Element kind.", "wall", "opening", "room", "floor", "column", "level"), true),

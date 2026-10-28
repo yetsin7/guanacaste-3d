@@ -124,6 +124,10 @@ public static class MaterialLibrary
             Name = "Piso", BaseColor = new(0.56f, 0.55f, 0.52f), Roughness = 0.38f,
             Pattern = SurfacePattern.Tiles, PatternScale = 0.6f
         },
+        SurfaceKind.Water => new RenderMaterial
+        {
+            Name = "Agua", BaseColor = new(0.015f, 0.05f, 0.06f), Roughness = 0.025f, Ior = 1.33f
+        },
         SurfaceKind.Glass => new RenderMaterial
         {
             Name = "Vidrio", BaseColor = Vector3.One, Roughness = 0.02f, Transmission = 1,

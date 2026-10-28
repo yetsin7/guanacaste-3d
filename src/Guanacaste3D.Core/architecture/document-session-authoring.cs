@@ -120,6 +120,8 @@ public sealed partial class DocumentSession
         FloorKind.Roof => WallTopOf(levelId) + preset.Thickness,
         // Terrain sits just under the ground floor, so a slab on the level never shares its plane.
         FloorKind.Toposolid => -0.10,
+        // The water surface sits below the surrounding paving, as in a real reflecting pool.
+        FloorKind.Water => -0.15,
         _ => 0
     };
 

@@ -50,6 +50,14 @@ public partial class MainWindow
         StatusText.Text = GetText("Status.ProjectFromTemplate");
     }
 
+    /// <summary>Opens the modern villa sample, the reference scene for photorealistic rendering.</summary>
+    private void OpenModernHouse_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDiscard()) return;
+        AttachDocument(ModernHouseShowcase.Create(), null);
+        StatusText.Text = GetText("Status.ModernHouseOpened");
+    }
+
     /// <summary>Starts a project from a .g3dt file. The template is only read, so it never changes.</summary>
     private void NewFromTemplate_Click(object sender, RoutedEventArgs e)
     {

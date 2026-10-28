@@ -13,6 +13,8 @@
   <sys:String x:Key="Action.OpenProject">Abrir proyecto…</sys:String>
   <sys:String x:Key="Action.Save">Guardar</sys:String>
   <sys:String x:Key="Action.SaveAs">Guardar como…</sys:String>
+  <sys:String x:Key="Action.OpenModernHouse">Abrir ejemplo: villa moderna</sys:String>
+  <sys:String x:Key="Status.ModernHouseOpened">Villa moderna cargada: pruébala en la vista Render con luz de atardecer.</sys:String>
   <sys:String x:Key="Action.NewArchitecturalMetric">Nuevo proyecto con plantilla métrica</sys:String>
   <sys:String x:Key="Action.NewFromTemplate">Nuevo proyecto desde plantilla…</sys:String>
   <sys:String x:Key="Action.SaveAsTemplate">Guardar como plantilla…</sys:String>

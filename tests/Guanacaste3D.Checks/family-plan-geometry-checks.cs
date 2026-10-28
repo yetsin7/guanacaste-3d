@@ -41,6 +41,43 @@ internal static class FamilyPlanGeometryChecks
             if (File.Exists(path + ".bak")) File.Delete(path + ".bak");
         }
         CheckTemplateExcludesModeledFamilies(session.Document, check);
+        CheckCalculatedExtrusion(check);
+    }
+
+    /// <summary>Checks chained formulas drive the same solid and plan geometry after a type value changes.</summary>
+    private static void CheckCalculatedExtrusion(Action<bool, string> check)
+    {
+        var baseLength = new FamilyParameterDefinition(Guid.NewGuid(), "BaseLength", FamilyParameterKind.Length,
+            FamilyParameterScope.Type) { DefaultNumber = 1 };
+        var doubled = new FamilyParameterDefinition(Guid.NewGuid(), "Doubled", FamilyParameterKind.Length,
+            FamilyParameterScope.Calculated) { Formula = "BaseLength * 2", DefaultNumber = 99 };
+        var depth = new FamilyParameterDefinition(Guid.NewGuid(), "Depth", FamilyParameterKind.Length,
+            FamilyParameterScope.Calculated) { Formula = "Doubled + 0.5 m" };
+        var plane = InPlaceFamilyRules.HorizontalPlane(0);
+        var operation = new FamilyOperation(Guid.NewGuid(), "Body", FamilyOperationKind.SolidExtrusion)
+        {
+            WorkPlaneId = plane.Id,
+            Profile = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)],
+            Expressions = new() { [FamilyGeometry.DepthKey] = "Depth" }
+        };
+        var family = new FamilyDocument
+        {
+            Parameters = [baseLength, doubled, depth], WorkPlanes = [plane], Operations = [operation],
+            Types = [new(Guid.NewGuid(), "Standard", [new(baseLength.Id, 0.5, null)])]
+        };
+        family.Validate();
+        check(Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(family)) - 1.5) < 1e-6,
+            "A calculated family parameter overrides its stored default and drives extrusion volume");
+        family.Types[0].Values[0] = new(baseLength.Id, 0.2, null);
+        family.Validate();
+        check(Math.Abs(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(family)) - 0.9) < 1e-6 &&
+              FamilyPlanGeometry.ForLevel(family, 0, 3).Count == 4,
+            "Changing a type value regenerates chained formulas in 3D and the low-solid plan");
+        family.Parameters[2] = depth with { Formula = "Doubled / 0" };
+        var rejected = false;
+        try { family.Validate(); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "An undefined calculated extrusion is rejected during family validation");
     }
 
     /// <summary>Ensures native templates keep setup while excluding family instances and their geometry.</summary>

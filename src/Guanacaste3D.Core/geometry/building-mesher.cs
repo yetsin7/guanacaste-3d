@@ -63,7 +63,9 @@ public enum SurfaceKind : byte
     /// <summary>The glass face of a photovoltaic module: deep blue cells under smooth glass.</summary>
     SolarCell,
     /// <summary>Fire-protection red enamel: sprinkler mains, extinguishers, hose cabinets and alarm devices.</summary>
-    FireRed
+    FireRed,
+    /// <summary>Still water in a pool or reflecting basin: dark, glossy, and it mirrors the sky and what stands beside it.</summary>
+    Water
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -247,7 +249,8 @@ public static class BuildingMesher
             else
             {
                 AddSlab(mesh, RoofGeometry.WithOverhang(floor).Boundary, slabTop, floor.Thickness,
-                    FloorOpenings(document, floor, elevations));
+                    FloorOpenings(document, floor, elevations),
+                    floor.Kind == FloorKind.Water ? SurfaceKind.Water : SurfaceKind.Floor);
             }
         }
 
@@ -835,12 +838,12 @@ public static class BuildingMesher
     /// out: the top and bottom faces are built from convex pieces, and each opening gets its own inner walls.
     /// </summary>
     private static void AddSlab(SceneMesh mesh, IReadOnlyList<Point2> boundary, double elevation, double thickness,
-        IReadOnlyList<Geometry.PlanRectangle> openings)
+        IReadOnlyList<Geometry.PlanRectangle> openings, SurfaceKind surface = SurfaceKind.Floor)
     {
         if (openings.Count == 0)
         {
             var outline = boundary.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray();
-            AddPrism(mesh, outline, (float)(elevation - thickness), (float)elevation, SurfaceKind.Floor);
+            AddPrism(mesh, outline, (float)(elevation - thickness), (float)elevation, surface);
             return;
         }
 

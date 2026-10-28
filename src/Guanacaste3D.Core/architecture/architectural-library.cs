@@ -167,6 +167,7 @@ public static class ArchitecturalLibrary
         new("Gable Roof 30°", FloorKind.Roof, 0.10, RoofShape.Gable, 30, FinishKind.None, 0.6),
         new("Hip Roof 25°", FloorKind.Roof, 0.10, RoofShape.Hip, 25, FinishKind.None, 0.6),
         new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None, 0.6),
+        new("Reflecting Pool 300 mm", FloorKind.Water, 0.30, RoofShape.Flat, 0, FinishKind.None),
         new("Toposolid 1 m", FloorKind.Toposolid, 1.0, RoofShape.Flat, 0, FinishKind.None)
     ];
 

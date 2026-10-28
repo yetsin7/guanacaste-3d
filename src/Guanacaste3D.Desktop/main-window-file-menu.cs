@@ -13,6 +13,7 @@ public partial class MainWindow
             "Open" => Open_Click,
             "OpenSample" => OpenSample_Click,
             "NewArchitecturalMetric" => NewArchitecturalMetric_Click,
+            "OpenModernHouse" => OpenModernHouse_Click,
             "NewFromTemplate" => NewFromTemplate_Click,
             "Save" => Save_Click,
             "SaveAs" => SaveAs_Click,
