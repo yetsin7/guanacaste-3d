@@ -51,7 +51,7 @@ internal static partial class WorkspaceChecks
         WaitFor(() => !Field<bool>("_modelDirty"));
         var viewport = (Viewport3D)_window.FindName("ModelViewport");
         Check(viewport.Children.OfType<ModelVisual3D>().Select(visual => visual.Content).OfType<GeometryModel3D>()
-            .Any(model => model.Material is EmissiveMaterial { Brush: SolidColorBrush brush } && brush.Color == Color.FromRgb(113, 119, 110)),
+            .Any(model => EmissiveColors(model.Material).Contains(Color.FromRgb(113, 119, 110))),
             "The shadow switch adds real projected ground-shadow geometry");
         reopened = ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(session.Document));
         graphics = reopened.Views.Single(view => view.Id == BuiltInProjectViews.Model3DId).Graphics!;

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Windows.Media.Imaging;
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Desktop.Controls;
@@ -168,11 +169,12 @@ internal static partial class WorkspaceChecks
             var models = viewport.Children.OfType<ModelVisual3D>().Select(visual => visual.Content).OfType<GeometryModel3D>().ToArray();
             Check(style switch
             {
-                "Wireframe" => models.Length == 1 && models[0].Material is EmissiveMaterial,
-                "HiddenLine" => models.Count(model => model.Material is EmissiveMaterial { Brush: SolidColorBrush brush } && brush.Color == Colors.White) > 0,
-                "ConsistentColors" => models.Any(model => model.Material is EmissiveMaterial),
+                "Wireframe" => models.Length == 1 && EmissiveColors(models[0].Material).Any(),
+                "HiddenLine" => models.Any(model => EmissiveColors(model.Material).Contains(Colors.White)),
+                "ConsistentColors" => models.Any(model => EmissiveColors(model.Material).Any()),
                 _ => models.Any(model => model.Material is DiffuseMaterial)
             }, $"The {style} selection changes the actual scene representation");
+            Check(VisibleModelPixelCount() > 100, $"The {style} model remains visibly rendered against its white background");
             if (style == "HiddenLine") SaveBitmap("reference-hidden-line.png");
         }
         Invoke("ExecuteModelViewCommand", "Style.Realistic");
@@ -183,5 +185,30 @@ internal static partial class WorkspaceChecks
         Check(Field<Exception?>("_modelPreviewFailure") is null, "Realistic rendering completes without an active preview failure");
         SaveBitmap("reference-realistic.png");
         Invoke("ExecuteModelViewCommand", "Style.Textures");
+    }
+
+    /// <summary>Finds actual emission colors within composite WPF materials without assuming a specific container shape.</summary>
+    private static IEnumerable<Color> EmissiveColors(Material material)
+    {
+        if (material is EmissiveMaterial { Brush: SolidColorBrush brush }) yield return brush.Color;
+        if (material is not MaterialGroup group) yield break;
+        foreach (var child in group.Children)
+        foreach (var color in EmissiveColors(child)) yield return color;
+    }
+
+    /// <summary>Samples the real composed model surface so invisible meshes cannot satisfy visual-style assertions.</summary>
+    private static int VisibleModelPixelCount()
+    {
+        var surface = (FrameworkElement)_window.FindName("ModelSurface");
+        var width = Math.Max(1, (int)surface.ActualWidth);
+        var height = Math.Max(1, (int)surface.ActualHeight);
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(surface);
+        var pixels = new byte[width * height * 4];
+        bitmap.CopyPixels(pixels, width * 4, 0);
+        var visible = 0;
+        for (var index = 0; index < pixels.Length; index += 4)
+            if (pixels[index + 3] > 200 && Math.Min(pixels[index], Math.Min(pixels[index + 1], pixels[index + 2])) < 190) visible++;
+        return visible;
     }
 }

@@ -14,6 +14,10 @@ internal static class ScenePresentation
     /// <summary>Model (x, y, z) to WPF (x, z, -y): a proper rotation, so triangle winding is preserved.</summary>
     public static Point3D ToWpf(System.Numerics.Vector3 point) => new(point.X, point.Z, -point.Y);
 
+    /// <summary>Keeps project-framed outlines above the subpixel range that produces broken, dotted edges.</summary>
+    public static float EdgeThicknessForBounds(Vector3 min, Vector3 max) =>
+        Math.Clamp(0.004f * Math.Max(3, (max - min).Length() / 2), 0.006f, 0.12f);
+
     /// <summary>
     /// Builds one frozen model per surface kind; transparent glass is emitted last. Kinds with an image in
     /// <paramref name="textures"/> are drawn with it, projected in world space exactly as the renderer projects it, so
@@ -253,7 +257,7 @@ internal static class ScenePresentation
         }
         if (mesh.TriangleIndices.Count == 0) return null;
         mesh.Freeze();
-        var material = new EmissiveMaterial(new SolidColorBrush(color));
+        var material = SceneUnlitMaterial.Create(new SolidColorBrush(color));
         var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
         model.Freeze();
         return model;

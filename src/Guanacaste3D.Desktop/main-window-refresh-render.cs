@@ -214,13 +214,12 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Width of drawn edges in meters, kept deliberately subtle so the model reads like a Revit hidden-line view.
-    /// The narrow upper bound avoids heavy outlines on large projects while the lower bound remains depth-tested.
+    /// Width of depth-tested outlines in meters, scaled for readable continuous lines at normal project framing.
     /// </summary>
     private float EdgeThickness()
     {
         var (min, max) = SceneBounds();
-        return Math.Clamp(0.0012f * Math.Max(3, (max - min).Length() / 2), 0.0025f, 0.012f);
+        return ScenePresentation.EdgeThicknessForBounds(min, max);
     }
 
     private bool _xRay;

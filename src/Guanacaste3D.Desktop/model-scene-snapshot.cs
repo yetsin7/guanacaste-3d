@@ -37,7 +37,7 @@ internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models,
         }
         var hasGeometry = indices.Count > 0;
         if (!hasGeometry) { minimum = new(-5, -5, 0); maximum = new(5, 5, 3); }
-        var thickness = Math.Clamp(0.0012f * Math.Max(3, (maximum - minimum).Length() / 2), 0.0025f, 0.012f);
+        var thickness = ScenePresentation.EdgeThicknessForBounds(minimum, maximum);
         var models = (xray ? ScenePresentation.ToWpfXRay(scene) : clay
             ? ScenePresentation.ToWpfClay(scene) : ScenePresentation.ToWpfModels(scene, textures)).ToArray();
         // Each edge becomes an eight-sided tube; bound the additional geometry on large models.

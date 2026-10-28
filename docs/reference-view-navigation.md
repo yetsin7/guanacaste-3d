@@ -83,7 +83,18 @@ Evidence is written under `artifacts/model-workspace-evidence/`, including
 `reference-controls-compact.png`. Build and suite results are recorded in
 `artifacts/revit-*.log`.
 
-Computer Use returned a native-pipe connection error. Verification therefore
-uses actual WPF composition, routed control events, production camera methods,
-and render frames. It does not establish physical mouse-input coverage or
-pixel-for-pixel identity with Revit.
+The initial Computer Use connection failed, but the unified native bridge later
+became available. Native checks against a uniquely named copy of the validated
+executable covered the built-in house, wheel selection and orbit dragging,
+Escape dismissal, cube face snapping, zoom menus, rectangle zoom, visual-style
+selection, and temporary wall hiding followed by reset. The corrected region
+gesture returns the status bar to selection mode after completion.
+
+Visual inspection found that emissive-only edge materials could render white.
+Outlines and color studies now establish a black diffuse base before emission,
+following the WPF material composition described in the
+[Microsoft example](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/graphics-multimedia/how-to-apply-emissive-material-to-a-3-d-object).
+The focused suite also samples composed viewport pixels to reject invisible
+model presentations. The final focused run passed 416 assertions. Native
+screenshots confirmed the corrected hidden-line model and temporary visibility
+restore. Pixel-for-pixel identity with Revit has not been established.

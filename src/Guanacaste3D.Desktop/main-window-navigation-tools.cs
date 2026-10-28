@@ -255,6 +255,7 @@ public partial class MainWindow
     /// <summary>Releases overlay capture and restores normal selection without creating a model transaction.</summary>
     private void CancelNavigationOverlay()
     {
+        var hadRegionPrompt = _regionPurpose is not null;
         _regionStart = null;
         _regionPurpose = null;
         if (_navigationOverlay.IsMouseCaptured) _navigationOverlay.ReleaseMouseCapture();
@@ -262,6 +263,7 @@ public partial class MainWindow
         _navigationOverlay.Cursor = Cursors.Arrow;
         _regionOutline.Visibility = Visibility.Collapsed;
         _navigationWheel.Dismiss();
+        if (hadRegionPrompt) StatusText.Text = GetText("Status.SelectionMode");
     }
 
     /// <summary>Handles Escape and two-letter zoom shortcuts before drawing tools or navigation keys.</summary>

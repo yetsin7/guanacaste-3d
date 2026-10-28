@@ -28,7 +28,7 @@ internal static class ModelSceneEffects
             }
         }
         if (mesh.TriangleIndices.Count == 0) return null;
-        var material = new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(113, 119, 110)));
+        var material = SceneUnlitMaterial.Create(new SolidColorBrush(Color.FromRgb(113, 119, 110)));
         var model = new GeometryModel3D(mesh, material) { BackMaterial = material };
         model.Freeze();
         return model;

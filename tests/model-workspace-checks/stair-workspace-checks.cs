@@ -19,6 +19,13 @@ internal static partial class WorkspaceChecks
                 station++;
             }
         });
+        var baseLevel = session.Document.Levels.Single(level => level.Id == Field<Guid>("_activeLevelId"));
+        var upperLevel = session.Document.Levels.Where(level => level.Elevation > baseLevel.Elevation).Min(level => level.Elevation);
+        var rise = (double)Invoke("StairPlacementHeight", 3.0, 0.4)!;
+        Check(Math.Abs(baseLevel.Elevation + 0.4 + rise - upperLevel) < 1e-8,
+            "An offset stair reaches the next level instead of overshooting it");
+        Check(Math.Abs((double)Invoke("StairPlacementHeight", 2.5, upperLevel - baseLevel.Elevation + 0.1)! - 2.5) < 1e-8,
+            "A stair base above all levels retains the preset rise");
         var stairs = session.Document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Stair).ToArray();
         foreach (var stair in stairs)
         {

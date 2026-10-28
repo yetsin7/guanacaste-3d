@@ -83,6 +83,7 @@ public partial class ModelNavigation : UserControl
             };
             CubeCanvas.Children.Add(label);
         }
+        DrawCornerTargets();
     }
 
     /// <summary>Maps an orientation-space corner to the widget's orthographic projection.</summary>
@@ -114,6 +115,7 @@ public partial class ModelNavigation : UserControl
         GestureStarted?.Invoke();
         _dragged = false;
         _requestedDirection = null;
+        if (e.OriginalSource is Rectangle { Tag: Vector3 corner }) _requestedDirection = corner;
         if (e.OriginalSource is Polygon { Tag: ValueTuple<Vector3, Vector3, Vector3, Matrix> face })
         {
             var inverse = face.Item4;

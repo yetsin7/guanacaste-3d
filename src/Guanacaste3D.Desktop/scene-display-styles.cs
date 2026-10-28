@@ -15,7 +15,7 @@ internal static class SceneDisplayStyles
         {
             if (style is not (ModelDisplayStyle.HiddenLine or ModelDisplayStyle.ConsistentColors)) { yield return source; continue; }
             Material material = style == ModelDisplayStyle.HiddenLine
-                ? new EmissiveMaterial(Brushes.White) : Unlit(source.Material);
+                ? SceneUnlitMaterial.Create(Brushes.White) : Unlit(source.Material);
             var model = new GeometryModel3D(source.Geometry, material) { BackMaterial = material, Transform = source.Transform };
             model.Freeze();
             yield return model;
@@ -26,7 +26,7 @@ internal static class SceneDisplayStyles
     private static Material Unlit(Material source)
     {
         if (source is MaterialGroup group)
-            return new MaterialGroup { Children = new MaterialCollection(group.Children.OfType<DiffuseMaterial>().Select(material => new EmissiveMaterial(material.Brush))) };
-        return source is DiffuseMaterial diffuse ? new EmissiveMaterial(diffuse.Brush) : source;
+            return new MaterialGroup { Children = new MaterialCollection(group.Children.OfType<DiffuseMaterial>().Select(material => SceneUnlitMaterial.Create(material.Brush))) };
+        return source is DiffuseMaterial diffuse ? SceneUnlitMaterial.Create(diffuse.Brush) : source;
     }
 }

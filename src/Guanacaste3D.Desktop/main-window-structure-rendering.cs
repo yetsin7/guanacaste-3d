@@ -198,7 +198,7 @@ public partial class MainWindow
         if (_structuralPreset is { } preset && preset.Kind == tool.Kind)
             (width, height, offset, style, depth, shape) =
                 (preset.Width, preset.Height, preset.Offset, preset.Style, preset.Depth, preset.ComponentShape);
-        if (tool.Kind == StructuralElementKind.Stair) height = StairPlacementHeight(height);
+        if (tool.Kind == StructuralElementKind.Stair) height = StairPlacementHeight(height, offset);
         var preview = new StructuralElement(Guid.Empty, _activeLevelId, tool.Kind, string.Empty,
             origin, pointer, width, height, offset)
         {

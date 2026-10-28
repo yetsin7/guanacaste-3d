@@ -18,12 +18,13 @@ public partial class MainWindow
             stair.Width, flights.Count, goings.DefaultIfEmpty(0).Min(), goings.DefaultIfEmpty(0).Max(), stair.Offset);
     }
 
-    /// <summary>Uses the nearest higher level when available, otherwise keeps the selected type's default rise.</summary>
-    private double StairPlacementHeight(double defaultHeight)
+    /// <summary>Measures rise from the offset stair base to the nearest higher level, falling back to the preset rise.</summary>
+    private double StairPlacementHeight(double defaultHeight, double baseOffset)
     {
         var elevation = _session.Document.Levels.First(level => level.Id == _activeLevelId).Elevation;
-        return _session.Document.Levels.Where(level => level.Elevation > elevation + 1e-6)
-            .OrderBy(level => level.Elevation).Select(level => level.Elevation - elevation)
+        var baseElevation = elevation + baseOffset;
+        return _session.Document.Levels.Where(level => level.Elevation > baseElevation + 1e-6)
+            .OrderBy(level => level.Elevation).Select(level => level.Elevation - baseElevation)
             .FirstOrDefault(defaultHeight);
     }
 }

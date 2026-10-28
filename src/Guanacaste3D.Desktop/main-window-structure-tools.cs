@@ -232,7 +232,7 @@ public partial class MainWindow
                     : ArchitecturalLibrary.PresetsFor(StructuralElementKind.Stair).First();
                 using var group = _session.BeginGroup("Transaction.AddStair");
                 _selectedStructuralId = _session.AddElementFromPreset(_activeLevelId,
-                    preset with { Height = StairPlacementHeight(preset.Height) }, start, end);
+                    preset with { Height = StairPlacementHeight(preset.Height, preset.Offset) }, start, end);
                 _session.AddRailingsOnHost(_selectedStructuralId.Value);
                 group.Assimilate();
             }
