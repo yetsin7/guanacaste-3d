@@ -30,23 +30,38 @@ public partial class ArchitectureRibbon : UserControl
     {
         InitializeComponent();
         foreach (var panel in Layout()) GroupHost.Children.Add(BuildPanel(panel));
-        GroupHost.SizeChanged += RibbonViewport_SizeChanged;
         WallTypeGroup.SizeChanged += RibbonViewport_SizeChanged;
         Loaded += RibbonLoaded;
     }
 
     /// <summary>Fits a moderately wide ribbon inside the available width after its first layout pass.</summary>
-    private void RibbonLoaded(object sender, RoutedEventArgs e) => FitRibbonToViewport();
+    private void RibbonLoaded(object sender, RoutedEventArgs e) => ScheduleFit();
 
     /// <summary>Recalculates the ribbon fit when the window or a contextual panel changes size.</summary>
-    private void RibbonViewport_SizeChanged(object sender, SizeChangedEventArgs e) => FitRibbonToViewport();
+    private void RibbonViewport_SizeChanged(object sender, SizeChangedEventArgs e) => ScheduleFit();
+
+    private bool _fitScheduled;
+
+    /// <summary>Runs the fit once, after the current layout pass, because captions are measured with real layouts.</summary>
+    private void ScheduleFit()
+    {
+        if (_fitScheduled) return;
+        _fitScheduled = true;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            _fitScheduled = false;
+            FitRibbonToViewport();
+        });
+    }
 
     /// <summary>Keeps every panel visible on wide screens and leaves readable horizontal scrolling on narrow ones.</summary>
     private void FitRibbonToViewport()
     {
-        var naturalWidth = GroupHost.DesiredSize.Width +
-            (WallTypeGroup.Visibility == Visibility.Visible ? WallTypeGroup.DesiredSize.Width : 0) + 4;
-        if (naturalWidth <= 0 || RibbonViewport.ActualWidth <= 0) return;
+        if (RibbonViewport.ActualWidth <= 0) return;
+        var wallTypeWidth = WallTypeGroup.Visibility == Visibility.Visible ? WallTypeGroup.ActualWidth : 0;
+        RibbonLabelFitter.Fit(GroupHost, RibbonViewport.ActualWidth - 6 - 4 - wallTypeWidth);
+        var naturalWidth = GroupHost.DesiredSize.Width + wallTypeWidth + 4;
+        if (naturalWidth <= 0) return;
         var requiredScale = (RibbonViewport.ActualWidth - 6) / naturalWidth;
         var scale = requiredScale >= 0.8 ? Math.Min(1, requiredScale) : 1;
         if (RibbonContent.LayoutTransform is ScaleTransform current && Math.Abs(current.ScaleX - scale) < 0.005) return;

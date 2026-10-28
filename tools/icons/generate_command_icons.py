@@ -154,7 +154,9 @@ BADGE_PENS = {"G": "CmdBadgeGreen", "R": "CmdBadgeRed", "A": "CmdBadgeAccent", "
 def drawing(geometry, fill, pen):
     """Serializes a vector primitive using the shared CAD palette and pen resources."""
     attributes = []
-    if fill:
+    if fill and fill.startswith("@"):
+        attributes.append(f'Brush="{{StaticResource {fill[1:]}}}"')
+    elif fill:
         attributes.append(f'Brush="{FILLS[fill]}"')
     if pen:
         attributes.append(f'Pen="{{StaticResource {PENS[pen]}}}"')
@@ -176,17 +178,36 @@ def icon_xml(name, base_name, badge_name, prefix="CmdIcon"):
     return "\n".join(lines)
 
 
-def main():
-    """Regenerates command icons and legacy aliases from the same reference-driven artwork."""
-    theme = runpy.run_path(os.path.join(os.path.dirname(__file__), "cad-icon-theme.py"))
+def load_themes():
+    """Merges every theme into the shared kit and returns the legacy theme plus the extra Pen resource lines."""
+    here = os.path.dirname(__file__)
+    theme = runpy.run_path(os.path.join(here, "cad-icon-theme.py"))
     FILLS.update(theme["PALETTE"])
     PENS.update(theme["PEN_NAMES"])
     BASES.update(theme["SHAPES"])
+    # The tab themes have their own illustration style; their commands are re-pointed at the a_* pictograms.
+    pens = []
+    for file_name in ("architecture-icon-theme.py", "engineering-icon-theme.py"):
+        tab_theme = runpy.run_path(os.path.join(here, file_name))
+        FILLS.update(tab_theme["PALETTE"])
+        PENS.update(tab_theme["PEN_NAMES"])
+        BASES.update(tab_theme["SHAPES"])
+        pens += tab_theme["pen_xml"]()
+        if "brush_xml" in tab_theme:
+            pens += tab_theme["brush_xml"]()
+        for command, pictogram in tab_theme["COMMAND_PICTOGRAMS"].items():
+            MAP[command] = (pictogram, MAP[command][1] if command in MAP else None)
+    return theme, pens
+
+
+def main():
+    """Regenerates command icons and legacy aliases from the same reference-driven artwork."""
+    theme, pen_lines = load_themes()
     target = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Guanacaste3D.Desktop", "resources", "icons.commands.xaml")
     missing = [pair for pair in MAP.values() if pair[0] not in BASES]
     if missing:
         raise SystemExit(f"unknown pictograms: {sorted({m[0] for m in missing})}")
-    body = [HEAD]
+    body = [HEAD + "\n".join(pen_lines) + "\n"]
     for name in sorted(MAP):
         base_name, badge_name = MAP[name]
         body.append(icon_xml(name, base_name, badge_name))

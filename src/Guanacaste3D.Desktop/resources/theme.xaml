@@ -295,9 +295,12 @@
           <Border x:Name="CompactSurface" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <StackPanel x:Name="CompactContent" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
               <Image Source="{TemplateBinding CommandParameter}" Width="22" Height="22" Stretch="Uniform"
                      RenderOptions.BitmapScalingMode="HighQuality"/>
+              <TextBlock x:Name="Caption" Text="{TemplateBinding Content}" FontSize="11.5" Margin="5,0,3,0" Visibility="Collapsed"
+                         MaxWidth="118" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                         Foreground="{TemplateBinding Foreground}"/>
               <TextBlock x:Name="MenuArrow" Text="&#x25BE;" FontSize="9" Margin="2,0,0,0" Visibility="Collapsed"
                          VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
             </StackPanel>
@@ -305,6 +308,10 @@
           <ControlTemplate.Triggers>
             <Trigger Property="controls:RibbonButton.HasMenu" Value="True">
               <Setter TargetName="MenuArrow" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="controls:RibbonButton.ShowLabel" Value="True">
+              <Setter TargetName="Caption" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="CompactContent" Property="HorizontalAlignment" Value="Left"/>
             </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="CompactSurface" Property="Background" Value="{StaticResource RibbonHoverBrush}"/>
@@ -340,16 +347,27 @@
                   BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                   Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
             <Grid>
-              <Image Source="{TemplateBinding CommandParameter}" Width="40" Height="40" Stretch="Uniform"
+              <Image x:Name="LargeIcon" Source="{TemplateBinding CommandParameter}" Width="40" Height="40" Stretch="Uniform"
                      VerticalAlignment="Center" Margin="0,0,0,8" RenderOptions.BitmapScalingMode="HighQuality"/>
-              <TextBlock x:Name="MenuArrow" Text="&#x25BE;" FontSize="11" Visibility="Collapsed"
-                         HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                         Foreground="{TemplateBinding Foreground}"/>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                <TextBlock x:Name="Caption" Text="{TemplateBinding Content}" FontSize="10.5" Visibility="Collapsed"
+                           MaxWidth="78" TextWrapping="Wrap" TextAlignment="Center" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Bottom" Foreground="{TemplateBinding Foreground}"/>
+                <TextBlock x:Name="MenuArrow" Text="&#x25BE;" FontSize="11" Visibility="Collapsed"
+                           VerticalAlignment="Bottom" Foreground="{TemplateBinding Foreground}"/>
+              </StackPanel>
             </Grid>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="controls:RibbonButton.HasMenu" Value="True">
               <Setter TargetName="MenuArrow" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="controls:RibbonButton.ShowLabel" Value="True">
+              <Setter TargetName="Caption" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="LargeIcon" Property="Width" Value="32"/>
+              <Setter TargetName="LargeIcon" Property="Height" Value="32"/>
+              <Setter TargetName="LargeIcon" Property="VerticalAlignment" Value="Top"/>
+              <Setter TargetName="LargeIcon" Property="Margin" Value="0,1,0,0"/>
             </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="LargeSurface" Property="Background" Value="{StaticResource RibbonHoverBrush}"/>

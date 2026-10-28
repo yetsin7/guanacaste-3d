@@ -2,14 +2,16 @@
 
 from icon_kit import C, L, P, R
 
+# The generic pictograms share the colours and pens of the tab themes (architecture-icon-theme.py), so a command
+# without a hand-drawn illustration still matches its neighbours.
 PALETTE = {
-    "blue": "#A9D9F5", "orange": "#D7D7D7", "green": "#B7DFBF", "purple": "#D6D6D6",
-    "yellow": "#FFE19A", "red": "#DE9292", "slate": "#ECECEC", "white": "#FFFFFF",
-    "ink": "#737373", "accent": "#3298D3", "redsolid": "#E53935",
-    "greensolid": "#25A85A", "orangesolid": "#F2A900", "shade": "#B8B8B8",
+    "blue": "#BFE5F8", "orange": "#F8D7A8", "green": "#BDE8CB", "purple": "#DAD2F3",
+    "yellow": "#FFE08A", "red": "#F6BDB6", "slate": "#DDE6EF", "white": "#FFFFFF",
+    "ink": "#1F3B57", "accent": "#1E88E5", "redsolid": "#E5484D",
+    "greensolid": "#2E9E5E", "orangesolid": "#F29A1F", "shade": "#B3C1D0",
 }
 
-PEN_NAMES = {"I": "CadOutlinePen", "A": "CadAccentPen", "R": "CadDangerPen", "G": "CmdGreenPen", "O": "CmdOrangePen"}
+PEN_NAMES = {"I": "ArchNPen", "A": "ArchBPen", "R": "ArchRPen", "G": "ArchGPen", "O": "ArchOPen"}
 
 SHAPES = {
     "wall": [

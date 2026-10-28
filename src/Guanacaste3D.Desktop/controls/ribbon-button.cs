@@ -14,4 +14,13 @@ public static class RibbonButton
     public static bool GetHasMenu(DependencyObject target) => (bool)target.GetValue(HasMenuProperty);
 
     public static void SetHasMenu(DependencyObject target, bool value) => target.SetValue(HasMenuProperty, value);
+
+    /// <summary>Whether the button shows its caption next to (small) or under (large) the icon.</summary>
+    public static readonly DependencyProperty ShowLabelProperty = DependencyProperty.RegisterAttached(
+        "ShowLabel", typeof(bool), typeof(RibbonButton),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public static bool GetShowLabel(DependencyObject target) => (bool)target.GetValue(ShowLabelProperty);
+
+    public static void SetShowLabel(DependencyObject target, bool value) => target.SetValue(ShowLabelProperty, value);
 }

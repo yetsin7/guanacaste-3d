@@ -50,7 +50,8 @@ public partial class ProfessionalRibbon : UserControl
     }
 
     /// <summary>Refits the ribbon when the window width changes.</summary>
-    private void RibbonViewport_SizeChanged(object sender, SizeChangedEventArgs e) => FitRibbonToViewport();
+    private void RibbonViewport_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(FitRibbonToViewport, System.Windows.Threading.DispatcherPriority.Loaded);
 
     /// <summary>
     /// Shrinks a slightly too wide ribbon to fit, so no scroll bar is needed. A much narrower window keeps the
@@ -59,6 +60,7 @@ public partial class ProfessionalRibbon : UserControl
     private void FitRibbonToViewport()
     {
         GroupHost.LayoutTransform = Transform.Identity;
+        if (RibbonViewport.ActualWidth > 0) RibbonLabelFitter.Fit(GroupHost, RibbonViewport.ActualWidth - 6);
         GroupHost.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var naturalWidth = GroupHost.DesiredSize.Width + 2;
         if (naturalWidth <= 0 || RibbonViewport.ActualWidth <= 0) return;
