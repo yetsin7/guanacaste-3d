@@ -379,6 +379,7 @@ BreezeBlockHouseChecks.Run(Check);
 MeshFamilyChecks.Run(Check);
 AnnotationChecks.Run(Check);
 CalloutChecks.Run(Check);
+FeatureEdgeSeamChecks.Run(Check);
 ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
 OpeningHostingChecks.Run(Check);
