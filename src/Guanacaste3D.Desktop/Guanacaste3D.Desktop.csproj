@@ -15,7 +15,6 @@
   <ItemGroup>
     <ProjectReference Include="../Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
     <ProjectReference Include="../Guanacaste3D.Agent/Guanacaste3D.Agent.csproj" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Per-frame picture buffers (a few MB) are short-lived; keeping them out of the large-object heap lets cheap
@@ -27,5 +26,6 @@
     <Resource Include="resources\brand\guanacaste3d.ico" />
     <!-- Shipped render textures, loaded from disk next to the executable by RenderTextureLibrary. -->
     <Content Include="resources\textures\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="resources\textures\*.jpg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

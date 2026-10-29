@@ -159,15 +159,28 @@ internal static partial class InteractionChecks
         Pump();
     }
 
-    /// <summary>Flushes layout and queued WPF input without a fixed sleep.</summary>
+    /// <summary>
+    /// Flushes layout and queued WPF input. A fixed timer alone races with layout and render work on a loaded machine,
+    /// so the dispatcher is drained to idle before and after the timer, which keeps the checks deterministic.
+    /// </summary>
     private static void Pump()
     {
         _window.UpdateLayout();
+        DrainToIdle();
         var frame = new DispatcherFrame();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
         timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
         timer.Start();
         Dispatcher.PushFrame(frame);
+        DrainToIdle();
+    }
+
+    /// <summary>Runs every queued dispatcher item, including layout and rendering, before returning.</summary>
+    private static void DrainToIdle()
+    {
+        for (var pass = 0; pass < 3; pass++)
+            _window.Dispatcher.Invoke(DispatcherPriority.ApplicationIdle, () => { });
+        _window.UpdateLayout();
     }
 
     /// <summary>Captures the actual composed WPF window for visual review.</summary>
