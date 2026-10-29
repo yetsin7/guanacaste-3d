@@ -5,7 +5,11 @@ namespace Guanacaste3D.Core;
 /// building can show different things in different views.
 /// </summary>
 /// <summary>A saved set of hidden and isolated elements that any view can take on, one at a time or many at once.</summary>
-public sealed record ViewTemplate(Guid Id, string Name, List<Guid> HiddenElementIds, List<Guid> IsolatedElementIds);
+public sealed record ViewTemplate(Guid Id, string Name, List<Guid> HiddenElementIds, List<Guid> IsolatedElementIds)
+{
+    /// <summary>The display settings (style, detail, sun, edges) the template gives a view; null leaves a view's own settings alone.</summary>
+    public ViewGraphicsSettings? Graphics { get; init; }
+}
 
 public static class ViewVisibility
 {

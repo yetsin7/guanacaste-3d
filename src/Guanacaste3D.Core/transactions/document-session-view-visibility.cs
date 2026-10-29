@@ -27,9 +27,25 @@ public sealed partial class DocumentSession
         if (trimmed.Length == 0) return null;
         var id = Guid.NewGuid();
         Commit("Transaction.CreateViewTemplate", document => document.ViewTemplates.Add(new ViewTemplate(
-            id, trimmed, source.HiddenElementIds.ToList(), source.IsolatedElementIds.ToList())));
+            id, trimmed, source.HiddenElementIds.ToList(), source.IsolatedElementIds.ToList())
+        {
+            Graphics = source.Graphics
+        }));
         return id;
     }
+
+    /// <summary>
+    /// Takes a template's display settings but keeps the target view's own camera and crop, which belong to that view
+    /// and make no sense on another.
+    /// </summary>
+    private static ViewGraphicsSettings? MergeGraphics(ViewGraphicsSettings? template, ViewGraphicsSettings? own) =>
+        template is null ? own : template with
+        {
+            CameraPose = own?.CameraPose,
+            CropActive = own?.CropActive ?? false,
+            CropBoundaryVisible = own?.CropBoundaryVisible ?? true,
+            Crop = own?.Crop
+        };
 
     /// <summary>Gives each of the views the visibility of a template, as one undoable step.</summary>
     public void ApplyViewTemplate(Guid templateId, IReadOnlyCollection<Guid> viewIds)
@@ -47,7 +63,8 @@ public sealed partial class DocumentSession
                 document.Views[index] = document.Views[index] with
                 {
                     HiddenElementIds = template.HiddenElementIds.ToList(),
-                    IsolatedElementIds = template.IsolatedElementIds.ToList()
+                    IsolatedElementIds = template.IsolatedElementIds.ToList(),
+                    Graphics = MergeGraphics(template.Graphics, document.Views[index].Graphics)
                 };
             }
         });

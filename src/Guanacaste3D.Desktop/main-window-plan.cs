@@ -318,6 +318,7 @@ public partial class MainWindow
         RenderPlacementPreview();
         RenderPermanentDimensions();
         RenderElementTags();
+        RenderCallouts();
         RenderElevationSymbols();
         RenderSectionSymbols();
         RenderGridAxes();

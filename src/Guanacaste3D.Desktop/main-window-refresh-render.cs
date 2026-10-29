@@ -53,6 +53,7 @@ public partial class MainWindow
         foreach (var view in _session.Document.Views.Where(view => MatchesProjectSearch(view.Name)))
             views.Items.Add(new TreeViewItem { Header = view.Name, Tag = view.Id, ContextMenu = CreateViewMenu(view.Id) });
         project.Items.Add(views);
+        if (CreateCalloutBranch() is { } calloutBranch) project.Items.Add(calloutBranch);
         var levels = new TreeViewItem { Header = GetText("Tree.Levels"), IsExpanded = true };
         foreach (var level in _session.Document.Levels)
         {

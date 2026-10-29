@@ -376,6 +376,7 @@ StairAndWallChecks.Run(Check);
 ModernHouseChecks.Run(Check);
 ModernHouseToolChecks.Run(Check);
 AnnotationChecks.Run(Check);
+CalloutChecks.Run(Check);
 ParameterChecks.Run(Check);
 OpeningTypeChecks.Run(Check);
 OpeningHostingChecks.Run(Check);

@@ -26,6 +26,8 @@ internal static class ReadTools
                     levels = d.Levels.OrderBy(l => l.Elevation).Select(l => new { id = l.Id, name = l.Name, elevation = l.Elevation }),
                     wallTypes = d.WallTypes.Select(t => new { id = t.Id, name = t.Name, thickness = t.Thickness }),
                     openingTypes = d.OpeningTypes.Select(t => new { id = t.Id, name = t.Name, kind = t.Kind.ToString(), width = t.Width, height = t.Height }),
+                    callouts = d.Callouts.Select(c => new { id = c.Id, levelId = c.LevelId, name = c.Name }),
+                    viewTemplates = d.ViewTemplates.Select(t => t.Name),
                     counts = new
                     {
                         walls = d.Walls.Count, openings = d.Openings.Count, rooms = d.Rooms.Count,

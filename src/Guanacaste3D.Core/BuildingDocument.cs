@@ -43,6 +43,7 @@ public sealed class BuildingDocument
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled Project";
     public List<PlanDimension> Dimensions { get; set; } = [];
+    public List<Callout> Callouts { get; set; } = [];
     public List<Level> Levels { get; set; } = [];
     public List<GridAxis> Grids { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
@@ -95,6 +96,7 @@ public sealed class BuildingDocument
         Id = Id,
         Name = Name,
         Dimensions = [.. Dimensions],
+        Callouts = [.. Callouts ?? []],
         Levels = [.. Levels],
         Grids = [.. Grids],
         Walls = [.. Walls],
@@ -195,6 +197,7 @@ public sealed class BuildingDocument
             .Concat(Floors.Select(floor => floor.Id))
             .Concat(Columns.Select(column => column.Id))
             .Concat(Dimensions.Select(dimension => dimension.Id))
+            .Concat((Callouts ?? []).Where(callout => callout is not null).Select(callout => callout.Id))
             .Concat(StructuralElements.Select(element => element.Id))
             .Concat(Sheets.Select(sheet => sheet.Id))
             .Concat(Sheets.SelectMany(sheet => sheet.Viewports).Select(viewport => viewport.Id))
@@ -209,6 +212,7 @@ public sealed class BuildingDocument
             throw new InvalidDataException("Element identifiers must be unique.");
         WallGeometry.Validate(Walls, Openings);
         PlanDimensions.Validate(this);
+        CalloutRules.Validate(this);
         CirculationGeometry.Validate(this);
         ArchitecturalShapes.Validate(this);
         OpeningTypeRules.Validate(this);

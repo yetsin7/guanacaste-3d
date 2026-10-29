@@ -171,6 +171,20 @@ internal static class ModelingTools
                 return ReadTools.Json(new { id });
             });
 
+        yield return new("add_callout",
+            "Marks a named detail region (callout) on a level's plan so the plan can zoom to it. Corners are in meters.",
+            Schema.Object(
+                ("level", Schema.Str("Level id or name."), true),
+                ("x1", Schema.Num("First corner X."), true), ("y1", Schema.Num("First corner Y."), true),
+                ("x2", Schema.Num("Opposite corner X."), true), ("y2", Schema.Num("Opposite corner Y."), true),
+                ("name", Schema.Str("Detail name, for example Cocina."), false)),
+            ToolRisk.Modify, (context, args) =>
+            {
+                var id = context.Session.AddCallout(args.Level(), args.Text("name", string.Empty),
+                    new PlanBounds(args.Number("x1"), args.Number("y1"), args.Number("x2"), args.Number("y2")));
+                return ReadTools.Json(new { id });
+            });
+
         yield return new("auto_dimension",
             "Adds associative dimensions to every wall length and opening width of a level, as one undoable step. Existing dimensions are kept.",
             Schema.Object(("level", Schema.Str("Level id or name."), true)), ToolRisk.Modify,

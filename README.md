@@ -100,6 +100,17 @@ assistant can build the same pieces with `add_curtain_wall`, `add_pool` and `add
   level in one undo step (`DocumentSession.AutoDimensionLevel`); existing dimensions are kept.
 - **Assistant:** `get_tags`, `auto_dimension` and `get_area_schedule`. The area table itself is `AreaSchedule`.
 
+## Views and callouts
+
+- **Callouts:** the `Callout` ribbon command marks a named detail region around the selected element. It is stored in the
+  project (`BuildingDocument.Callouts`), drawn as a dashed frame with a name tab in the plan, listed in the project
+  browser, and zooms the plan to its region. The assistant has `add_callout`.
+- **View templates:** `ViewTemplates` opens a menu to save the active view as a template, apply one to it, or delete one.
+  A template carries hidden and isolated elements plus display settings (style, detail, sun, edges); each view keeps its
+  own camera and crop.
+- **Not done yet:** tiling the plan and 3D view side by side in the main window. The central tab control is addressed
+  by tab index from many places, so it needs its own refactor.
+
 ## Publish for Windows
 
 ```powershell

@@ -275,6 +275,11 @@ public partial class MainWindow
     /// <summary>Handles project-browser selection for new coordinated BIM entities.</summary>
     private bool TryHandleProjectTreeSelection(Guid id)
     {
+        if (_session.Document.Callouts.Any(callout => callout.Id == id))
+        {
+            ZoomToCallout(id);
+            return true;
+        }
         if (_session.Document.Views.Any(view => view.Id == id))
         {
             SelectProjectView(id);
