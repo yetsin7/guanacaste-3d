@@ -17,6 +17,18 @@ technical preview; Windows may display a reputation warning.
 
 Current navigation and editing changes: [Modeling workspace](docs/model-workspace-navigation.md).
 
+### Revit and SketchUp plugins
+
+Bring Revit and SketchUp models into Guanacaste 3D as editable projects (native walls, doors, windows and slabs;
+everything else as `.g3df` families) — see [Opening Revit projects](docs/revit-import.md):
+
+- [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-Revit.zip)
+  — Revit 2027 add-in. Unzip, close Revit and run `Instalar.cmd`.
+- [Guanacaste3D-SketchUp.rbz](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-SketchUp.rbz)
+  — SketchUp extension (preview). Install from Extensions → Extension Manager.
+
+With Revit 2025 or later installed, Guanacaste 3D also opens `.rvt` files directly.
+
 ## Status
 
 Version 0.23.0 is a working technical preview, not a complete professional BIM
