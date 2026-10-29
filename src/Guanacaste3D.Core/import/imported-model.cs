@@ -23,6 +23,8 @@ public sealed class ImportedModel
     public int[] Indices { get; init; } = [];
     /// <summary>Optional per-vertex smooth normals; null renders flat-shaded.</summary>
     public Vector3[]? Normals { get; init; }
+    /// <summary>Optional per-vertex texture coordinates (glTF TEXCOORD_0, v down the image), aligned with positions.</summary>
+    public Vector2[]? Uvs { get; init; }
     /// <summary>Index into <see cref="Materials"/> for every triangle.</summary>
     public int[] TriangleMaterial { get; init; } = [];
     public IReadOnlyList<RenderMaterial> Materials { get; init; } = [];

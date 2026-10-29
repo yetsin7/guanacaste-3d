@@ -1,3 +1,4 @@
+using System.IO;
 using System.Globalization;
 using System.Numerics;
 using Guanacaste3D.Core;
@@ -33,12 +34,15 @@ internal static class Program
         }
         var options = Options(arguments[3..]);
         var source = Load(arguments[1]);
+        // Asset packs lay several variants side by side; --variant k keeps the k-th one from the left.
+        if (Single(options, "--variant") is { } variant) source = Variant(source, int.Parse(variant, CultureInfo.InvariantCulture));
         var budget = int.Parse(Single(options, "--triangles") ?? "150000", CultureInfo.InvariantCulture);
         var maps = options.GetValueOrDefault("--map", []).Select(rule => rule.Split('=', 2))
             .Select(pair => (Pattern: pair[0], Kind: Enum.Parse<SurfaceKind>(pair[1]))).ToArray();
         var fallback = Enum.Parse<SurfaceKind>(Single(options, "--default") ?? nameof(SurfaceKind.Structure));
-        var thin = options.GetValueOrDefault("--thin", []).Select(rule => rule.Split('=', 2))
-            .Select(pair => (Pattern: pair[0], Keep: double.Parse(pair[1], CultureInfo.InvariantCulture))).ToArray();
+        // The fraction follows the last "=", so a pattern may itself start with "=" to name one material exactly.
+        var thin = options.GetValueOrDefault("--thin", []).Select(rule => (Pattern: rule[..rule.LastIndexOf('=')],
+            Keep: double.Parse(rule[(rule.LastIndexOf('=') + 1)..], CultureInfo.InvariantCulture))).ToArray();
         string NameOf(int material) => material >= 0 && material < source.Materials.Count ? source.Materials[material].Name : string.Empty;
         SurfaceKind KindOf(int material)
         {
@@ -48,20 +52,28 @@ internal static class Program
         }
 
         // Thinned materials (leaves) keep a fraction of their separate pieces, each enlarged about its own center so
-        // the crown covers the same area; every other material shares the triangle budget and is reduced by clustering.
+        // the crown covers the same area (a fraction of 1 keeps the material whole, with its texture coordinates);
+        // every other material shares the triangle budget and is reduced by clustering. "=name" matches one material.
         var thinned = Enumerable.Range(0, Math.Max(1, source.Materials.Count))
-            .ToDictionary(material => material, material => thin.FirstOrDefault(rule =>
-                NameOf(material).Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase)).Keep);
+            .ToDictionary(material => material, material => thin.FirstOrDefault(rule => rule.Pattern.StartsWith('=')
+                ? NameOf(material).Equals(rule.Pattern[1..], StringComparison.OrdinalIgnoreCase)
+                : NameOf(material).Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase)).Keep);
         var outPositions = new List<Vector3>();
+        var outUvs = new List<Vector2?>();
         var outIndices = new List<int>();
         var outMaterials = new List<int>();
         var solid = Subset(source, triangle => thinned.GetValueOrDefault(source.TriangleMaterial[triangle]) == 0);
         var reduced = MeshProxy.Build(solid, Math.Max(1000, budget));
         outPositions.AddRange(reduced.Positions);
+        // A part small enough to keep whole keeps its texture coordinates; clustering merges vertices and loses them.
+        var whole = !reduced.IsReduced && solid.Uvs is not null;
+        outUvs.AddRange(reduced.Positions.Select((_, vertex) => whole ? solid.Uvs![vertex] : (Vector2?)null));
         outIndices.AddRange(reduced.Indices);
         outMaterials.AddRange(reduced.TriangleMaterial);
         foreach (var (material, keep) in thinned.Where(pair => pair.Value > 0))
-            Thin(source, material, keep, outPositions, outIndices, outMaterials);
+            Thin(source, material, keep, outPositions, outUvs, outIndices, outMaterials);
+        // --textures reads each material's base colour image (and its alpha map) from the glTF.
+        var images = options.ContainsKey("--textures") ? MaterialImages.Read(arguments[1], source.Materials) : [];
         var proxy = new ProxyMesh
         {
             Positions = [.. outPositions], Indices = [.. outIndices], TriangleMaterial = [.. outMaterials],
@@ -80,22 +92,43 @@ internal static class Program
         // Drop triangles the reduction collapsed, then share vertices and smooth normals by area.
         var indices = new List<int>();
         var kinds = new List<SurfaceKind>();
+        var triangleImages = new List<byte>();
+        var textures = new List<FamilyMeshTexture>();
+        var textureOfMaterial = new Dictionary<int, byte>();
         for (var triangle = 0; triangle < proxy.TriangleCount; triangle++)
         {
             var (a, b, c) = (proxy.Indices[triangle * 3], proxy.Indices[triangle * 3 + 1], proxy.Indices[triangle * 3 + 2]);
             if (a == b || b == c || a == c) continue;
             if (Vector3.Cross(positions[b] - positions[a], positions[c] - positions[a]).LengthSquared() < 1e-14f) continue;
             indices.AddRange([a, b, c]);
-            kinds.Add(KindOf(proxy.TriangleMaterial[triangle]));
+            var material = proxy.TriangleMaterial[triangle];
+            kinds.Add(KindOf(material));
+            var image = FamilyMesh.NoTexture;
+            if (images.TryGetValue(material, out var picture) && outUvs[a] is not null && outUvs[b] is not null && outUvs[c] is not null)
+            {
+                if (!textureOfMaterial.TryGetValue(material, out image) && textures.Count < FamilyMesh.MaximumTextures)
+                {
+                    textureOfMaterial[material] = image = (byte)textures.Count;
+                    textures.Add(picture);
+                }
+            }
+            triangleImages.Add(image);
         }
         var normals = SmoothNormals(positions, indices);
+        var mesh = textures.Count > 0
+            ? FamilyMesh.Create(positions, indices, kinds, normals, outUvs.Select(uv => uv ?? Vector2.Zero).ToArray(), triangleImages, textures)
+            : FamilyMesh.Create(positions, indices, kinds, normals);
         var family = new FamilyDocument
         {
             Name = Single(options, "--name") ?? Path.GetFileNameWithoutExtension(arguments[2]),
             Category = Enum.Parse<FamilyCategory>(Single(options, "--category") ?? nameof(FamilyCategory.Entourage)),
             Types = [new FamilyTypeDefinition(Guid.NewGuid(), "Estándar", [])],
-            Mesh = FamilyMesh.Create(positions, indices, kinds, normals)
+            Mesh = mesh
         };
+        if (textures.Count > 0)
+            Console.WriteLine($"  images: {string.Join(", ", textures.Select(texture => $"{texture.Name} {texture.Width}×{texture.Height}" +
+                (texture.AlphaCutoff > 0 ? " (cut-out)" : string.Empty)))}; " +
+                $"{triangleImages.Count(image => image != FamilyMesh.NoTexture):N0} textured triangles");
         // A light version for interactive views, reduced by clustering from the converted mesh.
         var previewBudget = int.Parse(Single(options, "--preview") ?? "20000", CultureInfo.InvariantCulture);
         if (kinds.Count > previewBudget * 1.5)
@@ -132,11 +165,52 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>
+    /// One of the variants of a pack: connected pieces are grouped along X wherever a gap of more than 5 cm separates
+    /// them, and the groups are numbered from the left.
+    /// </summary>
+    private static ImportedModel Variant(ImportedModel model, int index)
+    {
+        var parent = Enumerable.Range(0, model.Positions.Length).ToArray();
+        int Find(int vertex)
+        {
+            while (parent[vertex] != vertex) vertex = parent[vertex] = parent[parent[vertex]];
+            return vertex;
+        }
+        for (var corner = 0; corner < model.Indices.Length; corner += 3)
+        {
+            var root = Find(model.Indices[corner]);
+            parent[Find(model.Indices[corner + 1])] = root;
+            parent[Find(model.Indices[corner + 2])] = Find(model.Indices[corner]);
+        }
+        var spans = new Dictionary<int, (float Min, float Max)>();
+        for (var vertex = 0; vertex < model.Positions.Length; vertex++)
+        {
+            var root = Find(vertex);
+            var x = model.Positions[vertex].X;
+            spans[root] = spans.TryGetValue(root, out var span) ? (Math.Min(span.Min, x), Math.Max(span.Max, x)) : (x, x);
+        }
+        var groups = new List<(float Max, HashSet<int> Roots)>();
+        foreach (var (root, span) in spans.OrderBy(pair => pair.Value.Min))
+        {
+            if (groups.Count > 0 && span.Min <= groups[^1].Max + 0.05f)
+            {
+                groups[^1].Roots.Add(root);
+                groups[^1] = (Math.Max(groups[^1].Max, span.Max), groups[^1].Roots);
+            }
+            else groups.Add((span.Max, [root]));
+        }
+        Console.WriteLine($"  {groups.Count} variants side by side; keeping number {index}");
+        var keep = groups[Math.Clamp(index, 0, groups.Count - 1)].Roots;
+        return Subset(model, triangle => keep.Contains(Find(model.Indices[triangle * 3])));
+    }
+
     /// <summary>The triangles that pass a test, as a model of their own with compacted vertices.</summary>
     private static ImportedModel Subset(ImportedModel model, Func<int, bool> include)
     {
         var map = new Dictionary<int, int>();
         var positions = new List<Vector3>();
+        var uvs = new List<Vector2>();
         var indices = new List<int>();
         var materials = new List<int>();
         for (var triangle = 0; triangle < model.TriangleCount; triangle++)
@@ -149,6 +223,7 @@ internal static class Program
                 {
                     map[vertex] = mapped = positions.Count;
                     positions.Add(model.Positions[vertex]);
+                    uvs.Add(model.Uvs is { } source && vertex < source.Length ? source[vertex] : Vector2.Zero);
                 }
                 indices.Add(mapped);
             }
@@ -157,7 +232,7 @@ internal static class Program
         return new ImportedModel
         {
             Name = model.Name, Positions = [.. positions], Indices = [.. indices], TriangleMaterial = [.. materials],
-            Materials = model.Materials
+            Materials = model.Materials, Uvs = model.Uvs is null ? null : [.. uvs]
         };
     }
 
@@ -165,8 +240,8 @@ internal static class Program
     /// Keeps a deterministic fraction of the connected pieces (single leaves) of one material and scales each kept piece
     /// about its centroid by 1/√fraction, so the foliage keeps its coverage with far fewer triangles.
     /// </summary>
-    private static void Thin(ImportedModel model, int material, double keep, List<Vector3> positions, List<int> indices,
-        List<int> materials)
+    private static void Thin(ImportedModel model, int material, double keep, List<Vector3> positions, List<Vector2?> uvs,
+        List<int> indices, List<int> materials)
     {
         var parent = new Dictionary<int, int>();
         int Find(int vertex)
@@ -205,6 +280,7 @@ internal static class Program
             {
                 map[vertex] = positions.Count;
                 positions.Add(center + (model.Positions[vertex] - center) * enlarge);
+                uvs.Add(model.Uvs is { } source && vertex < source.Length ? source[vertex] : null);
             }
             foreach (var triangle in piece)
             {

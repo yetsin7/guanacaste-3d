@@ -40,7 +40,7 @@ internal static partial class InteractionChecks
             var camera = (NavigationCamera)typeof(MainWindow).GetField("_navigation", PrivateInstance)!.GetValue(opened)!;
             var tabs = (TabControl)opened.FindName("ViewTabs");
             var setup = BreezeBlockHouseShowcase.StreetView;
-            Check(home.Visibility == Visibility.Collapsed && session.Document.ComponentFamilies.Count == 3 &&
+            Check(home.Visibility == Visibility.Collapsed && session.Document.ComponentFamilies.Count >= 9 &&
                   session.Document.Sheets.Count == 6 && session.Document.RenderSetup is not null &&
                   typeof(MainWindow).GetField("_filePath", PrivateInstance)!.GetValue(opened) is null,
                 "The breeze-block house opens from Home, with its families and sheets, as an untitled copy");

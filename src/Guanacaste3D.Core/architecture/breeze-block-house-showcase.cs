@@ -25,6 +25,12 @@ public static partial class BreezeBlockHouseShowcase
     public const string TreeFamily = "Jacaranda Tree (detailed)";
     public const string SedanFamily = "Sedan Car (detailed)";
     public const string CoupeFamily = "Coupe Car Silver (detailed)";
+    public const string BushFamily = "Dense Shrub B (detailed)";
+    public const string FernFamily = "Fern (detailed)";
+    public const string GrassTuftFamily = "Grass Tuft (detailed)";
+    public const string PachiraFamily = "Money Tree Pachira (detailed)";
+    public const string CalatheaFamily = "Calathea (detailed)";
+    public const string AnthuriumFamily = "Anthurium (detailed)";
 
     /// <summary>
     /// The render view of the reference photograph: from across the street at eye height, verticals corrected, under the
@@ -36,7 +42,9 @@ public static partial class BreezeBlockHouseShowcase
         CameraX = 7.6, CameraY = -20.5, CameraZ = 1.6, YawDegrees = 90, PitchDegrees = 12, FieldOfViewDegrees = 46,
         Scenario = Rendering.LightingScenario.Sunny, DayOfYear = 355, SolarHour = 14.75, Latitude = 12.1, CloudCover = 0.15,
         Haze = true, Quality = Rendering.RenderQuality.High, Width = 1920, Height = 1080, Look = Rendering.ToneMapper.Aces,
-        AutoExposure = true, Bloom = false, Vignette = false, CorrectVerticals = true, ArtificialLights = false
+        AutoExposure = true, Bloom = false, Vignette = false, CorrectVerticals = true, ArtificialLights = false,
+        Clouds = Rendering.CloudStyle.Cirrus, StyleId = "realistic", Shadows = 0.25, Highlights = -0.2, Vibrance = 0.25,
+        Sharpen = 0.35, Glare = 0.15
     };
 
     /// <summary>The house with procedural trees and cars only.</summary>
@@ -169,12 +177,31 @@ public static partial class BreezeBlockHouseShowcase
         var clipped = Element("Shrub 1.5 m") with { Width = 0.75, Height = 0.6 };
         foreach (var point in new Point2[] { new(6.2, -4.9), new(6.3, -3.6), new(8.9, -4.9), new(9.1, -3.9) })
             session.AddElementFromPreset(ground, clipped, point, point);
-        var leafy = Element("Shrub 1.5 m") with { Width = 1.4, Height = 0.8 };
-        foreach (var point in new Point2[] { new(1.2, -1.0), new(2.6, -0.6), new(4.4, -1.2), new(-0.6, -0.4) })
-            session.AddElementFromPreset(ground, leafy, point, point);
-        var grasses = Element("Shrub 1.5 m") with { Width = 1.2, Height = 1.2 };
-        session.AddElementFromPreset(ground, grasses, new Point2(-0.9, 0.9), new Point2(-0.9, 0.9));
-        session.AddElementFromPreset(ground, grasses, new Point2(16.2, -0.5), new Point2(16.2, -0.5));
+        // Under the jacaranda, ferns; at the corners, loose bushes; tufts of grass where the mower misses the lawn edge.
+        // Each is a detailed family when it is supplied, otherwise the procedural shrub at the same size.
+        void Plant(Guid? family, double scale, double spread, double height, Point2 point, double turn = 0)
+        {
+            if (family is Guid id) session.PlaceComponentFamily(ground, id, point, turn, scale);
+            else session.AddElementFromPreset(ground, Element("Shrub 1.5 m") with { Width = spread, Height = height }, point, point, turn);
+        }
+        var fern = Load(FernFamily);
+        var bush = Load(BushFamily);
+        foreach (var (point, turn) in new[] { (new Point2(1.2, -1.0), 0.0), (new Point2(2.6, -0.6), 2.0), (new Point2(4.4, -1.2), 4.1),
+                     (new Point2(-0.6, -0.4), 1.0) })
+            Plant(fern, 1.8, 1.4, 0.8, point, turn);
+        Plant(bush, 0.9, 1.2, 1.2, new Point2(-0.9, 0.9));
+        Plant(bush, 0.9, 1.2, 1.2, new Point2(16.2, -0.5), 2.2);
+        if (Load(GrassTuftFamily) is Guid tuft)
+        {
+            var random = new Random(17);
+            for (var index = 0; index < 60; index++)
+            {
+                var along = random.NextDouble();
+                var point = index % 2 == 0 ? new Point2(-6 + along * 12.2, -5.5 + random.NextDouble() * 0.2)
+                    : new Point2(6.45 + random.NextDouble() * 0.15, -5.4 + along * 5.0);
+                session.PlaceComponentFamily(ground, tuft, point, random.NextDouble() * Math.Tau, 1.5 + random.NextDouble());
+            }
+        }
 
         // Neighbouring white houses frame the lot on both sides, set back behind their own lawns.
         foreach (var (x1, x2) in new[] { (-14.0, -4.0), (18.5, 28.0) })
@@ -185,7 +212,7 @@ public static partial class BreezeBlockHouseShowcase
             session.AddSlabFromPreset(ground, corners, Slab("Painted Concrete Slab 300 mm"), 6.9);
         }
 
-        AddInteriors(session, ground, upper);
+        AddInteriors(session, ground, upper, Load);
         session.AddArea(ground, "Área construida planta baja", new Point2(0, 0.4), new Point2(15.2, 12));
         session.AddArea(upper, "Área construida planta alta", new Point2(0, 0), new Point2(15.2, 12));
         AddDrawingSet(session, ground, upper);

@@ -22,6 +22,8 @@ public sealed class RenderTexture
     private readonly byte[][] _levels;
     private readonly int[] _widths;
     private readonly int[] _heights;
+    /// <summary>Coverage of the top level, one byte per texel, or null for an opaque image.</summary>
+    private byte[]? _alpha;
 
     private RenderTexture(byte[][] levels, int[] widths, int[] heights)
     {
@@ -58,6 +60,60 @@ public sealed class RenderTexture
             rgb[index * 3 + 2] = bgra[index * 4];
         }
         return FromRgb(width, height, rgb, maximumSize);
+    }
+
+    /// <summary>
+    /// Builds a texture from RGBA pixels (rows top to bottom). The alpha channel becomes a cut-out mask, as leaf and
+    /// grass cards use: where it is below a material's cutoff the surface is a hole that rays and shadows pass through.
+    /// </summary>
+    public static RenderTexture FromRgba(int width, int height, ReadOnlySpan<byte> rgba, int maximumSize = 2048)
+    {
+        if (width < 1 || height < 1 || rgba.Length < width * height * 4)
+            throw new ArgumentException("The texture pixels do not match its size.");
+        var rgb = new byte[width * height * 3];
+        var alpha = new byte[width * height];
+        for (var index = 0; index < width * height; index++)
+        {
+            rgb[index * 3] = rgba[index * 4];
+            rgb[index * 3 + 1] = rgba[index * 4 + 1];
+            rgb[index * 3 + 2] = rgba[index * 4 + 2];
+            alpha[index] = rgba[index * 4 + 3];
+        }
+        var texture = FromRgb(width, height, rgb, maximumSize);
+        // The mask follows the colour's top level, halved the same way.
+        while (width > texture.Width || height > texture.Height) (alpha, width, height) = HalveMask(alpha, width, height);
+        texture._alpha = alpha;
+        return texture;
+    }
+
+    /// <summary>Whether the image carries a cut-out mask.</summary>
+    public bool HasAlpha => _alpha is not null;
+
+    /// <summary>Coverage 0–1 at texture coordinates (wrapping, v up as in <see cref="Sample"/>); 1 without a mask.</summary>
+    public float Alpha(float u, float v)
+    {
+        if (_alpha is not { } mask) return 1;
+        var width = _widths[0];
+        var height = _heights[0];
+        var x = Math.Clamp((int)((u - MathF.Floor(u)) * width), 0, width - 1);
+        var y = Math.Clamp((int)((1 - (v - MathF.Floor(v))) * height), 0, height - 1);
+        return mask[y * width + x] * (1f / 255);
+    }
+
+    private static (byte[] Mask, int Width, int Height) HalveMask(byte[] mask, int width, int height)
+    {
+        // The same sizes as the colour levels (rounded up), so mask and colour texels stay aligned.
+        var halfWidth = Math.Max(1, (width + 1) / 2);
+        var halfHeight = Math.Max(1, (height + 1) / 2);
+        var result = new byte[halfWidth * halfHeight];
+        for (var y = 0; y < halfHeight; y++)
+        for (var x = 0; x < halfWidth; x++)
+        {
+            var (x0, y0) = (Math.Min(x * width / halfWidth, width - 1), Math.Min(y * height / halfHeight, height - 1));
+            var (x1, y1) = (Math.Min(x0 + 1, width - 1), Math.Min(y0 + 1, height - 1));
+            result[y * halfWidth + x] = (byte)((mask[y0 * width + x0] + mask[y0 * width + x1] + mask[y1 * width + x0] + mask[y1 * width + x1] + 2) / 4);
+        }
+        return (result, halfWidth, halfHeight);
     }
 
     /// <summary>Builds a texture from a decoded PNG image.</summary>

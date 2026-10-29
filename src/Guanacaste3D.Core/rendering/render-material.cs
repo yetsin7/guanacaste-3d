@@ -71,6 +71,16 @@ public sealed record RenderMaterial
     /// Thin surfaces only; it makes foliage glow when the sun is behind it.
     /// </summary>
     public float Translucency { get; init; }
+    /// <summary>
+    /// The texture is mapped with the mesh's own texture coordinates (a modelled leaf, bark or car) instead of being
+    /// projected in world space; one coordinate unit is one copy of the image.
+    /// </summary>
+    public bool UvMapped { get; init; }
+    /// <summary>
+    /// 0 for an opaque surface; otherwise the texture coverage below which the surface is a hole (leaf and grass cards),
+    /// for camera rays and shadows alike.
+    /// </summary>
+    public float AlphaCutoff { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;
@@ -98,6 +108,7 @@ public sealed record RenderMaterial
         PatternScale = Clean(PatternScale, 0.01f, 1000, 1),
         TextureSize = Clean(TextureSize, 0.01f, 1000, 1),
         TextureRelief = Clean(TextureRelief, 0, 1, 0),
+        AlphaCutoff = Texture?.HasAlpha == true ? Clean(AlphaCutoff, 0, 1, 0) : 0,
         Translucency = Clean(Translucency, 0, 1, 0)
     };
 

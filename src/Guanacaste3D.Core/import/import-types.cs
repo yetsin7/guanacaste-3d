@@ -65,6 +65,8 @@ internal sealed class MeshAccumulator
     public ArrayBuilder<int> TriangleMaterial { get; } = new(1024);
     /// <summary>Per-vertex normals, aligned with <see cref="Positions"/>; null until a reader opts in.</summary>
     public ArrayBuilder<Vector3>? Normals { get; set; }
+    /// <summary>Per-vertex texture coordinates, aligned with <see cref="Positions"/>; null until a reader opts in.</summary>
+    public ArrayBuilder<Vector2>? Uvs { get; set; }
     public int TriangleCount => TriangleMaterial.Count;
     public List<ImportedPolyline> Linework => _linework;
     public IReadOnlyList<string> Warnings => _warnings;
@@ -118,6 +120,7 @@ internal sealed class MeshAccumulator
             Positions = positions,
             Indices = Indices.ToArray(),
             Normals = normals,
+            Uvs = Uvs?.ToArray(),
             TriangleMaterial = TriangleMaterial.ToArray(),
             Materials = materials,
             Linework = linework,

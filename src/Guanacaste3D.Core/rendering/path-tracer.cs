@@ -132,7 +132,7 @@ public sealed partial class PathTracer
         var glassTriangles = new List<int>();
         for (var triangle = 0; triangle < scene.TriangleCount; triangle++)
             (_surfaces[scene.TriangleMaterial[triangle]].Transmission > 0 ? glassTriangles : opaqueTriangles).Add(triangle);
-        _opaque = new Bvh(scene.Positions, scene.Indices, opaqueTriangles.ToArray(), cancellationToken);
+        _opaque = new Bvh(scene.Positions, scene.Indices, opaqueTriangles.ToArray(), cancellationToken) { Cutout = AlphaCutout.For(scene) };
         _transmissive = glassTriangles.Count == 0
             ? null
             : new Bvh(scene.Positions, scene.Indices, glassTriangles.ToArray(), cancellationToken);
@@ -963,7 +963,23 @@ public sealed partial class PathTracer
         var diffuse = surface.Diffuse;
         // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
         // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
-        if (surface.Texture is { } texture)
+        if (surface.Texture is { } mapped && surface.UvMapped && _scene.TriangleUvs is { } uvs)
+        {
+            // A detailed family's own image, read with the mesh's coordinates; after a diffuse bounce only its mean.
+            if (detailed)
+            {
+                var i = triangle * 3;
+                var uv = uvs[i] * (1 - hit.U - hit.V) + uvs[i + 1] * hit.U + uvs[i + 2] * hit.V;
+                // About half a metre of surface per image: enough to pick the mip level of a leaf or a bark tile.
+                var footprint = MathF.Max(hit.Distance * PixelAngle, 1e-5f) * 2;
+                diffuse *= mapped.Sample(uv.X, 1 - uv.Y, footprint);
+            }
+            else
+            {
+                diffuse *= mapped.Mean;
+            }
+        }
+        else if (surface.Texture is { } texture)
         {
             if (detailed)
             {
@@ -1475,6 +1491,8 @@ public sealed partial class PathTracer
         /// <summary>Average of the pattern's diffuse multiplier, used where its detail would be invisible.</summary>
         public float PatternMean { get; init; }
         public RenderTexture? Texture { get; init; }
+        /// <summary>The texture is read with the mesh's coordinates rather than projected in world space.</summary>
+        public bool UvMapped { get; init; }
         /// <summary>Tiles per meter: the reciprocal of the texture size.</summary>
         public float TextureScale { get; init; }
         /// <summary>Relief height in meters of a full white-to-black step in the texture.</summary>
@@ -1513,6 +1531,7 @@ public sealed partial class PathTracer
                 PatternScale = m.PatternScale,
                 PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
                 Texture = m.Texture,
+                UvMapped = m.UvMapped,
                 TextureScale = 1 / m.TextureSize,
                 // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
                 TextureDepth = m.TextureRelief * m.TextureSize * 0.01f

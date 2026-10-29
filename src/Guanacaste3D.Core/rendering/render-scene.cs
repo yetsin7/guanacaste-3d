@@ -24,8 +24,9 @@ public sealed record RenderLight(Vector3 Position, Vector3 Intensity, float Radi
 public sealed class RenderScene
 {
     internal RenderScene(Vector3[] positions, int[] indices, int[] triangleMaterial, Vector3[]? normals,
-        RenderMaterial[] materials, RenderLight[] lights, int droppedTriangles)
+        RenderMaterial[] materials, RenderLight[] lights, int droppedTriangles, Vector2[]? triangleUvs = null)
     {
+        TriangleUvs = triangleUvs;
         Positions = positions;
         Indices = indices;
         TriangleMaterial = triangleMaterial;
@@ -39,6 +40,11 @@ public sealed class RenderScene
     public int[] Indices { get; }
     public int[] TriangleMaterial { get; }
     public Vector3[]? Normals { get; }
+    /// <summary>
+    /// Texture coordinates of each triangle's three corners (three per triangle), for materials that are
+    /// <see cref="RenderMaterial.UvMapped"/>; null when no triangle has any.
+    /// </summary>
+    public Vector2[]? TriangleUvs { get; }
     public RenderMaterial[] Materials { get; }
     public RenderLight[] Lights { get; }
     /// <summary>Triangles discarded for non-finite coordinates, bad indices or zero area.</summary>
@@ -62,7 +68,7 @@ public sealed class RenderScene
     /// <summary>Approximate heap size of the geometry, used to warn before very large renders.</summary>
     public long EstimatedBytes =>
         Positions.Length * 12L + Indices.Length * 4L + TriangleMaterial.Length * 4L +
-        (Normals?.Length ?? 0) * 12L + TriangleCount * 40L;
+        (Normals?.Length ?? 0) * 12L + (TriangleUvs?.Length ?? 0) * 8L + TriangleCount * 40L;
 }
 
 /// <summary>Combines the BIM mesh and linked models into one <see cref="RenderScene"/>.</summary>
@@ -75,6 +81,7 @@ public sealed class RenderSceneBuilder
     private readonly List<RenderMaterial> _materials = [];
     private readonly Dictionary<RenderMaterial, int> _materialIndex = [];
     private readonly List<RenderLight> _lights = [];
+    private readonly List<(int Triangle, TexturedTriangle Corners)> _uvs = [];
     private bool _anyNormals;
     private int _dropped;
 
@@ -86,6 +93,7 @@ public sealed class RenderSceneBuilder
         materialFor ??= MaterialLibrary.ForKind;
         var kinds = new Dictionary<SurfaceKind, int>();
         var dimmed = new Dictionary<(SurfaceKind, int), int>();
+        var textured = new Dictionary<(SurfaceKind, int), int>();
         var start = _positions.Count;
         var meshPositions = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(mesh.Positions);
         _positions.AddRange(meshPositions);
@@ -119,6 +127,20 @@ public sealed class RenderSceneBuilder
                     var full = materialFor(kind);
                     dimmed[(kind, step)] = material = MaterialIndex(full with { Emission = full.Emission * (step / 64f) });
                 }
+            }
+            else if (mesh.TexturedTriangles.TryGetValue(triangle, out var corners) && (uint)corners.Texture < (uint)mesh.Textures.Count)
+            {
+                // A detailed family's own image: the category keeps its roughness and translucency, the image its colour.
+                if (!textured.TryGetValue((kind, corners.Texture), out material))
+                {
+                    var image = mesh.Textures[corners.Texture];
+                    textured[(kind, corners.Texture)] = material = MaterialIndex(materialFor(kind) with
+                    {
+                        BaseColor = Vector3.One, Pattern = SurfacePattern.None, Texture = image.Texture, TextureSize = 1,
+                        TextureRelief = 0, UvMapped = true, AlphaCutoff = image.AlphaCutoff
+                    });
+                }
+                _uvs.Add((_triangleMaterial.Count, corners));
             }
             else if (!kinds.TryGetValue(kind, out material)) kinds[kind] = material = MaterialIndex(materialFor(kind));
             _indices.Add(start + a);
@@ -187,8 +209,19 @@ public sealed class RenderSceneBuilder
     {
         PadNormals();
         var materials = _materials.Count == 0 ? [MaterialLibrary.Imported.Sanitized()] : _materials.ToArray();
+        Vector2[]? uvs = null;
+        if (_uvs.Count > 0)
+        {
+            uvs = new Vector2[_triangleMaterial.Count * 3];
+            foreach (var (triangle, corners) in _uvs)
+            {
+                uvs[triangle * 3] = corners.A;
+                uvs[triangle * 3 + 1] = corners.B;
+                uvs[triangle * 3 + 2] = corners.C;
+            }
+        }
         return new RenderScene(_positions.ToArray(), _indices.ToArray(), _triangleMaterial.ToArray(),
-            _anyNormals ? _normals.ToArray() : null, materials, _lights.ToArray(), _dropped);
+            _anyNormals ? _normals.ToArray() : null, materials, _lights.ToArray(), _dropped, uvs);
     }
 
     private int MaterialIndex(RenderMaterial material)

@@ -22,6 +22,8 @@ static class ShowcaseShot
         var all = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") == "night"
             ? new[] { NightInterior() }
             : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom(), Villa(), Cobogo(), Cobogo() with { Name = "cobogo-garage", Camera = new RenderCamera(new Vector3(9.5f, -9, 1.5f), new Vector3(11.6f, 2.4f, 0.9f), 50) { CorrectVerticals = true } } };
+        // G3_SHOT_FAMILIES=<folder> adds "plant-lab": every mesh family of the folder in a row on a lawn, for judging them.
+        if (Environment.GetEnvironmentVariable("G3_SHOT_FAMILIES") is { } lab) all = [.. all, PlantLab(lab)];
         var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
             ? all.Where(scene => scene.Name == only).ToArray()
             : all;
@@ -41,6 +43,33 @@ static class ShowcaseShot
                     tracer.ToBgra32(true, RenderLooks.Style(style).Apply(new ImageFinish { AutoExposure = true }))));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
+    }
+
+    /// <summary>Mesh families of a folder side by side on a lawn under a three-quarter sun, seen at eye level.</summary>
+    private static BenchmarkScene PlantLab(string folder)
+    {
+        var session = new Guanacaste3D.Core.DocumentSession(Guanacaste3D.Core.ArchitecturalLibrary.CreateProject("Plantas"));
+        var level = session.Document.Levels[0].Id;
+        var lawn = Guanacaste3D.Core.ArchitecturalLibrary.SlabPresets.Single(preset => preset.Name == "Lawn 150 mm");
+        session.AddSlabFromPreset(level, [new(-30, -30), new(30, -30), new(30, 30), new(-30, 30)], lawn);
+        var x = 0.0;
+        foreach (var file in Directory.GetFiles(folder, "*.g3df").Order())
+        {
+            var family = Guanacaste3D.Core.NativeDocumentStore.LoadFamily(file);
+            var id = session.LoadComponentFamily(family);
+            var size = family.Mesh!.Decode().Size;
+            x += size.X / 2;
+            session.PlaceComponentFamily(level, id, new(x, 0), 0.4);
+            x += size.X / 2 + 0.4;
+        }
+        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document, includeGround: true,
+            plants: Guanacaste3D.Core.Geometry.PlantDetail.Render);
+        var (min, max) = mesh.Bounds();
+        var height = Math.Max(1.2f, max.Z);
+        var target = new Vector3((float)x / 2, 0, height * 0.45f);
+        return new BenchmarkScene("plant-lab", mesh,
+            new RenderCamera(target + new Vector3(0, -Math.Max(3, (float)x * 0.9f), height * 0.2f), target, 45) { CorrectVerticals = true },
+            new RenderSettings { SunDirection = Vector3.Normalize(new Vector3(-0.5f, -0.6f, 0.65f)), MaxBounces = 5 });
     }
 
     /// <summary>The modern villa at golden hour, seen from the pool side: the look the photoreal pipeline aims for.</summary>

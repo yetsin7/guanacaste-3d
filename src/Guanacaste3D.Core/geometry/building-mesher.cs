@@ -78,12 +78,27 @@ public enum SurfaceKind : byte
     TintedGlass
 }
 
+/// <summary>A texture a mesh maps by coordinates, and the coverage below which its surface is cut away.</summary>
+public sealed record SceneTexture(Rendering.RenderTexture Texture, float AlphaCutoff);
+
+/// <summary>The texture coordinates of a triangle's three corners and the <see cref="SceneMesh.Textures"/> entry it uses.</summary>
+public readonly record struct TexturedTriangle(Vector2 A, Vector2 B, Vector2 C, int Texture);
+
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
 public sealed class SceneMesh
 {
     public List<Vector3> Positions { get; } = [];
     public List<int> Indices { get; } = [];
     public List<SurfaceKind> TriangleKinds { get; } = [];
+
+    /// <summary>Textures that triangles of this mesh map with their own coordinates (detailed family meshes).</summary>
+    public List<SceneTexture> Textures { get; } = [];
+
+    /// <summary>
+    /// The triangles that carry texture coordinates, by triangle index, with the texture (in <see cref="Textures"/>) they
+    /// map. Sparse, so the many ways geometry is appended never have to keep a parallel list aligned.
+    /// </summary>
+    public Dictionary<int, TexturedTriangle> TexturedTriangles { get; } = [];
 
     /// <summary>
     /// Per-vertex shading normals, aligned with <see cref="Positions"/>, or null when every triangle is flat. A zero

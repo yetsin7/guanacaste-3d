@@ -57,7 +57,7 @@ internal static class GltfReader
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("asset", out _))
                 throw new InvalidDataException("The glTF file is not valid.");
             var context = new Context(root, embedded, Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", options);
-            var mesh = new MeshAccumulator { Normals = new ArrayBuilder<Vector3>(1 << 14) };
+            var mesh = new MeshAccumulator { Normals = new ArrayBuilder<Vector3>(1 << 14), Uvs = new ArrayBuilder<Vector2>(1 << 14) };
             context.Build(mesh, cancellation);
             progress?.Report(new ImportProgress(0.95, "Import.Finishing"));
             if (mesh.TriangleCount == 0) throw new InvalidDataException("The model file contains no geometry.");
@@ -157,6 +157,7 @@ internal static class GltfReader
                 var positions = ReadVectors(positionAccessor.GetInt32());
                 if (positions.Length == 0) continue;
                 var normals = attributes.TryGetProperty("NORMAL", out var normalAccessor) ? ReadVectors(normalAccessor.GetInt32()) : [];
+                var uvs = attributes.TryGetProperty("TEXCOORD_0", out var uvAccessor) ? ReadUvs(uvAccessor.GetInt32()) : [];
                 var indices = primitive.TryGetProperty("indices", out var indexAccessor)
                     ? ReadIndices(indexAccessor.GetInt32())
                     : Enumerable.Range(0, positions.Length).ToArray();
@@ -176,6 +177,7 @@ internal static class GltfReader
                         mesh.Normals!.Add(normal.LengthSquared() > 1e-12f ? Vector3.Normalize(normal) : Vector3.Zero);
                     }
                     else mesh.Normals!.Add(Vector3.Zero);
+                    mesh.Uvs!.Add(i < uvs.Length ? uvs[i] : Vector2.Zero);
                 }
                 for (var i = 0; i + 2 < triangles.Length; i += 3)
                 {
@@ -284,6 +286,26 @@ internal static class GltfReader
             var size = componentType switch { 5126 or 5125 => 4, 5123 or 5122 => 2, _ => 1 };
             var stride = view.TryGetProperty("byteStride", out var bs) && bs.GetInt32() > 0 ? bs.GetInt32() : size * components;
             return (data, offset, stride, count, componentType, components);
+        }
+
+        /// <summary>Texture coordinates: floats, or normalized unsigned bytes and shorts, as glTF allows.</summary>
+        private Vector2[] ReadUvs(int accessorIndex)
+        {
+            var (data, offset, stride, count, type, components) = Accessor(accessorIndex);
+            if (data.Length == 0 || components < 2) return [];
+            var result = new Vector2[count];
+            for (var i = 0; i < count; i++)
+            {
+                var at = offset + i * stride;
+                result[i] = type switch
+                {
+                    5126 when at + 8 <= data.Length => new Vector2(BitConverter.ToSingle(data, at), BitConverter.ToSingle(data, at + 4)),
+                    5123 when at + 4 <= data.Length => new Vector2(BitConverter.ToUInt16(data, at) / 65535f, BitConverter.ToUInt16(data, at + 2) / 65535f),
+                    5121 when at + 2 <= data.Length => new Vector2(data[at] / 255f, data[at + 1] / 255f),
+                    _ => Vector2.Zero
+                };
+            }
+            return result;
         }
 
         private Vector3[] ReadVectors(int accessorIndex)

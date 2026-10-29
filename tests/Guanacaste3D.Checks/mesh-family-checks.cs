@@ -68,7 +68,64 @@ static class MeshFamilyChecks
         orphan.ComponentFamilies.Clear();
         check(Throws(orphan.Validate), "An instance of a family that is not loaded is rejected");
 
+        Textured(check);
         Shipped(check);
+    }
+
+    /// <summary>
+    /// A textured card: a 2 × 2 m square whose image is opaque on its left half only. The renderer sees the left half
+    /// and passes through the right one, for camera rays and shadows alike.
+    /// </summary>
+    private static void Textured(Action<bool, string> check)
+    {
+        Vector3[] corners = [new(-1, 0, 0), new(1, 0.01f, 0), new(1, 0.01f, 2), new(-1, 0, 2)];
+        int[] faces = [0, 1, 2, 0, 2, 3];
+        Vector2[] uvs = [new(0, 1), new(1, 1), new(1, 0), new(0, 0)];
+        var rgba = new byte[4 * 4 * 4];
+        for (var pixel = 0; pixel < 16; pixel++)
+        {
+            rgba[pixel * 4 + 1] = 200;
+            rgba[pixel * 4 + 3] = (byte)(pixel % 4 < 2 ? 255 : 0);
+        }
+        var mesh = FamilyMesh.Create(corners, faces, [SurfaceKind.Leaf, SurfaceKind.Leaf], null, uvs, [0, 0],
+            [FamilyMeshTexture.Create("hoja", 4, 4, rgba, 0.5f)]);
+        var family = new FamilyDocument
+        {
+            Name = "Tarjeta de hoja", Category = FamilyCategory.Planting,
+            Types = [new FamilyTypeDefinition(Guid.NewGuid(), "Estándar", [])], Mesh = mesh
+        };
+        var path = Path.Combine(Path.GetTempPath(), $"leaf-card-{Guid.NewGuid():N}.g3df");
+        NativeDocumentStore.SaveFamily(path, family);
+        var loaded = NativeDocumentStore.LoadFamily(path);
+        File.Delete(path);
+        check(loaded.Mesh!.Textures.Single().Texture().HasAlpha && loaded.Mesh.Decode().Uvs!.Length == 4,
+            "A textured family survives a .g3df save with its image, mask and coordinates");
+
+        var scene = new SceneMesh();
+        loaded.Mesh.AppendTo(scene, new Point2(0, 0), 0, 2, 0.01, 2, 0);
+        check(scene.Textures.Count == 1 && scene.TexturedTriangles.Count == 2, "Placing the family brings its image into the scene");
+        var render = new Guanacaste3D.Core.Rendering.RenderSceneBuilder().AddBuilding(scene).Build();
+        check(render.TriangleUvs is { Length: 6 } && render.Materials.Any(material => material.UvMapped && material.AlphaCutoff > 0),
+            "The render scene maps the image by coordinates with its cut-out");
+        var cutout = Guanacaste3D.Core.Rendering.AlphaCutout.For(render);
+        var bvh = new Guanacaste3D.Core.Rendering.Bvh(render.Positions, render.Indices, null) { Cutout = cutout };
+        bool Hits(float x)
+        {
+            var hit = new Guanacaste3D.Core.Rendering.RayHit { Distance = float.MaxValue };
+            return bvh.Intersect(new Vector3(x, -5, 1), Vector3.UnitY, 0, ref hit);
+        }
+        check(cutout is not null && Hits(-0.5f) && !Hits(0.5f) &&
+              !bvh.Occluded(new Vector3(0.5f, -5, 1), Vector3.UnitY, 0, 10) && bvh.Occluded(new Vector3(-0.5f, -5, 1), Vector3.UnitY, 0, 10),
+            "Rays and shadows pass through the transparent part of a card and stop on the opaque one");
+
+        var broken = new FamilyMesh
+        {
+            Positions = mesh.Positions, Indices = mesh.Indices, Kinds = mesh.Kinds, Uvs = mesh.Uvs,
+            TriangleTextures = Convert.ToBase64String(new byte[] { 0, 3 }), Textures = mesh.Textures
+        };
+        var rejected = false;
+        try { broken.Validate(); } catch (InvalidDataException) { rejected = true; }
+        check(rejected, "A triangle that names a missing image is rejected");
     }
 
     /// <summary>The CC0 jacaranda and cars shipped as families, and the saved breeze-block house that uses them.</summary>
@@ -90,9 +147,13 @@ static class MeshFamilyChecks
 
         var sample = NativeDocumentStore.LoadProject(Path.Combine(resources, "samples", "casa-del-cobogo.g3d"));
         sample.Validate();
-        check(sample.ComponentFamilies.Count == 3 &&
-              sample.StructuralElements.Count(element => element.FamilyId is not null) == 6,
-            "The saved breeze-block house opens with its jacarandas and two detailed cars");
+        check(sample.ComponentFamilies.Count >= 9 &&
+              sample.StructuralElements.Count(element => element.FamilyId is not null) >= 70,
+            "The saved breeze-block house opens with its jacarandas, cars, garden and indoor plants");
+        var fern = families.Single(family => family.Name == BreezeBlockHouseShowcase.FernFamily).Mesh!;
+        check(fern.Textures.Count == 1 && fern.Textures[0].AlphaCutoff > 0 && fern.Decode().Uvs is not null &&
+              fern.Decode().TriangleTextures!.All(texture => texture == 0),
+            "Leaf families carry their image, its cut-out mask and texture coordinates");
     }
 
     private static bool Throws(Action action)

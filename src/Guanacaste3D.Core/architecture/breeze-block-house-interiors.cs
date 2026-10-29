@@ -7,7 +7,7 @@ public static partial class BreezeBlockHouseShowcase
     /// the upper floor a studio along the street, two bedrooms and a shared bathroom toward the garden, each with its
     /// doors, windows, fixtures and furniture, plus the stairwell, its guard and the sanitary system.
     /// </summary>
-    private static void AddInteriors(DocumentSession session, Guid ground, Guid upper)
+    private static void AddInteriors(DocumentSession session, Guid ground, Guid upper, Func<string, Guid?> load)
     {
         var partition = WallType("Gypsum Partition 100 mm");
         Guid Partition(Guid level, double x1, double y1, double x2, double y2) =>
@@ -44,7 +44,14 @@ public static partial class BreezeBlockHouseShowcase
         foreach (var (x, y, turn) in new[] { (3.6, 9.0, faceNorth), (4.8, 9.0, faceNorth), (3.6, 10.2, 0.0), (4.8, 10.2, 0.0) })
             Place(ground, "Dining Chair", x, y, turn);
         Place(ground, "Area Rug", 4.3, 3.6);
-        Place(ground, "Indoor Plant", 2.5, 11.2);
+        // Indoor plants: detailed families when supplied, otherwise the catalog pot plant.
+        void Houseplant(Guid level, string family, double scale, double x, double y)
+        {
+            if (load(family) is Guid id) session.PlaceComponentFamily(level, id, new Point2(x, y), 0.6, scale);
+            else Place(level, "Indoor Plant", x, y);
+        }
+        Houseplant(ground, PachiraFamily, 1.3, 2.5, 11.2);
+        Houseplant(ground, CalatheaFamily, 1.4, 5.8, 5.2);
         Place(ground, "Toilet", 11.4, 7.35);
         Place(ground, "Pedestal Sink", 12.3, 7.5);
         Place(ground, "Washing Machine", 13.4, 7.4);
@@ -93,6 +100,8 @@ public static partial class BreezeBlockHouseShowcase
         Place(upper, "Shower Enclosure", 7.3, 7.1, faceNorth);
         Place(upper, "Double Bed", 12.7, 10.7);
         Place(upper, "Dresser", 14.6, 8.4, faceWest);
+        Houseplant(upper, AnthuriumFamily, 1.0, 0.8, 11.3);
+        Houseplant(upper, CalatheaFamily, 1.2, 12.2, 0.8);
 
         // Water from the meter at the street, sewage to the outlet at the back of the lot.
         session.AddPlumbingPoint(ground, PlumbingPointKind.WaterMeter, "Medidor", new Point2(16.5, -5.0));

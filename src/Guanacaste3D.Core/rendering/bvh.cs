@@ -24,6 +24,14 @@ public struct RayHit
 /// </summary>
 public sealed class Bvh
 {
+    private readonly AlphaCutout? _cutout;
+
+    /// <summary>
+    /// Holes in textured cards (leaves, grass): a hit where the texture is transparent is skipped, so closest-hit and
+    /// shadow queries both see through it. Null for fully opaque geometry.
+    /// </summary>
+    public AlphaCutout? Cutout { get => _cutout; init => _cutout = value; }
+
     private const int BinCount = 12;
     private const int MaxLeafSize = 4;
     private const int MaxDepth = 60;
@@ -237,6 +245,7 @@ public sealed class Bvh
         if (v < 0 || u + v > 1) return false;
         var distance = Vector3.Dot(edge2, q) * inverseDeterminant;
         if (distance <= minDistance || distance >= hit.Distance) return false;
+        if (_cutout is not null && _cutout.IsHole(_triangleOfSlot[slot], u, v)) return false;
         hit.Distance = distance;
         hit.Triangle = _triangleOfSlot[slot];
         hit.Slot = slot;
