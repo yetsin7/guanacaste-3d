@@ -17,12 +17,15 @@ internal static class ScenePresentation
     /// <summary>Keeps project-framed outlines above the subpixel range that produces broken, dotted edges.</summary>
     public static float EdgeThicknessForBounds(Vector3 min, Vector3 max, bool thickLines = true)
     {
-        var thickness = Math.Clamp(0.004f * Math.Max(3, (max - min).Length() / 2), 0.006f, 0.12f);
-        return thickLines ? thickness : Math.Max(0.0025f, thickness * ThinLineFactor);
+        var thickness = Math.Clamp(0.0016f * Math.Max(3, (max - min).Length() / 2), 0.004f, 0.045f);
+        return thickLines ? thickness : Math.Max(0.0018f, thickness * ThinLineFactor);
     }
 
-    /// <summary>Share of the full edge thickness kept when line weights are off, like Revit's thin-lines mode.</summary>
-    private const float ThinLineFactor = 0.3f;
+    /// <summary>Share of the full edge thickness kept in thin-lines mode, like Revit's "Líneas finas" (TL).</summary>
+    private const float ThinLineFactor = 0.35f;
+
+    /// <summary>Soft graphite for model edges: visible without dominating the surfaces, even at the heavier weight.</summary>
+    public static readonly Color EdgeColor = Color.FromRgb(88, 92, 99);
 
     /// <summary>
     /// Builds one frozen model per surface kind; transparent glass is emitted last. Kinds with an image in

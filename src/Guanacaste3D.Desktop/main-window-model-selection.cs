@@ -224,9 +224,9 @@ public partial class MainWindow
         if (outline.Count == 0) return;
 
         var thickness = EdgeThickness();
-        AddSelectionVisual(ScenePresentation.ToWpfEdges(outline, Matrix4x4.Identity, thickness * 2.2f, Color.FromRgb(240, 130, 20)));
+        AddSelectionVisual(ScenePresentation.ToWpfEdges(outline, Matrix4x4.Identity, thickness * 1.5f, Color.FromRgb(240, 130, 20)));
         AddSelectionVisual(ScenePresentation.ToWpfEdges(dimensions.Select(line => new EdgeSegment(line.A, line.B)),
-            Matrix4x4.Identity, thickness * 0.9f, Color.FromRgb(30, 110, 200)));
+            Matrix4x4.Identity, thickness * 0.6f, Color.FromRgb(30, 110, 200)));
 
         foreach (var line in dimensions)
         {

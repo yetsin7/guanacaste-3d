@@ -238,7 +238,7 @@ public partial class MainWindow
 
     private void AddEdgeVisual(IEnumerable<EdgeSegment> edges, System.Numerics.Matrix4x4 placement, float thickness)
     {
-        var lines = ScenePresentation.ToWpfEdges(edges, placement, thickness, Color.FromRgb(52, 56, 62));
+        var lines = ScenePresentation.ToWpfEdges(edges, placement, thickness, ScenePresentation.EdgeColor);
         if (lines is not null) ModelViewport.Children.Add(new ModelVisual3D { Content = lines });
     }
 

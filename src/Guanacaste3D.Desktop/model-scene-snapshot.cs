@@ -44,7 +44,7 @@ internal sealed record ModelSceneSnapshot(IReadOnlyList<GeometryModel3D> Models,
         var edgeLimit = scene.TriangleCount > 100_000 ? 10_000 : 80_000;
         var edges = showEdges && !xray
             ? ScenePresentation.ToWpfEdges(FeatureEdges.Extract(scene.Positions, indices, maximumEdges: edgeLimit), Matrix4x4.Identity,
-                thickness, Color.FromRgb(52, 56, 62))
+                thickness, ScenePresentation.EdgeColor)
             : null;
         return new(models, edges, (minimum, maximum), hasGeometry)
         {
