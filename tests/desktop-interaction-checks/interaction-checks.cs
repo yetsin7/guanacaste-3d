@@ -115,6 +115,7 @@ internal static partial class InteractionChecks
             RenderJoinScene();
             Model3DSelectionChecks();
             RenderPreviewAndImportChecks();
+            RevitProjectChecks();
             TileViewChecks();
             CheckAssociatedDocumentStartup();
             StartupSampleChecks();

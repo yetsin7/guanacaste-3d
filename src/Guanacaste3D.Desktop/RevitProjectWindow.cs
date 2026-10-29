@@ -16,7 +16,7 @@ namespace Guanacaste3D.Desktop;
 /// Revit through the bridge add-in when needed, converts the elements, optionally saves every family as a .g3df file,
 /// and reports what became native and what kept Revit's geometry before the project is opened.
 /// </summary>
-internal sealed class RevitProjectWindow : Window
+public sealed class RevitProjectWindow : Window
 {
     private readonly string _path;
     private readonly bool _exchange;

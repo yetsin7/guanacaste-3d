@@ -87,6 +87,10 @@ public partial class MainWindow
         var window = new RevitProjectWindow(path) { Owner = this };
         if (window.ShowDialog() != true || window.Result is not { } document) return false;
         AttachDocument(document, null);
+        // Revit projects list footing and beam levels below and around the ground floor; open on the ground floor plan.
+        var ground = document.Levels.First(level => level.Role == LevelRole.BaseFloor);
+        if (document.Views.FirstOrDefault(view => view.Kind == ProjectViewKind.Plan && view.LevelId == ground.Id) is { } plan)
+            SelectProjectView(plan.Id);
         _dirty = true;
         Title = "Guanacaste 3D — " + document.Name + " *";
         StatusText.Text = FormatText("RevitImport.Status", document.Walls.Count, document.Openings.Count, document.ComponentFamilies.Count);

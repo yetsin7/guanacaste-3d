@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <!--
     Revit add-in that writes a Revit project as a Guanacaste exchange file (.g3dx). Guanacaste 3D starts Revit with
     this add-in to import .rvt files, and Revit users can also run it from the "Guanacaste 3D" ribbon tab. It is built
@@ -24,6 +24,10 @@
     <!-- Revit owns its dependency graph; only its public API assemblies are compile references. -->
     <Reference Include="RevitAPI" ExternallyResolved="true"><HintPath>$(RevitInstallDir)\RevitAPI.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="RevitAPIUI" ExternallyResolved="true"><HintPath>$(RevitInstallDir)\RevitAPIUI.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Ribbon icons: the Guanacaste cube with an export or open arrow. -->
+    <EmbeddedResource Include="resources\*.png" LogicalName="Guanacaste3D.RevitBridge.resources.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
 

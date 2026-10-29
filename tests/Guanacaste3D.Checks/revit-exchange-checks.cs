@@ -85,6 +85,82 @@ static class RevitExchangeChecks
         check(sofa.Kinds.All(kind => kind == SurfaceKind.Upholstery), "Revit materials map onto render surfaces");
         check(document.WallTypes.Any(type => type.Construction == WallConstruction.Brick), "Brick wall layers give a brick wall type");
         document.Validate();
+        RealModelCases(check);
+    }
+
+    /// <summary>Cases found converting a real house: sunk walls, gables, split slabs and light cut-outs.</summary>
+    private static void RealModelCases(Action<bool, string> check)
+    {
+        var file = new ExchangeFile
+        {
+            Format = "guanacaste-exchange", Version = 1,
+            Levels = [new() { Id = 1, Name = "Sísmica", Elevation = -0.1 }, new() { Id = 2, Name = "Planta baja", Elevation = 0.001 }],
+            Materials = [new() { Name = "Brick, Common" }],
+            Meshes = [Gable(4f, 0.15f, 2.7f, 3.7f)]
+        };
+        // A wall on "Planta baja" sunk 10 cm into the ground, attached to the roof: Revit draws its gable.
+        file.Elements.Add(new ExchangeElement
+        {
+            Id = 1, Category = "OST_Walls", Kind = "wall", Type = "Muro Existente", Level = 2, Mesh = 0, Origin = [0, 0, -0.099],
+            Wall = new ExchangeWall
+            {
+                Width = 0.15, Start = [0, 0], End = [4, 0], BaseLevel = 2, BaseZ = -0.099, Height = 3.3, TopZ = 3.601, TopAttached = true,
+                Layers = [new ExchangeLayer { Function = "Structure", Width = 0.15, Material = "Brick, Common" }]
+            }
+        });
+        file.Elements.Add(new ExchangeElement
+        {
+            Id = 2, Category = "OST_Ceilings", Kind = "ceiling", Type = "Cielo", Level = 2,
+            Slab = new ExchangeSlab
+            {
+                Flat = true, Z = 2.6,
+                Loops = [[[0, 0], [4, 0], [4, 3], [0, 3]], Circle(2, 1.5, 0.08), [[5, 0], [6, 0], [6, 1], [5, 1]]]
+            }
+        });
+        var (document, report) = ExchangeConverter.Convert(file, "Casa real");
+        var ground = document.Levels.Single(level => level.Role == LevelRole.BaseFloor);
+        var wall = document.Walls.SingleOrDefault();
+        check(ground.Name == "Planta baja" && wall?.LevelId == ground.Id,
+            "A wall sunk below its level stays on it, and the level most walls stand on is the ground floor");
+        check(wall is not null && Math.Abs(wall.Height - 2.6) < 0.01 &&
+              document.ComponentFamilies.Any(family => family.Name.StartsWith("Remate de muro", StringComparison.Ordinal)),
+            "A gable wall keeps a native body up to its eaves and Revit's gable above it");
+        check(document.Floors.Count(floor => floor.Kind == FloorKind.Ceiling) == 2 && report.MeshFallbacks.Count == 0,
+            "Separate pieces of one ceiling become separate slabs, and light cut-outs are ignored");
+        document.Validate();
+    }
+
+    private static List<double[]> Circle(double x, double y, double radius) =>
+        Enumerable.Range(0, 16).Select(index => new[]
+        {
+            x + radius * Math.Cos(index * Math.PI / 8), y + radius * Math.Sin(index * Math.PI / 8)
+        }).ToList();
+
+    /// <summary>A wall along X with a gable: eaves at <paramref name="eaves"/>, ridge at mid-length.</summary>
+    private static ExchangeMesh Gable(float length, float width, float eaves, float ridge)
+    {
+        Vector2[] outline = [new(0, 0), new(length, 0), new(length, eaves), new(length / 2, ridge), new(0, eaves)];
+        var positions = new List<Vector3>();
+        var indices = new List<int>();
+        foreach (var y in new[] { -width / 2, width / 2 })
+        {
+            var start = positions.Count;
+            positions.AddRange(outline.Select(point => new Vector3(point.X, y, point.Y)));
+            for (var index = 1; index < outline.Length - 1; index++)
+                indices.AddRange(y < 0 ? [start, start + index, start + index + 1] : [start, start + index + 1, start + index]);
+        }
+        for (var index = 0; index < outline.Length; index++)
+        {
+            var next = (index + 1) % outline.Length;
+            indices.AddRange([index, outline.Length + index, outline.Length + next, index, outline.Length + next, next]);
+        }
+        var materials = new int[indices.Count / 3];
+        return new ExchangeMesh
+        {
+            Positions = Convert.ToBase64String(MemoryMarshal.AsBytes(positions.ToArray().AsSpan())),
+            Indices = Convert.ToBase64String(MemoryMarshal.AsBytes(indices.ToArray().AsSpan())),
+            Materials = Convert.ToBase64String(MemoryMarshal.AsBytes(materials.AsSpan()))
+        };
     }
 
     private static void Wall(ExchangeFile file, long id, double[] start, double[] end) =>

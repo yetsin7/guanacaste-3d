@@ -143,6 +143,14 @@ public static class ExchangeConverter
                 _levels[source.Id] = level;
             }
             if (levels.Count == 0) levels.Add(new Level(Guid.NewGuid(), "Nivel 1", 0));
+            // The ground floor is the level most walls stand on, whatever its name; footing and beam levels are not.
+            var ground = file.Elements.Where(element => element.Wall?.BaseLevel is { } id && _levels.ContainsKey(id))
+                .GroupBy(element => element.Wall!.BaseLevel!.Value).MaxBy(group => group.Count())?.Key;
+            if (ground is { } groundId)
+            {
+                var index = levels.FindIndex(level => level.Id == _levels[groundId].Id);
+                levels[index] = levels[index] with { Role = LevelRole.BaseFloor };
+            }
             _document.Levels = levels;
             _document.Views = BuiltInProjectViews.CreateDefaults(levels);
             BaseLevels.Ensure(_document);
@@ -168,34 +176,29 @@ public static class ExchangeConverter
             if (reason is null)
             {
                 var baseZ = data.BaseZ ?? data.BottomZ ?? 0;
-                var level = _document.Levels.FirstOrDefault(candidate => Math.Abs(candidate.Elevation - baseZ) < 0.005);
+                // Revit walls often start a few centimeters off a level (a base offset to a slab top); within 5 cm the
+                // nearest level hosts the wall and the height absorbs the difference.
+                // A wall sunk a little below its own level (into the slab or the ground) stays on that level: only its
+                // buried part is lost, and it remains in that level's plan.
+                var level = data.BaseLevel is { } baseId && _levels.TryGetValue(baseId, out var own) &&
+                            baseZ - own.Elevation is >= -0.15 and <= 0.05
+                    ? own
+                    : _document.Levels.Where(candidate => Math.Abs(candidate.Elevation - baseZ) < 0.05)
+                        .MinBy(candidate => Math.Abs(candidate.Elevation - baseZ));
                 if (level is null) reason = "Wall base between levels";
                 else
                 {
                     var top = data.TopZ ?? baseZ + data.Height;
-                    var height = Math.Round(top - baseZ, 4);
-                    var start = Plan(data.Start!);
-                    var end = Plan(data.End!);
-                    var wall = new Wall(Guid.NewGuid(), level.Id, start, end, Math.Round(data.Width, 4), height)
+                    // A wall attached to a roof or with an edited profile keeps a native rectangular body up to its
+                    // lowest top; the gable or notch above it keeps Revit's geometry as a family of its own.
+                    TriSoup? above = null;
+                    if (data.TopAttached || data.ProfileEdited)
                     {
-                        WallTypeId = WallTypeFor(element).Id
-                    };
-                    if (data.TopLevel is { } topId && _levels.TryGetValue(topId, out var topLevel) &&
-                        Math.Abs(topLevel.Elevation + data.TopOffset - top) < 0.01 && topLevel.Elevation > level.Elevation)
-                        wall = wall with { TopLevelId = topLevel.Id, TopOffset = Math.Round(data.TopOffset, 4) };
-                    var hosted = HostOpenings(wall, baseZ, openings);
-                    if (hosted is null) reason = "Wall with openings that do not fit";
-                    else if (wall.Length < 0.05 || height is < 0.1 or > 1000) reason = "Wall too short";
-                    else
-                    {
-                        _document.Walls.Add(wall);
-                        _document.Openings.AddRange(hosted);
-                        _walls[element.Id] = (wall, baseZ);
-                        _report.Walls++;
-                        _report.Doors += hosted.Count(opening => opening.Kind == OpeningKind.Door);
-                        _report.Windows += hosted.Count(opening => opening.Kind == OpeningKind.Window);
-                        return;
+                        if (SplitWallTop(element, baseZ) is { } split) (top, above) = split;
+                        else reason = data.ProfileEdited ? "Wall with edited profile" : "Wall attached to a roof or floor";
                     }
+                    if (reason is null) reason = PlaceWall(element, openings, level, top, above);
+                    if (reason is null) return;
                 }
             }
             _meshWalls.Add(element.Id);
@@ -203,13 +206,118 @@ public static class ExchangeConverter
             foreach (var opening in openings) Component(opening, "Opening in a modeled wall");
         }
 
+        /// <summary>Adds the native wall with its openings; returns why it could not be placed, or null.</summary>
+        private string? PlaceWall(ExchangeElement element, List<ExchangeElement> openings, Level level, double top, TriSoup? above)
+        {
+            var data = element.Wall!;
+            var wall = new Wall(Guid.NewGuid(), level.Id, Plan(data.Start!), Plan(data.End!), Math.Round(data.Width, 4),
+                Math.Round(top - level.Elevation, 4))
+            {
+                WallTypeId = WallTypeFor(element).Id
+            };
+            if (above is null && data.TopLevel is { } topId && _levels.TryGetValue(topId, out var topLevel) &&
+                Math.Abs(topLevel.Elevation + data.TopOffset - top) < 0.02 && topLevel.Elevation > level.Elevation)
+            {
+                // The height must equal what the constraint implies, to the micrometer.
+                var offset = Math.Round(data.TopOffset, 4);
+                wall = wall with { TopLevelId = topLevel.Id, TopOffset = offset, Height = topLevel.Elevation + offset - level.Elevation };
+            }
+            if (wall.Length < 0.05 || wall.Height is < 0.1 or > 1000) return "Wall too short";
+            var hosted = HostOpenings(wall, level.Elevation, openings);
+            if (hosted is null) return "Wall with openings that do not fit";
+            _document.Walls.Add(wall);
+            _document.Openings.AddRange(hosted);
+            _walls[element.Id] = (wall, level.Elevation);
+            _report.Walls++;
+            _report.Doors += hosted.Count(opening => opening.Kind == OpeningKind.Door);
+            _report.Windows += hosted.Count(opening => opening.Kind == OpeningKind.Window);
+            if (above is not null) AddSoup(element, above, "Remate de muro", SurfaceKind.Wall);
+            return null;
+        }
+
+        /// <summary>
+        /// The lowest top of a wall along its length and its geometry above that height. The top is sampled every
+        /// 5 cm from end to end as the highest point of the wall's triangles there, so window sills and door heads
+        /// below the top do not count.
+        /// </summary>
+        private (double Top, TriSoup Above)? SplitWallTop(ExchangeElement element, double baseZ)
+        {
+            var data = element.Wall!;
+            if (World(element) is not { } soup) return null;
+            var start = new Vector2((float)data.Start![0], (float)data.Start[1]);
+            var axis = new Vector2((float)data.End![0], (float)data.End[1]) - start;
+            var length = axis.Length();
+            if (length < 0.3f) return null;
+            axis /= length;
+            var lowest = double.MaxValue;
+            var step = (length - 0.01f) / MathF.Max(1, MathF.Ceiling((length - 0.01f) / 0.05f));
+            for (var t = 0.005f; t <= length - 0.005f + 1e-4f; t += step)
+            {
+                var highest = double.MinValue;
+                for (var index = 0; index + 2 < soup.Points.Count; index += 3)
+                    for (var edge = 0; edge < 3; edge++)
+                    {
+                        var (a, b) = (soup.Points[index + edge], soup.Points[index + (edge + 1) % 3]);
+                        var ta = Vector2.Dot(new Vector2(a.X, a.Y) - start, axis);
+                        var tb = Vector2.Dot(new Vector2(b.X, b.Y) - start, axis);
+                        if (t < Math.Min(ta, tb) || t > Math.Max(ta, tb)) continue;
+                        var z = Math.Abs(tb - ta) < 1e-6f ? Math.Max(a.Z, b.Z) : a.Z + (b.Z - a.Z) * (t - ta) / (tb - ta);
+                        highest = Math.Max(highest, z);
+                    }
+                if (highest > double.MinValue) lowest = Math.Min(lowest, highest);
+            }
+            if (lowest == double.MaxValue || lowest - baseZ < 0.5) return null;
+            lowest = Math.Round(lowest, 4);
+            return (lowest, MeshClipper.Clip(soup, Vector3.UnitZ, (float)lowest, keepPositive: true));
+        }
+
+        /// <summary>An element's triangles in model coordinates, before the plan shift.</summary>
+        private TriSoup? World(ExchangeElement element)
+        {
+            if (element.Mesh is not { } index || index >= file.Meshes.Count || element.Origin is not { Length: 3 } origin) return null;
+            var mesh = file.Meshes[index].Decode();
+            var (cos, sin) = ((float)Math.Cos(element.Rotation), (float)Math.Sin(element.Rotation));
+            var offset = new Vector3((float)origin[0], (float)origin[1], (float)origin[2]);
+            Vector3 Place(Vector3 p) => offset + new Vector3(p.X * cos - p.Y * sin, p.X * sin + p.Y * cos, p.Z);
+            var soup = new TriSoup();
+            for (var i = 0; i + 2 < mesh.Indices.Length; i += 3)
+                soup.Add(Place(mesh.Positions[mesh.Indices[i]]), Place(mesh.Positions[mesh.Indices[i + 1]]),
+                    Place(mesh.Positions[mesh.Indices[i + 2]]));
+            return soup;
+        }
+
+        /// <summary>Places model-space triangles of one surface as a family of their own, standing where they are.</summary>
+        private void AddSoup(ExchangeElement element, TriSoup soup, string name, SurfaceKind kind)
+        {
+            if (soup.TriangleCount == 0) return;
+            var (min, max) = soup.Bounds();
+            var size = max - min;
+            if (size.X <= 0.0015f && size.Y <= 0.0015f || size.Z <= 0.0015f) return;
+            var center = new Vector3((min.X + max.X) / 2, (min.Y + max.Y) / 2, min.Z);
+            var positions = soup.Points.Select(point => point - center).ToArray();
+            var family = new FamilyDocument
+            {
+                Name = UniqueFamilyName($"{name} - {(string.IsNullOrWhiteSpace(element.Type) ? "Muro" : element.Type)}"),
+                Category = FamilyCategory.FacadeComponents,
+                Types = [new FamilyTypeDefinition(Guid.NewGuid(), "Estándar", [])],
+                Mesh = FamilyMesh.Create(positions, Enumerable.Range(0, positions.Length).ToArray(),
+                    Enumerable.Repeat(kind, soup.TriangleCount).ToArray()),
+                Metadata = new Dictionary<string, string>
+                {
+                    ["Source"] = "Revit", ["RevitCategory"] = element.Category, ["RevitType"] = Trim(element.Type, 4000)
+                }
+            };
+            _document.ComponentFamilies.Add(family);
+            _report.Triangles += soup.TriangleCount;
+            AddInstance(element, family, new Point2(center.X - _shift.X, center.Y - _shift.Y), min.Z, 0, size, family.Name);
+        }
+
         private static string? WallFallbackReason(ExchangeWall data)
         {
             if (data.WallKind != "Basic") return data.WallKind == "Curtain" ? "Curtain wall" : "Stacked wall";
             if (data.Curved) return "Curved wall";
             if (data.Start is null || data.End is null) return "Wall without location";
-            if (data.ProfileEdited) return "Wall with edited profile";
-            if (data.TopAttached || data.BaseAttached) return "Wall attached to a roof or floor";
+            if (data.BaseAttached) return "Wall attached to a roof or floor";
             if (data.Width is < 0.05 or > 5) return "Wall thickness out of range";
             return null;
         }
@@ -353,15 +461,17 @@ public static class ExchangeConverter
                 Component(element, "Slab without outline");
                 return;
             }
-            var outer = loops.MaxBy(loop => Math.Abs(SignedArea(loop)))!;
-            var holes = loops.Where(loop => !ReferenceEquals(loop, outer)).ToList();
-            var rectangles = holes.Select(AxisRectangle).ToList();
-            if (outer.Count > 500 || rectangles.Any(rectangle => rectangle is null) || Math.Abs(SignedArea(outer)) < 0.1)
+            // Outlines inside another one are its holes; the others are separate pieces of the same element.
+            var outers = loops.Where(loop => !loops.Any(other => !ReferenceEquals(other, loop) &&
+                Math.Abs(SignedArea(other)) > Math.Abs(SignedArea(loop)) && Inside(loop[0], other))).ToList();
+            var pieces = outers.Select(outer => (Outer: outer, Holes: loops.Where(loop => !outers.Contains(loop) && Inside(loop[0], outer) &&
+                // Holes smaller than this are cut-outs for lights and pipes; the fixture covers them.
+                Math.Abs(SignedArea(loop)) >= 0.05).ToList())).ToList();
+            if (pieces.Any(piece => piece.Outer.Count > 500 || piece.Holes.Any(hole => AxisRectangle(hole) is null)))
             {
-                Component(element, holes.Count > 0 ? "Slab with shaped openings" : "Slab outline too complex");
+                Component(element, pieces.Any(piece => piece.Holes.Count > 0) ? "Slab with shaped openings" : "Slab outline too complex");
                 return;
             }
-            if (SignedArea(outer) < 0) outer.Reverse();
             var thickness = Math.Clamp(data.Thickness ?? (kind == FloorKind.Ceiling ? 0.03 : 0.15), 0.03, 3);
             var top = kind == FloorKind.Ceiling ? z + thickness : z;
             var level = LevelFor(element.Level, z - 0.01);
@@ -372,24 +482,39 @@ public static class ExchangeConverter
                 offset = Math.Round(top - level.Elevation, 4);
             }
             var name = Trim(string.IsNullOrWhiteSpace(element.Type) ? element.CategoryName : element.Type, 120);
-            _document.Floors.Add(new FloorSlab(Guid.NewGuid(), level.Id, string.IsNullOrWhiteSpace(name) ? "Losa" : name, outer, Math.Round(thickness, 4))
+            foreach (var (outer, holes) in pieces.Where(piece => Math.Abs(SignedArea(piece.Outer)) >= 0.1))
             {
-                Kind = kind,
-                ElevationOffset = offset
-            });
-            foreach (var rectangle in rectangles)
-            {
-                var (low, high) = rectangle!.Value;
-                _document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), level.Id, StructuralElementKind.Opening,
-                    "Hueco de losa", low, high, 0.1, Math.Max(0.1, thickness), offset - thickness));
-                _report.SlabOpenings++;
+                if (SignedArea(outer) < 0) outer.Reverse();
+                _document.Floors.Add(new FloorSlab(Guid.NewGuid(), level.Id, string.IsNullOrWhiteSpace(name) ? "Losa" : name, outer,
+                    Math.Round(thickness, 4))
+                {
+                    Kind = kind,
+                    ElevationOffset = offset
+                });
+                foreach (var (low, high) in holes.Select(hole => AxisRectangle(hole)!.Value))
+                {
+                    _document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), level.Id, StructuralElementKind.Opening,
+                        "Hueco de losa", low, high, 0.1, Math.Max(0.1, thickness), offset - thickness));
+                    _report.SlabOpenings++;
+                }
+                switch (kind)
+                {
+                    case FloorKind.Ceiling: _report.Ceilings++; break;
+                    case FloorKind.Roof: _report.Roofs++; break;
+                    default: _report.Floors++; break;
+                }
             }
-            switch (kind)
-            {
-                case FloorKind.Ceiling: _report.Ceilings++; break;
-                case FloorKind.Roof: _report.Roofs++; break;
-                default: _report.Floors++; break;
-            }
+        }
+
+        /// <summary>Whether a point lies inside a polygon (even-odd rule).</summary>
+        private static bool Inside(Point2 point, IReadOnlyList<Point2> polygon)
+        {
+            var inside = false;
+            for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+                if ((polygon[i].Y > point.Y) != (polygon[j].Y > point.Y) &&
+                    point.X < (polygon[j].X - polygon[i].X) * (point.Y - polygon[i].Y) / (polygon[j].Y - polygon[i].Y) + polygon[i].X)
+                    inside = !inside;
+            return inside;
         }
 
         private void AddRoom(ExchangeElement element)

@@ -18,6 +18,7 @@ internal sealed class ExchangeExporter
     private const double Meters = 0.3048;
 
     private readonly Document _document;
+    private readonly View3D? _view;
     private readonly Options _options = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false };
     private readonly Dictionary<long, int> _materialIndex = [];
     private readonly List<JsonObject> _materials = [];
@@ -26,7 +27,13 @@ internal sealed class ExchangeExporter
     private readonly JsonArray _elements = [];
     private readonly Dictionary<string, int> _skipped = new(StringComparer.Ordinal);
 
-    public ExchangeExporter(Document document) => _document = document;
+    /// <summary>Exports the whole model, or with <paramref name="view"/> only what that 3D view shows (hidden
+    /// categories, filters, section box and phase applied).</summary>
+    public ExchangeExporter(Document document, View3D? view = null)
+    {
+        _document = document;
+        _view = view;
+    }
 
     public int ElementCount => _elements.Count;
     public int TriangleCount => _meshes.Sum(mesh => mesh.TriangleCount);
@@ -36,7 +43,8 @@ internal sealed class ExchangeExporter
     {
         var levels = new FilteredElementCollector(_document).OfClass(typeof(Level)).Cast<Level>()
             .OrderBy(level => level.ProjectElevation).ToList();
-        var candidates = new FilteredElementCollector(_document).WhereElementIsNotElementType()
+        var collector = _view is null ? new FilteredElementCollector(_document) : new FilteredElementCollector(_document, _view.Id);
+        var candidates = collector.WhereElementIsNotElementType()
             .Where(IsModelElement).ToList();
         for (var index = 0; index < candidates.Count; index++)
         {
@@ -412,7 +420,8 @@ internal sealed class ExchangeExporter
             writer.WriteNumber("version", FormatVersion);
             writer.WriteString("source", "Revit " + _document.Application.VersionNumber);
             writer.WriteString("sourcePath", _document.PathName);
-            writer.WriteString("projectName", _document.ProjectInformation?.Name ?? _document.Title);
+            // The file name, not Project Information: templates leave sample names such as "Snowdon Towers" there.
+            writer.WriteString("projectName", _document.Title);
             writer.WriteString("units", "m");
             writer.WritePropertyName("levels");
             writer.WriteStartArray();

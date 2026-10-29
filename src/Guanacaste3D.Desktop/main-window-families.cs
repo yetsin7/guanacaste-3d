@@ -20,6 +20,11 @@ public partial class MainWindow
                 _session.ImportOpeningFamily(family);
                 StatusText.Text = FormatText("Status.FamilyImported", family.Name);
             }
+            else if (IsRevitProject(path))
+            {
+                // "Open with Guanacaste 3D" on a .rvt or .g3dx converts it, as dropping it on the window does.
+                return OpenRevitProject(path);
+            }
             else if (TemplateFile.IsTemplatePath(path))
             {
                 var template = TemplateFile.Load(path);

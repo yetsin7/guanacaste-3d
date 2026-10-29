@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Windows.Media.Imaging;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -15,7 +16,8 @@ internal sealed record ExportJob(string Input, string Output, string Status);
 /// <summary>
 /// The add-in. Started by Guanacaste 3D with <c>G3D_REVIT_JOB</c> pointing at a job file, it opens the project as soon
 /// as Revit is ready, writes the exchange file, closes Revit and answers every dialog on the way so nothing waits for
-/// a person. Started by a Revit user, it adds a "Guanacaste 3D" ribbon tab with an export button.
+/// a person. Otherwise it adds a "Guanacaste 3D" ribbon tab with two buttons: export a .g3dx file, and open the model
+/// in Guanacaste 3D directly.
 /// </summary>
 public sealed class BridgeApplication : IExternalApplication
 {
@@ -31,21 +33,43 @@ public sealed class BridgeApplication : IExternalApplication
             application.ControlledApplication.ApplicationInitialized += OnInitialized;
             application.ControlledApplication.FailuresProcessing += OnFailures;
             application.DialogBoxShowing += OnDialog;
+            application.Idling += OnIdling;
             return Result.Succeeded;
         }
         const string tab = "Guanacaste 3D";
         try { application.CreateRibbonTab(tab); }
         catch (Autodesk.Revit.Exceptions.ArgumentException) { /* the tab exists already */ }
-        var panel = application.CreateRibbonPanel(tab, "Exportar");
-        panel.AddItem(new PushButtonData("G3DExport", "Exportar a\nGuanacaste 3D",
-            typeof(BridgeApplication).Assembly.Location, typeof(ExportCommand).FullName)
+        var panel = application.CreateRibbonPanel(tab, "Intercambio");
+        var assembly = typeof(BridgeApplication).Assembly.Location;
+        panel.AddItem(new PushButtonData("G3DOpen", "Abrir en\nGuanacaste 3D", assembly, typeof(OpenInGuanacasteCommand).FullName)
         {
-            ToolTip = "Guarda el modelo como archivo de intercambio .g3dx que Guanacaste 3D abre como proyecto editable."
+            LargeImage = Icon("open", 32),
+            Image = Icon("open", 16),
+            ToolTip = "Exporta el modelo y lo abre en Guanacaste 3D como un proyecto editable, listo para renderizar.",
+            LongDescription = "Muros, puertas, ventanas, losas, cielos y techos planos se convierten en elementos nativos; " +
+                              "muebles, equipos, escaleras y demás elementos, en familias .g3df."
+        });
+        panel.AddItem(new PushButtonData("G3DExport", "Exportar\n.g3dx", assembly, typeof(ExportCommand).FullName)
+        {
+            LargeImage = Icon("export", 32),
+            Image = Icon("export", 16),
+            ToolTip = "Guarda el modelo como archivo de intercambio .g3dx para abrirlo en Guanacaste 3D en cualquier computadora."
         });
         return Result.Succeeded;
     }
 
     public Result OnShutdown(UIControlledApplication application) => Result.Succeeded;
+
+    /// <summary>A ribbon icon embedded in the add-in, such as "export" at 32 pixels.</summary>
+    internal static BitmapSource? Icon(string name, int size)
+    {
+        using var stream = typeof(BridgeApplication).Assembly.GetManifestResourceStream($"Guanacaste3D.RevitBridge.resources.{name}-{size}.png");
+        if (stream is null) return null;
+        var decoder = new PngBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+        var frame = decoder.Frames[0];
+        frame.Freeze();
+        return frame;
+    }
 
     private void OnInitialized(object? sender, ApplicationInitializedEventArgs e)
     {
@@ -94,10 +118,16 @@ public sealed class BridgeApplication : IExternalApplication
     }
 
     /// <summary>Upgrade notices, missing links and similar dialogs are accepted with their default answer.</summary>
-    private void OnDialog(object? sender, DialogBoxShowingEventArgs e)
-    {
+    private static void OnDialog(object? sender, DialogBoxShowingEventArgs e) =>
         e.OverrideResult(e is TaskDialogShowingEventArgs ? (int)TaskDialogResult.Close : 1);
-        if (_exitRequested && sender is UIApplication application) RequestExit(application);
+
+    /// <summary>Once the job is written, Revit closes itself at its next idle moment.</summary>
+    private void OnIdling(object? sender, IdlingEventArgs e)
+    {
+        if (!_exitRequested || sender is not UIApplication application) return;
+        application.Idling -= OnIdling;
+        try { application.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.ExitRevit)); }
+        catch (Autodesk.Revit.Exceptions.InvalidOperationException) { /* already exiting */ }
     }
 
     /// <summary>Warnings raised while opening are dismissed; they do not change the geometry being read.</summary>
@@ -108,36 +138,104 @@ public sealed class BridgeApplication : IExternalApplication
         e.SetProcessingResult(FailureProcessingResult.Continue);
     }
 
-    private static void RequestExit(UIApplication application)
+    /// <summary>Asks for the scope and exports the active project to <paramref name="path"/> with a progress window.</summary>
+    internal static ExchangeExporter? ExportActive(ExternalCommandData data, string title, string action, Func<Document, string?> choosePath,
+        out string? path, ref string message)
     {
-        try { application.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.ExitRevit)); }
-        catch (Autodesk.Revit.Exceptions.InvalidOperationException) { /* already exiting */ }
+        path = null;
+        var document = data.Application.ActiveUIDocument?.Document;
+        if (document is null || document.IsFamilyDocument)
+        {
+            message = "Abra un proyecto de Revit para exportarlo.";
+            return null;
+        }
+        var (accepted, view) = ExportDialog.Ask(title, action, document, document.ActiveView as View3D is { IsTemplate: false } active ? active : null);
+        if (!accepted || (path = choosePath(document)) is null) return null;
+        var progress = new ExportProgressWindow(document.Title);
+        progress.Show();
+        try
+        {
+            var exporter = new ExchangeExporter(document, view);
+            exporter.Export(path, fraction => progress.Report(fraction));
+            return exporter;
+        }
+        finally
+        {
+            progress.Close();
+        }
     }
 }
 
-/// <summary>The ribbon button: exports the active project to a .g3dx file the user chooses.</summary>
+/// <summary>The "Exportar .g3dx" button: exports the active project to a file the user chooses.</summary>
 [Transaction(TransactionMode.ReadOnly)]
 public sealed class ExportCommand : IExternalCommand
 {
     public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
     {
-        var document = commandData.Application.ActiveUIDocument?.Document;
-        if (document is null || document.IsFamilyDocument)
+        var exporter = BridgeApplication.ExportActive(commandData, "Exportar a Guanacaste 3D", "Exportar…", document =>
         {
-            message = "Abra un proyecto de Revit para exportarlo.";
-            return Result.Failed;
-        }
-        var dialog = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "Intercambio Guanacaste 3D (*.g3dx)|*.g3dx",
-            FileName = Path.GetFileNameWithoutExtension(document.PathName is { Length: > 0 } path ? path : document.Title) + ".g3dx"
-        };
-        if (dialog.ShowDialog() != true) return Result.Cancelled;
-        var exporter = new ExchangeExporter(document);
-        exporter.Export(dialog.FileName);
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "Intercambio Guanacaste 3D (*.g3dx)|*.g3dx",
+                FileName = Path.GetFileNameWithoutExtension(document.PathName is { Length: > 0 } path ? path : document.Title) + ".g3dx"
+            };
+            return dialog.ShowDialog() == true ? dialog.FileName : null;
+        }, out var saved, ref message);
+        if (exporter is null) return string.IsNullOrEmpty(message) ? Result.Cancelled : Result.Failed;
         TaskDialog.Show("Guanacaste 3D",
-            $"Se exportaron {exporter.ElementCount:N0} elementos ({exporter.TriangleCount:N0} triángulos).\n" +
-            "Abra el archivo .g3dx en Guanacaste 3D para convertirlo en un proyecto editable.");
+            $"Se exportaron {exporter.ElementCount:N0} elementos ({exporter.TriangleCount:N0} triángulos) a\n{saved}\n\n" +
+            "Abra el archivo en Guanacaste 3D (Importar, o arrástrelo a la ventana) para convertirlo en un proyecto editable.");
         return Result.Succeeded;
+    }
+}
+
+/// <summary>The "Abrir en Guanacaste 3D" button: exports to a temporary file and opens it in Guanacaste 3D.</summary>
+[Transaction(TransactionMode.ReadOnly)]
+public sealed class OpenInGuanacasteCommand : IExternalCommand
+{
+    public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+    {
+        var application = GuanacasteLocator.Find();
+        if (application is null)
+        {
+            TaskDialog.Show("Guanacaste 3D",
+                "No se encontró Guanacaste 3D en esta computadora. Ábralo una vez (así queda registrado) o use «Exportar .g3dx» " +
+                "y abra el archivo desde Guanacaste 3D.");
+            return Result.Cancelled;
+        }
+        var exporter = BridgeApplication.ExportActive(commandData, "Abrir en Guanacaste 3D", "Exportar y abrir", document =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "Guanacaste3D", "revit");
+            Directory.CreateDirectory(folder);
+            return Path.Combine(folder, string.Concat(document.Title.Split(Path.GetInvalidFileNameChars())) + ".g3dx");
+        }, out var saved, ref message);
+        if (exporter is null) return string.IsNullOrEmpty(message) ? Result.Cancelled : Result.Failed;
+        Process.Start(new ProcessStartInfo(application, $"\"{saved}\"") { UseShellExecute = false });
+        return Result.Succeeded;
+    }
+}
+
+/// <summary>
+/// Finds Guanacaste3D.Desktop.exe: Guanacaste writes its location to %LOCALAPPDATA%\Guanacaste3D\application-path.txt
+/// every time it starts, and the add-in installer may leave a copy next to the add-in.
+/// </summary>
+internal static class GuanacasteLocator
+{
+    public static string? Find()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Guanacaste3D", "application-path.txt"),
+            Path.Combine(Path.GetDirectoryName(typeof(GuanacasteLocator).Assembly.Location)!, "application-path.txt")
+        };
+        foreach (var file in candidates)
+        {
+            try
+            {
+                if (File.Exists(file) && File.ReadAllText(file).Trim() is { Length: > 0 } path && File.Exists(path)) return path;
+            }
+            catch (IOException) { /* try the next one */ }
+        }
+        return null;
     }
 }

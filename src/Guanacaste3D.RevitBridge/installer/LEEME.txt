@@ -1,0 +1,27 @@
+Complemento Guanacaste 3D para Revit
+====================================
+
+Exporta proyectos de Revit 2025, 2026 y 2027 a Guanacaste 3D para renderizarlos y editarlos.
+
+INSTALAR
+  1. Cierre Revit.
+  2. Haga doble clic en «Instalar.cmd». No necesita permisos de administrador.
+  3. Abra Revit. La primera vez Revit pregunta si confía en el complemento: elija «Cargar siempre».
+  4. Aparece la pestaña «Guanacaste 3D» en la cinta de opciones.
+
+USAR
+  • Abrir en Guanacaste 3D: exporta el modelo y lo abre directamente en Guanacaste 3D
+    (Guanacaste 3D debe haberse abierto al menos una vez en esta computadora).
+  • Exportar .g3dx: guarda un archivo de intercambio que puede abrir en Guanacaste 3D en
+    cualquier computadora (Importar, o arrastrarlo a la ventana).
+  En ambos casos puede exportar todo el modelo o solo lo visible en la vista 3D activa.
+
+QUÉ SE CONVIERTE
+  • Niveles, muros rectos, puertas y ventanas, losas, cielos y techos planos y habitaciones
+    rectangulares: elementos nativos y editables de Guanacaste 3D.
+  • Muros enlazados a techos (hastiales): muro nativo + remate con la geometría de Revit.
+  • Muebles, aparatos sanitarios, luminarias, escaleras, barandas, techos inclinados, vigas,
+    columnas y demás: familias .g3df (una por cada geometría distinta, compartida entre copias).
+
+DESINSTALAR
+  Cierre Revit y haga doble clic en «Desinstalar.cmd».

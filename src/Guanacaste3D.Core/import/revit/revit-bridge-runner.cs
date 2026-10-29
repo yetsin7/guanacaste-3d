@@ -51,18 +51,33 @@ public static class RevitBridgeRunner
         return Path.Combine(folder, Path.GetFileNameWithoutExtension(revitPath) + "-" + key + ExchangeFile.Extension);
     }
 
-    /// <summary>Writes the add-in manifest Revit reads at startup, pointing at the bridge shipped with this build.</summary>
+    /// <summary>
+    /// Installs the bridge for one Revit version the way the downloadable installer does: the assembly is copied into
+    /// its own folder in Revit's add-ins folder and the manifest points there, so rebuilding or moving Guanacaste never
+    /// touches the copy a running Revit has loaded. A copy locked by a running Revit is kept.
+    /// </summary>
     public static void InstallAddin(RevitInstallation installation)
     {
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        var addins = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Autodesk", "Revit", "Addins", installation.Year.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var folder = Path.Combine(addins, "Guanacaste3D");
         Directory.CreateDirectory(folder);
+        var assembly = Path.Combine(folder, "Guanacaste3D.RevitBridge.dll");
+        try
+        {
+            if (!File.Exists(assembly) || !File.ReadAllBytes(assembly).AsSpan().SequenceEqual(File.ReadAllBytes(installation.BridgeAssembly)))
+                File.Copy(installation.BridgeAssembly, assembly, overwrite: true);
+        }
+        catch (IOException) when (File.Exists(assembly))
+        {
+            // Revit has the installed copy loaded; it is replaced the next time Revit is closed.
+        }
         var manifest = $"""
             <?xml version="1.0" encoding="utf-8"?>
             <RevitAddIns>
               <AddIn Type="Application">
                 <Name>Guanacaste 3D</Name>
-                <Assembly>{System.Security.SecurityElement.Escape(installation.BridgeAssembly)}</Assembly>
+                <Assembly>{System.Security.SecurityElement.Escape(assembly)}</Assembly>
                 <AddInId>5B0C7F3E-2D4A-4E61-9C83-6A1F0B2E7D45</AddInId>
                 <FullClassName>Guanacaste3D.RevitBridge.BridgeApplication</FullClassName>
                 <VendorId>GUANACASTE3D</VendorId>
@@ -70,8 +85,27 @@ public static class RevitBridgeRunner
               </AddIn>
             </RevitAddIns>
             """;
-        var path = Path.Combine(folder, AddinFileName);
+        var path = Path.Combine(addins, AddinFileName);
         if (!File.Exists(path) || File.ReadAllText(path) != manifest) File.WriteAllText(path, manifest);
+    }
+
+    /// <summary>
+    /// Remembers where Guanacaste 3D runs from, so the Revit add-in's "Abrir en Guanacaste 3D" button can start it.
+    /// </summary>
+    public static void RecordApplicationPath(string? executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable)) return;
+        try
+        {
+            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Guanacaste3D");
+            Directory.CreateDirectory(folder);
+            var file = Path.Combine(folder, "application-path.txt");
+            if (!File.Exists(file) || File.ReadAllText(file) != executable) File.WriteAllText(file, executable);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Only the Revit button's convenience depends on it.
+        }
     }
 
     /// <summary>
