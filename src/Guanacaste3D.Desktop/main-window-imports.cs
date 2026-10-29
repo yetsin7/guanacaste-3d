@@ -66,9 +66,31 @@ public partial class MainWindow
                 if (ConfirmDiscard()) OpenProjectPath(path);
                 continue;
             }
+            if (IsRevitProject(path))
+            {
+                if (ConfirmDiscard() && OpenRevitProject(path)) imported++;
+                continue;
+            }
             if (await ImportFileAsync(path)) imported++;
         }
         if (files.Count > 1) StatusText.Text = FormatText("Import.MultipleDone", imported, files.Count);
+    }
+
+    /// <summary>Revit projects and exchange files open as editable projects; Revit families and templates are only inspected.</summary>
+    private static bool IsRevitProject(string path) =>
+        Core.Import.Revit.ExchangeFile.IsExchangePath(path) ||
+        Path.GetExtension(path).Equals(".rvt", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Converts a Revit project into native elements and families, and opens it as a new, unsaved project.</summary>
+    private bool OpenRevitProject(string path)
+    {
+        var window = new RevitProjectWindow(path) { Owner = this };
+        if (window.ShowDialog() != true || window.Result is not { } document) return false;
+        AttachDocument(document, null);
+        _dirty = true;
+        Title = "Guanacaste 3D — " + document.Name + " *";
+        StatusText.Text = FormatText("RevitImport.Status", document.Walls.Count, document.Openings.Count, document.ComponentFamilies.Count);
+        return true;
     }
 
     /// <summary>Inspects a file, asks for import options, imports it and places it in the project.</summary>

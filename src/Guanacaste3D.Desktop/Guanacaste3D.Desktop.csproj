@@ -33,4 +33,28 @@
     <!-- Rendered pictures of the samples for the Home screen tiles. -->
     <Content Include="resources\samples\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!--
+    The Revit bridge add-in reads .rvt projects through the user's Revit. It compiles against Revit's own API, so it is
+    built for each Revit version installed on the build machine and shipped in revit-bridge\Revit<year>\.
+    Copies continue on error because a running Revit keeps the previous add-in loaded.
+  -->
+  <ItemGroup>
+    <RevitBridgeVersion Include="2025;2026;2027" />
+  </ItemGroup>
+  <Target Name="BuildRevitBridge" AfterTargets="Build">
+    <MSBuild Projects="..\Guanacaste3D.RevitBridge\Guanacaste3D.RevitBridge.csproj" Targets="Restore"
+             Properties="Configuration=$(Configuration);RevitVersion=%(RevitBridgeVersion.Identity);RestoreStage=1"
+             Condition="Exists('$(ProgramW6432)\Autodesk\Revit %(RevitBridgeVersion.Identity)\RevitAPI.dll')" />
+    <MSBuild Projects="..\Guanacaste3D.RevitBridge\Guanacaste3D.RevitBridge.csproj"
+             Properties="Configuration=$(Configuration);RevitVersion=%(RevitBridgeVersion.Identity)"
+             Condition="Exists('$(ProgramW6432)\Autodesk\Revit %(RevitBridgeVersion.Identity)\RevitAPI.dll')" />
+    <Copy SourceFiles="..\Guanacaste3D.RevitBridge\bin\$(Configuration)\Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll"
+          DestinationFolder="$(OutDir)revit-bridge\Revit%(RevitBridgeVersion.Identity)" SkipUnchangedFiles="true" ContinueOnError="true"
+          Condition="Exists('..\Guanacaste3D.RevitBridge\bin\$(Configuration)\Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll')" />
+  </Target>
+  <Target Name="PublishRevitBridge" AfterTargets="Publish">
+    <Copy SourceFiles="..\Guanacaste3D.RevitBridge\bin\$(Configuration)\Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll"
+          DestinationFolder="$(PublishDir)revit-bridge\Revit%(RevitBridgeVersion.Identity)" SkipUnchangedFiles="true"
+          Condition="Exists('..\Guanacaste3D.RevitBridge\bin\$(Configuration)\Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll')" />
+  </Target>
 </Project>

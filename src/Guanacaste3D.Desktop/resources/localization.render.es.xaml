@@ -22,6 +22,8 @@
   <sys:String x:Key="RenderPanel.Hour">Hora solar</sys:String>
   <sys:String x:Key="RenderPanel.Latitude">Latitud</sys:String>
   <sys:String x:Key="RenderPanel.LatitudeHint">Latitud del sitio en grados (norte positivo). Managua: 12.1</sys:String>
+  <sys:String x:Key="RenderPanel.CameraTab">Cámara</sys:String>
+  <sys:String x:Key="RenderPanel.QualityTab">Calidad</sys:String>
   <sys:String x:Key="RenderPanel.Quality">Calidad y tamaño</sys:String>
   <sys:String x:Key="RenderPanel.QualityLabel">Calidad</sys:String>
   <sys:String x:Key="RenderPanel.Auto">Automática · según el equipo</sys:String>

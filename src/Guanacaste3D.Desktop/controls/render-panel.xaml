@@ -1,337 +1,489 @@
 <UserControl x:Class="Guanacaste3D.Desktop.Controls.RenderPanel"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  Background="{DynamicResource CanvasBrush}" Focusable="False">
+  Background="{DynamicResource CanvasBrush}" Focusable="False" FontSize="13">
   <UserControl.Resources>
     <Style x:Key="PanelTitle" TargetType="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-      <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="12"/>
-      <Setter Property="Margin" Value="0,0,0,8"/>
+      <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="Margin" Value="0,0,0,6"/>
     </Style>
     <Style x:Key="PanelLabel" TargetType="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-      <Setter Property="FontSize" Value="11"/><Setter Property="Margin" Value="0,7,0,3"/>
+      <Setter Property="FontSize" Value="12"/><Setter Property="Margin" Value="0,10,0,4"/>
+    </Style>
+    <Style x:Key="PanelHint" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+      <Setter Property="FontSize" Value="12"/><Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="LineHeight" Value="17"/>
+    </Style>
+    <Style x:Key="SliderValue" TargetType="TextBlock">
+      <Setter Property="DockPanel.Dock" Value="Right"/><Setter Property="Width" Value="62"/>
+      <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextAlignment" Value="Right"/>
     </Style>
     <Style x:Key="PanelCheck" TargetType="CheckBox">
       <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-      <Setter Property="Margin" Value="0,5,0,0"/>
+      <Setter Property="Margin" Value="0,9,0,0"/><Setter Property="FontSize" Value="13"/>
     </Style>
-    <Style x:Key="PanelButton" TargetType="Button">
-      <Setter Property="Padding" Value="9,5"/><Setter Property="Margin" Value="0,0,6,0"/>
+    <Style x:Key="PanelButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Padding" Value="12,7"/><Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="MinHeight" Value="34"/>
+    </Style>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+      <Setter Property="MinHeight" Value="32"/><Setter Property="Padding" Value="8,6"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+      <Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="0,2,0,2"/>
+    </Style>
+    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+      <Setter Property="MinHeight" Value="30"/><Setter Property="Padding" Value="6,4"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style x:Key="SettingsCard" TargetType="Border">
       <Setter Property="Background" Value="White"/>
       <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
-      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/>
-      <Setter Property="Padding" Value="12,10"/><Setter Property="Margin" Value="8,0,8,8"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="16,14"/><Setter Property="Margin" Value="12,0,12,12"/>
+    </Style>
+    <!-- Section tabs: an icon above a short name, with an accent bar under the open one. -->
+    <Style x:Key="SectionTab" TargetType="TabItem">
+      <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabItem">
+            <Border x:Name="Chrome" Background="Transparent" Padding="4,9,4,7" Cursor="Hand">
+              <Grid>
+                <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"/>
+                <Border x:Name="Bar" Height="3" CornerRadius="1.5" VerticalAlignment="Bottom" Margin="10,0,10,-7"
+                        Background="{DynamicResource AccentBrush}" Visibility="Hidden"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bar" Property="Visibility" Value="Visible"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource RibbonHoverBrush}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="TabIcon" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="18"/><Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+    </Style>
+    <Style x:Key="TabText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11.5"/><Setter Property="Margin" Value="0,4,0,0"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}"/>
+    </Style>
+    <Style x:Key="ImageToolButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="0,0,8,0"/><Setter Property="MinHeight" Value="34"/>
     </Style>
   </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="320"/><ColumnDefinition Width="3"/><ColumnDefinition Width="*"/>
+      <ColumnDefinition x:Name="SettingsColumn" Width="420" MinWidth="340" MaxWidth="760"/>
+      <ColumnDefinition Width="Auto"/>
+      <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
     <DockPanel Grid.Column="0" Background="{DynamicResource PanelBrush}">
       <Border DockPanel.Dock="Top" Style="{StaticResource PaletteHeaderBorderStyle}">
         <TextBlock Text="{DynamicResource View.Render}" Style="{StaticResource PanelHeaderStyle}"/>
       </Border>
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,8,0,4">
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <ToggleButton x:Name="PreviewToggle" IsChecked="True" Padding="10,6"
-                            Checked="PreviewToggle_Changed" Unchecked="PreviewToggle_Changed"
-                            Content="{DynamicResource RenderPanel.Preview}" ToolTip="{DynamicResource RenderPanel.PreviewHint}"/>
-              <Grid Margin="0,8,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Button x:Name="RenderButton" Content="{DynamicResource RenderPanel.Render}" Click="RenderButton_Click"
-                        Padding="12,8" FontWeight="SemiBold" Background="{DynamicResource AccentBrush}"
-                        Foreground="White" BorderBrush="{DynamicResource AccentBrush}"/>
-                <Button x:Name="PauseButton" Grid.Column="1" Content="{DynamicResource RenderPanel.Pause}"
-                        Click="PauseButton_Click" Padding="10,8" Margin="6,0,0,0" IsEnabled="False"/>
-              </Grid>
-            </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Scene}"/>
-              <CheckBox x:Name="RenderClayCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
-                  Content="{DynamicResource View3D.Clay}" ToolTip="{DynamicResource RenderPanel.ClayHint}"
-                  Checked="ClayMode_Changed" Unchecked="ClayMode_Changed"/>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Scenario}" Margin="0,0,0,3"/>
-              <ComboBox x:Name="ScenarioPicker" SelectedIndex="0" SelectionChanged="Lighting_Changed">
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Sunny}" Tag="Sunny"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Overcast}" Tag="Overcast"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.GoldenHour}" Tag="GoldenHour"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Dusk}" Tag="Dusk"/>
-              </ComboBox>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.SkyPreset}"/>
-              <ComboBox x:Name="SkyPicker" SelectionChanged="Sky_Changed" ToolTip="{DynamicResource RenderPanel.SkyPresetHint}"/>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
-              <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
-              <Grid x:Name="SunControls"><StackPanel>
-                <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Date}"/>
-                <DatePicker x:Name="SunDatePicker" SelectedDateFormat="Short" SelectedDateChanged="Lighting_Changed"/>
-                <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Hour}"/>
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                             VerticalAlignment="Center" TextAlignment="Right"
-                             Text="{Binding Value, ElementName=HourSlider, StringFormat={}{0:0.0} h}"/>
-                  <Slider x:Name="HourSlider" Minimum="5" Maximum="19" Value="10" TickFrequency="0.25"
-                          IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
-                </DockPanel>
-                <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Clouds}"/>
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                             VerticalAlignment="Center" TextAlignment="Right"
-                             Text="{Binding Value, ElementName=CloudSlider, StringFormat={}{0:0} %}"/>
-                  <Slider x:Name="CloudSlider" Minimum="0" Maximum="100" Value="30" TickFrequency="5"
-                          IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"
-                          ToolTip="{DynamicResource RenderPanel.CloudsHint}"/>
-                </DockPanel>
-              </StackPanel></Grid>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Latitude}"/>
-              <TextBox x:Name="LatitudeInput" Text="12.1" Width="70" HorizontalAlignment="Left"
-                       TextChanged="Latitude_Changed" ToolTip="{DynamicResource RenderPanel.LatitudeHint}"/>
-            </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Quality}"/>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.QualityLabel}" Margin="0,0,0,3"/>
-              <ComboBox x:Name="QualityPicker" SelectedIndex="0" SelectionChanged="Quality_Changed">
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Auto}" Tag="Auto"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Draft}" Tag="Draft"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Standard}" Tag="Standard"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.High}" Tag="High"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Final}" Tag="Final"/>
-              </ComboBox>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Size}"/>
-              <ComboBox x:Name="SizePicker" SelectedIndex="0" SelectionChanged="Quality_Changed">
-                <ComboBoxItem Content="{DynamicResource RenderPanel.SizeView}" Tag="0x0"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.SizeHd}" Tag="1280x720"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.SizeFullHd}" Tag="1920x1080"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.SizeQhd}" Tag="2560x1440"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.SizeUhd}" Tag="3840x2160"/>
-              </ComboBox>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Resources}"/>
-              <ComboBox x:Name="ResourcePicker" SelectedIndex="1" SelectionChanged="Quality_Changed">
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Eco}" Tag="Eco"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Balanced}" Tag="Balanced"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.Maximum}" Tag="Maximum"/>
-              </ComboBox>
-              <TextBlock x:Name="MemoryText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5"
-                         Margin="0,7,0,0" TextWrapping="Wrap"/>
-              <DockPanel Margin="0,5,0,0">
-                <Button x:Name="RecalibrateButton" DockPanel.Dock="Right" Padding="8,1" FontSize="10.5"
-                        Content="{DynamicResource RenderPanel.Recalibrate}" ToolTip="{DynamicResource RenderPanel.RecalibrateHint}"
-                        Click="Recalibrate_Click"/>
-                <TextBlock x:Name="HardwareText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5"
-                           VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,6,0"
-                           Text="{DynamicResource RenderPanel.Calibrating}"/>
-              </DockPanel>
-            </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Image}"/>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Exposure}" Margin="0,0,0,3"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="48" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=ExposureSlider, StringFormat={}{0:+0.0;-0.0;0.0} EV}"/>
-                <Slider x:Name="ExposureSlider" Minimum="-3" Maximum="3" Value="0" TickFrequency="0.1"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Look}"/>
-              <ComboBox x:Name="LookPicker" SelectedIndex="0" SelectionChanged="Look_Changed">
-                <ComboBoxItem Content="{DynamicResource RenderPanel.LookPhotographic}" Tag="AgX"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.LookContrast}" Tag="Aces"/>
-                <ComboBoxItem Content="{DynamicResource RenderPanel.LookSoft}" Tag="Soft"/>
-              </ComboBox>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Style}"/>
-              <ComboBox x:Name="StylePicker" SelectionChanged="Style_Changed" ToolTip="{DynamicResource RenderPanel.StyleHint}"/>
-              <Expander Header="{DynamicResource RenderPanel.Effects}" Margin="0,8,0,0" Foreground="{DynamicResource PrimaryTextBrush}">
+
+      <!-- Always visible: the live preview switch and the render, pause, save and copy actions. -->
+      <Border DockPanel.Dock="Top" Style="{StaticResource SettingsCard}" Margin="12,12,12,8">
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Button x:Name="RenderButton" Click="RenderButton_Click" MinHeight="46" FontSize="15" FontWeight="SemiBold"
+                    Background="{DynamicResource AccentBrush}" Foreground="White" BorderBrush="{DynamicResource AccentBrush}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="{DynamicResource RenderPanel.Render}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <Button x:Name="PauseButton" Grid.Column="1" Content="{DynamicResource RenderPanel.Pause}"
+                    Click="PauseButton_Click" MinHeight="46" Padding="16,8" Margin="8,0,0,0" IsEnabled="False"/>
+          </Grid>
+          <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <ToggleButton x:Name="PreviewToggle" IsChecked="True" Padding="12,7" MinHeight="34"
+                          Checked="PreviewToggle_Changed" Unchecked="PreviewToggle_Changed"
+                          Content="{DynamicResource RenderPanel.Preview}" ToolTip="{DynamicResource RenderPanel.PreviewHint}"/>
+            <Button x:Name="SaveButton" Grid.Column="1" Click="SaveButton_Click" IsEnabled="False" Padding="12,7" MinHeight="34"
+                    Margin="8,0,0,0" ToolTip="{DynamicResource RenderPanel.SaveImage}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE74E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Text="{DynamicResource RenderPanel.SaveImage}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <Button x:Name="CopyButton" Grid.Column="2" Click="CopyButton_Click" IsEnabled="False" Padding="10,7" MinHeight="34"
+                    Margin="8,0,0,0" ToolTip="{DynamicResource RenderPanel.CopyImage}">
+              <TextBlock Text="&#xE8C8;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center"/>
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <TabControl x:Name="SectionTabs" Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,0,0">
+        <TabControl.Resources>
+          <Style TargetType="TabItem" BasedOn="{StaticResource SectionTab}"/>
+        </TabControl.Resources>
+        <TabControl.Template>
+          <ControlTemplate TargetType="TabControl">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Margin="12,0,12,4" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,0,1">
+                <UniformGrid Rows="1" IsItemsHost="True"/>
+              </Border>
+              <ContentPresenter ContentSource="SelectedContent"/>
+            </DockPanel>
+          </ControlTemplate>
+        </TabControl.Template>
+
+        <!-- Sun, sky and lights -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel><TextBlock Style="{StaticResource TabIcon}" Text="&#xE706;"/>
+              <TextBlock Style="{StaticResource TabText}" Text="{DynamicResource RenderPanel.Scene}"/></StackPanel>
+          </TabItem.Header>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,4">
+              <Border Style="{StaticResource SettingsCard}">
                 <StackPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Highlights}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=HighlightsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
-                <Slider x:Name="HighlightsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Shadows}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=ShadowsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
-                <Slider x:Name="ShadowsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Vibrance}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=VibranceSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="VibranceSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Tint}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=TintSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
-                <Slider x:Name="TintSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Glare}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=GlareSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="GlareSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Fog}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=FogSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="FogSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Sharpen}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=SharpenSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="SharpenSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Aberration}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=AberrationSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="AberrationSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Grain}"/>
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
-                           VerticalAlignment="Center" TextAlignment="Right"
-                           Text="{Binding Value, ElementName=GrainSlider, StringFormat={}{0:0%}}"/>
-                <Slider x:Name="GrainSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
-              </DockPanel>
-                  <CheckBox x:Name="MonochromeCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Scene}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Scenario}" Margin="0,4,0,4"/>
+                  <ComboBox x:Name="ScenarioPicker" SelectedIndex="0" SelectionChanged="Lighting_Changed">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Sunny}" Tag="Sunny"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Overcast}" Tag="Overcast"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.GoldenHour}" Tag="GoldenHour"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Dusk}" Tag="Dusk"/>
+                  </ComboBox>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.SkyPreset}"/>
+                  <ComboBox x:Name="SkyPicker" SelectionChanged="Sky_Changed" ToolTip="{DynamicResource RenderPanel.SkyPresetHint}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
+                  <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Hour}"/>
+                  <Grid x:Name="SunControls"><StackPanel>
+                    <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Date}" Margin="0,4,0,4"/>
+                    <DatePicker x:Name="SunDatePicker" SelectedDateFormat="Short" SelectedDateChanged="Lighting_Changed" MinHeight="30"/>
+                    <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Hour}"/>
+                    <DockPanel>
+                      <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=HourSlider, StringFormat={}{0:0.0} h}"/>
+                      <Slider x:Name="HourSlider" Minimum="5" Maximum="19" Value="10" TickFrequency="0.25"
+                              IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Clouds}"/>
+                    <DockPanel>
+                      <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=CloudSlider, StringFormat={}{0:0} %}"/>
+                      <Slider x:Name="CloudSlider" Minimum="0" Maximum="100" Value="30" TickFrequency="5"
+                              IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"
+                              ToolTip="{DynamicResource RenderPanel.CloudsHint}"/>
+                    </DockPanel>
+                  </StackPanel></Grid>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Latitude}"/>
+                  <TextBox x:Name="LatitudeInput" Text="12.1" Width="96" HorizontalAlignment="Left"
+                           TextChanged="Latitude_Changed" ToolTip="{DynamicResource RenderPanel.LatitudeHint}"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <CheckBox x:Name="RenderClayCheck" Style="{StaticResource PanelCheck}" IsChecked="False" Margin="0"
+                            Content="{DynamicResource View3D.Clay}" ToolTip="{DynamicResource RenderPanel.ClayHint}"
+                            Checked="ClayMode_Changed" Unchecked="ClayMode_Changed"/>
+                  <CheckBox x:Name="HazeCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
+                            Content="{DynamicResource RenderPanel.Haze}" Checked="Haze_Changed" Unchecked="Haze_Changed"/>
+                  <CheckBox x:Name="ArtificialLightsCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
+                            Content="{DynamicResource RenderPanel.ArtificialLights}" Checked="Lights_Changed" Unchecked="Lights_Changed"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Exposure, picture style and effects -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel><TextBlock Style="{StaticResource TabIcon}" Text="&#xEB9F;"/>
+              <TextBlock Style="{StaticResource TabText}" Text="{DynamicResource RenderPanel.Image}"/></StackPanel>
+          </TabItem.Header>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,4">
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Image}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Style}" Margin="0,4,0,4"/>
+                  <ComboBox x:Name="StylePicker" SelectionChanged="Style_Changed" ToolTip="{DynamicResource RenderPanel.StyleHint}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Look}"/>
+                  <ComboBox x:Name="LookPicker" SelectedIndex="0" SelectionChanged="Look_Changed">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.LookPhotographic}" Tag="AgX"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.LookContrast}" Tag="Aces"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.LookSoft}" Tag="Soft"/>
+                  </ComboBox>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Exposure}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=ExposureSlider, StringFormat={}{0:+0.0;-0.0;0.0} EV}"/>
+                    <Slider x:Name="ExposureSlider" Minimum="-3" Maximum="3" Value="0" TickFrequency="0.1"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Temperature}"/>
+                  <DockPanel>
+                    <TextBlock x:Name="TemperatureText" Style="{StaticResource SliderValue}" Text="5500 K"/>
+                    <Slider x:Name="TemperatureSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Temperature_Changed"
+                            ToolTip="{DynamicResource RenderPanel.TemperatureHint}"/>
+                  </DockPanel>
+                  <CheckBox x:Name="AutoExposureCheck" Style="{StaticResource PanelCheck}" IsChecked="True" Margin="0,12,0,0"
+                            Content="{DynamicResource RenderPanel.AutoExposure}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
+                  <CheckBox x:Name="BloomCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
+                            Content="{DynamicResource RenderPanel.Bloom}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
+                  <CheckBox x:Name="VignetteCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
+                            Content="{DynamicResource RenderPanel.Vignette}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Effects}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Highlights}" Margin="0,4,0,4"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=HighlightsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                    <Slider x:Name="HighlightsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Shadows}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=ShadowsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                    <Slider x:Name="ShadowsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Vibrance}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=VibranceSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="VibranceSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Tint}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=TintSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                    <Slider x:Name="TintSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Glare}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=GlareSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="GlareSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Fog}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=FogSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="FogSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Sharpen}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=SharpenSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="SharpenSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Aberration}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=AberrationSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="AberrationSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Grain}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=GrainSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="GrainSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+                  </DockPanel>
+                  <CheckBox x:Name="MonochromeCheck" Style="{StaticResource PanelCheck}" IsChecked="False" Margin="0,12,0,0"
                             Content="{DynamicResource RenderPanel.Monochrome}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
                 </StackPanel>
-              </Expander>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Temperature}"/>
-              <DockPanel>
-                <TextBlock x:Name="TemperatureText" DockPanel.Dock="Right" Width="48" Text="5500 K"
-                           Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" TextAlignment="Right"/>
-                <Slider x:Name="TemperatureSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True" ValueChanged="Temperature_Changed"
-                        ToolTip="{DynamicResource RenderPanel.TemperatureHint}"/>
-              </DockPanel>
-              <CheckBox x:Name="HazeCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
-                        Content="{DynamicResource RenderPanel.Haze}" Checked="Haze_Changed" Unchecked="Haze_Changed"/>
-              <CheckBox x:Name="ArtificialLightsCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
-                        Content="{DynamicResource RenderPanel.ArtificialLights}" Checked="Lights_Changed" Unchecked="Lights_Changed"/>
-              <CheckBox x:Name="AutoExposureCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
-                        Content="{DynamicResource RenderPanel.AutoExposure}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
-              <CheckBox x:Name="BloomCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
-                        Content="{DynamicResource RenderPanel.Bloom}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
-              <CheckBox x:Name="VignetteCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
-                        Content="{DynamicResource RenderPanel.Vignette}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
-              <CheckBox x:Name="VerticalsCheck" Style="{StaticResource PanelCheck}" IsChecked="True"
-                        Content="{DynamicResource RenderPanel.Verticals}" Checked="Camera_Changed" Unchecked="Camera_Changed"/>
-              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.DepthOfField}"/>
-              <Slider x:Name="DepthOfFieldSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
-                      IsSnapToTickEnabled="True" ValueChanged="Camera_SliderChanged"/>
+              </Border>
             </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Navigation}"/>
-              <CheckBox x:Name="CollisionCheck" Style="{StaticResource PanelCheck}" IsChecked="False" Margin="0"
-                        Content="{DynamicResource RenderPanel.Collisions}" ToolTip="{DynamicResource RenderPanel.CollisionsHint}"
-                        Checked="Collision_Changed" Unchecked="Collision_Changed"/>
-              <Button Content="{DynamicResource RenderPanel.FrameAll}" Click="FrameAll_Click"
-                      Style="{StaticResource PanelButton}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
-              <Expander x:Name="TourExpander" Header="{DynamicResource RenderPanel.Tour}" Foreground="{DynamicResource PrimaryTextBrush}"
-                        FontWeight="SemiBold" Margin="0,12,0,0" IsExpanded="False">
-                <StackPanel Margin="0,7,0,0">
-                  <TextBlock Text="{DynamicResource RenderPanel.TourHint}" Foreground="{DynamicResource SecondaryTextBrush}"
-                             FontWeight="Normal" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                  <ListBox x:Name="MarksList" Height="110" SelectionChanged="MarksList_SelectionChanged"/>
-                  <WrapPanel Margin="0,6,0,0">
-                    <Button Content="{DynamicResource RenderPanel.AddMark}" Click="AddMark_Click" Style="{StaticResource PanelButton}"/>
-                    <Button x:Name="GoToMarkButton" Content="{DynamicResource RenderPanel.GoToMark}" Click="GoToMark_Click"
-                            Style="{StaticResource PanelButton}" IsEnabled="False"/>
-                    <Button x:Name="RemoveMarkButton" Content="{DynamicResource RenderPanel.RemoveMark}" Click="RemoveMark_Click"
-                            Style="{StaticResource PanelButton}" IsEnabled="False"/>
-                  </WrapPanel>
-                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.MarkSeconds}"/>
-                  <TextBox x:Name="MarkSecondsInput" Text="4" Width="60" HorizontalAlignment="Left" LostFocus="MarkSeconds_LostFocus"/>
-                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Fps}"/>
-                  <ComboBox x:Name="FpsPicker" SelectedIndex="1" Width="80" HorizontalAlignment="Left">
-                    <ComboBoxItem Content="24" Tag="24"/><ComboBoxItem Content="30" Tag="30"/><ComboBoxItem Content="60" Tag="60"/>
-                  </ComboBox>
-                  <WrapPanel Margin="0,8,0,0">
-                    <Button x:Name="PlayTourButton" Content="{DynamicResource RenderPanel.PlayTour}" Click="PlayTour_Click"
-                            Style="{StaticResource PanelButton}"/>
-                    <Button x:Name="RenderTourButton" Content="{DynamicResource RenderPanel.RenderVideo}" Click="RenderTour_Click"
-                            Style="{StaticResource PanelButton}"/>
-                  </WrapPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Camera, navigation and the walkthrough -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel><TextBlock Style="{StaticResource TabIcon}" Text="&#xE722;"/>
+              <TextBlock Style="{StaticResource TabText}" Text="{DynamicResource RenderPanel.CameraTab}"/></StackPanel>
+          </TabItem.Header>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,4">
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Navigation}"/>
+                  <CheckBox x:Name="VerticalsCheck" Style="{StaticResource PanelCheck}" IsChecked="True" Margin="0,4,0,0"
+                            Content="{DynamicResource RenderPanel.Verticals}" Checked="Camera_Changed" Unchecked="Camera_Changed"/>
+                  <CheckBox x:Name="CollisionCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
+                            Content="{DynamicResource RenderPanel.Collisions}" ToolTip="{DynamicResource RenderPanel.CollisionsHint}"
+                            Checked="Collision_Changed" Unchecked="Collision_Changed"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.DepthOfField}"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=DepthOfFieldSlider, StringFormat={}{0:0} %}"/>
+                    <Slider x:Name="DepthOfFieldSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
+                            IsSnapToTickEnabled="True" ValueChanged="Camera_SliderChanged"/>
+                  </DockPanel>
+                  <Button Content="{DynamicResource RenderPanel.FrameAll}" Click="FrameAll_Click"
+                          Style="{StaticResource PanelButton}" HorizontalAlignment="Left" Margin="0,14,0,0"/>
                 </StackPanel>
-              </Expander>
+              </Border>
+              <Border Style="{StaticResource SettingsCard}">
+                <Expander x:Name="TourExpander" Foreground="{DynamicResource PrimaryTextBrush}" IsExpanded="True">
+                  <Expander.Header>
+                    <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Tour}" Margin="0"/>
+                  </Expander.Header>
+                  <StackPanel Margin="0,8,0,0">
+                    <TextBlock Style="{StaticResource PanelHint}" Text="{DynamicResource RenderPanel.TourHint}" Margin="0,0,0,8"/>
+                    <ListBox x:Name="MarksList" Height="150" SelectionChanged="MarksList_SelectionChanged"/>
+                    <WrapPanel Margin="0,10,0,0">
+                      <Button Content="{DynamicResource RenderPanel.AddMark}" Click="AddMark_Click" Style="{StaticResource PanelButton}"/>
+                      <Button x:Name="GoToMarkButton" Content="{DynamicResource RenderPanel.GoToMark}" Click="GoToMark_Click"
+                              Style="{StaticResource PanelButton}" IsEnabled="False"/>
+                      <Button x:Name="RemoveMarkButton" Content="{DynamicResource RenderPanel.RemoveMark}" Click="RemoveMark_Click"
+                              Style="{StaticResource PanelButton}" IsEnabled="False"/>
+                    </WrapPanel>
+                    <Grid Margin="0,2,0,0">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.MarkSeconds}" Margin="0,4,0,4"/>
+                        <TextBox x:Name="MarkSecondsInput" Text="4" Width="80" HorizontalAlignment="Left" LostFocus="MarkSeconds_LostFocus"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Fps}" Margin="0,4,0,4"/>
+                        <ComboBox x:Name="FpsPicker" SelectedIndex="1" Width="96" HorizontalAlignment="Left">
+                          <ComboBoxItem Content="24" Tag="24"/><ComboBoxItem Content="30" Tag="30"/><ComboBoxItem Content="60" Tag="60"/>
+                        </ComboBox>
+                      </StackPanel>
+                    </Grid>
+                    <WrapPanel Margin="0,14,0,0">
+                      <Button x:Name="PlayTourButton" Content="{DynamicResource RenderPanel.PlayTour}" Click="PlayTour_Click"
+                              Style="{StaticResource PanelButton}"/>
+                      <Button x:Name="RenderTourButton" Content="{DynamicResource RenderPanel.RenderVideo}" Click="RenderTour_Click"
+                              Style="{StaticResource PanelButton}"/>
+                    </WrapPanel>
+                  </StackPanel>
+                </Expander>
+              </Border>
             </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Materials}"/>
-              <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10.5" TextWrapping="Wrap"
-                         Text="{DynamicResource RenderPanel.MaterialsHint}"/>
-              <StackPanel x:Name="MaterialRows"/>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Materials of each surface -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel><TextBlock Style="{StaticResource TabIcon}" Text="&#xE790;"/>
+              <TextBlock Style="{StaticResource TabText}" Text="{DynamicResource RenderPanel.Materials}"/></StackPanel>
+          </TabItem.Header>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,4">
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Materials}"/>
+                  <TextBlock Style="{StaticResource PanelHint}" Text="{DynamicResource RenderPanel.MaterialsHint}"/>
+                  <StackPanel x:Name="MaterialRows"/>
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-          <Border Style="{StaticResource SettingsCard}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Output}"/>
-              <WrapPanel>
-                <Button x:Name="SaveButton" Content="{DynamicResource RenderPanel.SaveImage}" Click="SaveButton_Click"
-                        Style="{StaticResource PanelButton}" IsEnabled="False"/>
-                <Button x:Name="CopyButton" Content="{DynamicResource RenderPanel.CopyImage}" Click="CopyButton_Click"
-                        Style="{StaticResource PanelButton}" IsEnabled="False"/>
-              </WrapPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Quality, size and computer resources -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel><TextBlock Style="{StaticResource TabIcon}" Text="&#xE9E9;"/>
+              <TextBlock Style="{StaticResource TabText}" Text="{DynamicResource RenderPanel.QualityTab}"/></StackPanel>
+          </TabItem.Header>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,4">
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Quality}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.QualityLabel}" Margin="0,4,0,4"/>
+                  <ComboBox x:Name="QualityPicker" SelectedIndex="0" SelectionChanged="Quality_Changed">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Auto}" Tag="Auto"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Draft}" Tag="Draft"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Standard}" Tag="Standard"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.High}" Tag="High"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Final}" Tag="Final"/>
+                  </ComboBox>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Size}"/>
+                  <ComboBox x:Name="SizePicker" SelectedIndex="0" SelectionChanged="Quality_Changed">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.SizeView}" Tag="0x0"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.SizeHd}" Tag="1280x720"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.SizeFullHd}" Tag="1920x1080"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.SizeQhd}" Tag="2560x1440"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.SizeUhd}" Tag="3840x2160"/>
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource SettingsCard}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Resources}"/>
+                  <ComboBox x:Name="ResourcePicker" SelectedIndex="1" SelectionChanged="Quality_Changed" Margin="0,4,0,0">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Eco}" Tag="Eco"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Balanced}" Tag="Balanced"/>
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.Maximum}" Tag="Maximum"/>
+                  </ComboBox>
+                  <TextBlock x:Name="MemoryText" Style="{StaticResource PanelHint}" Margin="0,10,0,0"/>
+                  <DockPanel Margin="0,10,0,0">
+                    <Button x:Name="RecalibrateButton" DockPanel.Dock="Right" Padding="12,5" MinHeight="30"
+                            Content="{DynamicResource RenderPanel.Recalibrate}" ToolTip="{DynamicResource RenderPanel.RecalibrateHint}"
+                            Click="Recalibrate_Click"/>
+                    <TextBlock x:Name="HardwareText" Style="{StaticResource PanelHint}" VerticalAlignment="Center" Margin="0,0,10,0"
+                               Text="{DynamicResource RenderPanel.Calibrating}"/>
+                  </DockPanel>
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
-      </ScrollViewer>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
     </DockPanel>
-    <Border Grid.Column="1" Background="{DynamicResource PanelBorderBrush}"/>
+
+    <!-- Drag to give the settings or the picture more room. -->
+    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                  Background="{DynamicResource PanelBorderBrush}" Cursor="SizeWE" Focusable="False"/>
+
     <Grid Grid.Column="2" x:Name="ImageHost" ClipToBounds="True" SizeChanged="ImageHost_SizeChanged">
       <Grid.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-          <GradientStop Color="#F8FAFC" Offset="0"/><GradientStop Color="#E9EEF3" Offset="1"/>
+          <GradientStop Color="#EEF2F6" Offset="0"/><GradientStop Color="#DDE4EB" Offset="1"/>
         </LinearGradientBrush>
       </Grid.Background>
-      <Border Margin="22,18,22,50" Background="White" BorderBrush="#D2D9E0" BorderThickness="1" CornerRadius="4" Padding="6">
-        <Border.Effect><DropShadowEffect Color="#64748B" BlurRadius="16" ShadowDepth="3" Opacity="0.18"/></Border.Effect>
+      <Border Margin="28,24,28,62" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="8">
+        <Border.Effect><DropShadowEffect Color="#475569" BlurRadius="24" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
-      <TextBlock x:Name="HintText" Text="{DynamicResource RenderPanel.Controls}"
-                 Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="30,0,30,57"
-                 VerticalAlignment="Bottom" TextWrapping="Wrap" IsHitTestVisible="False"/>
-      <Border VerticalAlignment="Bottom" Background="#F8FAFC" BorderBrush="{DynamicResource PanelBorderBrush}"
-              BorderThickness="0,1,0,0" Padding="14,9">
+      <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,66" Padding="14,7" CornerRadius="16"
+              Background="#B31E293B" IsHitTestVisible="False">
+        <TextBlock x:Name="HintText" Text="{DynamicResource RenderPanel.Controls}" Foreground="White" FontSize="12"
+                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="760"/>
+      </Border>
+      <Border VerticalAlignment="Bottom" Background="White" BorderBrush="{DynamicResource PanelBorderBrush}"
+              BorderThickness="0,1,0,0" Padding="18,12">
         <DockPanel>
-          <ProgressBar x:Name="RenderProgress" DockPanel.Dock="Right" Width="170" Height="8" Minimum="0" Maximum="1"
-                       VerticalAlignment="Center" Margin="12,0,0,0" Visibility="Collapsed"/>
-          <TextBlock x:Name="StatusText" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12"
+          <ProgressBar x:Name="RenderProgress" DockPanel.Dock="Right" Width="240" Height="10" Minimum="0" Maximum="1"
+                       VerticalAlignment="Center" Margin="16,0,0,0" Visibility="Collapsed"/>
+          <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" VerticalAlignment="Center"
+                     Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
+          <TextBlock x:Name="StatusText" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13.5"
                      TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Text="{DynamicResource RenderPanel.Idle}"/>
         </DockPanel>
       </Border>

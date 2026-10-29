@@ -148,8 +148,8 @@ internal static partial class InteractionChecks
             var imageHost = (FrameworkElement)panel.FindName("ImageHost");
             Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed,
                 "The Render workspace replaces the standard properties and project-browser sidebar");
-            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 323) < 2,
-                "The Render controls occupy the same 320-pixel sidebar column and divider");
+            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 425) < 2,
+                "The Render controls occupy a 420-pixel resizable sidebar beside a divider");
             Check(panel.Background is SolidColorBrush { Color: { R: > 240, G: > 240, B: > 240 } },
                 "The Render workspace uses the application's light theme");
             Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
