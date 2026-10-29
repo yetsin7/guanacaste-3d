@@ -9,6 +9,7 @@ public partial class MainWindow
     {
         RoutedEventHandler? handler = command switch
         {
+            "Home" => Home_Click,
             "New" => New_Click,
             "Open" => Open_Click,
             "OpenSample" => OpenSample_Click,

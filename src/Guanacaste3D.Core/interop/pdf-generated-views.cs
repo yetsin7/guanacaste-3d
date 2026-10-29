@@ -51,9 +51,17 @@ public static partial class PdfPlanExporter
             var projected = mesh.Positions.Select(vertex => ProjectHorizontal(new(vertex.X, vertex.Y), view.Orientation)).ToArray();
             minX = projected.DefaultIfEmpty(-5).Min();
             maxX = projected.DefaultIfEmpty(5).Max();
-            foreach (var edge in FeatureEdges.Extract(mesh.Positions, mesh.Indices))
-                items.Add(new SheetPolyline([new(ProjectHorizontal(new(edge.A.X, edge.A.Y), view.Orientation), edge.A.Z),
-                    new(ProjectHorizontal(new(edge.B.X, edge.B.Y), view.Orientation), edge.B.Z)], 0.13, Black));
+            // Vegetation draws in thin light grey, as entourage does on architectural elevations, so a tree in front of
+            // the facade never hides it under a mass of black lines.
+            var architecture = new List<int>();
+            var vegetation = new List<int>();
+            for (var triangle = 0; triangle < mesh.TriangleCount; triangle++)
+                (mesh.TriangleKinds[triangle] is SurfaceKind.Foliage or SurfaceKind.Leaf or SurfaceKind.Bark ? vegetation : architecture)
+                    .AddRange([mesh.Indices[triangle * 3], mesh.Indices[triangle * 3 + 1], mesh.Indices[triangle * 3 + 2]]);
+            foreach (var (indices, weight, color) in new[] { (architecture, 0.13, Black), (vegetation, 0.05, Vegetation) })
+                foreach (var edge in FeatureEdges.Extract(mesh.Positions, indices))
+                    items.Add(new SheetPolyline([new(ProjectHorizontal(new(edge.A.X, edge.A.Y), view.Orientation), edge.A.Z),
+                        new(ProjectHorizontal(new(edge.B.X, edge.B.Y), view.Orientation), edge.B.Z)], weight, color));
             foreach (var axis in document.Grids)
             {
                 var start = ProjectHorizontal(axis.Start, view.Orientation);

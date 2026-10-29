@@ -29,9 +29,15 @@ static class BreezeBlockHouseChecks
               carParts.All(part => part.Top <= cars[0].Height + 1e-9),
             "Cars have painted bodies, tyres and glass within their family height");
 
-        var door = document.Openings.Single(opening => opening.Kind == OpeningKind.Door);
-        check(document.OpeningTypes.Single(type => type.Id == door.OpeningTypeId).FamilyName == "Pivot Door" && door.Height > 2.7,
+        check(document.Openings.Any(opening => opening.Kind == OpeningKind.Door && opening.Height > 2.7 &&
+                document.OpeningTypes.Single(type => type.Id == opening.OpeningTypeId).FamilyName == "Pivot Door"),
             "The entrance is a tall timber pivot door");
+        check(document.Rooms.Count >= 12 && document.Openings.Count(opening => opening.Kind == OpeningKind.Door) >= 8 &&
+              document.Openings.Count(opening => opening.Kind == OpeningKind.Window) >= 8 &&
+              document.StructuralElements.Any(element => element.Kind == StructuralElementKind.Opening) &&
+              document.PlumbingSystems.Count > 0,
+            "The house has its rooms, doors, windows, stairwell and plumbing");
+        Drawings(check, document);
 
         var mesh = BuildingMesher.Build(document, includeGround: true);
         foreach (var kind in new[] { SurfaceKind.Asphalt, SurfaceKind.WallConcrete, SurfaceKind.WallWood, SurfaceKind.Ground,
@@ -59,6 +65,46 @@ static class BreezeBlockHouseChecks
         var rejected = false;
         try { broken.Validate(); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "An invalid saved render setup is rejected");
+    }
+
+    /// <summary>The document set: grid, dimensions, sections, schedules, cropped views and six composed sheets.</summary>
+    private static void Drawings(Action<bool, string> check, BuildingDocument document)
+    {
+        check(document.Grids.Count == 7 && document.Dimensions.Count > 10 &&
+              document.Views.Count(view => view.Kind == ProjectViewKind.Section) == 2 && document.Schedules.Count == 3,
+            "The house has its grid, dimensions, two sections and three schedules");
+        check(document.Sheets.Select(sheet => sheet.Name).SequenceEqual(["Portada", "Planta baja", "Planta alta", "Alzados", "Secciones", "Tablas"]),
+            "The drawing set has a cover, both plans, elevations, sections and schedules");
+        var tables = document.Sheets.Single(sheet => sheet.Name == "Tablas");
+        check(tables.Viewports.Count(viewport => document.Schedules.Any(schedule => schedule.Id == viewport.ViewId)) == 3,
+            "Schedules are placed on a sheet as tables");
+        var composed = SheetComposition.Build(document, tables, DateTimeOffset.Now);
+        var texts = composed.Viewports.SelectMany(viewport => viewport.Graphics).OfType<Guanacaste3D.Core.Interop.SheetText>()
+            .Select(text => text.Text).ToArray();
+        check(texts.Contains("TABLA DE PUERTAS") && texts.Contains("P1") && texts.Contains("V1") && !texts.Any(text => text.Length == 8 &&
+                text.All(Uri.IsHexDigit)),
+            "Door and window schedules list type marks (P1, V1), not identifiers");
+
+        var plan = document.Sheets.Single(sheet => sheet.Name == "Planta baja");
+        var drawn = SheetComposition.Build(document, plan, DateTimeOffset.Now).Viewports.Single();
+        var crop = document.Views.Single(view => view.Id == plan.Viewports[0].ViewId).ModelCrop!.Value;
+        check(drawn.Scale == 50 && drawn.Graphics.OfType<Guanacaste3D.Core.Interop.SheetText>().Any(text => text.Text == "P1") &&
+              drawn.Graphics.OfType<Guanacaste3D.Core.Interop.SheetText>().Any(text => text.Text == "Cocina"),
+            "The ground floor sheet prints at 1:50 with door tags and room names");
+        var paper = drawn.Graphics.SelectMany(primitive => primitive switch
+        {
+            Guanacaste3D.Core.Interop.SheetPolyline line => line.Points,
+            Guanacaste3D.Core.Interop.SheetPolygon polygon when polygon.PaperRadius is null => polygon.Points,
+            _ => []
+        }).ToArray();
+        var expected = (crop.MaxX - crop.MinX) * 1000 / 50;
+        check(paper.Max(point => point.X) - paper.Min(point => point.X) <= expected + 0.5,
+            "A cropped plan prints only its crop region, not the street and gardens around it");
+
+        var clipped = SheetPrimitiveClipper.ClipPolygon([new(-5, -5), new(5, -5), new(5, 5), new(-5, 5)], new PlanBounds(0, 0, 10, 10));
+        check(clipped.Count == 4 && clipped.All(point => point.X is >= 0 and <= 5 && point.Y is >= 0 and <= 5) &&
+              SheetPrimitiveClipper.ClipSegment(new(-1, 20), new(11, 20), new PlanBounds(0, 0, 10, 10)) is null,
+            "Crop clipping trims shapes to the region and drops lines outside it");
     }
 
     private static BuildingDocument ProjectFileRoundTrip(BuildingDocument document)

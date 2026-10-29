@@ -7,7 +7,7 @@ namespace Guanacaste3D.Core;
 /// stepping stones, a driveway, the sidewalk and the street, under the shade of a large tree. Like every sample it is
 /// built only through <see cref="DocumentSession"/>, so every piece stays editable.
 /// </summary>
-public static class BreezeBlockHouseShowcase
+public static partial class BreezeBlockHouseShowcase
 {
     /// <summary>Elevation of the upper floor: the white volume's soffit sits 30 cm below it.</summary>
     public const double UpperElevation = 3.9;
@@ -50,6 +50,7 @@ public static class BreezeBlockHouseShowcase
     {
         var session = new DocumentSession(ArchitecturalLibrary.CreateProject("Casa del cobogó: volumen blanco sobre cochera de concreto"));
         var ground = session.Document.Levels.Single(level => level.Role == LevelRole.BaseFloor).Id;
+        session.UpdateLevel(ground, "Planta baja", 0);
         var upper = session.AddLevel();
         session.UpdateLevel(upper, "Planta alta", UpperElevation);
 
@@ -86,9 +87,8 @@ public static class BreezeBlockHouseShowcase
         session.AddSlabFromPreset(ground, Rectangle(0, 0.4, 6.4, 12), Slab("Porcelain Tile Floor 200 mm"));
         session.AddSlabFromPreset(ground, Rectangle(6.4, 5.2, 15.2, 12), Slab("Porcelain Tile Floor 200 mm"));
         session.AddSlabFromPreset(ground, Rectangle(6.4, -0.4, 15.2, 5.2), Slab("Concrete Slab 150 mm"));
-        session.AddRoom(ground, new Point2(2.1, 1.6), new Point2(6.3, 11.7), "Sala");
+        session.AddRoom(ground, new Point2(2.1, 1.6), new Point2(6.3, 11.7), "Sala y comedor");
         session.AddRoom(ground, new Point2(6.8, 0), new Point2(14.8, 5.0), "Cochera");
-        session.AddRoom(ground, new Point2(6.8, 5.4), new Point2(14.8, 11.7), "Vestíbulo y cocina");
 
         // The white volume: painted slabs top and bottom, so its soffit and edges read as one rendered box.
         session.AddSlabFromPreset(upper, Rectangle(0, 0, 15.2, 12), Slab("Painted Concrete Slab 300 mm"));
@@ -101,7 +101,6 @@ public static class BreezeBlockHouseShowcase
         session.AddWall(upper, new Point2(12.875, 0.15), new Point2(12.875, 1.6), height: 3, wallTypeId: white);
         session.AddElementFromPreset(upper, curtain, new Point2(12.95, 1.6), new Point2(15.05, 1.6));
         session.AddSlabFromPreset(upper, Rectangle(0, 0, 15.2, 12), Slab("Painted Concrete Slab 300 mm"), 3.3);
-        session.AddRoom(upper, new Point2(0.2, 0.2), new Point2(12.7, 11.8), "Dormitorios y estudio");
         session.AddRoom(upper, new Point2(12.95, 0.2), new Point2(15.0, 1.5), "Balcón tras el cobogó");
 
         // The canopy floats 30 cm above the volume on slender recessed columns, overhanging it toward the street.
@@ -121,7 +120,7 @@ public static class BreezeBlockHouseShowcase
         }
         foreach (var (name, x, y, turn) in new[]
                  {
-                     ("Three Seat Sofa", 4.3, 4.4, Math.PI), ("Armchair", 2.8, 2.6, -Math.PI / 2), ("Coffee Table", 4.3, 3.2, 0.0)
+                     ("Three Seat Sofa", 4.3, 4.4, 0.0), ("Armchair", 2.8, 2.6, Math.PI / 2), ("Coffee Table", 4.3, 3.2, 0.0)
                  })
             session.AddElementFromPreset(ground, Element(name), new Point2(x, y), new Point2(x, y), turn);
 
@@ -186,10 +185,11 @@ public static class BreezeBlockHouseShowcase
             session.AddSlabFromPreset(ground, corners, Slab("Painted Concrete Slab 300 mm"), 6.9);
         }
 
-        session.StoreRenderSetup(StreetView);
+        AddInteriors(session, ground, upper);
         session.AddArea(ground, "Área construida planta baja", new Point2(0, 0.4), new Point2(15.2, 12));
         session.AddArea(upper, "Área construida planta alta", new Point2(0, 0), new Point2(15.2, 12));
-        session.AddSheet(SheetPaperSize.A1, "Planta baja");
+        AddDrawingSet(session, ground, upper);
+        session.StoreRenderSetup(StreetView);
         return session.Document.Clone();
     }
 }

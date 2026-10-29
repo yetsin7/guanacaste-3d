@@ -50,6 +50,11 @@ public partial class MainWindow
     private void UpdateWindowTitle()
     {
         if (_session is null) return;
+        if (StartScreenControl?.Visibility == Visibility.Visible)
+        {
+            Title = $"{GetText("App.Name")} - {GetText("Action.Home")}";
+            return;
+        }
         string view = (ViewTabs?.SelectedItem as TabItem)?.Header?.ToString() ?? string.Empty;
         string project = _session.Document.Name + (_dirty ? " *" : string.Empty);
         Title = string.IsNullOrEmpty(view)

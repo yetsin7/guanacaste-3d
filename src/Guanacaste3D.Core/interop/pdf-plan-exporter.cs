@@ -38,6 +38,7 @@ public static partial class PdfPlanExporter
     private const double PointsPerMillimeter = 72 / 25.4;
     private static readonly (double, double, double) Black = (0, 0, 0);
     private static readonly (double, double, double) Grey = (0.45, 0.45, 0.45);
+    private static readonly (double, double, double) Vegetation = (0.62, 0.66, 0.60);
     private static readonly (double, double, double) Light = (0.65, 0.65, 0.65);
     private static readonly double[] Scales = [20, 25, 50, 75, 100, 125, 150, 200, 250, 500, 1000, 2000];
 

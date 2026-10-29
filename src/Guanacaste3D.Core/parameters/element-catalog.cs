@@ -65,14 +65,15 @@ public static class ElementCatalog
     /// <summary>Returns the eight-character mark used for elements without user numbering.</summary>
     public static string ShortMark(Guid id) => id.ToString("N")[..8];
 
-    /// <summary>Lists doors or windows with their host-wall level.</summary>
+    /// <summary>Lists doors or windows with their type mark (as the plan tags show it) and their host-wall level.</summary>
     private static IEnumerable<ElementEntry> ListOpenings(BuildingDocument document, ElementCategory category)
     {
         var kind = category == ElementCategory.Doors ? OpeningKind.Door : OpeningKind.Window;
         var hostLevels = document.Walls.ToDictionary(wall => wall.Id, wall => wall.LevelId);
         var typeNames = document.OpeningTypes.ToDictionary(type => type.Id, type => type.DisplayName);
+        var marks = ElementTags.OpeningTypeMarks(document, kind);
         return document.Openings.Where(opening => opening.Kind == kind).Select(opening => new ElementEntry(
-            opening.Id, category, ShortMark(opening.Id),
+            opening.Id, category, marks[opening.OpeningTypeId],
             typeNames.GetValueOrDefault(opening.OpeningTypeId, string.Empty),
             hostLevels.TryGetValue(opening.WallId, out var levelId) ? levelId : null, opening.OpeningTypeId));
     }

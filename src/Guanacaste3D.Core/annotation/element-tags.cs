@@ -28,8 +28,8 @@ public static class ElementTags
 
         if (categories.Contains(TagCategory.Door) || categories.Contains(TagCategory.Window))
         {
-            var doorMarks = OpeningMarks(document, OpeningKind.Door, "P");
-            var windowMarks = OpeningMarks(document, OpeningKind.Window, "V");
+            var doorMarks = OpeningTypeMarks(document, OpeningKind.Door);
+            var windowMarks = OpeningTypeMarks(document, OpeningKind.Window);
             foreach (var opening in document.Openings)
             {
                 if (!walls.TryGetValue(opening.WallId, out var host) || host.LevelId != levelId) continue;
@@ -72,9 +72,13 @@ public static class ElementTags
         return tags;
     }
 
-    /// <summary>Numbers each distinct opening type of one kind in order of first appearance: P1, P2... or V1, V2...</summary>
-    private static Dictionary<Guid, string> OpeningMarks(BuildingDocument document, OpeningKind kind, string prefix)
+    /// <summary>
+    /// Numbers each distinct opening type of one kind in order of first appearance: P1, P2... for doors, V1, V2... for
+    /// windows. Tags and schedules share these type marks, so a plan's tags key into its door and window tables.
+    /// </summary>
+    internal static Dictionary<Guid, string> OpeningTypeMarks(BuildingDocument document, OpeningKind kind)
     {
+        var prefix = kind == OpeningKind.Door ? "P" : "V";
         var marks = new Dictionary<Guid, string>();
         foreach (var opening in document.Openings.Where(opening => opening.Kind == kind))
             marks.TryAdd(opening.OpeningTypeId, prefix + (marks.Count + 1));

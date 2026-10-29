@@ -69,15 +69,6 @@ public partial class MainWindow
         OpenBreezeBlockHouse();
     }
 
-    /// <summary>
-    /// Without a document to open, the application starts on the breeze-block house in the Render tab, with its saved
-    /// camera, sun and filters: ready to render.
-    /// </summary>
-    private void OpenStartupSample()
-    {
-        if (OpenBreezeBlockHouse()) ViewTabs.SelectedIndex = RenderTabIndex;
-    }
-
     /// <summary>Loads the breeze-block house sample and reports whether it opened.</summary>
     private bool OpenBreezeBlockHouse()
     {

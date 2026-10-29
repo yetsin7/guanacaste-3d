@@ -141,6 +141,10 @@ public sealed class BuildingDocument
     {
         if (SchemaVersion != CurrentSchemaVersion) throw new InvalidDataException("Unsupported project schema version.");
         foreach (var view in Views) view.Graphics?.Validate();
+        if (Views.Any(view => view.ModelCrop is { } crop && (!double.IsFinite(crop.MinX + crop.MinY + crop.MaxX + crop.MaxY) ||
+                crop.MaxX - crop.MinX < 0.5 || crop.MaxY - crop.MinY < 0.5 ||
+                view.Kind is ProjectViewKind.Schedule)))
+            throw new InvalidDataException("The view crop region is invalid.");
         if (Lot is not null && !Lot.IsValid) throw new InvalidDataException("The site lot is invalid.");
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");

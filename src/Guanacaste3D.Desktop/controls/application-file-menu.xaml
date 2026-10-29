@@ -1,6 +1,7 @@
             <ContextMenu x:Class="Guanacaste3D.Desktop.Controls.ApplicationFileMenu"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Placement="Bottom">
+              <MenuItem Header="{DynamicResource Action.Home}" Click="Command_Click" Tag="Home"/>
               <MenuItem Header="{DynamicResource Action.NewProject}" Click="Command_Click" Tag="New"/>
               <MenuItem Header="{DynamicResource Action.OpenProject}" Click="Command_Click" Tag="Open"/>
               <MenuItem Header="{DynamicResource Action.OpenSample}" Click="Command_Click" Tag="OpenSample"/>

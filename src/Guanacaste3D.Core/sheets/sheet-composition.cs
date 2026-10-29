@@ -46,6 +46,11 @@ public static class SheetComposition
         var viewports = new List<ComposedViewport>();
         foreach (var placement in sheet.Viewports)
         {
+            if (document.Schedules.FirstOrDefault(schedule => schedule.Id == placement.ViewId) is { } schedule)
+            {
+                viewports.Add(new(placement, 1, ScheduleSheetTable.Primitives(document, schedule, placement)));
+                continue;
+            }
             var view = document.Views.Single(view => view.Id == placement.ViewId);
             if (view.Id == BuiltInProjectViews.AreaScheduleId)
             {
@@ -58,6 +63,7 @@ public static class SheetComposition
                 continue;
             }
             var source = ViewGraphics(document, view, mesh);
+            if (view.ModelCrop is { } crop) source = SheetPrimitiveClipper.Clip(source, crop);
             var points = source.SelectMany(Vertices).ToArray();
             var minX = points.Select(point => point.X).DefaultIfEmpty(0).Min();
             var minY = points.Select(point => point.Y).DefaultIfEmpty(0).Min();

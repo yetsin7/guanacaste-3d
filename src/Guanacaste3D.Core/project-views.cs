@@ -35,6 +35,14 @@ public sealed record ProjectView(
     public SectionCut? Cut { get; init; }
     public ViewGraphicsSettings? Graphics { get; init; }
 
+    /// <summary>
+    /// The part of the drawing, in meters, that a plan, elevation or section prints on a sheet (its crop region): plan X
+    /// and Y for a plan, horizontal position and height for an elevation or section, the isometric drawing axes for the
+    /// 3D view. Null prints everything, which for a
+    /// site with streets and gardens can shrink the building on the paper.
+    /// </summary>
+    public PlanBounds? ModelCrop { get; init; }
+
     /// <summary>Elements this view hides. The building itself is unchanged; other views still show them.</summary>
     public List<Guid> HiddenElementIds { get; init; } = [];
 

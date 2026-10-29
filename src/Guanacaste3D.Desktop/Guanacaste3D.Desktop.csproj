@@ -30,5 +30,7 @@
     <!-- Detailed mesh families (CC0 trees and cars, see docs/third-party-models.md) and the saved sample projects. -->
     <Content Include="resources\families\*.g3df" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="resources\samples\*.g3d" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Rendered pictures of the samples for the Home screen tiles. -->
+    <Content Include="resources\samples\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

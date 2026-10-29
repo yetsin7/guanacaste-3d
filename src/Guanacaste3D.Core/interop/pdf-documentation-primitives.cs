@@ -40,6 +40,21 @@ public static partial class PdfPlanExporter
             items.Add(new SheetPolyline([view.Cut!.Start, view.Cut.End], 0.18, Grey, Dashed: true));
             items.Add(new SheetText(view.Cut.Start, view.Name, 2.5, Black, Bold: true));
         }
+        // Door, window and column marks (P1, V2, C1) in round tags, as a printed plan keys them to its schedules.
+        foreach (var tag in ElementTags.Build(document, levelId,
+                     new HashSet<TagCategory> { TagCategory.Door, TagCategory.Window, TagCategory.Column }))
+        {
+            items.Add(new SheetPolygon(Circle(tag.Position, 0.2, 24), 0.15, Black, (1, 1, 1)) { PaperRadius = 2.4 });
+            items.Add(new SheetText(tag.Position, tag.Mark, 2.0, Black) { CenteredOnSymbol = true });
+        }
+        // Callouts: the dashed boundary of each enlarged detail and its name.
+        foreach (var callout in (document.Callouts ?? []).Where(callout => callout.LevelId == levelId))
+        {
+            var region = callout.Region;
+            items.Add(new SheetPolyline([new(region.MinX, region.MinY), new(region.MaxX, region.MinY), new(region.MaxX, region.MaxY),
+                new(region.MinX, region.MaxY), new(region.MinX, region.MinY)], 0.18, Grey, Dashed: true));
+            items.Add(new SheetText(new(region.MinX, region.MaxY + 0.15), callout.Name, 2.5, Black, Bold: true));
+        }
         var elevation = document.Levels.Single(level => level.Id == levelId).Elevation;
         var upper = document.Levels.Where(level => level.Elevation > elevation).Select(level => level.Elevation)
             .DefaultIfEmpty(elevation + 3).Min();

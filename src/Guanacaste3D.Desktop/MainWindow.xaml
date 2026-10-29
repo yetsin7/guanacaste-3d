@@ -16,6 +16,7 @@
                   UseAeroCaptionButtons="False"/>
   </WindowChrome.WindowChrome>
   <Border x:Name="WindowFrame" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1">
+  <Grid>
   <DockPanel LastChildFill="True">
     <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="30">
       <Grid>
@@ -395,5 +396,8 @@
                             Panel.ZIndex="10" Visibility="Collapsed"/>
     </Grid>
   </DockPanel>
+  <!-- The Home screen covers the workspace below the title bar until a project is chosen. -->
+  <controls:StartScreen x:Name="StartScreenControl" Margin="0,30,0,0" Visibility="Collapsed"/>
+  </Grid>
   </Border>
 </Window>

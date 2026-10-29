@@ -65,11 +65,14 @@ public static class ScheduleQuantities
                 break;
             case ElementCategory.Doors or ElementCategory.Windows:
                 var kind = category == ElementCategory.Doors ? OpeningKind.Door : OpeningKind.Window;
+                // The host reads as its wall type, as a door schedule names the wall a door sits in.
+                var hostTypes = document.Walls.ToDictionary(wall => wall.Id, wall =>
+                    document.WallTypes.FirstOrDefault(type => type.Id == wall.WallTypeId)?.Name ?? ElementCatalog.ShortMark(wall.Id));
                 foreach (var opening in document.Openings.Where(opening => opening.Kind == kind))
                     result[opening.Id] = new Dictionary<string, object>
                     {
                         [Width] = opening.Width, [Height] = opening.Height, [Sill] = opening.Sill,
-                        [Host] = ElementCatalog.ShortMark(opening.WallId)
+                        [Host] = hostTypes.GetValueOrDefault(opening.WallId, ElementCatalog.ShortMark(opening.WallId))
                     };
                 break;
             case ElementCategory.Rooms:

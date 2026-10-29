@@ -91,6 +91,34 @@ pavilion, a white concrete upper volume that cantilevers past it, entrance steps
 golden-hour lighting preset; `tests/Guanacaste3D.RenderBench` renders it with `G3_SHOT_ONLY=villa ... -- --shot`. The
 assistant can build the same pieces with `add_curtain_wall`, `add_pool` and `add_planting`.
 
+## Breeze-block house sample
+
+`Inicio > Ejemplos > Casa del cobogó` opens a street-front house: a white painted volume floating over a recessed
+glazed living room and a fair-faced concrete carport, a thin concrete canopy above it and a breeze-block screen
+(`ElementStyle.BreezeBlock` curtain wall) at its east end. The carport holds a timber `Pivot Door`, slatted cladding and
+two `Sedan Car` families; the site has lawn, stepping stones, driveway, sidewalk, curb and an asphalt street. Slabs now
+render by finish: `ExposedConcrete` as fair-faced concrete, `Paint` as white plaster, and the new `Asphalt` and `Grass`
+finishes as road and lawn. `G3_SHOT_ONLY=cobogo ... -- --shot` renders the street view in portrait.
+
+The sample is saved as `resources/samples/casa-del-cobogo.g3d` and opens as an untitled copy. It carries three
+detailed **mesh families**: a CC0 jacaranda from Poly Haven and two CC0 cars from Grab3D, converted with
+`tools/mesh-family-converter` (see [docs/third-party-models.md](docs/third-party-models.md)). A mesh family is a `.g3df`
+holding a triangle mesh with a render surface per triangle and a light preview for the interactive view.
+`File > Import family` loads one into any project and places an instance that can be moved, copied, turned and resized;
+`tools/sample-projects` regenerates the saved sample.
+
+The sample is a complete project: interiors with doors, windows, fixtures and plumbing; a structural grid; associative
+dimensions; sections A-A and B-B; door, window and room schedules; and six A1 sheets (cover, ground floor, upper floor,
+elevations, sections, schedules). Printed plans carry door, window and column tags whose type marks (P1, V1) match the
+schedules. Views keep a **crop region** (`ProjectView.ModelCrop`) that sheets honour, and saved schedules can be placed on
+sheets as tables. The project also stores its **render setup** (camera, sun, size, quality and filters), restored on open.
+
+## Home screen
+
+Started without a document, the application opens on the Home screen: open or create a project or a family, reopen a
+recent project (tiles or list, sorted by date or name, with search) or start from a sample. Recent projects are kept in
+`%LOCALAPPDATA%\Guanacaste3Decent-projects.json` with cached isometric thumbnails. `File > Inicio` returns to it.
+
 ## Annotation
 
 - **Tags:** the ribbon commands `TagAll` and `TagByCategory` toggle automatic plan tags for doors (P1...), windows (V1...)

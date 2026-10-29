@@ -28,10 +28,10 @@ public partial class MainWindow : Window
     private bool _refreshingLevels;
 
     /// <summary>
-    /// Initializes a coordinated BIM document and its desktop workspace. With <paramref name="openStartupSample"/> and no
-    /// project to open, it starts on the breeze-block house in the Render tab instead of an empty project.
+    /// Initializes a coordinated BIM document and its desktop workspace. With <paramref name="showStartScreen"/> and no
+    /// project to open, it starts on the Home screen, where the person chooses what to work on.
     /// </summary>
-    public MainWindow(string? projectPath = null, bool openStartupSample = false)
+    public MainWindow(string? projectPath = null, bool showStartScreen = false)
     {
         InitializeComponent();
         InitializeCommandCustomization();
@@ -41,7 +41,7 @@ public partial class MainWindow : Window
         InitializeNavigationAndRender();
         RefreshAll();
         if (!string.IsNullOrWhiteSpace(projectPath)) OpenAssociatedDocumentPath(projectPath);
-        else if (openStartupSample) OpenStartupSample();
+        else if (showStartScreen) ShowStartScreen();
     }
 
     /// <summary>Loads a project supplied by file association while preserving a usable empty document on failure.</summary>
@@ -216,6 +216,7 @@ public partial class MainWindow : Window
             _links.Save(path!);
             _filePath = path;
             _dirty = false;
+            RememberRecent(path!, _session.Document);
             UpdateWindowTitle();
             StatusText.Text = FormatText("Status.ProjectSaved", System.IO.Path.GetFileName(path));
             return true;
@@ -248,6 +249,9 @@ public partial class MainWindow : Window
         _selectedViewId = null;
         _filePath = filename;
         _dirty = false;
+        _projectChosen = true;
+        HideStartScreen();
+        if (filename is not null) RememberRecent(filename, document);
         _drawingWall = false;
         UpdateWallToolVisualState();
         RestoreLinks(filename);
