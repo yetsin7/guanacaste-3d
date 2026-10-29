@@ -46,5 +46,32 @@ static class BreezeBlockHouseChecks
         check(volume.Length >= 2 && canopy.Boundary.Min(p => p.Y) < volume.Min(f => f.Boundary.Min(p => p.Y)),
             "A fair-faced canopy overhangs the painted white volume toward the street");
         check(BudgetCalculator.Build(document, UnitPriceList.Default()).Total > 0, "The house can be priced");
+
+        // The street view of the photograph travels with the project and is checked like any other data.
+        check(document.RenderSetup == BreezeBlockHouseShowcase.StreetView && document.Clone().RenderSetup == document.RenderSetup &&
+              ProjectFileRoundTrip(document).RenderSetup == document.RenderSetup,
+            "The house keeps its render camera, sun and filters through clone and save");
+        var sun = SolarPosition.Direction(document.RenderSetup!.Latitude, document.RenderSetup.DayOfYear, document.RenderSetup.SolarHour);
+        check(sun.X < 0 && sun.Y < 0 && SolarPosition.AltitudeDegrees(sun) is > 25 and < 45,
+            "The saved sun shines from the front left, so the tree's shadow falls across the white volume");
+        var broken = document.Clone();
+        broken.RenderSetup = broken.RenderSetup! with { FieldOfViewDegrees = 0 };
+        var rejected = false;
+        try { broken.Validate(); } catch (InvalidDataException) { rejected = true; }
+        check(rejected, "An invalid saved render setup is rejected");
+    }
+
+    private static BuildingDocument ProjectFileRoundTrip(BuildingDocument document)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"render-setup-{Guid.NewGuid():N}.g3");
+        try
+        {
+            ProjectFile.Save(path, document);
+            return ProjectFile.Load(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 }

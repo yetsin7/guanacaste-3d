@@ -69,6 +69,7 @@
   <sys:String x:Key="Error.The family has no mesh to place.">La familia no tiene una malla 3D para colocar.</sys:String>
   <sys:String x:Key="Error.The family scale must be positive.">La escala de la familia debe ser positiva.</sys:String>
   <sys:String x:Key="Error.The family mesh is not valid.">La malla 3D de la familia no es válida.</sys:String>
+  <sys:String x:Key="Error.The saved render setup is invalid.">La configuración de render guardada en el proyecto no es válida.</sys:String>
   <sys:String x:Key="Error.A drawing sheet family cannot carry a mesh.">Una familia de lámina no puede llevar una malla 3D.</sys:String>
   <sys:String x:Key="Error.The selected wall does not exist.">El muro seleccionado no existe.</sys:String>
   <sys:String x:Key="Error.The selected wall type does not exist.">El tipo de muro seleccionado no existe.</sys:String>

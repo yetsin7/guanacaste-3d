@@ -27,8 +27,11 @@ public partial class MainWindow : Window
     private Point _panOffset;
     private bool _refreshingLevels;
 
-    /// <summary>Initializes a coordinated BIM document and its desktop workspace.</summary>
-    public MainWindow(string? projectPath = null)
+    /// <summary>
+    /// Initializes a coordinated BIM document and its desktop workspace. With <paramref name="openStartupSample"/> and no
+    /// project to open, it starts on the breeze-block house in the Render tab instead of an empty project.
+    /// </summary>
+    public MainWindow(string? projectPath = null, bool openStartupSample = false)
     {
         InitializeComponent();
         InitializeCommandCustomization();
@@ -38,6 +41,7 @@ public partial class MainWindow : Window
         InitializeNavigationAndRender();
         RefreshAll();
         if (!string.IsNullOrWhiteSpace(projectPath)) OpenAssociatedDocumentPath(projectPath);
+        else if (openStartupSample) OpenStartupSample();
     }
 
     /// <summary>Loads a project supplied by file association while preserving a usable empty document on failure.</summary>
@@ -205,6 +209,9 @@ public partial class MainWindow : Window
         }
         try
         {
+            // The render view travels with the project, so reopening it shows the same camera, sun and filters.
+            try { _session.StoreRenderSetup(RenderPanelControl.CaptureSetup(_navigation)); }
+            catch (InvalidDataException) { }
             ProjectFile.Save(path!, _session.Document);
             _links.Save(path!);
             _filePath = path;
@@ -246,6 +253,18 @@ public partial class MainWindow : Window
         RestoreLinks(filename);
         RefreshAll();
         FrameCameraToScene();
+        if (document.RenderSetup is { } setup) ApplyRenderSetup(setup);
+    }
+
+    /// <summary>Restores a project's saved render view: the shared camera and the Render panel's settings.</summary>
+    private void ApplyRenderSetup(Guanacaste3D.Core.Rendering.RenderSetup setup)
+    {
+        _navigation.Position = new System.Numerics.Vector3((float)setup.CameraX, (float)setup.CameraY, (float)setup.CameraZ);
+        _navigation.YawDegrees = (float)setup.YawDegrees;
+        _navigation.PitchDegrees = (float)setup.PitchDegrees;
+        _navigation.FieldOfViewDegrees = (float)setup.FieldOfViewDegrees;
+        RenderPanelControl.ApplySetup(setup);
+        UpdateModelCamera();
     }
 
     /// <summary>

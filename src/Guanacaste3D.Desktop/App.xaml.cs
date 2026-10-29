@@ -21,7 +21,8 @@ public partial class App : Application
         await Task.Run(StartupWarmup.LoadModelLibraries);
 
         await ReportStepAsync(splash, 1, "Splash.Step.Interface");
-        var window = new MainWindow(projectPath);
+        // Started without a document, the application opens the sample house ready to render.
+        var window = new MainWindow(projectPath, openStartupSample: true);
         MainWindow = window;
 
         await ReportStepAsync(splash, 2, "Splash.Step.Workspace");

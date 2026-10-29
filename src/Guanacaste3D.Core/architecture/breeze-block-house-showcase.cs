@@ -26,6 +26,19 @@ public static class BreezeBlockHouseShowcase
     public const string SedanFamily = "Sedan Car (detailed)";
     public const string CoupeFamily = "Coupe Car Silver (detailed)";
 
+    /// <summary>
+    /// The render view of the reference photograph: from across the street at eye height, verticals corrected, under the
+    /// afternoon sun of 21 December at 14:45 solar time in Guanacaste (12.1° N), which comes from the front left so the
+    /// jacaranda's shadow falls across the white volume. Full HD, high quality, contrast look, slight cirrus.
+    /// </summary>
+    public static Rendering.RenderSetup StreetView { get; } = new()
+    {
+        CameraX = 7.6, CameraY = -20.5, CameraZ = 1.6, YawDegrees = 90, PitchDegrees = 12, FieldOfViewDegrees = 46,
+        Scenario = Rendering.LightingScenario.Sunny, DayOfYear = 355, SolarHour = 14.75, Latitude = 12.1, CloudCover = 0.15,
+        Haze = true, Quality = Rendering.RenderQuality.High, Width = 1920, Height = 1080, Look = Rendering.ToneMapper.Aces,
+        AutoExposure = true, Bloom = false, Vignette = false, CorrectVerticals = true, ArtificialLights = false
+    };
+
     /// <summary>The house with procedural trees and cars only.</summary>
     public static BuildingDocument Create() => Create([]);
 
@@ -152,8 +165,8 @@ public static class BreezeBlockHouseShowcase
             session.UpdateStructuralElement(id, placed.Name, spread, height, placed.Offset, placed.Style);
         }
         Tree(new Point2(3.4, -2.6), 13, 13, 0);
-        foreach (var (point, turn) in new[] { (new Point2(-5, -23.5), 1.9), (new Point2(6.5, -24.5), 4.1), (new Point2(17, -23.5), 0.7) })
-            Tree(point, 12, 10.5, turn);
+        foreach (var (point, turn) in new[] { (new Point2(-5, -26.5), 1.9), (new Point2(7, -27.5), 4.1), (new Point2(18, -26.5), 0.7) })
+            Tree(point, 10, 10.5, turn);
         var clipped = Element("Shrub 1.5 m") with { Width = 0.75, Height = 0.6 };
         foreach (var point in new Point2[] { new(6.2, -4.9), new(6.3, -3.6), new(8.9, -4.9), new(9.1, -3.9) })
             session.AddElementFromPreset(ground, clipped, point, point);
@@ -173,6 +186,7 @@ public static class BreezeBlockHouseShowcase
             session.AddSlabFromPreset(ground, corners, Slab("Painted Concrete Slab 300 mm"), 6.9);
         }
 
+        session.StoreRenderSetup(StreetView);
         session.AddArea(ground, "Área construida planta baja", new Point2(0, 0.4), new Point2(15.2, 12));
         session.AddArea(upper, "Área construida planta alta", new Point2(0, 0), new Point2(15.2, 12));
         session.AddSheet(SheetPaperSize.A1, "Planta baja");

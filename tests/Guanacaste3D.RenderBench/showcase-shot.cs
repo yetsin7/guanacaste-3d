@@ -30,12 +30,10 @@ static class ShowcaseShot
             var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh, scene.Materials);
             foreach (var light in scene.Lights) builder.AddLight(light);
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            // The street facade is framed in portrait, like the photograph it reproduces.
-            var frame = scene.Name == "cobogo" ? width * 5 / 4 : height;
-            var tracer = new PathTracer(builder.Build(), width, frame, scene.Camera, scene.Settings);
+            var tracer = new PathTracer(builder.Build(), width, height, scene.Camera, scene.Settings);
             for (var i = 0; i < passes; i++) tracer.RenderPass();
-            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}.png"), RasterImage.FromBgra32(width, frame, tracer.ToBgra32(true, new ImageFinish { AutoExposure = true })));
-            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-aces.png"), RasterImage.FromBgra32(width, frame,
+            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}.png"), RasterImage.FromBgra32(width, height, tracer.ToBgra32(true, new ImageFinish { AutoExposure = true })));
+            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-aces.png"), RasterImage.FromBgra32(width, height,
                 tracer.ToBgra32(true, new ImageFinish { AutoExposure = true, ToneMapper = ToneMapper.Aces })));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
@@ -63,9 +61,17 @@ static class ShowcaseShot
             : [];
         var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.BreezeBlockHouseShowcase.Create(families),
             includeGround: true, plants: Guanacaste3D.Core.Geometry.PlantDetail.Render);
-        var settings = new RenderSettings { SunDirection = Vector3.Normalize(new Vector3(-0.6f, -0.55f, 0.58f)), MaxBounces = 6, Turbidity = 1.8f };
-        return new BenchmarkScene("cobogo", mesh,
-            new RenderCamera(new Vector3(7.6f, -21, 1.6f), new Vector3(7.6f, 0, 5.5f), 62) { CorrectVerticals = true }, settings);
+        // The same camera, sun and filters the desktop application restores when it opens the sample.
+        var setup = Guanacaste3D.Core.BreezeBlockHouseShowcase.StreetView;
+        var camera = new Guanacaste3D.Core.Navigation.NavigationCamera
+        {
+            Position = new Vector3((float)setup.CameraX, (float)setup.CameraY, (float)setup.CameraZ),
+            YawDegrees = (float)setup.YawDegrees, PitchDegrees = (float)setup.PitchDegrees,
+            FieldOfViewDegrees = (float)setup.FieldOfViewDegrees
+        };
+        var settings = RenderPresets.Lighting(setup.Scenario, setup.Latitude, setup.DayOfYear, setup.SolarHour,
+            setup.Quality ?? RenderQuality.High) with { AerialPerspective = setup.Haze ? 1f : 0f, CloudCover = (float)setup.CloudCover };
+        return new BenchmarkScene("cobogo", mesh, camera.ToRenderCamera(20) with { CorrectVerticals = setup.CorrectVerticals }, settings);
     }
 
     /// <summary>

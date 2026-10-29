@@ -66,6 +66,21 @@ public partial class MainWindow
     private void OpenBreezeBlockHouse_Click(object sender, RoutedEventArgs e)
     {
         if (!ConfirmDiscard()) return;
+        OpenBreezeBlockHouse();
+    }
+
+    /// <summary>
+    /// Without a document to open, the application starts on the breeze-block house in the Render tab, with its saved
+    /// camera, sun and filters: ready to render.
+    /// </summary>
+    private void OpenStartupSample()
+    {
+        if (OpenBreezeBlockHouse()) ViewTabs.SelectedIndex = RenderTabIndex;
+    }
+
+    /// <summary>Loads the breeze-block house sample and reports whether it opened.</summary>
+    private bool OpenBreezeBlockHouse()
+    {
         var sample = Path.Combine(AppContext.BaseDirectory, "resources", "samples", "casa-del-cobogo.g3d");
         try
         {
@@ -73,10 +88,12 @@ public partial class MainWindow
                 ? NativeDocumentStore.LoadProject(sample)
                 : BreezeBlockHouseShowcase.Create(ShippedMeshFamilies()), null);
             StatusText.Text = GetText("Status.BreezeBlockHouseOpened");
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 

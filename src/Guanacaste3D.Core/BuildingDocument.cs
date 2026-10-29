@@ -64,6 +64,8 @@ public sealed class BuildingDocument
     public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
     /// <summary>Loaded mesh component families (.g3df) that planting and component instances refer to.</summary>
     public List<FamilyDocument> ComponentFamilies { get; set; } = [];
+    /// <summary>The render view the project was last saved with (camera, sun, filters); null for the default view.</summary>
+    public Rendering.RenderSetup? RenderSetup { get; set; }
     public List<RenderMaterialAssignment> RenderMaterials { get; set; } = [];
     public List<ElectricalDevice> ElectricalDevices { get; set; } = [];
     public List<ElectricalCircuit> ElectricalCircuits { get; set; } = [];
@@ -125,6 +127,7 @@ public sealed class BuildingDocument
         }).ToList(),
         InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList(),
         ComponentFamilies = ComponentFamilies.Select(family => family.Clone()).ToList(),
+        RenderSetup = RenderSetup,
         RenderMaterials = [.. RenderMaterials],
         ElectricalDevices = ElectricalDevices.Select(device => device with { Controls = [.. device.Controls] }).ToList(),
         ElectricalCircuits = [.. ElectricalCircuits],
@@ -225,6 +228,7 @@ public sealed class BuildingDocument
         ScheduleDefinitionRules.Validate(this);
         InPlaceFamilyRules.Validate(this);
         ComponentFamilyRules.Validate(this);
+        RenderSetup?.Validate();
         RenderMaterialRules.Validate(this);
         ElectricalRules.Validate(this);
         PlumbingRules.Validate(this);

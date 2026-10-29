@@ -117,6 +117,7 @@ internal static partial class InteractionChecks
             RenderPreviewAndImportChecks();
             TileViewChecks();
             CheckAssociatedDocumentStartup();
+            StartupSampleChecks();
             Console.WriteLine("Desktop interaction checks passed.");
             return 0;
         }

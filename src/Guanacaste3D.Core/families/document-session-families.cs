@@ -48,4 +48,15 @@ public sealed partial class DocumentSession
             planting ? ResidentialComponentCategory.None : ResidentialComponentCategory.Outdoor);
         return AddElementFromPreset(levelId, preset, at, at, rotation, familyId);
     }
+
+    /// <summary>
+    /// Keeps the Render panel's camera, sun and filters with the project. It is view state, like the camera of the 3D
+    /// view, so it does not add an undo step or mark the project as edited.
+    /// </summary>
+    public void StoreRenderSetup(Rendering.RenderSetup setup)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+        setup.Validate();
+        Document.RenderSetup = setup;
+    }
 }
