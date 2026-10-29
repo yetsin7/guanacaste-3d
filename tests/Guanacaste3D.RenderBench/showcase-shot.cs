@@ -21,7 +21,7 @@ static class ShowcaseShot
         var garden = GardenScene(min, max);
         var all = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") == "night"
             ? new[] { NightInterior() }
-            : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom(), Villa() };
+            : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom(), Villa(), Cobogo(), Cobogo() with { Name = "cobogo-garage", Camera = new RenderCamera(new Vector3(9.5f, -9, 1.5f), new Vector3(11.6f, 2.4f, 0.9f), 50) { CorrectVerticals = true } } };
         var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
             ? all.Where(scene => scene.Name == only).ToArray()
             : all;
@@ -30,10 +30,12 @@ static class ShowcaseShot
             var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh, scene.Materials);
             foreach (var light in scene.Lights) builder.AddLight(light);
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            var tracer = new PathTracer(builder.Build(), width, height, scene.Camera, scene.Settings);
+            // The street facade is framed in portrait, like the photograph it reproduces.
+            var frame = scene.Name == "cobogo" ? width * 5 / 4 : height;
+            var tracer = new PathTracer(builder.Build(), width, frame, scene.Camera, scene.Settings);
             for (var i = 0; i < passes; i++) tracer.RenderPass();
-            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}.png"), RasterImage.FromBgra32(width, height, tracer.ToBgra32(true, new ImageFinish { AutoExposure = true })));
-            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-aces.png"), RasterImage.FromBgra32(width, height,
+            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}.png"), RasterImage.FromBgra32(width, frame, tracer.ToBgra32(true, new ImageFinish { AutoExposure = true })));
+            PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-aces.png"), RasterImage.FromBgra32(width, frame,
                 tracer.ToBgra32(true, new ImageFinish { AutoExposure = true, ToneMapper = ToneMapper.Aces })));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
@@ -46,6 +48,24 @@ static class ShowcaseShot
         var settings = RenderPresets.Lighting(LightingScenario.Sunny, 10.6, 80, 15.5, RenderQuality.High);
         return new BenchmarkScene("villa", mesh,
             new RenderCamera(new Vector3(-6, -21, 1.7f), new Vector3(9, -2, 3.4f), 58) { CorrectVerticals = true }, settings);
+    }
+
+    /// <summary>
+    /// The breeze-block house from across the street, the sun low in the west-southwest so the tree's shadow falls across
+    /// the white volume; seen frontally with corrected verticals, the way architects photograph a street facade.
+    /// </summary>
+    private static BenchmarkScene Cobogo()
+    {
+        // The detailed tree and car families ship with the desktop application; the bench reads them from its sources.
+        var folder = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "Guanacaste3D.Desktop", "resources", "families");
+        var families = Directory.Exists(folder)
+            ? Directory.GetFiles(folder, "*.g3df").Select(Guanacaste3D.Core.NativeDocumentStore.LoadFamily).ToArray()
+            : [];
+        var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.BreezeBlockHouseShowcase.Create(families),
+            includeGround: true, plants: Guanacaste3D.Core.Geometry.PlantDetail.Render);
+        var settings = new RenderSettings { SunDirection = Vector3.Normalize(new Vector3(-0.6f, -0.55f, 0.58f)), MaxBounces = 6, Turbidity = 1.8f };
+        return new BenchmarkScene("cobogo", mesh,
+            new RenderCamera(new Vector3(7.6f, -21, 1.6f), new Vector3(7.6f, 0, 5.5f), 62) { CorrectVerticals = true }, settings);
     }
 
     /// <summary>

@@ -14,4 +14,6 @@
   <sys:String x:Key="ViewTemplate.Deleted">Plantilla de vista eliminada.</sys:String>
   <sys:String x:Key="Error.Invalid callout.">Detalle no válido: revisa el nivel, el nombre y que la región mida al menos 0,5 m por lado.</sys:String>
   <sys:String x:Key="Error.The element has no plan outline to put a callout around.">El elemento no tiene contorno en planta para marcar un detalle a su alrededor.</sys:String>
+  <sys:String x:Key="Status.TileViewsOn">Vistas en mosaico: planta y 3D lado a lado. Pulsa una para activarla; abrir otra vista vuelve a las pestañas.</sys:String>
+  <sys:String x:Key="Status.TileViewsOff">Vistas en pestañas.</sys:String>
 </ResourceDictionary>

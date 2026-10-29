@@ -195,7 +195,8 @@ public sealed partial class DocumentSession
     }
 
     /// <summary>Adds an element from a catalog section; line elements run between the two points.</summary>
-    public Guid AddElementFromPreset(Guid levelId, ElementPreset preset, Point2 start, Point2 end, double rotation = 0)
+    public Guid AddElementFromPreset(Guid levelId, ElementPreset preset, Point2 start, Point2 end, double rotation = 0,
+        Guid? familyId = null)
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddStructuralElement", document =>
@@ -204,7 +205,7 @@ public sealed partial class DocumentSession
             {
                 Style = preset.Style, Width = preset.Width, Height = preset.Height, Offset = preset.Offset,
                 Depth = preset.Depth, ComponentShape = preset.ComponentShape,
-                ComponentCategory = preset.ComponentCategory, Rotation = NormalizeTurn(rotation)
+                ComponentCategory = preset.ComponentCategory, Rotation = NormalizeTurn(rotation), FamilyId = familyId
             }));
         return id;
     }

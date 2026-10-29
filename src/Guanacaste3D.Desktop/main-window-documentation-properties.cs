@@ -116,6 +116,9 @@ public partial class MainWindow
     private void ViewTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!ReferenceEquals(e.OriginalSource, ViewTabs) || ActiveViewText is null) return;
+        // Opening a schedule, sheet, elevation, section or render ends the tiling, whose panes only hold plan and 3D.
+        if (_tileViews && ViewTabs.SelectedIndex is not (0 or Model3DTabIndex)) ExitTileViews();
+        HighlightTilePane();
         UpdateDocumentationCaption();
         SynchronizeDocumentationView();
         UpdateRenderWorkspace(ViewTabs.SelectedIndex == RenderTabIndex);

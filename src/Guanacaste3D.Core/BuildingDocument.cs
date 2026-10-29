@@ -62,6 +62,8 @@ public sealed class BuildingDocument
     public List<ParameterValue> ParameterValues { get; set; } = [];
     public List<ScheduleDefinition> Schedules { get; set; } = [];
     public List<FamilyDocument> InPlaceFamilies { get; set; } = [];
+    /// <summary>Loaded mesh component families (.g3df) that planting and component instances refer to.</summary>
+    public List<FamilyDocument> ComponentFamilies { get; set; } = [];
     public List<RenderMaterialAssignment> RenderMaterials { get; set; } = [];
     public List<ElectricalDevice> ElectricalDevices { get; set; } = [];
     public List<ElectricalCircuit> ElectricalCircuits { get; set; } = [];
@@ -122,6 +124,7 @@ public sealed class BuildingDocument
             Fields = [.. schedule.Fields], Filters = [.. schedule.Filters], SortGroups = [.. schedule.SortGroups]
         }).ToList(),
         InPlaceFamilies = InPlaceFamilies.Select(family => family.Clone()).ToList(),
+        ComponentFamilies = ComponentFamilies.Select(family => family.Clone()).ToList(),
         RenderMaterials = [.. RenderMaterials],
         ElectricalDevices = ElectricalDevices.Select(device => device with { Controls = [.. device.Controls] }).ToList(),
         ElectricalCircuits = [.. ElectricalCircuits],
@@ -207,6 +210,7 @@ public sealed class BuildingDocument
             .Concat((OpeningTypes ?? []).Select(type => type.Id))
             .Concat((Schedules ?? []).Select(schedule => schedule.Id))
             .Concat((InPlaceFamilies ?? []).Where(family => family is not null).Select(family => family.Id))
+            .Concat((ComponentFamilies ?? []).Where(family => family is not null).Select(family => family.Id))
             .ToArray();
         if (Openings.Any(o => o is null) || allIds.Distinct().Count() != allIds.Length)
             throw new InvalidDataException("Element identifiers must be unique.");
@@ -220,6 +224,7 @@ public sealed class BuildingDocument
         ParameterRules.Validate(this);
         ScheduleDefinitionRules.Validate(this);
         InPlaceFamilyRules.Validate(this);
+        ComponentFamilyRules.Validate(this);
         RenderMaterialRules.Validate(this);
         ElectricalRules.Validate(this);
         PlumbingRules.Validate(this);

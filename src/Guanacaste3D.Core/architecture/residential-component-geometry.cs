@@ -59,6 +59,8 @@ public static partial class ResidentialComponentGeometry
         ResidentialComponentShape.Hammock => Hammock(element),
         ResidentialComponentShape.SunLounger => SunLounger(element),
         ResidentialComponentShape.Parasol => Parasol(element),
+        ResidentialComponentShape.Car => Car(element, SurfaceKind.CarPaint),
+        ResidentialComponentShape.SilverCar => Car(element, SurfaceKind.CarPaintSilver),
         _ => [Block(element, 0, 0, Width(element), Depth(element), 0, element.Height)]
     };
 
@@ -639,6 +641,74 @@ public static partial class ResidentialComponentGeometry
             yield return RoundBlock(element, 0, 0, diameter * (1 - tier * 0.16), bottom + tier * 0.07, bottom + tier * 0.07 + 0.07,
                 SurfaceKind.Upholstery);
         yield return RoundBlock(element, 0, 0, 0.05, element.Height, element.Height + 0.08, SurfaceKind.DoorLeaf);
+    }
+
+    /// <summary>
+    /// Builds a sedan from horizontal slices: tyres stepped to a round side profile, a body cut away at the wheel arches,
+    /// a bonnet and boot, a glasshouse that tapers toward the roof over a dark cabin, head and tail lamps.
+    /// </summary>
+    private static IEnumerable<ElementPart> Car(StructuralElement element, SurfaceKind paint)
+    {
+        var width = Width(element);
+        var length = Depth(element);
+        var height = element.Height;
+        var axle = length / 2 - length * 0.19;
+        const double tyre = 0.66;
+        const double tread = 0.22;
+        const int slices = 6;
+        foreach (var y in new[] { -axle, axle })
+        foreach (var side in new[] { -1, 1 })
+        {
+            var x = side * (width / 2 - tread / 2 - 0.01);
+            for (var slice = 0; slice < slices; slice++)
+            {
+                var middle = (slice + 0.5) / slices * tyre - tyre / 2;
+                var chord = 2 * Math.Sqrt(tyre * tyre / 4 - middle * middle);
+                yield return Block(element, x, y, tread, chord, slice * tyre / slices, (slice + 1) * tyre / slices, SurfaceKind.Rubber);
+            }
+            yield return Block(element, x + side * 0.005, y, tread, 0.36, tyre / 2 - 0.12, tyre / 2 + 0.12, SurfaceKind.Metal);
+        }
+
+        // Sills and bumpers below the arches, then the full-length shoulder line above them.
+        const double sill = 0.20;
+        const double arch = 0.48;
+        var archHalf = tyre / 2 + 0.07;
+        var front = -length / 2;
+        foreach (var (from, to) in new[]
+                 {
+                     (front + 0.04, -axle - archHalf), (-axle + archHalf, axle - archHalf), (axle + archHalf, length / 2 - 0.04)
+                 })
+            yield return Block(element, 0, (from + to) / 2, width - 0.04, to - from, sill, arch, paint);
+        yield return Block(element, 0, 0, width - 0.02, length - 0.06, arch, height * 0.53, paint);
+        yield return Block(element, 0, 0.05, width - 0.10, length - 0.30, height * 0.53, height * 0.57, paint);
+
+        // The glasshouse leans back from the windscreen and in from the doors as it rises.
+        const int bands = 5;
+        var glassBottom = height * 0.57;
+        var roof = height - 0.05;
+        for (var band = 0; band < bands; band++)
+        {
+            var t = (band + 0.5) / bands;
+            var start = front + length * 0.33 + length * 0.13 * t;
+            var end = length / 2 - length * 0.22 - length * 0.08 * t;
+            var bottom = glassBottom + (roof - glassBottom) * band / bands;
+            var top = glassBottom + (roof - glassBottom) * (band + 1) / bands;
+            yield return Block(element, 0, (start + end) / 2, width - 0.14 - 0.16 * t, end - start, bottom, top, SurfaceKind.Glass);
+        }
+        var cabinStart = front + length * 0.36;
+        var cabinEnd = length / 2 - length * 0.26;
+        yield return Block(element, 0, (cabinStart + cabinEnd) / 2, width - 0.40, cabinEnd - cabinStart, glassBottom, roof - 0.08,
+            SurfaceKind.Rubber);
+        var roofStart = front + length * 0.46;
+        var roofEnd = length / 2 - length * 0.30;
+        yield return Block(element, 0, (roofStart + roofEnd) / 2, width - 0.32, roofEnd - roofStart, roof, height, paint);
+
+        foreach (var side in new[] { -1, 1 })
+        {
+            yield return Block(element, side * (width / 2 - 0.22), front + 0.03, 0.30, 0.04, arch + 0.06, arch + 0.16, SurfaceKind.Mirror);
+            yield return Block(element, side * (width / 2 - 0.20), length / 2 - 0.03, 0.34, 0.04, arch + 0.08, arch + 0.18,
+                SurfaceKind.FireRed);
+        }
     }
 
     /// <summary>Four strips around a rectangular hole: a counter around a sink, the rim of a bowl.</summary>

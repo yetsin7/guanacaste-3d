@@ -72,6 +72,8 @@ public partial class MainWindow
             case "InsertFromFile": ImportModel_Click(this, eventArguments); return true;
             case "ManageLinks": LinkedModels_Click(this, eventArguments); return true;
             case "AiAssistant": OpenAiAssistant(); return true;
+            case "TileViews": EnterTileViews(); return true;
+            case "TabViews": ExitTileViews(); return true;
             case "Callout": CreateCalloutFromSelection(); return true;
             case "ViewTemplates": ShowViewTemplatesMenu(); return true;
             case "TagAll":

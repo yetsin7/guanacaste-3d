@@ -256,6 +256,11 @@ public static class ElementGeometry
     private static IEnumerable<ElementPart> CurtainWallParts(StructuralElement element)
     {
         if (element.Length < 0.05) yield break;
+        if (element.Style == ElementStyle.BreezeBlock)
+        {
+            foreach (var part in BreezeBlockParts(element)) yield return part;
+            yield break;
+        }
         const double member = 0.06;
         var bottom = element.Offset;
         var top = element.Offset + element.Height;
@@ -269,14 +274,40 @@ public static class ElementGeometry
                 Math.Max(0, fraction - member / 2 / element.Length));
             var to = ArchitecturalShapes.Lerp(element.Start, element.End,
                 Math.Min(1, fraction + member / 2 / element.Length));
-            yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), bottom, top);
+            yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), bottom, top, SurfaceKind.OpeningFrame);
         }
         var rows = Math.Max(1, (int)Math.Ceiling(element.Height / (element.GridHeight > 0 ? element.GridHeight : 1.2)));
         for (var index = 0; index <= rows; index++)
         {
             var center = bottom + element.Height * index / rows;
             yield return Block(element, ArchitecturalShapes.Strip(element.Start, element.End, 0, element.Width),
-                Math.Max(bottom, center - member / 2), Math.Min(top, center + member / 2));
+                Math.Max(bottom, center - member / 2), Math.Min(top, center + member / 2), SurfaceKind.OpeningFrame);
+        }
+    }
+
+    /// <summary>
+    /// A breeze-block screen: thin masonry webs on a square module (the grid spacing, 20 cm by default) through the full
+    /// depth of the screen, leaving real holes so sunlight and views pass through the cells.
+    /// </summary>
+    private static IEnumerable<ElementPart> BreezeBlockParts(StructuralElement element)
+    {
+        const double web = 0.04;
+        var bottom = element.Offset;
+        var top = element.Offset + element.Height;
+        var columns = Math.Max(1, (int)Math.Round(element.Length / (element.GridWidth > 0 ? element.GridWidth : 0.20)));
+        for (var index = 0; index <= columns; index++)
+        {
+            var fraction = (double)index / columns;
+            var from = ArchitecturalShapes.Lerp(element.Start, element.End, Math.Max(0, fraction - web / 2 / element.Length));
+            var to = ArchitecturalShapes.Lerp(element.Start, element.End, Math.Min(1, fraction + web / 2 / element.Length));
+            yield return Block(element, ArchitecturalShapes.Strip(from, to, 0, element.Width), bottom, top, SurfaceKind.Wall);
+        }
+        var rows = Math.Max(1, (int)Math.Round(element.Height / (element.GridHeight > 0 ? element.GridHeight : 0.20)));
+        for (var index = 0; index <= rows; index++)
+        {
+            var center = bottom + element.Height * index / rows;
+            yield return Block(element, ArchitecturalShapes.Strip(element.Start, element.End, 0, element.Width),
+                Math.Max(bottom, center - web / 2), Math.Min(top, center + web / 2), SurfaceKind.Wall);
         }
     }
 

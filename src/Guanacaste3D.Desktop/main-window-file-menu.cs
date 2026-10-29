@@ -14,6 +14,7 @@ public partial class MainWindow
             "OpenSample" => OpenSample_Click,
             "NewArchitecturalMetric" => NewArchitecturalMetric_Click,
             "OpenModernHouse" => OpenModernHouse_Click,
+            "OpenBreezeBlockHouse" => OpenBreezeBlockHouse_Click,
             "NewFromTemplate" => NewFromTemplate_Click,
             "Save" => Save_Click,
             "SaveAs" => SaveAs_Click,

@@ -65,7 +65,17 @@ public enum SurfaceKind : byte
     /// <summary>Fire-protection red enamel: sprinkler mains, extinguishers, hose cabinets and alarm devices.</summary>
     FireRed,
     /// <summary>Still water in a pool or reflecting basin: dark, glossy, and it mirrors the sky and what stands beside it.</summary>
-    Water
+    Water,
+    /// <summary>Glossy clear-coated car paint, deep navy.</summary>
+    CarPaint,
+    /// <summary>Metallic silver car paint.</summary>
+    CarPaintSilver,
+    /// <summary>Tyres and rubber trim.</summary>
+    Rubber,
+    /// <summary>Asphalt road surfacing.</summary>
+    Asphalt,
+    /// <summary>Dark tinted glass, glossy and opaque: car windows of models without an interior.</summary>
+    TintedGlass
 }
 
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
@@ -250,7 +260,7 @@ public static class BuildingMesher
             {
                 AddSlab(mesh, RoofGeometry.WithOverhang(floor).Boundary, slabTop, floor.Thickness,
                     FloorOpenings(document, floor, elevations),
-                    floor.Kind == FloorKind.Water ? SurfaceKind.Water : SurfaceKind.Floor);
+                    SlabSurface(floor));
             }
         }
 
@@ -277,6 +287,19 @@ public static class BuildingMesher
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
             var datum = elevations[element.LevelId];
+            if (ComponentFamilyRules.MeshOf(document, element) is { } familyMesh)
+            {
+                var planting = element.Kind == StructuralElementKind.Planting;
+                var ground = planting ? TerrainUnder(document, element.LevelId, element.Start) : 0;
+                // A plant's width is its canopy spread: both plan axes scale alike, so the crown keeps its shape.
+                var size = familyMesh.Decode().Size;
+                var spread = element.Width / Math.Max(size.X, size.Y);
+                familyMesh.AppendTo(mesh, element.Start, element.Rotation,
+                    planting ? size.X * spread : element.Width,
+                    planting ? size.Y * spread : element.Depth > 0 ? element.Depth : element.Width,
+                    element.Height, datum + ground + element.Offset, preview: plants == PlantDetail.Model);
+                continue;
+            }
             if (element.Kind == StructuralElementKind.Planting)
             {
                 // Like a Revit site component, a plant stands on the toposolid it is placed on.
@@ -832,6 +855,22 @@ public static class BuildingMesher
         SurfaceKind kind) =>
         AddPrism(mesh, outline.Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray(),
             (float)bottom, (float)top, kind);
+
+    /// <summary>
+    /// The render surface of a flat slab: water for a pool, otherwise its finish. Exposed concrete reads as fair-faced
+    /// concrete, a painted slab as painted plaster (a white soffit), asphalt as road surfacing, grass as lawn, anything else
+    /// as flooring.
+    /// </summary>
+    private static SurfaceKind SlabSurface(FloorSlab floor) => floor.Kind == FloorKind.Water
+        ? SurfaceKind.Water
+        : floor.Finish switch
+        {
+            FinishKind.ExposedConcrete => SurfaceKind.WallConcrete,
+            FinishKind.Paint => SurfaceKind.Wall,
+            FinishKind.Asphalt => SurfaceKind.Asphalt,
+            FinishKind.Grass => SurfaceKind.Ground,
+            _ => SurfaceKind.Floor
+        };
 
     /// <summary>
     /// Adds a slab whose top face lies on the level elevation. Openings that fit inside the boundary are cut

@@ -49,6 +49,12 @@ public static class MeshExporter
         SurfaceKind.Upholstery => ("G3D_Upholstery", new Vector3(0.30f, 0.28f, 0.25f), 1, 0.95f),
         SurfaceKind.Bedding => ("G3D_Bedding", new Vector3(0.80f, 0.79f, 0.76f), 1, 0.92f),
         SurfaceKind.Ceramic => ("G3D_Ceramic", new Vector3(0.86f, 0.86f, 0.84f), 1, 0.07f),
+        SurfaceKind.Water => ("G3D_Water", new Vector3(0.015f, 0.05f, 0.06f), 1, 0.02f),
+        SurfaceKind.CarPaint => ("G3D_CarPaint", new Vector3(0.018f, 0.024f, 0.045f), 1, 0.08f),
+        SurfaceKind.CarPaintSilver => ("G3D_CarPaintSilver", new Vector3(0.72f, 0.73f, 0.74f), 1, 0.16f),
+        SurfaceKind.TintedGlass => ("G3D_TintedGlass", new Vector3(0.006f, 0.008f, 0.010f), 1, 0.03f),
+        SurfaceKind.Rubber => ("G3D_Rubber", new Vector3(0.025f, 0.025f, 0.025f), 1, 0.9f),
+        SurfaceKind.Asphalt => ("G3D_Asphalt", new Vector3(0.11f, 0.11f, 0.11f), 1, 0.95f),
         SurfaceKind.Glass => ("G3D_Glass", new Vector3(0.60f, 0.75f, 0.82f), 0.3f, 0.05f),
         _ => ("G3D_Ground", new Vector3(0.30f, 0.40f, 0.24f), 1, 1)
     };

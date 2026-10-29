@@ -55,13 +55,13 @@ public partial class MainWindow
         _sceneDebounce.Tick += (_, _) =>
         {
             _sceneDebounce.Stop();
-            if (ViewTabs.SelectedIndex == RenderTabIndex || (ViewTabs.SelectedIndex == Model3DTabIndex && !_modelDirty)) _ = GetSceneAsync();
+            if (ViewTabs.SelectedIndex == RenderTabIndex || (Model3DVisible && !_modelDirty)) _ = GetSceneAsync();
             SceneChanged?.Invoke();
         };
         ViewTabs.SelectionChanged += (_, e) =>
         {
             if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
-            if (ViewTabs.SelectedIndex == Model3DTabIndex)
+            if (Model3DVisible)
             {
                 if (_modelDirty) RebuildModelVisual();
                 else UpdateModelCamera();

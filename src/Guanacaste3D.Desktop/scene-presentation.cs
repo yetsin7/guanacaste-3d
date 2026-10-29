@@ -53,7 +53,7 @@ internal static class ScenePresentation
             }
         }
         foreach (var kind in new[] { SurfaceKind.Ground, SurfaceKind.Floor, SurfaceKind.Wall, SurfaceKind.DoorLeaf, SurfaceKind.OpeningFrame, SurfaceKind.Structure, SurfaceKind.Bark, SurfaceKind.Foliage, SurfaceKind.Earth, SurfaceKind.Roof, SurfaceKind.Leaf, SurfaceKind.InteriorWall, SurfaceKind.Metal, SurfaceKind.LightEmitter, SurfaceKind.Upholstery, SurfaceKind.Bedding, SurfaceKind.Ceramic, SurfaceKind.LightOff, SurfaceKind.SpotEmitter, SurfaceKind.WallBrick, SurfaceKind.WallBlock,
-            SurfaceKind.WallConcrete, SurfaceKind.WallStone, SurfaceKind.WallWood, SurfaceKind.WallMetal, SurfaceKind.Mirror, SurfaceKind.Water, SurfaceKind.PipeCold, SurfaceKind.PipeHot, SurfaceKind.PipeDrain,
+            SurfaceKind.WallConcrete, SurfaceKind.WallStone, SurfaceKind.WallWood, SurfaceKind.WallMetal, SurfaceKind.Mirror, SurfaceKind.Water, SurfaceKind.CarPaint, SurfaceKind.CarPaintSilver, SurfaceKind.Rubber, SurfaceKind.Asphalt, SurfaceKind.TintedGlass, SurfaceKind.PipeCold, SurfaceKind.PipeHot, SurfaceKind.PipeDrain,
             SurfaceKind.PipeStorm, SurfaceKind.SolarCell, SurfaceKind.FireRed, SurfaceKind.Glass })
         {
             if (!meshes.TryGetValue(kind, out var mesh)) continue;
@@ -316,6 +316,11 @@ internal static class ScenePresentation
         SurfaceKind.WallMetal => Diffuse(Color.FromRgb(190, 194, 198)),
         SurfaceKind.Mirror => Diffuse(Color.FromRgb(200, 214, 220)),
         SurfaceKind.Water => Diffuse(Color.FromRgb(46, 84, 96)),
+        SurfaceKind.CarPaint => new MaterialGroup { Children = { Diffuse(Color.FromRgb(28, 34, 52)), new SpecularMaterial(new SolidColorBrush(Color.FromRgb(160, 170, 190)), 60) } },
+        SurfaceKind.CarPaintSilver => new MaterialGroup { Children = { Diffuse(Color.FromRgb(190, 192, 196)), new SpecularMaterial(new SolidColorBrush(Color.FromRgb(200, 200, 200)), 50) } },
+        SurfaceKind.Rubber => Diffuse(Color.FromRgb(30, 30, 30)),
+        SurfaceKind.TintedGlass => new MaterialGroup { Children = { Diffuse(Color.FromRgb(16, 20, 26)), new SpecularMaterial(new SolidColorBrush(Color.FromRgb(180, 190, 200)), 80) } },
+        SurfaceKind.Asphalt => Diffuse(Color.FromRgb(70, 70, 72)),
         SurfaceKind.PipeCold => Diffuse(Color.FromRgb(40, 100, 200)),
         SurfaceKind.PipeHot => Diffuse(Color.FromRgb(200, 45, 35)),
         SurfaceKind.PipeDrain => Diffuse(Color.FromRgb(150, 120, 80)),

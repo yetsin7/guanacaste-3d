@@ -61,7 +61,11 @@ public enum ResidentialComponentShape
     SunLounger,
     Parasol,
     ClothesDryer,
-    Microwave
+    Microwave,
+    /// <summary>A parked sedan in dark navy paint, front toward -Y.</summary>
+    Car,
+    /// <summary>The same sedan in metallic silver.</summary>
+    SilverCar
 }
 
 /// <summary>
@@ -198,7 +202,12 @@ public static class ResidentialComponentCatalog
         Component("Sun Lounger", 0.70, 0.85, 1.95, ResidentialComponentShape.SunLounger,
             ResidentialComponentCategory.Outdoor, "Residential.SunLounger"),
         Component("Patio Umbrella", 2.40, 2.40, 2.40, ResidentialComponentShape.Parasol,
-            ResidentialComponentCategory.Outdoor, "Residential.Parasol")
+            ResidentialComponentCategory.Outdoor, "Residential.Parasol"),
+        // Parked cars give garages, driveways and streets their scale; the body depth is the car's length.
+        Component("Sedan Car", 1.85, 1.45, 4.75, ResidentialComponentShape.Car,
+            ResidentialComponentCategory.Outdoor, "Residential.Car"),
+        Component("Sedan Car Silver", 1.85, 1.42, 4.85, ResidentialComponentShape.SilverCar,
+            ResidentialComponentCategory.Outdoor, "Residential.SilverCar")
     ];
 
     /// <summary>Creates one point-hosted family preset with a canonical English name and a localizable display key.</summary>

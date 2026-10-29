@@ -14,6 +14,8 @@
   <sys:String x:Key="Action.Save">Guardar</sys:String>
   <sys:String x:Key="Action.SaveAs">Guardar como…</sys:String>
   <sys:String x:Key="Action.OpenModernHouse">Abrir ejemplo: villa moderna</sys:String>
+  <sys:String x:Key="Action.OpenBreezeBlockHouse">Abrir ejemplo: casa del cobogó</sys:String>
+  <sys:String x:Key="Status.BreezeBlockHouseOpened">Casa del cobogó cargada: mírala desde la calle en la vista Render con sol de la mañana.</sys:String>
   <sys:String x:Key="Status.ModernHouseOpened">Villa moderna cargada: pruébala en la vista Render con luz de atardecer.</sys:String>
   <sys:String x:Key="Action.NewArchitecturalMetric">Nuevo proyecto con plantilla métrica</sys:String>
   <sys:String x:Key="Action.NewFromTemplate">Nuevo proyecto desde plantilla…</sys:String>
@@ -147,6 +149,8 @@
   <sys:String x:Key="Finish.Ceramic">Cerámica</sys:String>
   <sys:String x:Key="Finish.Tile">Losetas</sys:String>
   <sys:String x:Key="Finish.ExposedConcrete">Concreto visto</sys:String>
+  <sys:String x:Key="Finish.Asphalt">Asfalto</sys:String>
+  <sys:String x:Key="Finish.Grass">Césped</sys:String>
   <sys:String x:Key="Properties.Area">Área de la cara (m²)</sys:String>
   <sys:String x:Key="Properties.LockFixed">Fijo</sys:String>
   <sys:String x:Key="Properties.LockHint">Mantener fija esta dimensión. Al cambiar el área, solo se ajustan las dimensiones no fijas.</sys:String>
@@ -187,6 +191,7 @@
   <sys:String x:Key="Status.ProjectSaved">Proyecto guardado: {0}</sys:String>
   <sys:String x:Key="Status.ProjectFromTemplate">Proyecto creado desde la plantilla. Guárdalo para conservar cambios.</sys:String>
   <sys:String x:Key="Status.TemplateSaved">Plantilla guardada: {0}</sys:String>
+  <sys:String x:Key="Status.MeshFamilyPlaced">Familia cargada y colocada en el origen del nivel activo: {0}. Muévela o cópiala como cualquier componente.</sys:String>
   <sys:String x:Key="Status.FamilyImported">Familia importada al catálogo del proyecto: {0}</sys:String>
   <sys:String x:Key="Status.FamilySaved">Familia guardada: {0}</sys:String>
   <sys:String x:Key="Status.SelectOpeningForFamily">Selecciona una puerta o ventana para guardar su familia.</sys:String>

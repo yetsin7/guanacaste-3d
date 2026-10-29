@@ -108,8 +108,10 @@ assistant can build the same pieces with `add_curtain_wall`, `add_pool` and `add
 - **View templates:** `ViewTemplates` opens a menu to save the active view as a template, apply one to it, or delete one.
   A template carries hidden and isolated elements plus display settings (style, detail, sun, edges); each view keeps its
   own camera and crop.
-- **Not done yet:** tiling the plan and 3D view side by side in the main window. The central tab control is addressed
-  by tab index from many places, so it needs its own refactor.
+- **Tiled views:** the View ribbon's `TileViews` shows the plan and the 3D view side by side with a draggable splitter;
+  `TabViews` goes back. The two views keep their own tabs (only the tab strip is hidden), so every command that selects
+  a tab by index still works; opening a schedule, sheet, elevation, section or render ends the tiling. Work that needs a
+  visible 3D view (scene build, realistic preview) is gated on `Model3DVisible`, not on the selected tab.
 
 ## Publish for Windows
 

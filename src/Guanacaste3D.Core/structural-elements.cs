@@ -138,7 +138,10 @@ public enum ElementStyle
     UShaped,
 
     /// <summary>Stair: wedge treads winding counter-clockwise around a central column.</summary>
-    Spiral
+    Spiral,
+
+    /// <summary>Curtain wall: a breeze-block (cobogó) screen of open masonry cells instead of glazed panels.</summary>
+    BreezeBlock
 }
 
 /// <summary>
@@ -175,6 +178,13 @@ public sealed record StructuralElement(
     /// front toward -Y, as authored.
     /// </summary>
     public double Rotation { get; init; }
+
+    /// <summary>
+    /// Planting and components only: the loaded mesh family (<see cref="BuildingDocument.ComponentFamilies"/>) whose
+    /// detailed model the 3D view and the renderer draw, stretched to this instance's width, depth and height. The
+    /// procedural shape remains the plan symbol and the fallback.
+    /// </summary>
+    public Guid? FamilyId { get; init; }
 
     /// <summary>Members of one model group share this id; moves and deletes act on the whole group.</summary>
     public Guid? GroupId { get; init; }

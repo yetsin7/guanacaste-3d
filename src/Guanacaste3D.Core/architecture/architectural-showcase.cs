@@ -81,7 +81,7 @@ public static class ArchitecturalShowcase
             new Point2(0, 10.5), new Point2(6, 10.5));
 
         // A curtain wall pavilion.
-        session.AddElementFromPreset(level, ArchitecturalLibrary.ElementPresets.Single(preset => preset.Kind == StructuralElementKind.CurtainWall),
+        session.AddElementFromPreset(level, ArchitecturalLibrary.ElementPresets.Single(preset => preset.Name == "Curtain Wall 100 mm"),
             new Point2(8, 10.5), new Point2(13, 10.5));
 
         session.AddArea(level, "Área construida", new Point2(0, 0), new Point2(12, 8));

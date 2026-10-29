@@ -34,7 +34,7 @@ public partial class MainWindow
     private async void RefreshModelRealisticPreview()
     {
         if (_modelRealisticImage is null) return;
-        var enabled = _modelDisplayStyle == ModelDisplayStyle.Realistic && ViewTabs.SelectedIndex == Model3DTabIndex && !_revealHidden && !_xRay;
+        var enabled = _modelDisplayStyle == ModelDisplayStyle.Realistic && Model3DVisible && !_revealHidden && !_xRay;
         if (!enabled)
         {
             _modelRealisticPreview?.Suspend();
@@ -76,7 +76,7 @@ public partial class MainWindow
                 return builder.Build();
             });
             if (request != _modelPreviewRequest || version != _sceneVersion || _modelDisplayStyle != ModelDisplayStyle.Realistic ||
-                ViewTabs.SelectedIndex != Model3DTabIndex || _revealHidden || _xRay || !IsLoaded) return;
+                !Model3DVisible || _revealHidden || _xRay || !IsLoaded) return;
             _modelPreviewVersion = version;
             _modelPreviewDetail = detail;
             _modelRealisticPreview.SetScene(scene);
@@ -88,7 +88,7 @@ public partial class MainWindow
     /// <summary>Updates realistic projection using the exact viewport aspect ratio and shared navigation camera.</summary>
     private void UpdateModelRealisticCamera()
     {
-        if (_modelRealisticPreview is null || _modelDisplayStyle != ModelDisplayStyle.Realistic || ViewTabs.SelectedIndex != Model3DTabIndex) return;
+        if (_modelRealisticPreview is null || _modelDisplayStyle != ModelDisplayStyle.Realistic || !Model3DVisible) return;
         var aspect = Math.Max(1, ModelSurface.ActualWidth) / Math.Max(1, ModelSurface.ActualHeight);
         var height = Math.Min(288, Math.Max(48, (int)(960 / aspect)));
         _modelRealisticPreview.SetSize(Math.Max(64, (int)Math.Round(height * aspect)), height);
@@ -103,7 +103,7 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(() =>
         {
             Interlocked.Exchange(ref _modelPreviewFramePending, 0);
-            if (_modelDisplayStyle != ModelDisplayStyle.Realistic || _revealHidden || _xRay || ViewTabs.SelectedIndex != Model3DTabIndex) return;
+            if (_modelDisplayStyle != ModelDisplayStyle.Realistic || _revealHidden || _xRay || !Model3DVisible) return;
             var bitmap = BitmapSource.Create(frame.Width, frame.Height, 96, 96, PixelFormats.Bgra32, null, pixels, frame.Width * 4);
             bitmap.Freeze();
             var firstFrame = _modelRealisticImage.Visibility != Visibility.Visible;
@@ -124,7 +124,7 @@ public partial class MainWindow
         if (Dispatcher.HasShutdownStarted) return;
         Dispatcher.BeginInvoke(() =>
         {
-            if (_modelDisplayStyle != ModelDisplayStyle.Realistic || ViewTabs.SelectedIndex != Model3DTabIndex) return;
+            if (_modelDisplayStyle != ModelDisplayStyle.Realistic || !Model3DVisible) return;
             _modelPreviewFailure = exception;
             _modelRealisticImage.Visibility = Visibility.Collapsed;
             StatusText.Text = GetText("Display.RealisticFailed");

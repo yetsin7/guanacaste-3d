@@ -63,6 +63,13 @@
   <sys:String x:Key="Error.The requested size conflicts with the selected type.">El tamaño indicado no coincide con el tipo seleccionado.</sys:String>
   <sys:String x:Key="Error.The rotation angle is invalid.">El ángulo de rotación no es válido.</sys:String>
   <sys:String x:Key="Error.The selected door or window type does not exist.">El tipo de puerta o ventana seleccionado no existe.</sys:String>
+  <sys:String x:Key="Error.The component family collection is invalid.">La colección de familias de malla del proyecto no es válida.</sys:String>
+  <sys:String x:Key="Error.Component family names must be unique.">Los nombres de las familias de malla deben ser únicos.</sys:String>
+  <sys:String x:Key="Error.An element refers to a component family that is not loaded.">Un elemento usa una familia de malla que no está cargada en el proyecto.</sys:String>
+  <sys:String x:Key="Error.The family has no mesh to place.">La familia no tiene una malla 3D para colocar.</sys:String>
+  <sys:String x:Key="Error.The family scale must be positive.">La escala de la familia debe ser positiva.</sys:String>
+  <sys:String x:Key="Error.The family mesh is not valid.">La malla 3D de la familia no es válida.</sys:String>
+  <sys:String x:Key="Error.A drawing sheet family cannot carry a mesh.">Una familia de lámina no puede llevar una malla 3D.</sys:String>
   <sys:String x:Key="Error.The selected wall does not exist.">El muro seleccionado no existe.</sys:String>
   <sys:String x:Key="Error.The selected wall type does not exist.">El tipo de muro seleccionado no existe.</sys:String>
   <sys:String x:Key="Error.The wall collection contains duplicate identifiers.">Hay muros con identificadores duplicados.</sys:String>

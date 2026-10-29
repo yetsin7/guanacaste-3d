@@ -5,7 +5,11 @@ public enum FamilyCategory
     Doors, Windows, Furniture, Casework, PlumbingFixtures, LightingFixtures,
     ElectricalEquipment, MechanicalEquipment, StructuralElements, FacadeComponents,
     RoofComponents, Profiles, GenericModels, DecorativeComponents, FabricationComponents,
-    Hardware, Custom, TitleBlocks
+    Hardware, Custom, TitleBlocks,
+    /// <summary>Trees, shrubs and other plants placed on the site.</summary>
+    Planting,
+    /// <summary>People, vehicles and other objects that give a scene its scale.</summary>
+    Entourage
 }
 
 public enum FamilyHostingBehavior { Unhosted, Wall, Face, WorkPlane, InPlace }

@@ -128,6 +128,28 @@ public static class MaterialLibrary
         {
             Name = "Agua", BaseColor = new(0.015f, 0.05f, 0.06f), Roughness = 0.01f, Ior = 1.33f
         },
+        // A clear coat over the pigment: the low roughness gives cars their sharp sky and tree reflections.
+        SurfaceKind.CarPaint => new RenderMaterial
+        {
+            Name = "Pintura de auto", BaseColor = new(0.018f, 0.024f, 0.045f), Roughness = 0.08f, Metallic = 0.3f
+        },
+        SurfaceKind.CarPaintSilver => new RenderMaterial
+        {
+            Name = "Pintura plateada", BaseColor = new(0.72f, 0.73f, 0.74f), Roughness = 0.16f, Metallic = 0.85f
+        },
+        SurfaceKind.TintedGlass => new RenderMaterial
+        {
+            Name = "Vidrio polarizado", BaseColor = new(0.006f, 0.008f, 0.010f), Roughness = 0.03f, Ior = 1.5f
+        },
+        SurfaceKind.Rubber => new RenderMaterial
+        {
+            Name = "Caucho", BaseColor = new(0.025f, 0.025f, 0.025f), Roughness = 0.9f
+        },
+        SurfaceKind.Asphalt => new RenderMaterial
+        {
+            Name = "Asfalto", BaseColor = new(0.11f, 0.11f, 0.11f), Roughness = 0.95f,
+            Pattern = SurfacePattern.Concrete, PatternScale = 0.5f
+        },
         SurfaceKind.Glass => new RenderMaterial
         {
             Name = "Vidrio", BaseColor = Vector3.One, Roughness = 0.02f, Transmission = 1,

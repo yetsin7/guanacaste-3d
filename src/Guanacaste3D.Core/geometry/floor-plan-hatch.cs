@@ -18,6 +18,8 @@ public static class FloorPlanHatchRules
         {
             FinishKind.Ceramic or FinishKind.Tile => new("#D8E4EC", WallFillPattern.Crosshatch),
             FinishKind.ExposedConcrete => new("#CFCFCF", WallFillPattern.Diagonal),
+            FinishKind.Asphalt => new("#9A9A9A", WallFillPattern.Solid),
+            FinishKind.Grass => new("#BFD8A8", WallFillPattern.Solid),
             _ => new("#D7E3DB", WallFillPattern.Solid)
         }
     };

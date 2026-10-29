@@ -98,7 +98,7 @@ public partial class MainWindow
     {
         _linkEdges.Clear();
         MarkSceneDirty();
-        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+        if (Model3DVisible) RebuildModelVisual();
         if (_restoringLinks) return;
         _dirty = true;
         Title = "Guanacaste 3D — " + _session.Document.Name + " *";

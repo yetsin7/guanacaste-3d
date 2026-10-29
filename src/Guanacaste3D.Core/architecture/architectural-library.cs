@@ -113,6 +113,9 @@ public static class ArchitecturalLibrary
         foreach (var width in new[] { 0.8, 0.9 }) Door("Pocket Door", width, 2.1, OpeningOperation.Pocket);
         foreach (var width in new[] { 1.2, 1.8, 2.4 }) Door("Bi-Fold Door", width, 2.1, OpeningOperation.Folding);
         foreach (var width in new[] { 2.4, 2.7, 4.8 }) Door("Garage Door", width, 2.1, OpeningOperation.Overhead, 0.05, material: "Steel");
+        // A tall pivoting timber leaf, flush with the facade, as used for the main entrance of modern houses.
+        foreach (var (width, height) in new[] { (1.2, 2.4), (1.6, 2.8) })
+            Door("Pivot Door", width, height, OpeningOperation.Standard, 0.06, style: DoorLeafStyle.Flush);
         Door("Revolving Door", 2.0, 2.2, OpeningOperation.Revolving, 0.9, glazed: true, material: "Glass and steel");
         foreach (var width in new[] { 0.7, 0.8, 0.9 }) Door("Flush Door", width, 2.1, OpeningOperation.Standard, style: DoorLeafStyle.Flush);
         foreach (var width in new[] { 0.8, 0.9 }) Door("Six-Panel Door", width, 2.1, OpeningOperation.Standard, style: DoorLeafStyle.SixPanel);
@@ -168,7 +171,12 @@ public static class ArchitecturalLibrary
         new("Hip Roof 25°", FloorKind.Roof, 0.10, RoofShape.Hip, 25, FinishKind.None, 0.6),
         new("Hip Roof 35°", FloorKind.Roof, 0.10, RoofShape.Hip, 35, FinishKind.None, 0.6),
         new("Reflecting Pool 300 mm", FloorKind.Water, 0.30, RoofShape.Flat, 0, FinishKind.None),
-        new("Toposolid 1 m", FloorKind.Toposolid, 1.0, RoofShape.Flat, 0, FinishKind.None)
+        new("Toposolid 1 m", FloorKind.Toposolid, 1.0, RoofShape.Flat, 0, FinishKind.None),
+        // Site and facade slabs: a white painted volume floor (its soffit reads as plaster), a fair-faced canopy, a road.
+        new("Painted Concrete Slab 300 mm", FloorKind.Floor, 0.30, RoofShape.Flat, 0, FinishKind.Paint),
+        new("Exposed Concrete Slab 250 mm", FloorKind.Floor, 0.25, RoofShape.Flat, 0, FinishKind.ExposedConcrete),
+        new("Asphalt Road 100 mm", FloorKind.Floor, 0.10, RoofShape.Flat, 0, FinishKind.Asphalt),
+        new("Lawn 150 mm", FloorKind.Floor, 0.15, RoofShape.Flat, 0, FinishKind.Grass)
     ];
 
     /// <summary>Column sections.</summary>
@@ -213,6 +221,8 @@ public static class ArchitecturalLibrary
         new("Square Downspout 90 mm", StructuralElementKind.Downspout, ElementStyle.Default, 0.09, 2.85, 0),
         new("Round Downspout Ø100 mm", StructuralElementKind.Downspout, ElementStyle.Round, 0.10, 2.85, 0),
         new("Curtain Wall 100 mm", StructuralElementKind.CurtainWall, ElementStyle.Default, 0.10, 3.00, 0),
+        // A cobogó: a grid of open masonry cells that screens sun and view but lets light and air through.
+        new("Breeze Block Screen 150 mm", StructuralElementKind.CurtainWall, ElementStyle.BreezeBlock, 0.15, 3.00, 0),
         // Site planting: Width is the canopy spread, Height the overall height.
         new("Broadleaf Tree 8 m", StructuralElementKind.Planting, ElementStyle.Default, 6.0, 8.0, 0,
             LocalizationKey: "Planting.Broadleaf"),

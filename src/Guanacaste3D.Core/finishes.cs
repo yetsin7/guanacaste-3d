@@ -7,7 +7,11 @@ public enum FinishKind
     Paint,
     Ceramic,
     Tile,
-    ExposedConcrete
+    ExposedConcrete,
+    /// <summary>Asphalt surfacing for roads and driveways.</summary>
+    Asphalt,
+    /// <summary>Planted lawn over soil, for landscaped site slabs.</summary>
+    Grass
 }
 
 /// <summary>Computes the finished surface area that takeoffs and estimates use for each finish.</summary>

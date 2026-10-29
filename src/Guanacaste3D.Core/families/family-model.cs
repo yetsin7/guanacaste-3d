@@ -18,6 +18,8 @@ public sealed class FamilyDocument
     public Dictionary<string, string> Metadata { get; set; } = [];
     /// <summary>Optional editable paper-space definition for a title-block family.</summary>
     public SheetFamilyLayout? SheetLayout { get; set; }
+    /// <summary>Mesh component families only: the detailed triangles placed by every instance of the family.</summary>
+    public FamilyMesh? Mesh { get; set; }
 
     /// <summary>Returns a copy whose lists and dictionaries can be edited without changing this instance.</summary>
     public FamilyDocument Clone() => new()
@@ -41,13 +43,18 @@ public sealed class FamilyDocument
             ParameterLinks = new Dictionary<Guid, Guid>(nested.ParameterLinks)
         }).ToList(),
         Metadata = new Dictionary<string, string>(Metadata),
-        SheetLayout = SheetLayout?.Copy()
+        SheetLayout = SheetLayout?.Copy(),
+        // The mesh is treated as immutable once created, so copies share its (large) arrays.
+        Mesh = Mesh
     };
 
     /// <summary>Validates family geometry, parameters, dependencies, and optional editable paper graphics.</summary>
     public void Validate()
     {
         SheetLayout?.Validate();
+        Mesh?.Validate();
+        if (Mesh is not null && Category == FamilyCategory.TitleBlocks)
+            throw new InvalidDataException("A drawing sheet family cannot carry a mesh.");
         if ((Category == FamilyCategory.TitleBlocks) != (SheetLayout is not null))
             throw new InvalidDataException("The family is not a drawing sheet family.");
         if (SchemaVersion != CurrentSchemaVersion)

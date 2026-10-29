@@ -27,5 +27,8 @@
     <!-- Shipped render textures, loaded from disk next to the executable by RenderTextureLibrary. -->
     <Content Include="resources\textures\*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="resources\textures\*.jpg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Detailed mesh families (CC0 trees and cars, see docs/third-party-models.md) and the saved sample projects. -->
+    <Content Include="resources\families\*.g3df" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="resources\samples\*.g3d" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

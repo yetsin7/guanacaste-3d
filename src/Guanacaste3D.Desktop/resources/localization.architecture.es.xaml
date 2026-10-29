@@ -133,6 +133,7 @@
   <sys:String x:Key="ElementStyle.LShaped">En L con descanso</sys:String>
   <sys:String x:Key="ElementStyle.UShaped">En U (ida y vuelta)</sys:String>
   <sys:String x:Key="ElementStyle.Spiral">Helicoidal</sys:String>
+  <sys:String x:Key="ElementStyle.BreezeBlock">Celosía de cobogó</sys:String>
   <sys:String x:Key="Status.StairTool">Escalera recta: clic en el arranque y en el final del tramo. Espacio cambia a escalera en L, en U o helicoidal.</sys:String>
   <sys:String x:Key="Plan.StairUp">SUBE</sys:String>
   <sys:String x:Key="Transaction.AddStair">Crear escalera</sys:String>
@@ -232,6 +233,8 @@
   <sys:String x:Key="Residential.Hammock">Hamaca</sys:String>
   <sys:String x:Key="Residential.SunLounger">Tumbona</sys:String>
   <sys:String x:Key="Residential.Parasol">Sombrilla de patio</sys:String>
+  <sys:String x:Key="Residential.Car">Automóvil sedán</sys:String>
+  <sys:String x:Key="Residential.SilverCar">Automóvil sedán plateado</sys:String>
   <sys:String x:Key="Operation.Standard">Estándar</sys:String>
   <sys:String x:Key="Operation.Sliding">Corrediza</sys:String>
   <sys:String x:Key="Operation.Folding">Plegable</sys:String>

@@ -375,6 +375,8 @@ AgentChecks.Run(Check);
 StairAndWallChecks.Run(Check);
 ModernHouseChecks.Run(Check);
 ModernHouseToolChecks.Run(Check);
+BreezeBlockHouseChecks.Run(Check);
+MeshFamilyChecks.Run(Check);
 AnnotationChecks.Run(Check);
 CalloutChecks.Run(Check);
 ParameterChecks.Run(Check);

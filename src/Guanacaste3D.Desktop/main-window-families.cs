@@ -15,7 +15,7 @@ public partial class MainWindow
         {
             if (FamilyFile.IsFamilyPath(path))
             {
-                if (TryImportSheetFamily(path)) return true;
+                if (TryImportSheetFamily(path) || TryImportMeshFamily(path)) return true;
                 var family = FamilyFile.Load(path);
                 _session.ImportOpeningFamily(family);
                 StatusText.Text = FormatText("Status.FamilyImported", family.Name);
@@ -56,6 +56,37 @@ public partial class MainWindow
         if (!ConfirmDiscard()) return;
         AttachDocument(ModernHouseShowcase.Create(), null);
         StatusText.Text = GetText("Status.ModernHouseOpened");
+    }
+
+    /// <summary>
+    /// Opens the breeze-block house sample saved next to the application, with its detailed jacaranda and cars. It opens
+    /// as an untitled copy, so saving asks for a new file and the shipped sample stays intact. Without the file (a
+    /// trimmed install) the house is rebuilt from the shipped families, or from procedural ones.
+    /// </summary>
+    private void OpenBreezeBlockHouse_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDiscard()) return;
+        var sample = Path.Combine(AppContext.BaseDirectory, "resources", "samples", "casa-del-cobogo.g3d");
+        try
+        {
+            AttachDocument(File.Exists(sample)
+                ? NativeDocumentStore.LoadProject(sample)
+                : BreezeBlockHouseShowcase.Create(ShippedMeshFamilies()), null);
+            StatusText.Text = GetText("Status.BreezeBlockHouseOpened");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>The detailed mesh families (trees, cars) shipped in resources/families.</summary>
+    private static FamilyDocument[] ShippedMeshFamilies()
+    {
+        var folder = Path.Combine(AppContext.BaseDirectory, "resources", "families");
+        return Directory.Exists(folder)
+            ? Directory.GetFiles(folder, "*" + NativeDocumentStore.FamilyExtension).Select(NativeDocumentStore.LoadFamily).ToArray()
+            : [];
     }
 
     /// <summary>Starts a project from a .g3dt file. The template is only read, so it never changes.</summary>
@@ -113,7 +144,7 @@ public partial class MainWindow
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            if (TryImportSheetFamily(dialog.FileName)) return;
+            if (TryImportSheetFamily(dialog.FileName) || TryImportMeshFamily(dialog.FileName)) return;
             var family = FamilyFile.Load(dialog.FileName);
             _session.ImportOpeningFamily(family);
             StatusText.Text = FormatText("Status.FamilyImported", family.Name);

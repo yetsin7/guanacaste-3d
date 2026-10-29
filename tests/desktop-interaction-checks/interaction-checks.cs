@@ -115,6 +115,7 @@ internal static partial class InteractionChecks
             RenderJoinScene();
             Model3DSelectionChecks();
             RenderPreviewAndImportChecks();
+            TileViewChecks();
             CheckAssociatedDocumentStartup();
             Console.WriteLine("Desktop interaction checks passed.");
             return 0;

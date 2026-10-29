@@ -131,7 +131,7 @@ public partial class MainWindow
     {
         if (ModelViewport is null || _session is null) return;
         MarkSceneDirty();
-        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+        if (Model3DVisible) RebuildModelVisual();
     }
 
     /// <summary>Builds the model off the UI thread and publishes only the most recent completed snapshot.</summary>
@@ -175,7 +175,7 @@ public partial class MainWindow
     /// <summary>Publishes frozen geometry on the owning dispatcher if it still represents the current view.</summary>
     private void PublishModelVisual(ModelSceneSnapshot snapshot, int request, int version)
     {
-        if (!IsLoaded || request != _modelBuildRequest || version != _sceneVersion || ViewTabs.SelectedIndex != Model3DTabIndex) return;
+        if (!IsLoaded || request != _modelBuildRequest || version != _sceneVersion || !Model3DVisible) return;
         _modelDirty = false;
         var bounds = snapshot.Bounds;
         if (_links.Bounds() is { } linked)
@@ -252,7 +252,7 @@ public partial class MainWindow
         _xRay = XRayCheck?.IsChecked == true;
         PersistModelViewGraphics();
         RefreshModelRealisticPreview();
-        if (ViewTabs.SelectedIndex == Model3DTabIndex) RebuildModelVisual();
+        if (Model3DVisible) RebuildModelVisual();
         else _modelDirty = true;
     }
 
