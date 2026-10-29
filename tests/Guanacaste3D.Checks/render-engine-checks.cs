@@ -253,6 +253,17 @@ static class RenderEngineChecks
             check(phases.SequenceEqual(["Render.Preparing", "Render.Rendering"]) && result.Rays > 0, "A render session reports its phases and ray count");
         }
 
+        var bucketFrames = new List<RenderFrame>();
+        using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true)))
+        {
+            bucketed.FrameReady += frame => { lock (bucketFrames) bucketFrames.Add(frame); };
+            var result = await bucketed.RunAsync(CancellationToken.None);
+            var first = bucketFrames[0].Bgra;
+            var darkAtStart = first.Where((_, i) => i % 4 != 3).All(value => value <= 40);
+            check(result.Completed && result.Samples == 4 && bucketFrames[^1].IsFinal && darkAtStart,
+                "A bucket render starts fully dark and ends with a complete final image");
+        }
+
         using (var cancelling = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(48, 32, 100000)))
         {
             using var cancellation = new CancellationTokenSource();

@@ -83,7 +83,7 @@ public partial class RenderPanel
             UseRadianceCache = plan.UsesRadianceCache
         };
         var camera = CurrentCamera();
-        var job = new RenderJob(fit.Width, fit.Height, profile.TargetSamples, null, true, CurrentFinish());
+        var job = new RenderJob(fit.Width, fit.Height, profile.TargetSamples, null, true, CurrentFinish(), Buckets: true);
 
         // The preview stops and gives its memory back: the picture is frozen while the final render is made.
         _preview?.Suspend();

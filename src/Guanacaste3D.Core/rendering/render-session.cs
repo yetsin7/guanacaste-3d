@@ -2,9 +2,12 @@ using System.Diagnostics;
 
 namespace Guanacaste3D.Core.Rendering;
 
-/// <summary>What a render session should produce.</summary>
+/// <summary>
+/// What a render session should produce. With <paramref name="Buckets"/> the image is rendered square by square, each to
+/// its full sample count, and squares not reached yet are shown dark, as in V-Ray.
+/// </summary>
 public sealed record RenderJob(int Width, int Height, int TargetSamples, TimeSpan? TimeLimit = null,
-    bool Denoise = true, ImageFinish? Finish = null);
+    bool Denoise = true, ImageFinish? Finish = null, bool Buckets = false);
 
 /// <summary>A displayable snapshot of a render in progress.</summary>
 public sealed record RenderFrame(byte[] Bgra, int Width, int Height, int Samples, int TargetSamples, TimeSpan Elapsed,
@@ -112,6 +115,12 @@ public sealed class RenderSession : IDisposable
             clock.Restart();
 
             var finish = _job.Finish ?? new ImageFinish();
+            if (_job.Buckets)
+            {
+                last = RunBuckets(tracer, clock, finish, cancellation);
+                return new RenderResult(last, tracer.SampleCount, clock.Elapsed, tracer.RayCount, tracer.TriangleCount,
+                    true, false);
+            }
             var lastFrameAt = TimeSpan.Zero;
             var frameCost = TimeSpan.FromMilliseconds(50);
             var batch = 1;
@@ -162,6 +171,116 @@ public sealed class RenderSession : IDisposable
             }
             return new RenderResult(last, tracer?.SampleCount ?? 0, clock.Elapsed, tracer?.RayCount ?? 0,
                 tracer?.TriangleCount ?? _scene.TriangleCount, false, true);
+        }
+    }
+
+    private const int BucketSize = 64;
+
+    /// <summary>
+    /// Bucket render: squares are taken from the centre outwards by as many workers as there are threads, each rendered to
+    /// completion. Preview frames show finished squares in colour, squares being rendered with corner marks, and the rest dark.
+    /// </summary>
+    private RenderFrame RunBuckets(PathTracer tracer, Stopwatch clock, ImageFinish finish, CancellationToken cancellation)
+    {
+        var buckets = new List<(int X, int Y, int W, int H)>();
+        for (var y = 0; y < tracer.Height; y += BucketSize)
+        for (var x = 0; x < tracer.Width; x += BucketSize)
+            buckets.Add((x, y, Math.Min(BucketSize, tracer.Width - x), Math.Min(BucketSize, tracer.Height - y)));
+        var centreX = tracer.Width / 2.0;
+        var centreY = tracer.Height / 2.0;
+        buckets.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
+        double Distance((int X, int Y, int W, int H) bucket) =>
+            Math.Pow(bucket.X + bucket.W / 2.0 - centreX, 2) + Math.Pow(bucket.Y + bucket.H / 2.0 - centreY, 2);
+
+        var state = new byte[buckets.Count]; // 0 waiting, 1 rendering, 2 done
+        var gate = new object();
+        var completed = 0;
+        var next = -1;
+        var lastFrameAt = TimeSpan.Zero;
+        RenderFrame? last = null;
+
+        void Publish(bool force)
+        {
+            lock (gate)
+            {
+                if (!force && clock.Elapsed - lastFrameAt < TimeSpan.FromMilliseconds(400)) return;
+                lastFrameAt = clock.Elapsed;
+                tracer.ReportBucketedSamples(1, false);
+                var bytes = ImageProcessor.ToBgra32(tracer.LinearImage(false), tracer.Width, tracer.Height,
+                    tracer.BaseExposure, finish, tracer.CaptureFeatures);
+                for (var i = 0; i < buckets.Count; i++)
+                {
+                    if (state[i] == 2) continue;
+                    var (x, y, w, h) = buckets[i];
+                    if (state[i] == 0) Darken(bytes, tracer.Width, x, y, w, h);
+                    else Brackets(bytes, tracer.Width, x, y, w, h);
+                }
+                var progress = Math.Clamp(completed / (double)buckets.Count, 0, 1);
+                TimeSpan? remaining = completed >= 4 ? clock.Elapsed * ((1 - progress) / progress) : null;
+                last = _lastFrame = new RenderFrame(bytes, tracer.Width, tracer.Height,
+                    (int)(_job.TargetSamples * progress), _job.TargetSamples, clock.Elapsed, remaining, 1, false);
+                FrameReady?.Invoke(last);
+            }
+        }
+
+        Publish(true);
+        var workers = _settings.MaxThreads > 0 ? _settings.MaxThreads : Environment.ProcessorCount;
+        Parallel.For(0, Math.Max(1, workers), new ParallelOptions { MaxDegreeOfParallelism = workers, CancellationToken = cancellation }, _ =>
+        {
+            while (true)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                _running.Wait(cancellation);
+                var index = Interlocked.Increment(ref next);
+                if (index >= buckets.Count) return;
+                lock (gate) state[index] = 1;
+                var (x, y, w, h) = buckets[index];
+                tracer.RenderBucket(x, y, w, h, _job.TargetSamples, cancellation);
+                lock (gate)
+                {
+                    state[index] = 2;
+                    completed++;
+                }
+                Publish(false);
+            }
+        });
+
+        tracer.ReportBucketedSamples(_job.TargetSamples, true);
+        last = _lastFrame = MakeFrame(tracer, finish, clock.Elapsed, true);
+        FrameReady?.Invoke(last);
+        return last;
+    }
+
+    /// <summary>Dims a square that has not been rendered yet.</summary>
+    private static void Darken(byte[] bgra, int stride, int x, int y, int width, int height)
+    {
+        for (var row = y; row < y + height; row++)
+        for (var column = x; column < x + width; column++)
+        {
+            var offset = (row * stride + column) * 4;
+            bgra[offset] = (byte)(bgra[offset] * 40 >> 8);
+            bgra[offset + 1] = (byte)(bgra[offset + 1] * 40 >> 8);
+            bgra[offset + 2] = (byte)(bgra[offset + 2] * 40 >> 8);
+        }
+    }
+
+    /// <summary>Marks the corners of a square being rendered, so the user sees where the work is going.</summary>
+    private static void Brackets(byte[] bgra, int stride, int x, int y, int width, int height)
+    {
+        const int Arm = 10;
+        const int Thick = 2;
+        void Set(int column, int row)
+        {
+            var offset = (row * stride + column) * 4;
+            bgra[offset] = 60; bgra[offset + 1] = 170; bgra[offset + 2] = 255;
+        }
+        for (var i = 0; i < Arm; i++)
+        for (var t = 0; t < Thick; t++)
+        {
+            foreach (var column in new[] { x + i, x + width - 1 - i })
+            foreach (var row in new[] { y + t, y + height - 1 - t }) if (i < width && t < height) Set(column, row);
+            foreach (var row in new[] { y + i, y + height - 1 - i })
+            foreach (var column in new[] { x + t, x + width - 1 - t }) if (i < height && t < width) Set(column, row);
         }
     }
 

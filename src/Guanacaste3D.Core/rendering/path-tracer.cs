@@ -414,29 +414,7 @@ public sealed partial class PathTracer
             var endY = Math.Min(Height, tileY + TileSize);
             for (var row = tileY; row < endY; row++)
             for (var column = tileX; column < endX; column++)
-            {
-                var index = row * Width + column;
-                if (!_active[index] || _counts[index] == ushort.MaxValue) continue;
-                var sampler = new Sampler((uint)index, _counts[index], seed);
-                var jitter = sampler.JitterPair();
-                // Tent-shaped reconstruction filter about a pixel wide in each direction: smooth edges without blur.
-                var offsetX = Tent(jitter.X);
-                var offsetY = Tent(jitter.Y);
-                var (origin, direction) = PrimaryRay(basis, column + 0.5f + offsetX, row + 0.5f + offsetY, ref sampler);
-                var (direct, indirect) = Trace(origin, direction, ref sampler);
-                var total = direct + indirect;
-                if (!float.IsFinite(total.X + total.Y + total.Z))
-                {
-                    direct = indirect = total = Vector3.Zero;
-                }
-                _accumulation[index] += total;
-                _direct[index] += direct;
-                var luminance = Sampling.Luminance(total);
-                _luminanceSquares[index] += luminance * luminance;
-                var indirectLuminance = Sampling.Luminance(indirect);
-                _indirectSquares[index] += indirectLuminance * indirectLuminance;
-                _counts[index]++;
-            }
+                SamplePixel(row * Width + column, column, row, basis, seed);
             Interlocked.Add(ref _rayCount, _threadRays);
             _threadRays = 0;
             if (_threadCacheLookups != 0)
@@ -450,6 +428,117 @@ public sealed partial class PathTracer
         if (_settings.AdaptiveSampling && SampleCount >= _settings.AdaptiveMinimumSamples) RetireConvergedPixels();
         _lastPassMilliseconds = passClock.Elapsed.TotalMilliseconds;
         _lastPassRays = RayCount - raysBefore;
+    }
+
+    /// <summary>Adds one jittered sample to a pixel if it is still active.</summary>
+    private void SamplePixel(int index, int column, int row, CameraBasis basis, uint seed)
+    {
+        if (!_active[index] || _counts[index] == ushort.MaxValue) return;
+        var sampler = new Sampler((uint)index, _counts[index], seed);
+        var jitter = sampler.JitterPair();
+        // Tent-shaped reconstruction filter about a pixel wide in each direction: smooth edges without blur.
+        var offsetX = Tent(jitter.X);
+        var offsetY = Tent(jitter.Y);
+        var (origin, direction) = PrimaryRay(basis, column + 0.5f + offsetX, row + 0.5f + offsetY, ref sampler);
+        var (direct, indirect) = Trace(origin, direction, ref sampler);
+        var total = direct + indirect;
+        if (!float.IsFinite(total.X + total.Y + total.Z))
+        {
+            direct = indirect = total = Vector3.Zero;
+        }
+        _accumulation[index] += total;
+        _direct[index] += direct;
+        var luminance = Sampling.Luminance(total);
+        _luminanceSquares[index] += luminance * luminance;
+        var indirectLuminance = Sampling.Luminance(indirect);
+        _indirectSquares[index] += indirectLuminance * indirectLuminance;
+        _counts[index]++;
+    }
+
+    /// <summary>
+    /// Renders one rectangle of the image to completion, like a V-Ray bucket: samples are added to just these pixels until
+    /// <paramref name="targetSamples"/> is reached or, with adaptive sampling, every pixel of the bucket has converged.
+    /// Different buckets touch different pixels, so they can be rendered from several threads at once.
+    /// </summary>
+    public void RenderBucket(int x, int y, int width, int height, int targetSamples, CancellationToken cancellationToken = default)
+    {
+        var basis = Basis();
+        var seed = _settings.Seed * 2654435761u;
+        var endX = Math.Min(Width, x + width);
+        var endY = Math.Min(Height, y + height);
+        try
+        {
+            for (var sample = 1; sample <= targetSamples; sample++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                for (var row = y; row < endY; row++)
+                for (var column = x; column < endX; column++)
+                    SamplePixel(row * Width + column, column, row, basis, seed);
+                if (_settings.AdaptiveSampling && sample >= _settings.AdaptiveMinimumSamples &&
+                    RetireConvergedPixels(x, y, endX, endY)) break;
+            }
+        }
+        finally
+        {
+            Interlocked.Add(ref _rayCount, _threadRays);
+            _threadRays = 0;
+            if (_threadCacheLookups != 0)
+            {
+                Interlocked.Add(ref _cacheLookups, _threadCacheLookups);
+                Interlocked.Add(ref _cacheHits, _threadCacheHits);
+                _threadCacheLookups = _threadCacheHits = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Marks the sample count after a bucketed render, so images and statistics treat it like a progressive one. Passing
+    /// the target when every bucket is done also refreshes the share of pixels still active.
+    /// </summary>
+    public void ReportBucketedSamples(int samples, bool refreshActive)
+    {
+        SampleCount = Math.Max(SampleCount, samples);
+        if (!refreshActive) return;
+        var active = 0;
+        foreach (var flag in _active) if (flag) active++;
+        _anyConverged = active < _counts.Length;
+        ActiveFraction = (float)active / _counts.Length;
+    }
+
+    /// <summary>Retires converged pixels inside one bucket; returns true when none of its pixels need more samples.</summary>
+    private bool RetireConvergedPixels(int startX, int startY, int endX, int endY)
+    {
+        var width = endX - startX;
+        var height = endY - startY;
+        var converged = new bool[width * height];
+        var tolerance = _settings.AdaptiveTolerance;
+        for (var row = 0; row < height; row++)
+        for (var column = 0; column < width; column++)
+        {
+            var index = (startY + row) * Width + startX + column;
+            var count = _counts[index];
+            if (count < _settings.AdaptiveMinimumSamples) continue;
+            var mean = Sampling.Luminance(_accumulation[index]) / count;
+            var variance = MathF.Max(0, _luminanceSquares[index] / count - mean * mean);
+            var error = MathF.Sqrt(variance / count) / (mean + 0.08f);
+            converged[row * width + column] = error < tolerance;
+        }
+        var anyActive = false;
+        for (var row = 0; row < height; row++)
+        for (var column = 0; column < width; column++)
+        {
+            var keep = !converged[row * width + column];
+            for (var dy = -1; dy <= 1 && !keep; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                var nx = column + dx;
+                var ny = row + dy;
+                if ((uint)nx < (uint)width && (uint)ny < (uint)height && !converged[ny * width + nx]) { keep = true; break; }
+            }
+            _active[(startY + row) * Width + startX + column] = keep;
+            anyActive |= keep;
+        }
+        return !anyActive;
     }
 
     /// <summary>Maps a uniform value in [0, 1) to a triangular distribution on (−0.8, 0.8) pixels.</summary>
