@@ -3,24 +3,41 @@ using System.Runtime.CompilerServices;
 
 namespace Guanacaste3D.Core.Rendering;
 
+/// <summary>The kind of cloud a sky shows.</summary>
+public enum CloudStyle
+{
+    /// <summary>Fair-weather cumulus: white heaps with bright tops, about 1.5 km up.</summary>
+    Cumulus,
+    /// <summary>Cirrus: thin, wind-combed streaks high up (about 8 km) that barely dim the sun.</summary>
+    Cirrus,
+    /// <summary>Stratocumulus: broad grey-and-white rolls close together, a low layer under a soft sun.</summary>
+    Stratocumulus,
+    /// <summary>A storm front: heavy dark masses with bright breaks, for dramatic skies.</summary>
+    Storm
+}
+
 /// <summary>
-/// A procedural layer of fair-weather cumulus about 1.5 km up. A sky ray is followed to the layer, where warped fractal
+/// A procedural layer of fair-weather cumulus about 1.5 km up (or another <see cref="CloudStyle"/>). A sky ray is followed to the layer, where warped fractal
 /// noise decides how much cloud it meets; coverage moves the threshold, so 0 is a clear sky and 1 nearly overcast.
 /// The clouds are lit by the sun (bright tops, a silver lining toward the sun, greyer where they are thick) and by the
 /// sky, and they thin out toward the horizon, where the layer would be too far away to resolve.
 /// </summary>
 public sealed class CloudLayer
 {
-    private const float AltitudeKm = 1.5f;
     private readonly float _coverage;
     private readonly Vector2 _offset;
+    private readonly CloudStyle _style;
+    private readonly float _altitudeKm;
 
     /// <param name="coverage">Share of the sky covered, 0–1.</param>
     /// <param name="seed">Chooses the cloud pattern; the same seed always gives the same sky.</param>
-    public CloudLayer(float coverage, uint seed = 0)
+    /// <param name="style">The kind of cloud.</param>
+    public CloudLayer(float coverage, uint seed = 0, CloudStyle style = CloudStyle.Cumulus)
     {
         _coverage = float.IsFinite(coverage) ? Math.Clamp(coverage, 0f, 1f) : 0f;
         _offset = new Vector2(seed % 977 * 3.17f, seed % 613 * 5.31f);
+        _style = Enum.IsDefined(style) ? style : CloudStyle.Cumulus;
+        _altitudeKm = _style switch { CloudStyle.Cirrus => 8f, CloudStyle.Stratocumulus => 1.2f, CloudStyle.Storm => 1.0f, _ => 1.5f };
     }
 
     /// <summary>Whether there are any clouds at all.</summary>
@@ -33,8 +50,38 @@ public sealed class CloudLayer
     public (float Opacity, float Thickness) Sample(Vector3 direction)
     {
         if (IsClear || direction.Z <= 0.015f) return (0, 0);
-        var distance = AltitudeKm / direction.Z;
+        var distance = _altitudeKm / direction.Z;
         var point = new Vector2(direction.X, direction.Y) * distance + _offset;
+        var horizon = SmoothStep(0.015f, 0.16f, direction.Z);
+        switch (_style)
+        {
+            case CloudStyle.Cirrus:
+            {
+                // Stretched noise along the wind gives combed filaments; they stay thin and translucent.
+                var combed = new Vector2(point.X * 0.05f, point.Y * 0.6f);
+                var streak = Fbm(combed + new Vector2(Fbm(point * 0.08f, 2) * 2.5f, 0), 5);
+                var cut = 0.66f - 0.32f * _coverage;
+                var wisp = Math.Clamp((streak - cut) / 0.18f, 0f, 1f);
+                return (wisp * 0.65f * horizon, wisp * 0.15f);
+            }
+            case CloudStyle.Stratocumulus:
+            {
+                var rolls = Fbm(point * 0.35f + new Vector2(0, Fbm(point * 0.12f, 2) * 3f), 5);
+                var cut = 0.70f - 0.50f * _coverage;
+                var body = Math.Clamp((rolls - cut) / 0.16f, 0f, 1f);
+                return (body * (2 - body) * horizon, Math.Clamp(body * 0.8f + 0.2f, 0f, 1f) * body);
+            }
+            case CloudStyle.Storm:
+            {
+                var bank = Fbm(point * 0.22f + new Vector2(Fbm(point * 0.5f, 3), Fbm(point * 0.5f + new Vector2(4, 2), 3)) * 2f, 6);
+                var cut = 0.60f - 0.28f * _coverage;
+                var mass = Math.Clamp((bank - cut) / 0.10f, 0f, 1f);
+                // Storm cloud is deep: thickness grows into the cores, so the shading darkens them to slate grey while
+                // thinner edges and the breaks between masses stay bright.
+                var depth = Math.Clamp((bank - cut) / 0.30f, 0f, 1f);
+                return (mass * (2 - mass) * horizon, depth);
+            }
+        }
         // Domain warping turns round noise blobs into the cauliflower outlines of cumulus.
         var warp = new Vector2(Fbm(point * 0.35f + new Vector2(5.2f, 1.3f), 3), Fbm(point * 0.35f + new Vector2(-3.7f, 8.1f), 3));
         var density = Fbm(point * 0.55f + warp * 1.6f, 5);
@@ -42,8 +89,7 @@ public sealed class CloudLayer
         var thickness = Math.Clamp((density - threshold) / 0.22f, 0f, 1f);
         var opacity = thickness * (2 - thickness);   // soft edges, solid cores
         // Far away the layer is seen edge-on and its detail is smaller than a pixel: let it fade into the haze.
-        var horizonFade = SmoothStep(0.015f, 0.16f, direction.Z);
-        return (opacity * horizonFade, thickness);
+        return (opacity * horizon, thickness);
     }
 
     /// <summary>
@@ -58,6 +104,21 @@ public sealed class CloudLayer
         var body = 0.62f + 0.18f * (towardSun * 0.5f + 0.5f);
         var selfShadow = 1 - 0.42f * thickness;
         return sunlight * (0.78f * (body * selfShadow + silver)) + skylight * (1.6f + 0.6f * (1 - thickness));
+    }
+
+    /// <summary>
+    /// <see cref="Shade"/> for this layer's kind of cloud: stratocumulus rolls are greyer where they are deep, and storm
+    /// masses go slate-dark underneath while their thin edges still catch the light.
+    /// </summary>
+    public Vector3 ShadeFor(Vector3 direction, float thickness, Vector3 sunDirection, Vector3 sunlight, Vector3 skylight)
+    {
+        var radiance = Shade(direction, thickness, sunDirection, sunlight, skylight);
+        return _style switch
+        {
+            CloudStyle.Storm => radiance * (0.22f + 0.78f * (1 - thickness) * (1 - thickness)),
+            CloudStyle.Stratocumulus => radiance * (1 - 0.40f * thickness),
+            _ => radiance
+        };
     }
 
     private static float Fbm(Vector2 point, int octaves)

@@ -64,6 +64,10 @@
                 <ComboBoxItem Content="{DynamicResource RenderPanel.GoldenHour}" Tag="GoldenHour"/>
                 <ComboBoxItem Content="{DynamicResource RenderPanel.Dusk}" Tag="Dusk"/>
               </ComboBox>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.SkyPreset}"/>
+              <ComboBox x:Name="SkyPicker" SelectionChanged="Sky_Changed" ToolTip="{DynamicResource RenderPanel.SkyPresetHint}"/>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
+              <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
               <Grid x:Name="SunControls"><StackPanel>
                 <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Date}"/>
                 <DatePicker x:Name="SunDatePicker" SelectedDateFormat="Short" SelectedDateChanged="Lighting_Changed"/>
@@ -144,6 +148,86 @@
                 <ComboBoxItem Content="{DynamicResource RenderPanel.LookContrast}" Tag="Aces"/>
                 <ComboBoxItem Content="{DynamicResource RenderPanel.LookSoft}" Tag="Soft"/>
               </ComboBox>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Style}"/>
+              <ComboBox x:Name="StylePicker" SelectionChanged="Style_Changed" ToolTip="{DynamicResource RenderPanel.StyleHint}"/>
+              <Expander Header="{DynamicResource RenderPanel.Effects}" Margin="0,8,0,0" Foreground="{DynamicResource PrimaryTextBrush}">
+                <StackPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Highlights}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=HighlightsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                <Slider x:Name="HighlightsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Shadows}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=ShadowsSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                <Slider x:Name="ShadowsSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Vibrance}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=VibranceSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="VibranceSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Tint}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=TintSlider, StringFormat={}{0:+0.00;-0.00;0}}"/>
+                <Slider x:Name="TintSlider" Minimum="-1" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Glare}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=GlareSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="GlareSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Fog}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=FogSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="FogSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Sharpen}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=SharpenSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="SharpenSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Aberration}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=AberrationSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="AberrationSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+              <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Grain}"/>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Width="44" Foreground="{DynamicResource PrimaryTextBrush}"
+                           VerticalAlignment="Center" TextAlignment="Right"
+                           Text="{Binding Value, ElementName=GrainSlider, StringFormat={}{0:0%}}"/>
+                <Slider x:Name="GrainSlider" Minimum="0" Maximum="1" Value="0" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True" ValueChanged="Finish_SliderChanged"/>
+              </DockPanel>
+                  <CheckBox x:Name="MonochromeCheck" Style="{StaticResource PanelCheck}" IsChecked="False"
+                            Content="{DynamicResource RenderPanel.Monochrome}" Checked="Finish_Changed" Unchecked="Finish_Changed"/>
+                </StackPanel>
+              </Expander>
               <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Temperature}"/>
               <DockPanel>
                 <TextBlock x:Name="TemperatureText" DockPanel.Dock="Right" Width="48" Text="5500 K"

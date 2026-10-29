@@ -111,6 +111,8 @@ public sealed record RenderSettings
     /// of the sun's disk, so sunlight and shadows are unchanged. Ignored by the overcast sky, which is already cloud.
     /// </summary>
     public float CloudCover { get; init; } = 0.3f;
+    /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
+    public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
     /// <summary>Reflectance of the ground seen below the horizon when the scene has none.</summary>
     public Vector3 GroundColor { get; init; } = new(0.30f, 0.29f, 0.27f);
 
@@ -152,4 +154,33 @@ public sealed record ImageFinish
     public float Vignette { get; init; } = 0.12f;
     /// <summary>Adds sub-quantization noise so smooth skies do not show 8-bit banding.</summary>
     public bool Dither { get; init; } = true;
+
+    // Effects, as an architectural visualisation package offers them. Every default leaves the picture unchanged.
+
+    /// <summary>Brightens (positive) or recovers (negative) the brightest tones, −1–1.</summary>
+    public float Highlights { get; init; }
+    /// <summary>Opens (positive) or deepens (negative) the darkest tones, −1–1.</summary>
+    public float Shadows { get; init; }
+    /// <summary>Green (negative) to magenta (positive) colour balance, −1–1, on top of <see cref="Temperature"/>.</summary>
+    public float Tint { get; init; }
+    /// <summary>Saturates muted colours more than vivid ones, 0–1, so skin, sky and foliage stay natural.</summary>
+    public float Vibrance { get; init; }
+    /// <summary>Colour given to the shadows (split toning); white leaves them neutral.</summary>
+    public Vector3 ShadowTint { get; init; } = Vector3.One;
+    /// <summary>Colour given to the highlights (split toning); white leaves them neutral.</summary>
+    public Vector3 HighlightTint { get; init; } = Vector3.One;
+    /// <summary>Four-point star streaks from very bright points such as the sun on glass, 0–1.</summary>
+    public float Glare { get; init; }
+    /// <summary>Depth fog that thickens with distance, 0–1 (1 is about 50 % at 60 m).</summary>
+    public float Fog { get; init; }
+    /// <summary>Colour of <see cref="Fog"/>, a light that the haze scatters toward the camera.</summary>
+    public Vector3 FogColor { get; init; } = new(0.78f, 0.83f, 0.90f);
+    /// <summary>Crispens fine detail (unsharp mask), 0–1.</summary>
+    public float Sharpen { get; init; }
+    /// <summary>Colour fringes toward the frame edges, as a real lens shows them, 0–1.</summary>
+    public float ChromaticAberration { get; init; }
+    /// <summary>Photographic grain, strongest in the mid tones, 0–1.</summary>
+    public float FilmGrain { get; init; }
+    /// <summary>Renders in black and white, keeping the tonal balance of the colour image.</summary>
+    public bool Monochrome { get; init; }
 }

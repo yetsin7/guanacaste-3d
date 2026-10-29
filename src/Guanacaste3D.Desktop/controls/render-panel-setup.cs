@@ -10,6 +10,8 @@ public partial class RenderPanel
     /// <summary>Shows a project's saved render setup in the panel's controls (the window sets the camera itself).</summary>
     public void ApplySetup(RenderSetup setup)
     {
+        // First the style, which sets the look, white balance, bloom, vignette and effects; the saved values follow.
+        Select(StylePicker, setup.StyleId);
         Select(ScenarioPicker, setup.Scenario.ToString());
         SunDatePicker.SelectedDate = new DateTime(DateTime.Today.Year, 1, 1).AddDays(setup.DayOfYear - 1);
         HourSlider.Value = Math.Clamp(setup.SolarHour, HourSlider.Minimum, HourSlider.Maximum);
@@ -27,6 +29,19 @@ public partial class RenderPanel
         VerticalsCheck.IsChecked = setup.CorrectVerticals;
         DepthOfFieldSlider.Value = setup.DepthOfField;
         ArtificialLightsCheck.IsChecked = setup.ArtificialLights;
+        Select(CloudStylePicker, setup.Clouds.ToString());
+        // The saved sliders win over the style's own values, set when the style was selected first.
+        HighlightsSlider.Value = setup.Highlights;
+        ShadowsSlider.Value = setup.Shadows;
+        VibranceSlider.Value = setup.Vibrance;
+        TintSlider.Value = setup.Tint;
+        GlareSlider.Value = setup.Glare;
+        FogSlider.Value = setup.Fog;
+        SharpenSlider.Value = setup.Sharpen;
+        AberrationSlider.Value = setup.ChromaticAberration;
+        GrainSlider.Value = setup.FilmGrain;
+        MonochromeCheck.IsChecked = setup.Monochrome;
+        Select(SkyPicker, string.Empty);
         OnCameraChanged();
     }
 
@@ -48,7 +63,11 @@ public partial class RenderPanel
             Look = CurrentFinish().ToneMapper, ExposureStops = ExposureSlider.Value, Temperature = TemperatureSlider.Value,
             AutoExposure = AutoExposureCheck.IsChecked == true, Bloom = BloomCheck.IsChecked == true,
             Vignette = VignetteCheck.IsChecked == true, CorrectVerticals = VerticalsCheck.IsChecked == true,
-            DepthOfField = DepthOfFieldSlider.Value, ArtificialLights = ArtificialLightsCheck.IsChecked == true
+            DepthOfField = DepthOfFieldSlider.Value, ArtificialLights = ArtificialLightsCheck.IsChecked == true,
+            Clouds = SelectedClouds(), StyleId = SelectedStyle(), Highlights = HighlightsSlider.Value, Shadows = ShadowsSlider.Value,
+            Vibrance = VibranceSlider.Value, Tint = TintSlider.Value, Glare = GlareSlider.Value, Fog = FogSlider.Value,
+            Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,
+            Monochrome = MonochromeCheck.IsChecked == true
         };
     }
 

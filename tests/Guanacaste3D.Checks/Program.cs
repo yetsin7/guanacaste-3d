@@ -377,6 +377,7 @@ ModernHouseChecks.Run(Check);
 ModernHouseToolChecks.Run(Check);
 BreezeBlockHouseChecks.Run(Check);
 MeshFamilyChecks.Run(Check);
+RenderLookChecks.Run(Check);
 AnnotationChecks.Run(Check);
 CalloutChecks.Run(Check);
 FeatureEdgeSeamChecks.Run(Check);

@@ -35,6 +35,10 @@ static class ShowcaseShot
             PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}.png"), RasterImage.FromBgra32(width, height, tracer.ToBgra32(true, new ImageFinish { AutoExposure = true })));
             PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-aces.png"), RasterImage.FromBgra32(width, height,
                 tracer.ToBgra32(true, new ImageFinish { AutoExposure = true, ToneMapper = ToneMapper.Aces })));
+            // G3_SHOT_STYLE=<id>[,<id>...] also saves the picture in those picture styles, for comparing them.
+            foreach (var style in (Environment.GetEnvironmentVariable("G3_SHOT_STYLE") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries))
+                PngCodec.Save(Path.Combine(folder, $"shot-{scene.Name}-{style}.png"), RasterImage.FromBgra32(width, height,
+                    tracer.ToBgra32(true, RenderLooks.Style(style).Apply(new ImageFinish { AutoExposure = true }))));
             Console.WriteLine($"{scene.Name}: {passes} passes in {watch.Elapsed.TotalSeconds:0.0} s");
         }
     }
@@ -69,8 +73,20 @@ static class ShowcaseShot
             YawDegrees = (float)setup.YawDegrees, PitchDegrees = (float)setup.PitchDegrees,
             FieldOfViewDegrees = (float)setup.FieldOfViewDegrees
         };
-        var settings = RenderPresets.Lighting(setup.Scenario, setup.Latitude, setup.DayOfYear, setup.SolarHour,
-            setup.Quality ?? RenderQuality.High) with { AerialPerspective = setup.Haze ? 1f : 0f, CloudCover = (float)setup.CloudCover };
+        // G3_SHOT_SKY=<id> lights the house with one of the panel's skies instead of its saved one.
+        if (RenderLooks.Skies.FirstOrDefault(sky => sky.Id == Environment.GetEnvironmentVariable("G3_SHOT_SKY")) is { } sky)
+            setup = setup with
+            {
+                Scenario = sky.Scenario, DayOfYear = sky.DayOfYear, SolarHour = sky.SolarHour, CloudCover = sky.CloudCover,
+                Clouds = sky.Clouds, Haze = sky.Haze
+            };
+        var lighting = RenderPresets.Lighting(setup.Scenario, setup.Latitude, setup.DayOfYear, setup.SolarHour, setup.Quality ?? RenderQuality.High);
+        var storm = setup.Clouds == CloudStyle.Storm;
+        var settings = lighting with
+        {
+            AerialPerspective = setup.Haze ? 1f : 0f, CloudCover = (float)setup.CloudCover, Clouds = setup.Clouds,
+            SunIntensity = lighting.SunIntensity * (storm ? 0.55f : 1f), SkyIntensity = lighting.SkyIntensity * (storm ? 0.6f : 1f)
+        };
         return new BenchmarkScene("cobogo", mesh, camera.ToRenderCamera(20) with { CorrectVerticals = setup.CorrectVerticals }, settings);
     }
 

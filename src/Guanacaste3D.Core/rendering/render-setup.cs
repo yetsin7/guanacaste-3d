@@ -60,17 +60,39 @@ public sealed record RenderSetup
 
     public bool ArtificialLights { get; init; } = true;
 
+    /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
+    public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
+
+    /// <summary>The picture style (<see cref="RenderLooks.Styles"/>) under the effects; "none" for no style.</summary>
+    public string StyleId { get; init; } = "none";
+
+    // The effect sliders, as in <see cref="ImageFinish"/>.
+    public double Highlights { get; init; }
+    public double Shadows { get; init; }
+    public double Vibrance { get; init; }
+    public double Tint { get; init; }
+    public double Glare { get; init; }
+    public double Fog { get; init; }
+    public double Sharpen { get; init; }
+    public double ChromaticAberration { get; init; }
+    public double FilmGrain { get; init; }
+    public bool Monochrome { get; init; }
+
     /// <summary>Rejects values the Render panel cannot show.</summary>
     public void Validate()
     {
         double[] finite = [CameraX, CameraY, CameraZ, YawDegrees, PitchDegrees, FieldOfViewDegrees, SolarHour, Latitude,
-            CloudCover, ExposureStops, Temperature, DepthOfField];
+            CloudCover, ExposureStops, Temperature, DepthOfField, Highlights, Shadows, Vibrance, Tint, Glare, Fog, Sharpen,
+            ChromaticAberration, FilmGrain];
         if (finite.Any(value => !double.IsFinite(value)) || Math.Abs(CameraX) > 1e6 || Math.Abs(CameraY) > 1e6 ||
             Math.Abs(CameraZ) > 1e6 || PitchDegrees is < -90 or > 90 || FieldOfViewDegrees is < 5 or > 150 ||
             !Enum.IsDefined(Scenario) || DayOfYear is < 1 or > 366 || SolarHour is < 0 or > 24 || Latitude is < -90 or > 90 ||
             CloudCover is < 0 or > 1 || (Quality is { } quality && !Enum.IsDefined(quality)) ||
             Width is < 0 or > 16384 || Height is < 0 or > 16384 || (Width == 0) != (Height == 0) || !Enum.IsDefined(Look) ||
-            ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100)
+            ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100 ||
+            !Enum.IsDefined(Clouds) || StyleId is null || RenderLooks.Styles.All(style => style.Id != StyleId) ||
+            new[] { Highlights, Shadows, Tint }.Any(value => value is < -1 or > 1) ||
+            new[] { Vibrance, Glare, Fog, Sharpen, ChromaticAberration, FilmGrain }.Any(value => value is < 0 or > 1))
             throw new InvalidDataException("The saved render setup is invalid.");
     }
 }

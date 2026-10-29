@@ -79,13 +79,21 @@ public partial class RenderPanel
     }
 
     /// <summary>Combines solar, sky, exposure, and resource settings for a render request.</summary>
-    private RenderSettings LightingFor(RenderQuality quality, ResourceMode resources) =>
-        RenderPresets.Lighting(Scenario(), Latitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear, HourSlider.Value,
-            quality, resources) with
+    private RenderSettings LightingFor(RenderQuality quality, ResourceMode resources)
+    {
+        var lighting = RenderPresets.Lighting(Scenario(), Latitude(), (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear,
+            HourSlider.Value, quality, resources);
+        // Under a storm front the sun breaks through dimmer and the whole sky darkens.
+        var storm = SelectedClouds() == CloudStyle.Storm;
+        return lighting with
         {
             AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f,
-            CloudCover = (float)(CloudSlider.Value / 100)
+            CloudCover = (float)(CloudSlider.Value / 100),
+            Clouds = SelectedClouds(),
+            SunIntensity = lighting.SunIntensity * (storm ? 0.55f : 1f),
+            SkyIntensity = lighting.SkyIntensity * (storm ? 0.6f : 1f)
         };
+    }
 
     /// <summary>Uses a bounded draft budget for progressive interactive feedback.</summary>
     private RenderSettings PreviewSettings() => LightingFor(RenderQuality.Draft, ResourceMode.Eco) with
@@ -97,12 +105,13 @@ public partial class RenderPanel
     private ImageFinish CurrentFinish()
     {
         var baseFinish = RenderPresets.Finish(Scenario());
-        return baseFinish with
+        var styled = WithEffects(baseFinish);
+        return styled with
         {
             AutoExposure = AutoExposureCheck.IsChecked == true,
             ExposureStops = baseFinish.ExposureStops + (float)ExposureSlider.Value,
-            Bloom = BloomCheck.IsChecked == true ? Math.Max(0.12f, baseFinish.Bloom) : 0,
-            Vignette = VignetteCheck.IsChecked == true ? 0.12f : 0,
+            Bloom = BloomCheck.IsChecked == true ? Math.Max(0.12f, styled.Bloom) : 0,
+            Vignette = VignetteCheck.IsChecked == true ? Math.Max(0.12f, styled.Vignette) : 0,
             ToneMapper = ((LookPicker.SelectedItem as ComboBoxItem)?.Tag as string) switch
             {
                 "Aces" => ToneMapper.Aces,

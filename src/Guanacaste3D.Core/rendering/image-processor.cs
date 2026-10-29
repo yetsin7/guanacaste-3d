@@ -7,7 +7,7 @@ namespace Guanacaste3D.Core.Rendering;
 /// color grading, vignette, sRGB encoding and dithering. Runs on the denoised image only, so it can be repeated
 /// cheaply while the user moves the sliders, without re-rendering anything.
 /// </summary>
-public static class ImageProcessor
+public static partial class ImageProcessor
 {
     /// <summary>A neutral finish with no bloom, vignette, grading or dithering, matching the original renderer output.</summary>
     public static ImageFinish Plain { get; } = new()
@@ -24,22 +24,29 @@ public static class ImageProcessor
         ArgumentNullException.ThrowIfNull(finish);
         if (linear.Length != width * height) throw new ArgumentException("Buffer size does not match the image size.");
         var exposure = baseExposure * MathF.Pow(2, Math.Clamp(finish.ExposureStops, -8f, 8f));
-        if (finish.AutoExposure) exposure *= MeasureAutoExposure(linear, baseExposure, features?.Invoke());
+        // Auto exposure and fog both read the depth buffer; it is captured once, and only when one of them needs it.
+        FeatureBuffer? captured = null;
+        FeatureBuffer? Features() => captured ??= features?.Invoke();
+        if (finish.AutoExposure) exposure *= MeasureAutoExposure(linear, baseExposure, Features());
 
         var exposed = new Vector3[linear.Length];
-        var balance = WhiteBalance(finish.Temperature);
+        var balance = WhiteBalance(finish.Temperature) * TintBalance(finish.Tint);
+        var depth = finish.Fog > 0.001f ? Features()?.Depth : null;
         Parallel.For(0, height, row =>
         {
             for (var column = 0; column < width; column++)
             {
                 var index = row * width + column;
                 var value = linear[index] * balance * exposure;
-                exposed[index] = float.IsFinite(value.X + value.Y + value.Z) ? Vector3.Max(value, Vector3.Zero) : Vector3.Zero;
+                value = float.IsFinite(value.X + value.Y + value.Z) ? Vector3.Max(value, Vector3.Zero) : Vector3.Zero;
+                if (depth is not null) value = ApplyFog(value, depth[index], finish);
+                exposed[index] = value;
             }
         });
 
         var glow = finish.Bloom > 0.001f ? Bloom(exposed, width, height) : null;
-        var pixels = new byte[width * height * 4];
+        var streaks = finish.Glare > 0.001f ? Glare(exposed, width, height) : null;
+        var display = new Vector3[width * height];
         var bloomStrength = Math.Clamp(finish.Bloom, 0f, 1f) * 0.6f;
         var vignette = Math.Clamp(finish.Vignette, 0f, 1f);
         Parallel.For(0, height, row =>
@@ -49,7 +56,9 @@ public static class ImageProcessor
                 var index = row * width + column;
                 var color = exposed[index];
                 if (glow is not null) color += glow[index] * bloomStrength;
+                if (streaks is not null) color += streaks[index] * Math.Clamp(finish.Glare, 0f, 1f);
                 color = ToneMap(color, finish.ToneMapper);
+                color = Grade(color, finish);
                 if (finish.Contrast != 1)
                 {
                     var contrast = Math.Clamp(finish.Contrast, 0.5f, 2f);
@@ -66,6 +75,17 @@ public static class ImageProcessor
                     var dy = (row + 0.5f) / height * 2 - 1;
                     color *= 1 - vignette * 0.55f * (dx * dx + dy * dy) * 0.5f;
                 }
+                display[index] = color;
+            }
+        });
+        display = Lens(display, width, height, finish);
+        var pixels = new byte[width * height * 4];
+        Parallel.For(0, height, row =>
+        {
+            for (var column = 0; column < width; column++)
+            {
+                var index = row * width + column;
+                var color = display[index];
                 var noise = finish.Dither ? DitherNoise(index) : 0f;
                 pixels[index * 4] = Encode(color.Z, noise);
                 pixels[index * 4 + 1] = Encode(color.Y, noise);

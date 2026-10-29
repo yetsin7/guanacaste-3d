@@ -100,14 +100,15 @@ internal static partial class InteractionChecks
         Invoke("CancelStructuralTool");
     }
 
-    /// <summary>Assigns the shipped brick texture to walls and checks the 3D view draws walls with that image.</summary>
+    /// <summary>Checks the shipped texture catalog and previews a photographic texture on model surfaces.</summary>
     private static void TexturedModelChecks(DocumentSession session)
     {
+        CheckBuiltInTextures();
         // Modeling always uses project colors, including assigned textures.
         var tabs = (TabControl)_window.FindName("ViewTabs");
         var previousTab = tabs.SelectedIndex;
         tabs.SelectedIndex = 1;
-        Invoke("AssignRenderMaterial", SurfaceKind.Wall, "builtin:brick-red", 1.0, 0.6);
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, "builtin:ambientcg-bricks105", 2.4, 0.3);
         Invoke("RebuildModelVisual");
         var deadline = DateTime.UtcNow.AddSeconds(20);
         while (Field<bool>("_modelDirty") && DateTime.UtcNow < deadline) Pump();

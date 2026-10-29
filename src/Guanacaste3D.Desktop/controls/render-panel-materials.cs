@@ -4,13 +4,14 @@ using System.Windows;
 using System.Windows.Controls;
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
 using Microsoft.Win32;
 
 namespace Guanacaste3D.Desktop.Controls;
 
 /// <summary>
-/// The Materials card of the Render tab: for each surface category, its stock material, one of the shipped textures,
-/// or any image from disk, plus the real size one copy of the image covers. Choices are stored in the project and
+/// The Materials card of the Render tab: for each surface category, its stock material, a preset of the material
+/// library, one of the shipped textures, or any image from disk, plus the real size one copy of the image covers. Choices are stored in the project and
 /// undoable; the scene is rebuilt when they change.
 /// </summary>
 public partial class RenderPanel
@@ -39,6 +40,23 @@ public partial class RenderPanel
             DockPanel.SetDock(size, Dock.Right);
             var picker = new ComboBox();
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
+            // The material library, grouped under headings that cannot be chosen themselves.
+            foreach (var group in MaterialPresets.All.GroupBy(preset => preset.Group))
+            {
+                picker.Items.Add(new ComboBoxItem
+                {
+                    Content = Text($"MaterialFamily.{group.Key}"), IsEnabled = false, FontWeight = FontWeights.SemiBold
+                });
+                foreach (var preset in group)
+                    picker.Items.Add(new ComboBoxItem
+                    {
+                        Content = "   " + preset.Name, Tag = MaterialPresets.Prefix + preset.Id
+                    });
+            }
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
+            });
             foreach (var texture in RenderTextureLibrary.BuiltIn)
                 picker.Items.Add(new ComboBoxItem
                 {
@@ -78,6 +96,9 @@ public partial class RenderPanel
                 };
                 if (dialog.ShowDialog(Window.GetWindow(this)) == true)
                     _source.AssignRenderMaterial(category, dialog.FileName, ReadSize(size, 1), 0.3);
+                break;
+            case var preset when MaterialPresets.FromPath(preset) is { } chosen:
+                _source.AssignRenderMaterial(category, preset, chosen.TextureSize, chosen.Relief);
                 break;
             default:
                 var builtIn = RenderTextureLibrary.BuiltIn.FirstOrDefault(texture =>
