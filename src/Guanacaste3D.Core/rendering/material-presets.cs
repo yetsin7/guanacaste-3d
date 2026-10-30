@@ -142,7 +142,43 @@ public static class MaterialPresets
         {
             Name = "Pintura de auto blanca", BaseColor = new(0.80f, 0.80f, 0.79f), Roughness = 0.1f, Metallic = 0.1f
         })
-    ];
+    ].Concat(ExpandedCatalog()).ToArray();
+
+    /// <summary>Additional physically based colour/finish variations without external texture dependencies.</summary>
+    private static IEnumerable<MaterialPreset> ExpandedCatalog()
+    {
+        var colors = new (string Id, string Label, float R, float G, float B)[]
+        {
+            ("ivory", "Marfil", .78f, .73f, .61f),
+            ("sand", "Arena", .60f, .49f, .35f),
+            ("clay", "Arcilla", .48f, .25f, .16f),
+            ("sage", "Salvia", .29f, .38f, .27f),
+            ("forest", "Bosque", .08f, .22f, .12f),
+            ("ocean", "Océano", .06f, .22f, .34f),
+            ("slate", "Pizarra", .20f, .23f, .26f),
+            ("charcoal", "Carbón", .055f, .055f, .06f),
+            ("rose", "Rosa empolvado", .58f, .32f, .33f),
+            ("white", "Blanco", .82f, .82f, .79f),
+            ("grey", "Gris", .40f, .41f, .42f),
+            ("black", "Negro", .025f, .025f, .027f)
+        };
+        foreach (var color in colors)
+        {
+            yield return new MaterialPreset("paint-satin-" + color.Id, "Pintura satinada " + color.Label,
+                MaterialFamily.Paint, Matte("Pintura satinada " + color.Label, color.R, color.G, color.B, .32f));
+            yield return new MaterialPreset("paint-matte-" + color.Id, "Pintura mate " + color.Label,
+                MaterialFamily.Paint, Matte("Pintura mate " + color.Label, color.R, color.G, color.B, .92f));
+            yield return new MaterialPreset("stucco-" + color.Id, "Estuco " + color.Label,
+                MaterialFamily.Paint, Matte("Estuco " + color.Label, color.R, color.G, color.B, .88f,
+                    SurfacePattern.Concrete, 2.2f));
+            yield return new MaterialPreset("ceramic-" + color.Id, "Cerámica " + color.Label,
+                MaterialFamily.Floor, Matte("Cerámica " + color.Label, color.R, color.G, color.B, .18f,
+                    SurfacePattern.Tiles, .65f));
+            yield return new MaterialPreset("fabric-" + color.Id, "Tela " + color.Label,
+                MaterialFamily.Fabric, Matte("Tela " + color.Label, color.R, color.G, color.B, .95f,
+                    SurfacePattern.Fabric, .5f));
+        }
+    }
 
     /// <summary>The preset stored in an assignment path, or null when the path is not a preset.</summary>
     public static MaterialPreset? FromPath(string? path) =>
