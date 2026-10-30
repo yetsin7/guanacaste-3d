@@ -1,6 +1,10 @@
 using System.Collections;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Media;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
 using Guanacaste3D.Desktop;
 
 internal static partial class InteractionChecks
@@ -27,5 +31,35 @@ internal static partial class InteractionChecks
         Check(count >= 19, "The built-in catalog includes the photographic texture collection");
         Check(resolve.Invoke(null, ["builtin:../outside", null]) is null,
             "Unknown built-in texture identifiers cannot escape the texture catalog");
+        // Regression: editing the size/relief of a library preset must affect the actual
+        // ray-traced material, not merely the saved project values.
+        var assignment = new RenderMaterialAssignment(SurfaceKind.Wall, MaterialPresets.Prefix + "oak-light")
+        {
+            TextureSize = 0.73,
+            Relief = 0.64
+        };
+        var assignments = new[] { assignment };
+        var resolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+            BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [assignments, null, true])!;
+        var rendered = resolver(SurfaceKind.Wall);
+        Check(rendered.Texture is not null &&
+              Math.Abs(rendered.TextureSize - 0.73f) < 0.0001f &&
+              Math.Abs(rendered.TextureRelief - 0.64f) < 0.0001f,
+            "Preset material edits affect texture scale and relief in the renderer");
+
+        // The ordinary WPF 3D viewport should show the same photographic texture.
+        var previews = (IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>)
+            library.GetMethod("Previews3D", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, [assignments, null])!;
+        Check(previews.TryGetValue(SurfaceKind.Wall, out var preview) &&
+              preview.Image is not null && Math.Abs(preview.Size - 0.73) < 1e-9,
+            "A textured preset appears in the interactive 3D viewport at its edited scale");
+
+        var plain = new[] { new RenderMaterialAssignment(SurfaceKind.Wall, MaterialPresets.Prefix + "paint-white") };
+        var plainPreviews = (IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>)
+            library.GetMethod("Previews3D", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, [plain, null])!;
+        Check(!plainPreviews.ContainsKey(SurfaceKind.Wall),
+            "Untextured presets do not resolve as nonexistent image files");
     }
 }
