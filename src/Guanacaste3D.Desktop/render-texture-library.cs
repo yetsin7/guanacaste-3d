@@ -133,7 +133,13 @@ internal static class RenderTextureLibrary
         var result = new Dictionary<SurfaceKind, (ImageSource, double)>();
         foreach (var assignment in assignments)
         {
-            var path = Resolve(assignment.TexturePath, projectFile);
+            // Presets store a material: identifier, not a filesystem path. Resolve the
+            // preset's bundled texture so the interactive 3D viewport matches the render.
+            var preset = MaterialPresets.FromPath(assignment.TexturePath);
+            var path = preset is not null
+                ? preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null
+                : assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal)
+                    ? null : Resolve(assignment.TexturePath, projectFile);
             if (path is null || !File.Exists(path)) continue;
             try
             {
@@ -175,7 +181,13 @@ internal static class RenderTextureLibrary
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
                 var image = preset.TextureKey is { } key ? Load(Resolve(BuiltInPrefix + key, projectFile)) : null;
-                textured[assignment.Category] = MaterialPresets.Build(preset, image);
+                // Preserve the preset's PBR values while honoring the project's editable
+                // tiling and relief. Previously these edits were saved but ignored by rendering.
+                textured[assignment.Category] = MaterialPresets.Build(preset, image) with
+                {
+                    TextureSize = (float)assignment.TextureSize,
+                    TextureRelief = (float)assignment.Relief
+                };
                 continue;
             }
             if (assignment.Category == SurfaceKind.Glass) continue;
