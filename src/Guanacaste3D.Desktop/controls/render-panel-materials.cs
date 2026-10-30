@@ -73,7 +73,8 @@ public partial class RenderPanel
                 {
                     Content = Text(texture.LabelKey), Tag = RenderTextureLibrary.BuiltInPrefix + texture.Key
                 });
-            if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal))
+            if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
+                !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
                 picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
             picker.SelectedItem = picker.Items.OfType<ComboBoxItem>()
