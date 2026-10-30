@@ -89,6 +89,12 @@ internal static class SurfacePatterns
                 var grain = ValueNoise(u * 22f, v * 22f);
                 return new Vector3(0.94f + 0.07f * blotch + 0.04f * grain);
             }
+            case SurfacePattern.Asphalt:
+            {
+                var wear = ValueNoise(u * 0.7f, v * 0.7f);
+                var aggregate = ValueNoise(u * 32f + 17, v * 32f - 8);
+                return new Vector3(0.78f + 0.26f * wear + 0.28f * aggregate);
+            }
             case SurfacePattern.Foliage:
             {
                 // Sunlit leaf clusters turn yellow-green, the gaps between them fall to a deep blue-green.

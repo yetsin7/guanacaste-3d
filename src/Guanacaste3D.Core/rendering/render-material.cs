@@ -28,7 +28,9 @@ public enum SurfacePattern : byte
     /// <summary>Leaf-to-leaf color variation: fresh, mature and a few yellowing leaves.</summary>
     Leaves,
     /// <summary>Woven textile: a fine basket weave with a soft nap.</summary>
-    Fabric
+    Fabric,
+    /// <summary>Weathered asphalt with fine aggregate and irregular surface variation.</summary>
+    Asphalt
 }
 
 /// <summary>
@@ -159,7 +161,7 @@ public static class MaterialLibrary
         SurfaceKind.Asphalt => new RenderMaterial
         {
             Name = "Asfalto", BaseColor = new(0.11f, 0.11f, 0.11f), Roughness = 0.95f,
-            Pattern = SurfacePattern.Concrete, PatternScale = 0.5f
+            Pattern = SurfacePattern.Asphalt, PatternScale = 1f
         },
         SurfaceKind.Glass => new RenderMaterial
         {
