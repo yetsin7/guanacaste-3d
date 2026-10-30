@@ -78,6 +78,7 @@ public partial class MainWindow
         public string ProjectName => window._session.Document.Name;
         public (Vector3 Min, Vector3 Max) SceneBounds() => window.SceneBounds();
         public Task<RenderScene?> GetSceneAsync() => window.GetSceneAsync();
+        public int SceneVersion => window._sceneVersion;
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
 
