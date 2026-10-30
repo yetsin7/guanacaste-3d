@@ -876,6 +876,20 @@ public static class BuildingMesher
     /// concrete, a painted slab as painted plaster (a white soffit), asphalt as road surfacing, grass as lawn, anything else
     /// as flooring.
     /// </summary>
+    /// <summary>
+    /// Surface to edit when selecting a slab from the render viewport. Match the
+    /// actual mesher: pitched roofs use roof tiles, topography uses ground,
+    /// and flat slabs use their specified finish (including water and paint).
+    /// A prism picker selects an element, not an individual triangle, so this
+    /// intentionally targets the main visible surface rather than a side face.
+    /// </summary>
+    public static SurfaceKind SelectableSlabSurface(FloorSlab floor)
+    {
+        ArgumentNullException.ThrowIfNull(floor);
+        return floor.IsToposolid ? SurfaceKind.Ground :
+            floor.IsPitched ? SurfaceKind.Roof : SlabSurface(floor);
+    }
+
     private static SurfaceKind SlabSurface(FloorSlab floor) => floor.Kind == FloorKind.Water
         ? SurfaceKind.Water
         : floor.Finish switch
