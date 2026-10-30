@@ -1,3 +1,5 @@
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
 using System.Numerics;
 using Guanacaste3D.Core.Rendering;
 
@@ -92,5 +94,39 @@ static class RenderLookChecks
         var rejected = false;
         try { (setup with { StyleId = "no-such-style" }).Validate(); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "A saved render setup must name an existing style");
+        
+        // Material editing must preserve independent scale and relief through undo and native persistence.
+        var materialsSession = new DocumentSession(BuildingDocument.Create("Material editing"));
+        var edited = new RenderMaterialAssignment(SurfaceKind.Wall, MaterialPresets.Prefix + "oak-light")
+        {
+            TextureSize = 0.75, Relief = 0.65
+        };
+        materialsSession.SetRenderMaterial(edited);
+        check(materialsSession.Document.RenderMaterials.Single() == edited,
+            "A custom material scale and relief are stored together");
+        materialsSession.Undo();
+        check(materialsSession.Document.RenderMaterials.Count == 0,
+            "Undo restores the stock material after an edit");
+        materialsSession.Redo();
+        check(materialsSession.Document.RenderMaterials.Single() == edited,
+            "Redo restores the material and its physical texture settings");
+        var invalidReliefRejected = false;
+        try { materialsSession.SetRenderMaterial(edited with { Relief = 1.5 }); }
+        catch (InvalidDataException) { invalidReliefRejected = true; }
+        check(invalidReliefRejected && materialsSession.Document.RenderMaterials.Single() == edited,
+            "Out-of-range relief is rejected without changing the document");
+        var materialPath = Path.Combine(Path.GetTempPath(), "guanacaste-material-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(materialPath, materialsSession.Document);
+            var reopened = ProjectFile.Load(materialPath);
+            check(reopened.RenderMaterials.Single() == edited,
+                "Native project round trip preserves the edited material and relief");
+        }
+        finally
+        {
+            if (File.Exists(materialPath)) File.Delete(materialPath);
+            if (File.Exists(materialPath + ".bak")) File.Delete(materialPath + ".bak");
+        }
     }
 }
