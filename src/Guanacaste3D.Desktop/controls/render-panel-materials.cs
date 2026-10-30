@@ -21,6 +21,11 @@ public partial class RenderPanel
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
 
+    private void MaterialSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (_ready && _source is not null) RefreshMaterialRows();
+    }
+
     internal void FocusMaterial(SurfaceKind category)
     {
         _focusedMaterial = category;
@@ -52,7 +57,12 @@ public partial class RenderPanel
             if (_focusedMaterial == category) { picker.BorderBrush = System.Windows.Media.Brushes.DarkOrange; picker.BorderThickness = new Thickness(2); }
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
             // The material library, grouped under headings that cannot be chosen themselves.
-            foreach (var group in MaterialPresets.All.GroupBy(preset => preset.Group))
+            var search = MaterialSearch.Text.Trim();
+            foreach (var group in MaterialPresets.All
+                .Where(preset => search.Length == 0 ||
+                    preset.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
+                    preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(preset => preset.Group))
             {
                 picker.Items.Add(new ComboBoxItem
                 {
@@ -64,6 +74,13 @@ public partial class RenderPanel
                         Content = "   " + preset.Name, Tag = MaterialPresets.Prefix + preset.Id
                     });
             }
+            // Filtering must never hide the currently assigned preset or make it appear stock.
+            if (assignment is not null && MaterialPresets.FromPath(assignment.TexturePath) is { } selectedPreset &&
+                !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
+                picker.Items.Add(new ComboBoxItem
+                {
+                    Content = "✓ " + selectedPreset.Name, Tag = assignment.TexturePath
+                });
             picker.Items.Add(new ComboBoxItem
             {
                 Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
