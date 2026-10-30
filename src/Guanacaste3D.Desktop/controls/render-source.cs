@@ -27,6 +27,9 @@ internal interface IRenderSource
     /// <summary>The current scene, built in the background and cached; null when the project is empty.</summary>
     Task<RenderScene?> GetSceneAsync();
 
+    /// <summary>Incremented whenever geometry, visibility, or materials invalidate the cached scene.</summary>
+    int SceneVersion { get; }
+
     /// <summary>Ray queries for the current scene, or null until they are built.</summary>
     SceneQuery? Query { get; }
 
