@@ -31,6 +31,19 @@ internal static partial class InteractionChecks
         Check(count >= 19, "The built-in catalog includes the photographic texture collection");
         Check(resolve.Invoke(null, ["builtin:../outside", null]) is null,
             "Unknown built-in texture identifiers cannot escape the texture catalog");
+        // A missing library preset may remain in a legacy project. It is an
+        // identifier, not a relative file path, and must safely use the stock finish.
+        var projectFile = Path.Combine(Path.GetTempPath(), "legacy-material.g3d");
+        Check(resolve.Invoke(null, ["material:removed-from-library", projectFile]) is null,
+            "Unknown library material identifiers are never interpreted as filesystem paths");
+        var missing = new[]
+        {
+            new RenderMaterialAssignment(SurfaceKind.Wall, "material:removed-from-library")
+        };
+        var missingResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+            BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [missing, projectFile, true])!;
+        Check(missingResolver(SurfaceKind.Wall) == MaterialLibrary.ForKind(SurfaceKind.Wall),
+            "Missing library materials fall back to the stock finish without crashing");
         // Regression: editing the size/relief of a library preset must affect the actual
         // ray-traced material, not merely the saved project values.
         var assignment = new RenderMaterialAssignment(SurfaceKind.Wall, MaterialPresets.Prefix + "oak-light")
