@@ -152,7 +152,8 @@ public partial class MainWindow
             SurfaceKind? material = picked.Kind switch
             {
                 PickedKind.Wall => SurfaceKind.Wall,
-                PickedKind.Floor => SurfaceKind.Floor,
+                PickedKind.Floor => _session.Document.Floors.FirstOrDefault(floor => floor.Id == picked.Id) is { } slab
+                    ? BuildingMesher.SelectableSlabSurface(slab) : SurfaceKind.Floor,
                 PickedKind.Opening => _session.Document.Openings.Any(item =>
                     item.Id == picked.Id && item.Kind == OpeningKind.Window)
                     ? SurfaceKind.Glass : SurfaceKind.DoorLeaf,
