@@ -175,7 +175,7 @@ public static class MaterialPresets
             yield return new MaterialPreset("ceramic-" + color.Id, "Cerámica " + color.Label,
                 MaterialFamily.Floor, Matte("Cerámica " + color.Label, color.R, color.G, color.B, .18f,
                     SurfacePattern.Tiles, .65f));
-            yield return new MaterialPreset("fabric-" + color.Id, "Tela " + color.Label,
+            yield return new MaterialPreset("fabric-woven-" + color.Id, "Tela " + color.Label,
                 MaterialFamily.Fabric, Matte("Tela " + color.Label, color.R, color.G, color.B, .95f,
                     SurfacePattern.Fabric, .5f));
         }
