@@ -68,6 +68,22 @@ static class RenderLookChecks
             if (style == CloudStyle.Storm) check(samples.Max(sample => sample.Thickness) > 0.9f, "Storm clouds are deep");
         }
 
+        // Picking a slab in the render editor must target the material that the
+        // geometry builder actually used, not always the generic Floor category.
+        var slab = new FloorSlab(Guid.NewGuid(), Guid.NewGuid(), "Material selection",
+            [new Point2(0, 0), new Point2(4, 0), new Point2(4, 4), new Point2(0, 4)], 0.2);
+        check(BuildingMesher.SelectableSlabSurface(slab) == SurfaceKind.Floor &&
+              BuildingMesher.SelectableSlabSurface(slab with { Kind = FloorKind.Water }) == SurfaceKind.Water &&
+              BuildingMesher.SelectableSlabSurface(slab with { Kind = FloorKind.Toposolid }) == SurfaceKind.Ground,
+            "Render picking resolves ordinary slabs, pools and topography to their actual materials");
+        check(BuildingMesher.SelectableSlabSurface(slab with
+              { Kind = FloorKind.Roof, Shape = RoofShape.Gable, Pitch = 30 }) == SurfaceKind.Roof &&
+              BuildingMesher.SelectableSlabSurface(slab with
+              { Kind = FloorKind.Ceiling, Finish = FinishKind.Paint }) == SurfaceKind.Wall &&
+              BuildingMesher.SelectableSlabSurface(slab with
+              { Kind = FloorKind.Floor, Finish = FinishKind.ExposedConcrete }) == SurfaceKind.WallConcrete,
+            "Render picking respects pitched roofs and the assigned slab finish");
+
         // Materials.
         var presets = MaterialPresets.All;
         check(presets.Count >= 60 && presets.Select(preset => preset.Id).Distinct().Count() == presets.Count &&
