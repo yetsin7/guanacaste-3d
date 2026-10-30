@@ -25,7 +25,7 @@ public partial class RenderPanel
     {
         _focusedMaterial = category;
         RefreshMaterialRows();
-        if (SectionTabs.Items.Count > 2) SectionTabs.SelectedIndex = 2;
+        if (SectionTabs.Items.Count > 3) SectionTabs.SelectedIndex = 3;
     }
 
 
