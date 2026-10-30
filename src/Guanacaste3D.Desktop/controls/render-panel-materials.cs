@@ -29,8 +29,8 @@ public partial class RenderPanel
     internal void FocusMaterial(SurfaceKind category)
     {
         _focusedMaterial = category;
-        RefreshMaterialRows();
         if (SectionTabs.Items.Count > 3) SectionTabs.SelectedIndex = 3;
+        RefreshMaterialRows();
     }
 
 
@@ -61,7 +61,8 @@ public partial class RenderPanel
             foreach (var group in MaterialPresets.All
                 .Where(preset => search.Length == 0 ||
                     preset.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
-                    preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    Text($"MaterialFamily.{preset.Group}").Contains(search, StringComparison.CurrentCultureIgnoreCase))
                 .GroupBy(preset => preset.Group))
             {
                 picker.Items.Add(new ComboBoxItem
@@ -81,15 +82,42 @@ public partial class RenderPanel
                 {
                     Content = "✓ " + selectedPreset.Name, Tag = assignment.TexturePath
                 });
+            // Preserve a missing preset in the UI instead of silently displaying Stock.
+            // The renderer uses a safe stock fallback until the user replaces it.
+            if (assignment is not null &&
+                assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal) &&
+                MaterialPresets.FromPath(assignment.TexturePath) is null)
+                picker.Items.Add(new ComboBoxItem
+                {
+                    Content = "⚠ Material no disponible: " + assignment.TexturePath[MaterialPresets.Prefix.Length..],
+                    Tag = assignment.TexturePath
+                });
             picker.Items.Add(new ComboBoxItem
             {
                 Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
             });
-            foreach (var texture in RenderTextureLibrary.BuiltIn)
+            foreach (var texture in RenderTextureLibrary.BuiltIn.Where(texture =>
+                search.Length == 0 ||
+                texture.Key.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                Text(texture.LabelKey).Contains(search, StringComparison.CurrentCultureIgnoreCase)))
                 picker.Items.Add(new ComboBoxItem
                 {
                     Content = Text(texture.LabelKey), Tag = RenderTextureLibrary.BuiltInPrefix + texture.Key
                 });
+            if (assignment is not null &&
+                assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
+                !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
+            {
+                var selectedTexture = RenderTextureLibrary.BuiltIn.FirstOrDefault(texture =>
+                    RenderTextureLibrary.BuiltInPrefix + texture.Key == assignment.TexturePath);
+                picker.Items.Add(new ComboBoxItem
+                {
+                    Content = selectedTexture is null
+                        ? "⚠ Textura no disponible: " + assignment.TexturePath[RenderTextureLibrary.BuiltInPrefix.Length..]
+                        : "✓ " + Text(selectedTexture.LabelKey),
+                    Tag = assignment.TexturePath
+                });
+            }
             if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
                 !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
                 picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
