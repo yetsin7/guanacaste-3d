@@ -73,7 +73,7 @@ static class RenderLookChecks
                   preset.TextureSize > 0 && Enum.IsDefined(preset.Group)),
             "The material library has 60+ presets with unique ids and physical values");
         check(presets.Count >= 120 && presets.Count(preset => preset.Id.StartsWith("paint-satin-", StringComparison.Ordinal)) >= 12 &&
-              presets.Count(preset => preset.Id.StartsWith("fabric-", StringComparison.Ordinal)) >= 12,
+              presets.Count(preset => preset.Id.StartsWith("fabric-woven-", StringComparison.Ordinal)) >= 12,
             "Expanded library includes 120+ presets and complete finish colour variants");
         check(RenderLooks.Styles.Count >= 20 &&
               RenderLooks.Styles.Select(style => style.Id).Distinct().Count() == RenderLooks.Styles.Count,
