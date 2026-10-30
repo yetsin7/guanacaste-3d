@@ -75,6 +75,10 @@ internal static class RenderTextureLibrary
     /// <summary>Full path of a stored texture path: a shipped texture, an absolute path, or one relative to the project.</summary>
     public static string? Resolve(string texturePath, string? projectFile)
     {
+        // Library identifiers are not file paths. Unknown material: IDs from older
+        // projects must not reach Path.GetFullPath (invalid colon on Windows).
+        if (texturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
+            return null;
         if (texturePath.StartsWith(BuiltInPrefix, StringComparison.Ordinal))
         {
             var key = texturePath[BuiltInPrefix.Length..];
