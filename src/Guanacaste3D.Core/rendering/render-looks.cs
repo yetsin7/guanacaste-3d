@@ -73,7 +73,17 @@ public static class RenderLooks
         new("monochrome", "RenderStyle.Monochrome", finish => finish with
         {
             Monochrome = true, Contrast = 1.15f, Sharpen = 0.4f, FilmGrain = 0.3f, Vignette = 0.2f
-        })
+        }),
+        new("noir", "Cine negro", finish => finish with { Monochrome = true, Contrast = 1.35f, Vignette = .42f, FilmGrain = .35f }),
+        new("pastel", "Pastel suave", finish => finish with { Saturation = .72f, Contrast = .88f, Shadows = .42f, Highlights = -.22f }),
+        new("vintage", "Fotografía vintage", finish => finish with { Temperature = .34f, Saturation = .78f, FilmGrain = .4f, Vignette = .3f }),
+        new("high-key", "Estudio luminoso", finish => finish with { Shadows = .58f, Highlights = -.18f, Contrast = .9f, Sharpen = .22f }),
+        new("low-key", "Estudio dramático", finish => finish with { Shadows = -.3f, Contrast = 1.32f, Vignette = .4f }),
+        new("night-architecture", "Arquitectura nocturna", finish => finish with { Temperature = -.28f, Bloom = .35f, Glare = .5f, Shadows = .24f }),
+        new("warm-minimal", "Minimalista cálido", finish => finish with { Temperature = .24f, Saturation = .88f, Contrast = .96f, Sharpen = .2f }),
+        new("cool-modern", "Moderno frío", finish => finish with { Temperature = -.24f, Contrast = 1.08f, Vibrance = .18f, Sharpen = .4f }),
+        new("lush-landscape", "Paisaje vibrante", finish => finish with { Vibrance = .58f, Saturation = 1.1f, Shadows = .25f, Sharpen = .3f }),
+        new("soft-dream", "Ensueño", finish => finish with { Bloom = .42f, Glare = .25f, Contrast = .9f, Sharpen = .05f })
     ];
 
     /// <summary>Skies: each pairs a light with clouds and a fitting style.</summary>
