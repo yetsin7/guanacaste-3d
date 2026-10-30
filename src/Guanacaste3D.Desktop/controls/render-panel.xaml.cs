@@ -178,6 +178,7 @@ public partial class RenderPanel : UserControl
         }
         if (_source is null || !IsVisible) return;
         var source = _source;
+        var sceneVersion = source.SceneVersion;
         var request = ++_sceneRefreshVersion;
         RenderScene? scene;
         try
@@ -190,7 +191,7 @@ public partial class RenderPanel : UserControl
         }
         catch (Exception exception)
         {
-            if (request == _sceneRefreshVersion && !Dispatcher.HasShutdownStarted)
+            if (request == _sceneRefreshVersion && sceneVersion == source.SceneVersion && !Dispatcher.HasShutdownStarted)
                 StatusText.Text = UiText.Get("RenderPanel.PreviewFailed") + ": " + exception.Message;
             return;
         }
@@ -202,12 +203,12 @@ public partial class RenderPanel : UserControl
             if (!Dispatcher.HasShutdownStarted)
                 _ = Dispatcher.BeginInvoke((Action)(() =>
                 {
-                    if (request == _sceneRefreshVersion && ReferenceEquals(source, _source) && IsVisible)
+                    if (request == _sceneRefreshVersion && sceneVersion == source.SceneVersion && ReferenceEquals(source, _source) && IsVisible)
                         ApplyPreviewScene(scene);
                 }));
             return;
         }
-        if (request != _sceneRefreshVersion || !ReferenceEquals(source, _source) || !IsVisible) return;
+        if (request != _sceneRefreshVersion || sceneVersion != source.SceneVersion || !ReferenceEquals(source, _source) || !IsVisible) return;
         ApplyPreviewScene(scene);
     }
 
