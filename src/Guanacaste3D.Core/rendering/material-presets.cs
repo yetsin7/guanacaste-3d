@@ -38,7 +38,8 @@ public static class MaterialPresets
             key, size, relief);
 
     public static IReadOnlyList<MaterialPreset> All { get; } =
-    [
+    (new MaterialPreset[]
+    {
         // Paint and plaster.
         new("paint-white", "Pintura blanca mate", MaterialFamily.Paint, Matte("Pintura blanca mate", 0.83f, 0.82f, 0.79f, 0.92f, SurfacePattern.Concrete, 2)),
         Textured("plaster-white", "Estuco blanco texturizado", MaterialFamily.Paint, "ambientcg-plaster001", 1.0, 0.9f, 0.15),
@@ -142,7 +143,7 @@ public static class MaterialPresets
         {
             Name = "Pintura de auto blanca", BaseColor = new(0.80f, 0.80f, 0.79f), Roughness = 0.1f, Metallic = 0.1f
         })
-    ].Concat(ExpandedCatalog()).ToArray();
+    }).Concat(ExpandedCatalog()).ToArray();
 
     /// <summary>Additional physically based colour/finish variations without external texture dependencies.</summary>
     private static IEnumerable<MaterialPreset> ExpandedCatalog()
