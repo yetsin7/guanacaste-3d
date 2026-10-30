@@ -85,6 +85,19 @@ public partial class RenderPanel
             {
                 if (e.Key == System.Windows.Input.Key.Enter) MaterialSizeChanged(category, size);
             };
+            var restore = new Button
+            {
+                Content = "Restaurar", ToolTip = "Volver al material original de esta superficie",
+                Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2),
+                IsEnabled = assignment is not null
+            };
+            restore.Click += (_, _) =>
+            {
+                _source?.AssignRenderMaterial(category, null, 1, 0);
+                FocusMaterial(category);
+            };
+            DockPanel.SetDock(restore, Dock.Right);
+            row.Children.Add(restore);
             var duplicate = new Button
             {
                 Content = "Duplicar a…", ToolTip = "Copiar este material a otra categoría",
