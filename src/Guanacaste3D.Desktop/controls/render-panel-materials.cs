@@ -85,6 +85,31 @@ public partial class RenderPanel
             {
                 if (e.Key == System.Windows.Input.Key.Enter) MaterialSizeChanged(category, size);
             };
+            var duplicate = new Button
+            {
+                Content = "Duplicar a…", ToolTip = "Copiar este material a otra categoría",
+                Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2),
+                IsEnabled = assignment is not null
+            };
+            var menu = new ContextMenu();
+            foreach (var (targetCategory, targetLabel) in RenderTextureLibrary.Categories)
+            {
+                if (targetCategory == category) continue;
+                var target = targetCategory;
+                var item = new MenuItem { Header = Text(targetLabel) };
+                item.Click += (_, _) =>
+                {
+                    if (_source is null) return;
+                    var current = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+                    if (current is null) return;
+                    _source.AssignRenderMaterial(target, current.TexturePath, current.TextureSize, current.Relief);
+                    FocusMaterial(target);
+                };
+                menu.Items.Add(item);
+            }
+            duplicate.Click += (_, _) => { duplicate.ContextMenu = menu; menu.PlacementTarget = duplicate; menu.IsOpen = true; };
+            DockPanel.SetDock(duplicate, Dock.Right);
+            row.Children.Add(duplicate);
             row.Children.Add(size);
             row.Children.Add(picker);
             MaterialRows.Children.Add(row);
