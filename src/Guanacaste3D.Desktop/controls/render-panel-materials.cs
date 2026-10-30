@@ -41,14 +41,13 @@ public partial class RenderPanel
             var label = new TextBlock { Style = (Style)FindResource("PanelLabel"), Text = Text(labelKey) };
             if (_focusedMaterial == category) { label.FontWeight = FontWeights.Bold; label.Foreground = System.Windows.Media.Brushes.DarkOrange; }
             MaterialRows.Children.Add(label);
-            var row = new DockPanel { LastChildFill = true };
+            var row = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
             var size = new TextBox
             {
                 Width = 52, Margin = new Thickness(6, 0, 0, 0), VerticalContentAlignment = VerticalAlignment.Center,
                 Text = (assignment?.TextureSize ?? 1.0).ToString("0.##", CultureInfo.CurrentCulture),
                 ToolTip = Text("RenderPanel.TextureSizeHint"), IsEnabled = assignment is not null
             };
-            DockPanel.SetDock(size, Dock.Right);
             var picker = new ComboBox();
             if (_focusedMaterial == category) { picker.BorderBrush = System.Windows.Media.Brushes.DarkOrange; picker.BorderThickness = new Thickness(2); }
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
@@ -96,8 +95,6 @@ public partial class RenderPanel
                 _source?.AssignRenderMaterial(category, null, 1, 0);
                 FocusMaterial(category);
             };
-            DockPanel.SetDock(restore, Dock.Right);
-            row.Children.Add(restore);
             var duplicate = new Button
             {
                 Content = "Duplicar a…", ToolTip = "Copiar este material a otra categoría",
@@ -121,10 +118,38 @@ public partial class RenderPanel
                 menu.Items.Add(item);
             }
             duplicate.Click += (_, _) => { duplicate.ContextMenu = menu; menu.PlacementTarget = duplicate; menu.IsOpen = true; };
-            DockPanel.SetDock(duplicate, Dock.Right);
-            row.Children.Add(duplicate);
-            row.Children.Add(size);
+            // Give the material name its full width; controls no longer compete for
+            // the same narrow horizontal row in the 420 px render sidebar.
+            picker.HorizontalAlignment = HorizontalAlignment.Stretch;
             row.Children.Add(picker);
+            var details = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            details.Children.Add(new TextBlock
+            {
+                Text = "Escala (m)", VerticalAlignment = VerticalAlignment.Center
+            });
+            details.Children.Add(size);
+            var relief = new TextBox
+            {
+                Width = 52, Margin = new Thickness(8, 0, 0, 0),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Text = (assignment?.Relief ?? 0.3).ToString("0.##", CultureInfo.CurrentCulture),
+                ToolTip = "Relieve de la textura: 0 (plano) a 1 (máximo)",
+                IsEnabled = assignment is not null
+            };
+            relief.LostFocus += (_, _) => MaterialReliefChanged(category, relief);
+            relief.KeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Enter) MaterialReliefChanged(category, relief);
+            };
+            details.Children.Add(new TextBlock
+            {
+                Text = "Relieve", Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            details.Children.Add(relief);
+            details.Children.Add(duplicate);
+            details.Children.Add(restore);
+            row.Children.Add(details);
             MaterialRows.Children.Add(row);
         }
         _refreshingMaterials = false;
@@ -181,6 +206,18 @@ public partial class RenderPanel
         var value = ReadSize(size, assignment.TextureSize);
         if (Math.Abs(value - assignment.TextureSize) < 1e-9) return;
         _source.AssignRenderMaterial(category, assignment.TexturePath, value, assignment.Relief);
+    }
+
+    /// <summary>Updates the image relief independently of texture scale; the change is undoable.</summary>
+    private void MaterialReliefChanged(SurfaceKind category, TextBox relief)
+    {
+        if (_refreshingMaterials || _source is null) return;
+        var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+        if (assignment is null) return;
+        var value = double.TryParse(relief.Text.Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out var parsed)
+            && double.IsFinite(parsed) && parsed is >= 0 and <= 1 ? parsed : assignment.Relief;
+        if (Math.Abs(value - assignment.Relief) < 1e-9) return;
+        _source.AssignRenderMaterial(category, assignment.TexturePath, assignment.TextureSize, value);
     }
 
     private static double ReadSize(TextBox box, double fallback) =>
