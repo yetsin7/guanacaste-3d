@@ -55,76 +55,27 @@ public partial class RenderPanel
             };
             var picker = new ComboBox();
             if (_focusedMaterial == category) { picker.BorderBrush = System.Windows.Media.Brushes.DarkOrange; picker.BorderThickness = new Thickness(2); }
+            // Keep the current assignment visible, but defer the large searchable catalog until opened.
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
-            // The material library, grouped under headings that cannot be chosen themselves.
-            var search = MaterialSearch.Text.Trim();
-            foreach (var group in MaterialPresets.All
-                .Where(preset => search.Length == 0 ||
-                    preset.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
-                    preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    Text($"MaterialFamily.{preset.Group}").Contains(search, StringComparison.CurrentCultureIgnoreCase))
-                .GroupBy(preset => preset.Group))
-            {
+            if (assignment is not null)
                 picker.Items.Add(new ComboBoxItem
                 {
-                    Content = Text($"MaterialFamily.{group.Key}"), IsEnabled = false, FontWeight = FontWeights.SemiBold
+                    Content = MaterialDisplayName(assignment.TexturePath), Tag = assignment.TexturePath
                 });
-                foreach (var preset in group)
-                    picker.Items.Add(new ComboBoxItem
-                    {
-                        Content = "   " + preset.Name, Tag = MaterialPresets.Prefix + preset.Id
-                    });
-            }
-            // Filtering must never hide the currently assigned preset or make it appear stock.
-            if (assignment is not null && MaterialPresets.FromPath(assignment.TexturePath) is { } selectedPreset &&
-                !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
-                picker.Items.Add(new ComboBoxItem
-                {
-                    Content = "✓ " + selectedPreset.Name, Tag = assignment.TexturePath
-                });
-            // Preserve a missing preset in the UI instead of silently displaying Stock.
-            // The renderer uses a safe stock fallback until the user replaces it.
-            if (assignment is not null &&
-                assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal) &&
-                MaterialPresets.FromPath(assignment.TexturePath) is null)
-                picker.Items.Add(new ComboBoxItem
-                {
-                    Content = "⚠ Material no disponible: " + assignment.TexturePath[MaterialPresets.Prefix.Length..],
-                    Tag = assignment.TexturePath
-                });
-            picker.Items.Add(new ComboBoxItem
-            {
-                Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
-            });
-            foreach (var texture in RenderTextureLibrary.BuiltIn.Where(texture =>
-                search.Length == 0 ||
-                texture.Key.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                Text(texture.LabelKey).Contains(search, StringComparison.CurrentCultureIgnoreCase)))
-                picker.Items.Add(new ComboBoxItem
-                {
-                    Content = Text(texture.LabelKey), Tag = RenderTextureLibrary.BuiltInPrefix + texture.Key
-                });
-            if (assignment is not null &&
-                assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
-                !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
-            {
-                var selectedTexture = RenderTextureLibrary.BuiltIn.FirstOrDefault(texture =>
-                    RenderTextureLibrary.BuiltInPrefix + texture.Key == assignment.TexturePath);
-                picker.Items.Add(new ComboBoxItem
-                {
-                    Content = selectedTexture is null
-                        ? "⚠ Textura no disponible: " + assignment.TexturePath[RenderTextureLibrary.BuiltInPrefix.Length..]
-                        : "✓ " + Text(selectedTexture.LabelKey),
-                    Tag = assignment.TexturePath
-                });
-            }
-            if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
-                !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
-                picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
-            picker.SelectedItem = picker.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(item => item.Tag as string == (assignment?.TexturePath ?? StockTag)) ?? picker.Items[0];
-            picker.SelectionChanged += (_, _) => MaterialChosen(category, picker, size);
+            picker.SelectedIndex = assignment is null ? 0 : 1;
+            var loadingOptions = false;
+            picker.DropDownOpened += (_, _) =>
+            {
+                loadingOptions = true;
+                try
+                {
+                    PopulateMaterialOptions(picker, _source?.RenderMaterials.FirstOrDefault(material =>
+                        material.Category == category));
+                }
+                finally { loadingOptions = false; }
+            };
+            picker.SelectionChanged += (_, _) => { if (!loadingOptions) MaterialChosen(category, picker, size); };
             size.LostFocus += (_, _) => MaterialSizeChanged(category, size);
             size.KeyDown += (_, e) =>
             {
@@ -215,6 +166,97 @@ public partial class RenderPanel
         }
     }
 
+    /// <summary>Builds the full library only when the user opens a picker, avoiding thousands of idle WPF items.</summary>
+    private void PopulateMaterialOptions(ComboBox picker, RenderMaterialAssignment? assignment)
+    {
+        picker.Items.Clear();
+        picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
+        // The material library, grouped under headings that cannot be chosen themselves.
+        var search = MaterialSearch.Text.Trim();
+        foreach (var group in MaterialPresets.All
+            .Where(preset => search.Length == 0 ||
+                preset.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
+                preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                Text($"MaterialFamily.{preset.Group}").Contains(search, StringComparison.CurrentCultureIgnoreCase))
+            .GroupBy(preset => preset.Group))
+        {
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = Text($"MaterialFamily.{group.Key}"), IsEnabled = false, FontWeight = FontWeights.SemiBold
+            });
+            foreach (var preset in group)
+                picker.Items.Add(new ComboBoxItem
+                {
+                    Content = "   " + preset.Name, Tag = MaterialPresets.Prefix + preset.Id
+                });
+        }
+        // Filtering must never hide the currently assigned preset or make it appear stock.
+        if (assignment is not null && MaterialPresets.FromPath(assignment.TexturePath) is { } selectedPreset &&
+            !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = "✓ " + selectedPreset.Name, Tag = assignment.TexturePath
+            });
+        // Preserve a missing preset in the UI instead of silently displaying Stock.
+        // The renderer uses a safe stock fallback until the user replaces it.
+        if (assignment is not null &&
+            assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal) &&
+            MaterialPresets.FromPath(assignment.TexturePath) is null)
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = "⚠ Material no disponible: " + assignment.TexturePath[MaterialPresets.Prefix.Length..],
+                Tag = assignment.TexturePath
+            });
+        picker.Items.Add(new ComboBoxItem
+        {
+            Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
+        });
+        foreach (var texture in RenderTextureLibrary.BuiltIn.Where(texture =>
+            search.Length == 0 ||
+            texture.Key.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            Text(texture.LabelKey).Contains(search, StringComparison.CurrentCultureIgnoreCase)))
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = Text(texture.LabelKey), Tag = RenderTextureLibrary.BuiltInPrefix + texture.Key
+            });
+        if (assignment is not null &&
+            assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
+            !picker.Items.OfType<ComboBoxItem>().Any(item => item.Tag as string == assignment.TexturePath))
+        {
+            var selectedTexture = RenderTextureLibrary.BuiltIn.FirstOrDefault(texture =>
+                RenderTextureLibrary.BuiltInPrefix + texture.Key == assignment.TexturePath);
+            picker.Items.Add(new ComboBoxItem
+            {
+                Content = selectedTexture is null
+                    ? "⚠ Textura no disponible: " + assignment.TexturePath[RenderTextureLibrary.BuiltInPrefix.Length..]
+                    : "✓ " + Text(selectedTexture.LabelKey),
+                Tag = assignment.TexturePath
+            });
+        }
+        if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
+            !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
+            picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
+        picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
+        picker.SelectedItem = picker.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag as string == (assignment?.TexturePath ?? StockTag)) ?? picker.Items[0];
+    }
+
+    private static string MaterialDisplayName(string path)
+    {
+        if (MaterialPresets.FromPath(path) is { } preset) return preset.Name;
+        if (path.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
+            return "⚠ Material no disponible: " + path[MaterialPresets.Prefix.Length..];
+        if (path.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal))
+        {
+            var texture = RenderTextureLibrary.BuiltIn.FirstOrDefault(item =>
+                RenderTextureLibrary.BuiltInPrefix + item.Key == path);
+            return texture is null
+                ? "⚠ Textura no disponible: " + path[RenderTextureLibrary.BuiltInPrefix.Length..]
+                : Text(texture.LabelKey);
+        }
+        return Path.GetFileName(path);
+    }
+
     private void MaterialChosen(SurfaceKind category, ComboBox picker, TextBox size)
     {
         if (_refreshingMaterials || _source is null || picker.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
@@ -231,7 +273,9 @@ public partial class RenderPanel
                 };
                 if (dialog.ShowDialog(Window.GetWindow(this)) == true)
                     _source.AssignRenderMaterial(category, dialog.FileName, ReadSize(size, 1), 0.3);
-                break;
+                // Cancel must restore the actual selection rather than leave "From file" selected.
+                RefreshMaterialRows();
+                return;
             case var preset when MaterialPresets.FromPath(preset) is { } chosen:
                 _source.AssignRenderMaterial(category, preset, chosen.TextureSize, chosen.Relief);
                 break;
