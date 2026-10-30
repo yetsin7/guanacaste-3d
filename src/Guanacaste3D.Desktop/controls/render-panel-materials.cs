@@ -90,6 +90,20 @@ public partial class RenderPanel
             MaterialRows.Children.Add(row);
         }
         _refreshingMaterials = false;
+        if (_focusedMaterial is { } focused)
+        {
+            var index = 0;
+            foreach (var (category, _) in RenderTextureLibrary.Categories)
+            {
+                if (category == focused && MaterialRows.Children[index * 2] is FrameworkElement label)
+                {
+                    Dispatcher.BeginInvoke(new Action(label.BringIntoView),
+                        System.Windows.Threading.DispatcherPriority.Loaded);
+                    break;
+                }
+                index++;
+            }
+        }
     }
 
     private void MaterialChosen(SurfaceKind category, ComboBox picker, TextBox size)
