@@ -19,6 +19,15 @@ public partial class RenderPanel
     private const string StockTag = "stock";
     private const string CustomTag = "custom";
     private bool _refreshingMaterials;
+    private SurfaceKind? _focusedMaterial;
+
+    internal void FocusMaterial(SurfaceKind category)
+    {
+        _focusedMaterial = category;
+        RefreshMaterialRows();
+        if (SectionTabs.Items.Count > 2) SectionTabs.SelectedIndex = 2;
+    }
+
 
     /// <summary>Rebuilds the material rows from the project, for example after undo or opening another project.</summary>
     private void RefreshMaterialRows()
@@ -29,7 +38,9 @@ public partial class RenderPanel
         foreach (var (category, labelKey) in RenderTextureLibrary.Categories)
         {
             var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
-            MaterialRows.Children.Add(new TextBlock { Style = (Style)FindResource("PanelLabel"), Text = Text(labelKey) });
+            var label = new TextBlock { Style = (Style)FindResource("PanelLabel"), Text = Text(labelKey) };
+            if (_focusedMaterial == category) { label.FontWeight = FontWeights.Bold; label.Foreground = System.Windows.Media.Brushes.DarkOrange; }
+            MaterialRows.Children.Add(label);
             var row = new DockPanel { LastChildFill = true };
             var size = new TextBox
             {
@@ -39,6 +50,7 @@ public partial class RenderPanel
             };
             DockPanel.SetDock(size, Dock.Right);
             var picker = new ComboBox();
+            if (_focusedMaterial == category) { picker.BorderBrush = System.Windows.Media.Brushes.DarkOrange; picker.BorderThickness = new Thickness(2); }
             picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
             // The material library, grouped under headings that cannot be chosen themselves.
             foreach (var group in MaterialPresets.All.GroupBy(preset => preset.Group))
