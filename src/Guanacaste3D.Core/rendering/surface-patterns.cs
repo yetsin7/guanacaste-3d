@@ -256,6 +256,11 @@ internal static class SurfacePatterns
                 var sand = (ValueNoise(worldU * 140f, worldV * 140f) - 0.5f) * 0.00012f;
                 return (trowel + sand) * fade;
             }
+            case SurfacePattern.Asphalt:
+            {
+                var aggregate = ValueNoise(worldU * 32f + 17, worldV * 32f - 8);
+                return (aggregate - 0.5f) * 0.0008f * fade;
+            }
             case SurfacePattern.Foliage:
             {
                 // Clumps of leaves a few centimeters proud of the canopy: the sun picks out each cluster.
