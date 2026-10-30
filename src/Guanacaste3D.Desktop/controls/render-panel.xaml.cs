@@ -27,6 +27,8 @@ public partial class RenderPanel : UserControl
     private LivePreview? _preview;
     private WriteableBitmap? _bitmap;
     private int _framePending;
+    // Monotonic request number: an older, slower scene build must never replace a newer preview.
+    private int _sceneRefreshVersion;
     private bool _ready;
 
     private RenderSession? _session;
@@ -110,6 +112,8 @@ public partial class RenderPanel : UserControl
     /// <summary>Stops preview workers, camera playback, and outstanding render cancellation tokens.</summary>
     private void Shutdown()
     {
+        // Invalidate asynchronous scene requests before disposing the preview.
+        _sceneRefreshVersion++;
         _cancel?.Cancel();
         StopTour();
         _preview?.Dispose();
@@ -161,7 +165,10 @@ public partial class RenderPanel : UserControl
         _preview.SetCamera(CurrentCamera());
     }
 
-    /// <summary>Refreshes the preview scene on the UI dispatcher because scene notifications may arrive on worker threads.</summary>
+    /// <summary>
+    /// Refreshes the live scene without letting a slow, superseded build overwrite a newer edit.
+    /// A failed build is reported in the panel instead of escaping from an async-void event handler.
+    /// </summary>
     private async void RefreshScene()
     {
         if (!Dispatcher.CheckAccess())
@@ -170,12 +177,37 @@ public partial class RenderPanel : UserControl
             return;
         }
         if (_source is null || !IsVisible) return;
-        var scene = await _source.GetSceneAsync();
-        if (!Dispatcher.CheckAccess())
+        var source = _source;
+        var request = ++_sceneRefreshVersion;
+        RenderScene? scene;
+        try
         {
-            if (!Dispatcher.HasShutdownStarted) _ = Dispatcher.BeginInvoke((Action)(() => ApplyPreviewScene(scene)));
+            scene = await source.GetSceneAsync();
+        }
+        catch (OperationCanceledException)
+        {
             return;
         }
+        catch (Exception exception)
+        {
+            if (request == _sceneRefreshVersion && !Dispatcher.HasShutdownStarted)
+                StatusText.Text = UiText.Get("RenderPanel.PreviewFailed") + ": " + exception.Message;
+            return;
+        }
+
+        // WPF's synchronization context normally resumes on the dispatcher. Guard against
+        // alternate source implementations that complete without it.
+        if (!Dispatcher.CheckAccess())
+        {
+            if (!Dispatcher.HasShutdownStarted)
+                _ = Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    if (request == _sceneRefreshVersion && ReferenceEquals(source, _source) && IsVisible)
+                        ApplyPreviewScene(scene);
+                }));
+            return;
+        }
+        if (request != _sceneRefreshVersion || !ReferenceEquals(source, _source) || !IsVisible) return;
         ApplyPreviewScene(scene);
     }
 
