@@ -145,6 +145,20 @@ public partial class MainWindow
                 SelectExtendedElement(structuralId: picked.Id);
                 break;
         }
+        // Clicking an object in the render viewport opens its surface material immediately.
+        // These are category-wide assignments; the picked element remains selected in the BIM model.
+        if (ReferenceEquals(surface, RenderPanelControl.Surface))
+        {
+            SurfaceKind? material = picked.Kind switch
+            {
+                PickedKind.Wall => SurfaceKind.Wall,
+                PickedKind.Floor => SurfaceKind.Floor,
+                PickedKind.Opening => SurfaceKind.DoorLeaf,
+                PickedKind.Column or PickedKind.Structural => SurfaceKind.Structure,
+                _ => null
+            };
+            if (material is { } category) RenderPanelControl.FocusMaterial(category);
+        }
         RefreshProperties();
         RenderPlan();
         UpdateModelSelection(true);
