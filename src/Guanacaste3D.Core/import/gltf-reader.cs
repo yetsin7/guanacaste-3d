@@ -287,6 +287,11 @@ internal static class GltfReader
                     data = File.ReadAllBytes(file);
                 }
             }
+            // The declared buffer length is part of the glTF contract. Without this check a
+            // truncated external resource can silently turn missing vertex data into zeroes.
+            var declaredLength = buffer.GetProperty("byteLength").GetInt32();
+            if (declaredLength < 0 || data.Length < declaredLength)
+                throw new InvalidDataException("The glTF buffer is truncated.");
             return _buffers[index] = data;
         }
 
@@ -299,14 +304,34 @@ internal static class GltfReader
             var componentType = a.GetProperty("componentType").GetInt32();
             var components = a.GetProperty("type").GetString() switch { "SCALAR" => 1, "VEC2" => 2, "VEC3" => 3, "VEC4" => 4, _ => 1 };
             var accessorOffset = a.TryGetProperty("byteOffset", out var ao) ? ao.GetInt32() : 0;
+            if (count < 0 || accessorOffset < 0)
+                throw new InvalidDataException("The glTF accessor is not valid.");
             if (!a.TryGetProperty("bufferView", out var viewIndex)) return ([], 0, 0, count, componentType, components);
+
             var views = Array("bufferViews");
-            var view = views[viewIndex.GetInt32()];
+            var viewNumber = viewIndex.GetInt32();
+            if ((uint)viewNumber >= (uint)views.Count)
+                throw new InvalidDataException("The glTF accessor references an invalid buffer view.");
+            var view = views[viewNumber];
             var data = Buffer(view.GetProperty("buffer").GetInt32());
-            var offset = (view.TryGetProperty("byteOffset", out var vo) ? vo.GetInt32() : 0) + accessorOffset;
+            var viewOffset = view.TryGetProperty("byteOffset", out var vo) ? vo.GetInt32() : 0;
+            var viewLength = view.GetProperty("byteLength").GetInt32();
             var size = componentType switch { 5126 or 5125 => 4, 5123 or 5122 => 2, _ => 1 };
-            var stride = view.TryGetProperty("byteStride", out var bs) && bs.GetInt32() > 0 ? bs.GetInt32() : size * components;
-            return (data, offset, stride, count, componentType, components);
+            var elementSize = size * components;
+            var stride = view.TryGetProperty("byteStride", out var bs) ? bs.GetInt32() : elementSize;
+
+            // Check against the declared bufferView, not merely the underlying byte array:
+            // adjacent views must never be read as if they belonged to this accessor.
+            // Long arithmetic prevents overflow when untrusted counts/offsets are enormous.
+            var viewEnd = (long)viewOffset + viewLength;
+            var accessorEnd = count == 0
+                ? (long)accessorOffset
+                : (long)accessorOffset + ((long)count - 1) * stride + elementSize;
+            if (viewOffset < 0 || viewLength < 0 || viewEnd > data.Length ||
+                stride < elementSize || stride % size != 0 || accessorEnd > viewLength)
+                throw new InvalidDataException("The glTF accessor exceeds its buffer view.");
+
+            return (data, viewOffset + accessorOffset, stride, count, componentType, components);
         }
 
         /// <summary>Texture coordinates: floats, or normalized unsigned bytes and shorts, as glTF allows.</summary>
