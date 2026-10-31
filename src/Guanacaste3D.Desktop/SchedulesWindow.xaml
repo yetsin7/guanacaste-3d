@@ -66,6 +66,8 @@
               <Button Content="{DynamicResource Parameters.Apply}" Click="Apply_Click" Margin="0,0,4,0"/>
               <Button Content="{DynamicResource Parameters.ExportCsv}" Click="ExportCsv_Click" Margin="4,0,0,0"/>
             </UniformGrid>
+            <Button Content="{DynamicResource Schedules.ExportRoofQuantities}" Click="ExportRoofQuantities_Click"
+                    Margin="0,6,0,0" ToolTip="{DynamicResource Schedules.ExportRoofQuantitiesHint}"/>
           </StackPanel>
         </ScrollViewer>
       </Border>
