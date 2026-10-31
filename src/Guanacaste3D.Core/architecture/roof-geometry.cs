@@ -14,7 +14,14 @@ public sealed record RoofEdgeTakeoff(
     double HorizontalBoundaryLength,
     double SlopedBoundaryLength,
     double RidgeLength,
-    double HipLength);
+    double HipLength)
+{
+    /// <summary>Horizontal boundary at the roof's lowest rise; not necessarily installed gutters.</summary>
+    public double LowEaveBoundaryLength { get; init; }
+
+    /// <summary>Horizontal boundary above the lowest rise (for example, a shed roof's high edge).</summary>
+    public double ElevatedHorizontalBoundaryLength { get; init; }
+}
 
 /// <summary>
 /// Height and facet rules of shed, gable and hip roofs. Heights are measured above the eave, which sits at the
@@ -158,6 +165,8 @@ public static class RoofGeometry
         var creases = ClipCreasesToFootprint(CreaseLines(built), outline);
         var horizontal = 0d;
         var sloped = 0d;
+        var lowEave = 0d;
+        var elevatedHorizontal = 0d;
         for (var index = 0; index < outline.Count; index++)
         {
             var from = outline[index];
@@ -189,7 +198,15 @@ public static class RoofGeometry
                 var end = ArchitecturalShapes.Lerp(from, to, fractions[part]);
                 var riseDifference = RiseAt(built, end) - RiseAt(built, start);
                 var length = double.Hypot(start.DistanceTo(end), riseDifference);
-                if (Math.Abs(riseDifference) <= Epsilon) horizontal += length;
+                if (Math.Abs(riseDifference) <= Epsilon)
+                {
+                    horizontal += length;
+                    if (Math.Abs(RiseAt(built, start)) <= Epsilon &&
+                        Math.Abs(RiseAt(built, end)) <= Epsilon)
+                        lowEave += length;
+                    else
+                        elevatedHorizontal += length;
+                }
                 else sloped += length;
             }
         }
@@ -203,7 +220,11 @@ public static class RoofGeometry
             if (Math.Abs(riseDifference) <= Epsilon) ridges += length;
             else hips += length;
         }
-        return new RoofEdgeTakeoff(horizontal, sloped, ridges, hips);
+        return new RoofEdgeTakeoff(horizontal, sloped, ridges, hips)
+        {
+            LowEaveBoundaryLength = lowEave,
+            ElevatedHorizontalBoundaryLength = elevatedHorizontal
+        };
     }
 
     /// <summary>
