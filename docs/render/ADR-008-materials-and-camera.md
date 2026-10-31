@@ -13,8 +13,14 @@ transmission. BIM surface categories map to stock materials (`MaterialLibrary.Fo
 Patterns (tiles, planks, blocks, concrete, grass) are cosmetic surface detail computed from world position, so they need
 no texture coordinates. They are evaluated sharply only where they are seen sharply (ADR-002).
 
-**Not implemented:** subsurface scattering, clearcoat, sheen, anisotropy, displacement, thick refractive glass with
-absorption, dispersion, image textures, normal maps. These are listed so that nothing in the interface suggests them.
+**Implemented since the original ADR:** image textures via `RenderMaterial.Texture`, metric texture scale,
+brightness-derived surface relief, UV-mapped textures on imported meshes, alpha cutouts and thin-surface
+translucency. Project render assignments currently target `SurfaceKind` categories, not individual BIM
+element faces. Texture relief is a shading approximation, **not** geometric displacement or a normal map.
+
+**Not implemented:** subsurface scattering, clearcoat, sheen, anisotropy, true geometric displacement,
+thick refractive glass with absorption, dispersion, separate normal/roughness/metalness image maps,
+or stable per-element/per-face BIM material assignments. These limits should remain explicit in the UI.
 
 ## Units
 
