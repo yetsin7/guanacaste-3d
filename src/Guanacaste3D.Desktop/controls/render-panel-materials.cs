@@ -21,11 +21,6 @@ public partial class RenderPanel
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
 
-    private void MaterialSearch_Changed(object sender, TextChangedEventArgs e)
-    {
-        if (_ready && _source is not null) RefreshMaterialRows();
-    }
-
     internal void FocusMaterial(SurfaceKind category)
     {
         _focusedMaterial = category;
@@ -174,10 +169,8 @@ public partial class RenderPanel
         // The material library, grouped under headings that cannot be chosen themselves.
         var search = MaterialSearch.Text.Trim();
         foreach (var group in MaterialPresets.All
-            .Where(preset => search.Length == 0 ||
-                preset.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
-                preset.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                Text($"MaterialFamily.{preset.Group}").Contains(search, StringComparison.CurrentCultureIgnoreCase))
+            .Where(preset => MaterialCatalogSearch.Matches(search, preset.Name, preset.Id,
+                Text($"MaterialFamily.{preset.Group}")))
             .GroupBy(preset => preset.Group))
         {
             picker.Items.Add(new ComboBoxItem
@@ -212,9 +205,7 @@ public partial class RenderPanel
             Content = Text("MaterialFamily.Textures"), IsEnabled = false, FontWeight = FontWeights.SemiBold
         });
         foreach (var texture in RenderTextureLibrary.BuiltIn.Where(texture =>
-            search.Length == 0 ||
-            texture.Key.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-            Text(texture.LabelKey).Contains(search, StringComparison.CurrentCultureIgnoreCase)))
+            MaterialCatalogSearch.Matches(search, texture.Key, Text(texture.LabelKey))))
             picker.Items.Add(new ComboBoxItem
             {
                 Content = Text(texture.LabelKey), Tag = RenderTextureLibrary.BuiltInPrefix + texture.Key
