@@ -6,6 +6,17 @@ namespace Guanacaste3D.Core;
 public sealed record RoofFacet(IReadOnlyList<Point2> Outline);
 
 /// <summary>
+/// Measured lengths of the built roof perimeter and its creases, in meters.
+/// Horizontal boundary segments are not automatically gutters (a shed's high edge is also level).
+/// Sloped boundary segments are rakes; ridge and hip lengths follow the generated roof facets.
+/// </summary>
+public sealed record RoofEdgeTakeoff(
+    double HorizontalBoundaryLength,
+    double SlopedBoundaryLength,
+    double RidgeLength,
+    double HipLength);
+
+/// <summary>
 /// Height and facet rules of shed, gable and hip roofs. Heights are measured above the eave, which sits at the
 /// roof's own elevation. The ridge of a gable or hip roof runs along the longer side of the boundary's bounding box.
 /// </summary>
@@ -128,6 +139,44 @@ public static class RoofGeometry
         for (var index = 0; index < outline.Count; index++)
             length += outline[index].DistanceTo(outline[(index + 1) % outline.Count]);
         return length;
+    }
+
+    /// <summary>
+    /// Measures actual 3D roof boundary, ridge and hip lengths after overhangs.
+    /// Level perimeter includes both low and high horizontal edges; do not price it as gutters
+    /// without selecting the specific edges that will receive gutters.
+    /// Creases follow the existing shed/gable/hip roof generator.
+    /// </summary>
+    public static RoofEdgeTakeoff EdgeTakeoff(FloorSlab roof)
+    {
+        ArgumentNullException.ThrowIfNull(roof);
+        if (roof.Kind != FloorKind.Roof)
+            throw new ArgumentException("Edge takeoff requires a roof slab.", nameof(roof));
+
+        var built = WithOverhang(roof);
+        var outline = built.Boundary;
+        var horizontal = 0d;
+        var sloped = 0d;
+        for (var index = 0; index < outline.Count; index++)
+        {
+            var from = outline[index];
+            var to = outline[(index + 1) % outline.Count];
+            var riseDifference = RiseAt(built, to) - RiseAt(built, from);
+            var length = Math.Hypot(from.DistanceTo(to), riseDifference);
+            if (Math.Abs(riseDifference) <= Epsilon) horizontal += length;
+            else sloped += length;
+        }
+
+        var ridges = 0d;
+        var hips = 0d;
+        foreach (var (from, to) in CreaseLines(built))
+        {
+            var riseDifference = RiseAt(built, to) - RiseAt(built, from);
+            var length = Math.Hypot(from.DistanceTo(to), riseDifference);
+            if (Math.Abs(riseDifference) <= Epsilon) ridges += length;
+            else hips += length;
+        }
+        return new RoofEdgeTakeoff(horizontal, sloped, ridges, hips);
     }
 
     /// <summary>The ridge and hip lines to draw in plan, as pairs of end points. Empty for flat and shed roofs.</summary>

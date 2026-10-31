@@ -39,6 +39,35 @@ static class RoofTakeoffChecks
               Math.Abs(RoofGeometry.ProjectedPerimeter(roof with { Overhang = 0 }) - 32) < 1e-8,
             "Roof projected perimeter includes eaves without confusing it with sloped rake lengths");
 
+        // Unlike the plan perimeter, edge lengths follow the roof's actual 3D geometry.
+        var gableEdges = RoofGeometry.EdgeTakeoff(roof);
+        var gableRakes = 2 * 7.2 / Math.Cos(Math.PI / 6);
+        check(Math.Abs(gableEdges.HorizontalBoundaryLength - 22.4) < 1e-8 &&
+              Math.Abs(gableEdges.SlopedBoundaryLength - gableRakes) < 1e-8 &&
+              Math.Abs(gableEdges.RidgeLength - 11.2) < 1e-8 &&
+              Math.Abs(gableEdges.HipLength) < 1e-8,
+            "Gable roof takeoff distinguishes level eaves, 3D rakes and ridge");
+
+        var shedEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Shed });
+        check(Math.Abs(shedEdges.HorizontalBoundaryLength - 22.4) < 1e-8 &&
+              Math.Abs(shedEdges.SlopedBoundaryLength - gableRakes) < 1e-8 &&
+              shedEdges.RidgeLength == 0 && shedEdges.HipLength == 0,
+            "Shed roof counts the high level edge without inventing a ridge or hip");
+
+        var hipEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Hip });
+        var hipRise = 3.6 * Math.Tan(Math.PI / 6);
+        var expectedHips = 4 * Math.Sqrt(2 * 3.6 * 3.6 + hipRise * hipRise);
+        check(Math.Abs(hipEdges.HorizontalBoundaryLength - 36.8) < 1e-8 &&
+              Math.Abs(hipEdges.SlopedBoundaryLength) < 1e-8 &&
+              Math.Abs(hipEdges.RidgeLength - 4) < 1e-8 &&
+              Math.Abs(hipEdges.HipLength - expectedHips) < 1e-8,
+            "Hip roof measures four inclined hips and its level central ridge");
+
+        var flatEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Flat, Pitch = 0 });
+        check(Math.Abs(flatEdges.HorizontalBoundaryLength - 36.8) < 1e-8 &&
+              flatEdges.SlopedBoundaryLength == 0 && flatEdges.RidgeLength == 0 && flatEdges.HipLength == 0,
+            "Flat roof has only horizontal perimeter and no artificial crease lengths");
+
         var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
         try
         {
@@ -49,7 +78,7 @@ static class RoofTakeoffChecks
                   csv.Contains("CoveredPlanArea_m2", StringComparison.Ordinal) &&
                   csv.Contains(",80.64,", StringComparison.Ordinal) &&
                   csv.Contains(",36.8,\"", StringComparison.Ordinal) &&
-                  csv.Contains("ProjectedPerimeter_m,RoofName", StringComparison.Ordinal),
+                  csv.Contains("ProjectedPerimeter_m,RoofName,HorizontalBoundary_m,SlopedBoundary_m,Ridge_m,Hip_m", StringComparison.Ordinal),
                 "Roof quantity CSV includes overhang, coverage and projected perimeter in invariant culture");
         }
         finally
@@ -70,7 +99,7 @@ static class RoofTakeoffChecks
         exportDocument.Floors[roofIndex] = exportDocument.Floors[roofIndex] with { Name = "@SUM(1,2)" };
         var guardedCsv = RoofQuantitySchedule.ToCsv(exportDocument);
         check(guardedCsv.Contains("\"' =1+1\",", StringComparison.Ordinal) &&
-              guardedCsv.Contains(",\"'@SUM(1,2)\"" + Environment.NewLine, StringComparison.Ordinal),
+              guardedCsv.Contains(",\"'@SUM(1,2)\",22.4,", StringComparison.Ordinal),
             "Roof CSV protects spreadsheet formulas in level and roof names");
 
         exportDocument.Levels[levelIndex] = exportDocument.Levels[levelIndex] with
@@ -83,7 +112,7 @@ static class RoofTakeoffChecks
         };
         var quotedCsv = RoofQuantitySchedule.ToCsv(exportDocument);
         check(quotedCsv.Contains("\"Nivel, \"\"Norte\"\"\",", StringComparison.Ordinal) &&
-              quotedCsv.Contains(",\"Techo, \"\"Principal\"\"\"" + Environment.NewLine, StringComparison.Ordinal),
+              quotedCsv.Contains(",\"Techo, \"\"Principal\"\"\",22.4,", StringComparison.Ordinal),
             "Roof CSV escapes commas and double quotes in user-authored labels");
 
         var budget = BudgetCalculator.Build(session.Document, UnitPriceList.Default(), 0);

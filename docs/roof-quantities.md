@@ -39,3 +39,27 @@ still warrants care. Ordinary floor slabs are excluded.
 of the built roof, including overhangs. It is **not** the length of installed gutters,
 fascia, ridge caps or sloping rake trims. Those require explicit edge classification
 and 3D segment measurements before they can be priced accurately.
+
+## Built roof edge and crease lengths
+
+`RoofGeometry.EdgeTakeoff(roof)` now measures four independent **3D lengths** in meters,
+using the same overhang-adjusted footprint and generated roof creases as the model:
+
+- `HorizontalBoundaryLength`: level boundary edges, including both the low and high edges of a shed roof.
+- `SlopedBoundaryLength`: sloping boundary edges (rakes), with their true 3D length.
+- `RidgeLength`: horizontal crease lines at the top of gable/hip roofs.
+- `HipLength`: inclined hip creases of a hip roof.
+
+The four quantities are appended after `RoofName` in the CSV as
+`HorizontalBoundary_m`, `SlopedBoundary_m`, `Ridge_m`, and `Hip_m`.
+Earlier columns retain their positions. A 10 × 6 m gable roof with 0.6 m overhangs
+and 30° pitch has 22.4 m of horizontal boundary, about 16.628 m of sloping
+rakes and 11.2 m of ridge. This distinguishes plan perimeter from installed
+3D edge lengths without guessing a waste allowance.
+
+**Important:** level boundary is not synonymous with gutter length; the high
+edge of a shed roof is also level. Ridge/hip lines follow the current roof
+shape generator, which is based on bounding-box geometry for pitched roofs.
+Irregular footprints, actual flashing and gutter placement, valleys, dormers,
+penetrations and edge-specific products require more detailed modeling and
+independent validation before they can be billed as installed quantities.
