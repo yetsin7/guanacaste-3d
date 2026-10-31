@@ -8,8 +8,9 @@ public sealed partial class DocumentSession
     {
         if (!Enum.IsDefined(finish))
             throw new InvalidDataException("The selected finish is not supported.");
-        if (!Document.Walls.Any(wall => wall.Id == wallId))
-            throw new InvalidDataException("The wall does not exist.");
+        var wall = Document.Walls.FirstOrDefault(wall => wall.Id == wallId)
+            ?? throw new InvalidDataException("The wall does not exist.");
+        if (wall.Finish == finish) return; // No new undo step or expensive scene invalidation.
         Commit("Transaction.SetWallFinish", document =>
         {
             var index = document.Walls.FindIndex(wall => wall.Id == wallId);
@@ -22,8 +23,9 @@ public sealed partial class DocumentSession
     {
         if (!Enum.IsDefined(finish))
             throw new InvalidDataException("The selected finish is not supported.");
-        if (!Document.Floors.Any(floor => floor.Id == floorId))
-            throw new InvalidDataException("The floor slab does not exist.");
+        var floor = Document.Floors.FirstOrDefault(floor => floor.Id == floorId)
+            ?? throw new InvalidDataException("The floor slab does not exist.");
+        if (floor.Finish == finish) return; // Preserve redo history on identical edits.
         Commit("Transaction.SetFloorFinish", document =>
         {
             var index = document.Floors.FindIndex(floor => floor.Id == floorId);
