@@ -62,6 +62,34 @@ public partial class SchedulesWindow
         e.Row.Foreground = kind == ScheduleRowKind.GrandTotal ? Brushes.White : (Brush)FindResource("PrimaryTextBrush");
     }
 
+    /// <summary>Exports the measured roof quantities independently of saved schedule definitions.</summary>
+    private void ExportRoofQuantities_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_session.Document.Floors.Any(floor => floor.Kind == FloorKind.Roof))
+        {
+            StatusText.Text = Text("Schedules.NoRoofs");
+            return;
+        }
+        var dialog = new SaveFileDialog
+        {
+            Filter = Text("Parameters.CsvFilter"),
+            FileName = "cubiertas.csv",
+            DefaultExt = ".csv",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dialog.FileName,
+                RoofQuantitySchedule.ToCsv(_session.Document), new System.Text.UTF8Encoding(true));
+            StatusText.Text = Format("Parameters.Exported", dialog.FileName);
+        }
+        catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException)
+        {
+            StatusText.Text = Format("Parameters.Rejected", LocalizedErrors.Translate(exception.Message));
+        }
+    }
+
     /// <summary>Exports the evaluated schedule as CSV.</summary>
     private void ExportCsv_Click(object sender, RoutedEventArgs e)
     {
