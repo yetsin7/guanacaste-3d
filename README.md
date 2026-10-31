@@ -1,4 +1,22 @@
+<div align="center">
+
 # Guanacaste 3D
+
+### Architecture is for everyone. Create what comes next.
+
+**Free · Open source · Windows 10/11 · C# / .NET 10 · MIT**
+
+[Explore downloads](https://github.com/yetsin7/guanacaste-3d/releases) · [Preview the website](website/index.html) · [Roadmap](ROADMAP.md) · [Report a bug](https://github.com/yetsin7/guanacaste-3d/issues)
+
+</div>
+
+> **Technical preview:** Guanacaste 3D is under active development. Download links lead to the public releases page; if no published release is visible, the app is not currently available for public download. It is not yet a certified professional BIM replacement.
+
+**Why follow this project?** Guanacaste 3D brings architectural modeling, coordinated views, native project formats and an optional AI-assisted workflow into an independent, community-readable Windows application. Explore it, help improve it, and watch it grow.
+
+**See the new landing-page prototype:** [website/index.html](website/index.html). This is a standalone concept, not confirmation that the existing production website has been updated.
+
+---
 
 Guanacaste 3D is an independent Windows desktop BIM and architectural CAD
 application built in C# with .NET 10 and WPF.
