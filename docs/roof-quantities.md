@@ -57,6 +57,13 @@ and 30° pitch has 22.4 m of horizontal boundary, about 16.628 m of sloping
 rakes and 11.2 m of ridge. This distinguishes plan perimeter from installed
 3D edge lengths without guessing a waste allowance.
 
+For concave footprints, ridge and hip takeoffs now intersect the generated crease
+segments with the actual roof polygon. This excludes unsupported spans across
+open notches (for example, a U-shaped roof whose bounding-box ridge passes
+through the central void). The export columns and native project format remain
+unchanged. The regression suite covers disconnected ridge intervals and reversed
+polygon winding.
+
 **Important:** level boundary is not synonymous with gutter length; the high
 edge of a shed roof is also level. Ridge/hip lines follow the current roof
 shape generator, which is based on bounding-box geometry for pitched roofs.
