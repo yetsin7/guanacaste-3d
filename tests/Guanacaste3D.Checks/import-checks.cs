@@ -28,6 +28,7 @@ static class ImportChecks
             GltfBufferPaths(check, folder);
             GltfIndexAccessors(check, folder);
             GltfNodeNormals(check, folder);
+            GltfPngTextures(check, folder);
             Ifc(check, folder);
             Collada(check, folder);
             Detection(check, folder);
@@ -490,6 +491,105 @@ static class ImportChecks
             var actual = imported.Normals is { Length: 3 } ? imported.Normals[indices[0]] : Vector3.Zero;
             check(imported.TriangleCount == 1 && Vector3.Dot(actual, expected) > 0.9999f,
                 $"glTF {name} node transforms keep imported normals aligned with the triangle face");
+        }
+    }
+
+    /// <summary>Opaque glTF PNG base-color textures must survive import, UV conversion and render assembly.</summary>
+    private static void GltfPngTextures(Action<bool, string> check, string folder)
+    {
+        // RGB test tile: red/green on the top row, blue/white on the bottom.
+        var png = PngCodec.Encode(new RasterImage(2, 2,
+        [
+            255, 0, 0,  0, 255, 0,
+            0, 0, 255,  255, 255, 255
+        ]));
+        var imageDirectory = Path.Combine(folder, "gltf-textures");
+        Directory.CreateDirectory(imageDirectory);
+        File.WriteAllBytes(Path.Combine(imageDirectory, "tile.png"), png);
+        var vertices = new float[]
+        {
+            0, 0, 0, 1, 0, 0, 0, 1, 0,
+            0.25f, 0.25f, 0.75f, 0.25f, 0.25f, 0.75f
+        }.SelectMany(BitConverter.GetBytes).ToArray();
+        File.WriteAllBytes(Path.Combine(folder, "gltf-textured.bin"), vertices);
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            asset = new { version = "2.0" },
+            buffers = new[] { new { uri = "gltf-textured.bin", byteLength = vertices.Length } },
+            bufferViews = new[]
+            {
+                new { buffer = 0, byteOffset = 0, byteLength = 36 },
+                new { buffer = 0, byteOffset = 36, byteLength = 24 }
+            },
+            accessors = new[]
+            {
+                new { bufferView = 0, componentType = 5126, count = 3, type = "VEC3" },
+                new { bufferView = 1, componentType = 5126, count = 3, type = "VEC2" }
+            },
+            images = new[] { new { uri = "gltf-textures/tile.png" } },
+            textures = new[] { new { source = 0 } },
+            materials = new[] { new
+            {
+                name = "Textured wall",
+                pbrMetallicRoughness = new
+                {
+                    baseColorFactor = new[] { 0.5f, 1f, 1f, 1f },
+                    baseColorTexture = new { index = 0 }
+                }
+            } },
+            meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0, TEXCOORD_0 = 1 }, material = 0 } } } }
+        });
+
+        var imported = ModelImporter.Import(Write(folder, "gltf-png-external.gltf", json)).Model;
+        var material = imported.Materials[imported.TriangleMaterial[0]];
+        var scene = new RenderSceneBuilder().AddModel(imported).Build();
+        var sample = material.Texture?.Sample(0.25f, 0.75f, 0) ?? Vector3.Zero;
+        check(imported.TriangleCount == 1 && material.Texture is { Width: 2, Height: 2 } &&
+              material.UvMapped && Math.Abs(material.BaseColor.X - 0.5f) < 1e-6f &&
+              sample.X > 0.99f && sample.Y < 0.01f && sample.Z < 0.01f &&
+              imported.Uvs is { Length: 3 } && Math.Abs(imported.Uvs[0].Y - 0.75f) < 1e-6f &&
+              scene.TriangleUvs is { Length: 3 } && scene.TriangleUvs[0] == imported.Uvs[0],
+            "glTF opaque PNG textures use the source UVs, correct vertical orientation and base-color multiplier");
+
+        var dataUri = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        dataUri["images"]![0]!["uri"] = "data:image/png;base64," + Convert.ToBase64String(png);
+        var embeddedData = ModelImporter.Import(Write(folder, "gltf-png-data-uri.gltf", dataUri.ToJsonString())).Model;
+        check(embeddedData.Materials[0].Texture is { Width: 2, Height: 2 },
+            "glTF accepts base-color PNG images embedded as data URIs");
+
+        var withBufferView = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        var binary = vertices.Concat(png).ToArray();
+        File.WriteAllBytes(Path.Combine(folder, "gltf-png-view.bin"), binary);
+        withBufferView["buffers"]![0]!["uri"] = "gltf-png-view.bin";
+        withBufferView["buffers"]![0]!["byteLength"] = binary.Length;
+        withBufferView["bufferViews"]!.AsArray().Add(System.Text.Json.Nodes.JsonNode.Parse(
+            System.Text.Json.JsonSerializer.Serialize(new { buffer = 0, byteOffset = vertices.Length, byteLength = png.Length })));
+        withBufferView["images"]![0] = System.Text.Json.Nodes.JsonNode.Parse("{\"bufferView\":2,\"mimeType\":\"image/png\"}");
+        var viewModel = ModelImporter.Import(Write(folder, "gltf-png-buffer-view.gltf", withBufferView.ToJsonString())).Model;
+        check(viewModel.Materials[0].Texture is { Width: 2, Height: 2 },
+            "glTF accepts PNG images stored in binary bufferViews");
+
+        var unsupported = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        unsupported["images"]![0]!["uri"] = "gltf-textures/unsupported.jpg";
+        var withoutPng = ModelImporter.Import(Write(folder, "gltf-jpeg-fallback.gltf", unsupported.ToJsonString())).Model;
+        check(withoutPng.Materials[0].Texture is null && !withoutPng.Materials[0].UvMapped,
+            "Unsupported JPEG textures fall back to material factors without crashing");
+
+        var sibling = folder + "-image-outside";
+        Directory.CreateDirectory(sibling);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(sibling, "tile.png"), png);
+            var escaped = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+            escaped["images"]![0]!["uri"] = "../" + Path.GetFileName(sibling) + "/tile.png";
+            var rejected = false;
+            try { ModelImporter.Import(Write(folder, "gltf-png-traversal.gltf", escaped.ToJsonString())); }
+            catch (InvalidDataException) { rejected = true; }
+            check(rejected, "glTF image paths cannot escape the model directory");
+        }
+        finally
+        {
+            Directory.Delete(sibling, recursive: true);
         }
     }
 
