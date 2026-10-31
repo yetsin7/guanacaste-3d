@@ -86,6 +86,17 @@ static class RenderLookChecks
 
         // Materials.
         var presets = MaterialPresets.All;
+        check(presets.Any(preset => MaterialCatalogSearch.Matches("ceramica", preset.Name)) &&
+              presets.Any(preset => MaterialCatalogSearch.Matches("marmol", preset.Name)) &&
+              MaterialCatalogSearch.Matches("ROBLE", "Roble claro") &&
+              MaterialCatalogSearch.Matches("oak-light", "Roble claro", "oak-light"),
+            "Spanish material search ignores accents and case while retaining stable id lookup");
+        check(MaterialCatalogSearch.Matches("mate pintura", "Pintura mate blanca", "paint-matte-white") &&
+              MaterialCatalogSearch.Matches("  madera   clara  ", "Madera clara") &&
+              MaterialCatalogSearch.Matches("", "Cualquier material") &&
+              !MaterialCatalogSearch.Matches("acero azul", "Acero inoxidable", "metal-steel") &&
+              !MaterialCatalogSearch.Matches("ceramica", "Hormigón", "concrete"),
+            "Material search matches all words across fields without matching unrelated finishes");
         check(presets.Count >= 60 && presets.Select(preset => preset.Id).Distinct().Count() == presets.Count &&
               presets.All(preset => preset.Material.Roughness is >= 0 and <= 1 && preset.Material.Metallic is >= 0 and <= 1 &&
                   preset.TextureSize > 0 && Enum.IsDefined(preset.Group)),
