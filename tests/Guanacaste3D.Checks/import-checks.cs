@@ -274,14 +274,17 @@ static class ImportChecks
 
     private static void GltfBufferPaths(Action<bool, string> check, string folder)
     {
-        static string Document(string uri) => System.Text.Json.JsonSerializer.Serialize(new
-        {
-            asset = new { version = "2.0" },
-            buffers = new[] { new { uri, byteLength = 36 } },
-            bufferViews = new[] { new { buffer = 0, byteOffset = 0, byteLength = 36 } },
-            accessors = new[] { new { bufferView = 0, componentType = 5126, count = 3, type = "VEC3" } },
-            meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0 } } } } }
-        });
+        static string Document(string uri, int declaredLength = 36, int viewLength = 36,
+            int viewOffset = 0, int accessorOffset = 0, int accessorCount = 3) =>
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                asset = new { version = "2.0" },
+                buffers = new[] { new { uri, byteLength = declaredLength } },
+                bufferViews = new[] { new { buffer = 0, byteOffset = viewOffset, byteLength = viewLength } },
+                accessors = new[] { new { bufferView = 0, byteOffset = accessorOffset,
+                    componentType = 5126, count = accessorCount, type = "VEC3" } },
+                meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0 } } } } }
+            });
 
         var triangle = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 }
             .SelectMany(value => BitConverter.GetBytes(value)).ToArray();
@@ -292,6 +295,33 @@ static class ImportChecks
             Document("gltf-buffers/triangle.bin"))).Model;
         check(valid.TriangleCount == 1,
             "glTF permits external binary buffers in subdirectories of the model folder");
+        
+        // A valid buffer may contain multiple views, but an accessor must not read bytes
+        // belonging to the next view. The bounds check also runs before array allocation.
+        static bool Invalid(string name, string json)
+        {
+            try
+            {
+                ModelImporter.Import(Write(folder, name, json));
+                return false;
+            }
+            catch (InvalidDataException) { return true; }
+        }
+        check(Invalid("truncated-buffer.gltf",
+                Document("gltf-buffers/triangle.bin", declaredLength: 40)),
+            "glTF rejects external buffers shorter than their declared byteLength");
+        check(Invalid("cross-view.gltf",
+                Document("gltf-buffers/triangle.bin", viewLength: 12)),
+            "glTF accessors cannot read into an adjacent buffer view");
+        check(Invalid("out-of-range-view.gltf",
+                Document("gltf-buffers/triangle.bin", viewOffset: 12)),
+            "glTF buffer views cannot extend past the underlying buffer");
+        check(Invalid("negative-offset.gltf",
+                Document("gltf-buffers/triangle.bin", accessorOffset: -4)),
+            "glTF rejects negative accessor offsets");
+        check(Invalid("oversized-accessor.gltf",
+                Document("gltf-buffers/triangle.bin", accessorCount: int.MaxValue)),
+            "glTF rejects oversized accessor counts before allocating vertex arrays");
 
         // The sibling directory shares the exact prefix of the model directory.
         // A previous StartsWith(rootDirectory) check incorrectly accepted it.
