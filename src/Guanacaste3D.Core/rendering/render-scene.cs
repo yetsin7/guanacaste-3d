@@ -185,10 +185,17 @@ public sealed class RenderSceneBuilder
             }
             // Tolerate files whose triangle material list is shorter than the triangle list.
             var material = triangle < model.TriangleMaterial.Length ? model.TriangleMaterial[triangle] : 0;
+            var mappedMaterial = remap[(uint)material < (uint)remap.Length ? material : 0];
             _indices.Add(start + a);
             _indices.Add(start + b);
             _indices.Add(start + c);
-            _triangleMaterial.Add(remap[(uint)material < (uint)remap.Length ? material : 0]);
+            _triangleMaterial.Add(mappedMaterial);
+            // Imported glTF-style UVs are per vertex; keep them in triangle order
+            // after invalid faces have been discarded. Non-textured meshes stay compact.
+            if (model.Uvs is { } uvs && uvs.Length == localPositions.Length &&
+                _materials[mappedMaterial].UvMapped && _materials[mappedMaterial].Texture is not null)
+                _uvs.Add((_triangleMaterial.Count - 1,
+                    new TexturedTriangle(uvs[a], uvs[b], uvs[c], 0)));
         }
         PadNormals();
         return this;

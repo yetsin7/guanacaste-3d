@@ -61,7 +61,7 @@ public sealed class ImportedModel
     public ImportedModel WithSource(string path, string format, string name) => new()
     {
         Name = name, SourcePath = path, SourceFormat = format, Positions = Positions, Indices = Indices,
-        Normals = Normals, TriangleMaterial = TriangleMaterial, Materials = Materials, Linework = Linework,
+        Normals = Normals, Uvs = Uvs, TriangleMaterial = TriangleMaterial, Materials = Materials, Linework = Linework,
         Warnings = Warnings
     };
 
