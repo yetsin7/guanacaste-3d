@@ -259,10 +259,31 @@ internal static class GltfReader
                     data = Convert.FromBase64String(text[(text.IndexOf(',') + 1)..]);
                 else
                 {
-                    var file = Path.GetFullPath(Path.Combine(directory, Uri.UnescapeDataString(text)));
-                    // Buffers must stay beside the model; a path that climbs out of its folder is ignored.
-                    if (!file.StartsWith(Path.GetFullPath(directory), StringComparison.OrdinalIgnoreCase) || !File.Exists(file))
+                    // glTF buffer URIs are relative to the model directory. A string-prefix test
+                    // is insufficient: "../model-other/data.bin" can share the model folder's prefix.
+                    var relative = Uri.UnescapeDataString(text);
+                    if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) ||
+                        Uri.TryCreate(relative, UriKind.Absolute, out _))
                         throw new InvalidDataException("The glTF file is not valid.");
+
+                    var rootDirectory = Path.GetFullPath(directory);
+                    var file = Path.GetFullPath(Path.Combine(rootDirectory, relative));
+                    var inside = Path.GetRelativePath(rootDirectory, file);
+                    if (inside == ".." ||
+                        inside.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+                        Path.IsPathRooted(inside) || !File.Exists(file))
+                        throw new InvalidDataException("The glTF file is not valid.");
+
+                    // Reject symbolic links and junctions below the model directory, which could
+                    // otherwise redirect an apparently local buffer outside the allowed folder.
+                    var segmentPath = rootDirectory;
+                    foreach (var segment in inside.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        segmentPath = Path.Combine(segmentPath, segment);
+                        if ((Directory.Exists(segmentPath) && new DirectoryInfo(segmentPath).LinkTarget is not null) ||
+                            (File.Exists(segmentPath) && new FileInfo(segmentPath).LinkTarget is not null))
+                            throw new InvalidDataException("The glTF file is not valid.");
+                    }
                     data = File.ReadAllBytes(file);
                 }
             }
