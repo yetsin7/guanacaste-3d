@@ -16,7 +16,7 @@ geometry, plans, elevations, sections, sheets, schedules, and cost information.
 - [x] Bounded undo and redo history.
 - [x] Local Release build and executable domain checks on Windows.
 - [x] Local application installation and launch verification.
-- [ ] Repeatable visual-interaction automation for native WPF controls.
+- [x] Repeatable WPF visual-interaction automation for model workspace and Architecture ribbon in Windows CI (screenshots retained as build artifacts). Coverage is partial; independent manual QA remains necessary.
 
 ## Stage 1: CAD and BIM authoring core
 
