@@ -1,6 +1,20 @@
 # Development status
 
-Last updated: 2026-10-27. Version: 0.22.1.
+Last updated: 2026-10-31. Version: 0.22.1 (historical milestone; subsequent incremental improvements are tracked in commits).
+
+## Roof takeoffs and CSV export (2026-10-31)
+
+- Roof surface and edge quantities are exported from the WPF schedule UI.
+- 3D ridge, hip, sloped-boundary and horizontal-boundary lengths include
+  supported overhangs and clip creases to concave footprints.
+- Horizontal roof boundary is now subdivided into low-eave and elevated
+  horizontal lengths, preventing a shed roof's high edge from being
+  misclassified as low eave. Neither measurement automatically represents
+  gutters or flashing.
+- CSV labels use shared spreadsheet-formula mitigation; roof quantity exports
+  append columns without reordering existing ones.
+- Windows 3D interaction, external DXF validation and save/reopen smoke tests
+  still need recorded manual evidence (issue #2).
 
 ## Lighting design and smoke alarms (0.22, 2026-10-27)
 
@@ -107,10 +121,10 @@ Last updated: 2026-10-27. Version: 0.22.1.
 
 ## Not verified / blocked
 
-- **GitHub Actions does not run**: the account's Actions budget is exhausted
-  ("The job was not started because an Actions budget is preventing further
-  use"). The workflow is correct as far as local runs show; it cannot be
-  confirmed on CI until the owner raises or resets the budget.
+- **GitHub Actions recovered (2026-10-31)**: the earlier account-budget
+  blockage no longer prevents execution. [Run #41182653476](https://github.com/yetsin7/guanacaste-3d/actions/runs/41182653476)
+  passed the .NET 10 core checks, Windows WPF build, regression suite and portable
+  Windows packaging. New commits still require their own CI verification.
 - **Self-contained portable package**: NuGet downloads of the win-x64 runtime
   packs run at ~21 KB/s on this machine; publishing with
   `scripts/verify-windows.ps1 -FrameworkDependent` avoids the download.
