@@ -162,7 +162,7 @@ public static class RoofGeometry
             var from = outline[index];
             var to = outline[(index + 1) % outline.Count];
             var riseDifference = RiseAt(built, to) - RiseAt(built, from);
-            var length = Math.Hypot(from.DistanceTo(to), riseDifference);
+            var length = double.Hypot(from.DistanceTo(to), riseDifference);
             if (Math.Abs(riseDifference) <= Epsilon) horizontal += length;
             else sloped += length;
         }
@@ -172,7 +172,7 @@ public static class RoofGeometry
         foreach (var (from, to) in CreaseLines(built))
         {
             var riseDifference = RiseAt(built, to) - RiseAt(built, from);
-            var length = Math.Hypot(from.DistanceTo(to), riseDifference);
+            var length = double.Hypot(from.DistanceTo(to), riseDifference);
             if (Math.Abs(riseDifference) <= Epsilon) ridges += length;
             else hips += length;
         }
