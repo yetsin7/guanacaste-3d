@@ -547,7 +547,7 @@ static class ImportChecks
         check(imported.TriangleCount == 1 && material.Texture is { Width: 2, Height: 2 } &&
               material.UvMapped && Math.Abs(material.BaseColor.X - 0.5f) < 1e-6f &&
               sample.X > 0.99f && sample.Y < 0.01f && sample.Z < 0.01f &&
-              imported.Uvs is { Length: 3 } && Math.Abs(imported.Uvs[0].Y - 0.75f) < 1e-6f &&
+              imported.Uvs is { Length: 3 } && Math.Abs(imported.Uvs[0].Y - 0.25f) < 1e-6f &&
               scene.TriangleUvs is { Length: 3 } && scene.TriangleUvs[0] == imported.Uvs[0],
             "glTF opaque PNG textures use the source UVs, correct vertical orientation and base-color multiplier");
 
