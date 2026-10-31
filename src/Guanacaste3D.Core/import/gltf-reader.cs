@@ -211,8 +211,8 @@ internal static class GltfReader
                             ? Vector3.Normalize(normal) : Vector3.Zero);
                     }
                     else mesh.Normals!.Add(Vector3.Zero);
-                    // glTF's V=0 is the image top; the renderer uses V=0 at the bottom.
-                    mesh.Uvs!.Add(i < uvs.Length ? new Vector2(uvs[i].X, 1f - uvs[i].Y) : Vector2.Zero);
+                    // Preserve glTF's top-origin UVs: the path tracer flips V at texture sampling.
+                    mesh.Uvs!.Add(i < uvs.Length ? uvs[i] : Vector2.Zero);
                 }
                 for (var i = 0; i + 2 < triangles.Length; i += 3)
                 {
