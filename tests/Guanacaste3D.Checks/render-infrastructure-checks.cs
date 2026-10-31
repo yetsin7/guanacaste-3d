@@ -43,6 +43,54 @@ static class RenderInfrastructureChecks
         catch (InvalidDataException) { rejected = true; }
         check(rejected, "A corrupted PNG is rejected instead of decoded into garbage");
 
+        var overflowChunk = PngCodec.Encode(image);
+        overflowChunk[8] = 0x7f; overflowChunk[9] = 0xff;
+        overflowChunk[10] = 0xff; overflowChunk[11] = 0xff;
+        rejected = false;
+        try { PngCodec.Decode(overflowChunk); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "PNG chunk length overflow is rejected as invalid data");
+
+        var missingEnd = PngCodec.Encode(image);
+        Array.Resize(ref missingEnd, missingEnd.Length - 12);
+        rejected = false;
+        try { PngCodec.Decode(missingEnd); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "PNG without an IEND chunk is rejected");
+
+        var oversized = PngCodec.Encode(image);
+        static void SetBigEndian(byte[] bytes, int offset, int value)
+        {
+            bytes[offset] = (byte)(value >> 24);
+            bytes[offset + 1] = (byte)(value >> 16);
+            bytes[offset + 2] = (byte)(value >> 8);
+            bytes[offset + 3] = (byte)value;
+        }
+        SetBigEndian(oversized, 16, PngCodec.MaximumDimension);
+        SetBigEndian(oversized, 20, PngCodec.MaximumDimension);
+        uint crc = 0xffffffff;
+        for (var i = 12; i < 29; i++)
+        {
+            crc ^= oversized[i];
+            for (var bit = 0; bit < 8; bit++)
+                crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xedb88320u : crc >> 1;
+        }
+        SetBigEndian(oversized, 29, unchecked((int)~crc));
+        rejected = false;
+        try { PngCodec.Decode(oversized); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "PNG header requesting excessive decompression memory is rejected");
+
+        var invalidRaster = false;
+        try { RasterImage.FromBgra32(65536, 65536, ReadOnlySpan<byte>.Empty); }
+        catch (ArgumentException) { invalidRaster = true; }
+        check(invalidRaster, "BGRA image dimensions cannot wrap a 32-bit pixel count");
+
+        invalidRaster = false;
+        try { PngCodec.Encode(new RasterImage(0, 1, [])); }
+        catch (ArgumentException) { invalidRaster = true; }
+        check(invalidRaster, "PNG encoding rejects invalid image dimensions");
+
         var test = image.ToDisplay();
         var same = ImageMetrics.Compare(test, test, width, height);
         check(double.IsPositiveInfinity(same.Psnr) && Math.Abs(same.Ssim - 1) < 1e-9 && same.MeanDeltaE == 0 && same.OutOfTolerance == 0,

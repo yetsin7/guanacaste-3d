@@ -9,6 +9,8 @@ public sealed record RasterImage(int Width, int Height, byte[] Rgb)
     /// <summary>Returns display-referred pixels in [0, 1] (gamma-encoded, as stored in the file).</summary>
     public Vector3[] ToDisplay()
     {
+        if (Width < 1 || Height < 1 || (long)Width * Height * 3 != Rgb.Length)
+            throw new ArgumentException("The RGB image dimensions do not match its pixel buffer.");
         var pixels = new Vector3[Width * Height];
         for (var index = 0; index < pixels.Length; index++)
             pixels[index] = new Vector3(Rgb[index * 3], Rgb[index * 3 + 1], Rgb[index * 3 + 2]) / 255f;
@@ -18,9 +20,11 @@ public sealed record RasterImage(int Width, int Height, byte[] Rgb)
     /// <summary>Converts the renderer's BGRA32 output (alpha ignored) into an RGB image.</summary>
     public static RasterImage FromBgra32(int width, int height, ReadOnlySpan<byte> bgra)
     {
-        if (bgra.Length < width * height * 4) throw new ArgumentException("Pixel buffer is too small.");
-        var rgb = new byte[width * height * 3];
-        for (var index = 0; index < width * height; index++)
+        if (width < 1 || height < 1 || (long)width * height > bgra.Length / 4)
+            throw new ArgumentException("Pixel buffer is too small or image dimensions are invalid.");
+        var pixelCount = width * height;
+        var rgb = new byte[pixelCount * 3];
+        for (var index = 0; index < pixelCount; index++)
         {
             rgb[index * 3] = bgra[index * 4 + 2];
             rgb[index * 3 + 1] = bgra[index * 4 + 1];
@@ -41,12 +45,18 @@ public static class PngCodec
 
     /// <summary>Largest image dimension decoded, which bounds memory for hostile or mistaken files.</summary>
     public const int MaximumDimension = 16384;
+    /// <summary>Upper bound on uncompressed scanline bytes to avoid unbounded allocations from PNG headers.</summary>
+    public const long MaximumDecodedBytes = 256L * 1024 * 1024;
 
     /// <summary>Encodes an RGB image using the "Up" scanline filter and zlib compression.</summary>
     public static byte[] Encode(RasterImage image)
     {
         ArgumentNullException.ThrowIfNull(image);
-        if (image.Rgb.Length != image.Width * image.Height * 3) throw new ArgumentException("Pixel buffer size is wrong.");
+        if (image.Width < 1 || image.Height < 1 ||
+            image.Width > MaximumDimension || image.Height > MaximumDimension ||
+            (long)image.Width * image.Height * 3 != image.Rgb.Length ||
+            ((long)image.Width * 3 + 1) * image.Height > MaximumDecodedBytes)
+            throw new ArgumentException("The PNG image dimensions or pixel buffer are invalid.");
         var stride = image.Width * 3;
         var raw = new byte[(stride + 1) * image.Height];
         for (var row = 0; row < image.Height; row++)
@@ -87,34 +97,47 @@ public static class PngCodec
         using var compressed = new MemoryStream();
         var position = 8;
         var sawEnd = false;
-        while (position + 12 <= data.Length && !sawEnd)
+        var sawHeader = false;
+        while (position <= data.Length - 12 && !sawEnd)
         {
             var length = (int)ReadBigEndian(data, position);
             var type = System.Text.Encoding.ASCII.GetString(data.Slice(position + 4, 4));
-            if (length < 0 || position + 12 + length > data.Length) throw new InvalidDataException("The PNG file is truncated.");
+            // Subtract before comparing: adding a hostile chunk length can overflow a signed int.
+            if (length < 0 || length > data.Length - position - 12)
+                throw new InvalidDataException("The PNG file is truncated.");
+            if (!sawHeader && type != "IHDR")
+                throw new InvalidDataException("The PNG file must start with an IHDR chunk.");
             var body = data.Slice(position + 8, length);
             if (ReadBigEndian(data, position + 8 + length) != Crc(data.Slice(position + 4, 4 + length)))
                 throw new InvalidDataException("The PNG file is corrupt.");
             switch (type)
             {
                 case "IHDR":
+                    if (sawHeader || length != 13)
+                        throw new InvalidDataException("The PNG must contain exactly one 13-byte IHDR chunk.");
+                    sawHeader = true;
                     width = (int)ReadBigEndian(body, 0);
                     height = (int)ReadBigEndian(body, 4);
-                    if (body[8] != 8 || body[12] != 0) throw new InvalidDataException("Only 8-bit non-interlaced PNG images are supported.");
+                    if (body[8] != 8 || body[10] != 0 || body[11] != 0 || body[12] != 0)
+                        throw new InvalidDataException("Only 8-bit non-interlaced PNG images are supported.");
                     channels = body[9] switch { 0 => 1, 2 => 3, 6 => 4, _ => throw new InvalidDataException("This PNG color type is not supported.") };
-                    if (width is < 1 or > MaximumDimension || height is < 1 or > MaximumDimension)
-                        throw new InvalidDataException("The PNG dimensions are out of range.");
+                    if (width is < 1 or > MaximumDimension || height is < 1 or > MaximumDimension ||
+                        ((long)width * channels + 1) * height > MaximumDecodedBytes)
+                        throw new InvalidDataException("The PNG dimensions exceed the safe decoding budget.");
                     break;
                 case "IDAT":
                     compressed.Write(body);
                     break;
                 case "IEND":
+                    if (length != 0)
+                        throw new InvalidDataException("The PNG end chunk must be empty.");
                     sawEnd = true;
                     break;
             }
             position += 12 + length;
         }
-        if (width == 0 || compressed.Length == 0) throw new InvalidDataException("The PNG file has no image data.");
+        if (!sawEnd || width == 0 || compressed.Length == 0)
+            throw new InvalidDataException("The PNG file has no complete image data.");
 
         var stride = width * channels;
         var raw = new byte[(stride + 1) * height];

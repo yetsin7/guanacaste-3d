@@ -130,6 +130,11 @@
   <sys:String x:Key="Error.Guanacaste 3D projects must be a valid .g3d container, .g3 preview, or .g3d.json legacy document.">El proyecto debe ser un contenedor .g3d válido, un proyecto de vista previa .g3 o un documento heredado .g3d.json.</sys:String>
   <sys:String x:Key="Error.The native document JSON payload is invalid.">El contenido JSON del documento nativo no es válido.</sys:String>
   <sys:String x:Key="Error.The native document compressed payload is invalid.">El contenido comprimido del documento nativo no es válido.</sys:String>
+  <sys:String x:Key="Error.The PNG file must start with an IHDR chunk.">El archivo PNG debe comenzar con un encabezado IHDR.</sys:String>
+  <sys:String x:Key="Error.The PNG must contain exactly one 13-byte IHDR chunk.">El archivo PNG debe tener un único encabezado IHDR de 13 bytes.</sys:String>
+  <sys:String x:Key="Error.The PNG dimensions exceed the safe decoding budget.">Las dimensiones del PNG superan el límite de memoria admitido para decodificarlo.</sys:String>
+  <sys:String x:Key="Error.The PNG end chunk must be empty.">El bloque final IEND del PNG no es válido.</sys:String>
+  <sys:String x:Key="Error.The PNG file has no complete image data.">El archivo PNG está incompleto o no contiene datos de imagen válidos.</sys:String>
   <!-- Formula errors: templates receive the captured parts of the English message. -->
   <sys:String x:Key="Error.Formula.UnknownName">Error de fórmula: el nombre «{0}» no existe en esta categoría.</sys:String>
   <sys:String x:Key="Error.Formula.UnknownFunction">Error de fórmula: la función «{0}» no existe.</sys:String>
