@@ -253,6 +253,33 @@ static class ImportChecks
         var objPath = Write(folder, "house.obj", obj);
         var glbPath = Path.Combine(folder, "house.glb");
         File.WriteAllBytes(glbPath, MeshExporter.ToGlb(source, "house"));
+        var validGlb = File.ReadAllBytes(glbPath);
+        static byte[] ChangeGlbHeader(byte[] sourceBytes, int offset, uint value)
+        {
+            var changed = (byte[])sourceBytes.Clone();
+            BitConverter.GetBytes(value).CopyTo(changed, offset);
+            return changed;
+        }
+        bool RejectGlb(string name, byte[] content)
+        {
+            var path = Path.Combine(folder, name);
+            File.WriteAllBytes(path, content);
+            try { ModelImporter.Import(path); return false; }
+            catch (InvalidDataException) { return true; }
+        }
+
+        check(RejectGlb("invalid-glb-version.glb", ChangeGlbHeader(validGlb, 4, 1)),
+            "GLB importer rejects unsupported header versions");
+        check(RejectGlb("invalid-glb-length.glb", ChangeGlbHeader(validGlb, 8, (uint)validGlb.Length - 4)),
+            "GLB importer rejects a declared file length that differs from the actual length");
+        check(RejectGlb("overflow-glb-chunk.glb", ChangeGlbHeader(validGlb, 12, (uint)int.MaxValue - 4)),
+            "GLB importer rejects overflowing chunk lengths with InvalidDataException");
+        var danglingChunk = new byte[validGlb.Length + 4];
+        Array.Copy(validGlb, danglingChunk, validGlb.Length);
+        BitConverter.GetBytes((uint)danglingChunk.Length).CopyTo(danglingChunk, 8);
+        check(RejectGlb("trailing-glb-header.glb", danglingChunk),
+            "GLB importer rejects an incomplete trailing chunk header");
+
         foreach (var (name, path) in new[] { ("OBJ", objPath), ("GLB", glbPath) })
         {
             var model = ModelImporter.Import(path).Model;
