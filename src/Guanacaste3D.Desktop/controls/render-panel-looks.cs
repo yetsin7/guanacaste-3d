@@ -55,7 +55,9 @@ public partial class RenderPanel
     /// <summary>Applies a picture style: its tone curve, bloom, vignette, white balance and effect sliders.</summary>
     private void Style_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (!_ready && StylePicker.SelectedIndex < 0) return;
+        // SelectionChanged fires while InitializeLooks populates the picker.
+        // Do not apply a partial look before the panel and its sliders are ready.
+        if (!_ready || StylePicker.SelectedIndex < 0) return;
         var styled = RenderLooks.Style(SelectedStyle()).Apply(new ImageFinish
         {
             Bloom = 0, Vignette = 0, Saturation = 1, Contrast = 1, ToneMapper = CurrentLook()
@@ -65,11 +67,10 @@ public partial class RenderPanel
         {
             Select(LookPicker, styled.ToneMapper switch { ToneMapper.Aces => "Aces", ToneMapper.Soft => "Soft", _ => "AgX" });
             TemperatureSlider.Value = Math.Clamp(styled.Temperature, -1, 1);
-            if (SelectedStyle() != "none")
-            {
-                BloomCheck.IsChecked = styled.Bloom > 0;
-                VignetteCheck.IsChecked = styled.Vignette > 0;
-            }
+            // Neutral is a real reset, not a style that inherits bloom and vignette
+            // from whichever photographic filter was selected previously.
+            BloomCheck.IsChecked = styled.Bloom > 0;
+            VignetteCheck.IsChecked = styled.Vignette > 0;
             HighlightsSlider.Value = styled.Highlights;
             ShadowsSlider.Value = styled.Shadows;
             VibranceSlider.Value = styled.Vibrance;
