@@ -295,10 +295,10 @@ static class ImportChecks
             Document("gltf-buffers/triangle.bin"))).Model;
         check(valid.TriangleCount == 1,
             "glTF permits external binary buffers in subdirectories of the model folder");
-        
+
         // A valid buffer may contain multiple views, but an accessor must not read bytes
         // belonging to the next view. The bounds check also runs before array allocation.
-        static bool Invalid(string name, string json)
+        bool Invalid(string name, string json)
         {
             try
             {
