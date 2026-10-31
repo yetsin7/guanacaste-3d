@@ -101,6 +101,21 @@ public static class RoofGeometry
             .Select(piece => new RoofFacet(piece)).ToArray();
     }
 
+    /// <summary>
+    /// Actual top-surface area in square meters, including the roof overhang and pitch.
+    /// All supported roof facets (shed, gable and hip) have the same pitch, so their
+    /// combined surface area is the built horizontal projection divided by cos(pitch).
+    /// Non-roof slabs retain their plan area.
+    /// </summary>
+    public static double SurfaceArea(FloorSlab slab)
+    {
+        ArgumentNullException.ThrowIfNull(slab);
+        if (slab.Kind != FloorKind.Roof) return slab.CalculateArea();
+        var built = WithOverhang(slab);
+        var planArea = built.CalculateArea();
+        return built.IsPitched ? planArea / Math.Cos(built.Pitch * Math.PI / 180) : planArea;
+    }
+
     /// <summary>The ridge and hip lines to draw in plan, as pairs of end points. Empty for flat and shed roofs.</summary>
     public static IReadOnlyList<(Point2 From, Point2 To)> CreaseLines(FloorSlab roof)
     {

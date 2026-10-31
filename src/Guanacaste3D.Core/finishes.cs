@@ -32,6 +32,9 @@ public static class FinishRules
     public static double WallFinishArea(Wall wall, IEnumerable<WallOpening> openings) =>
         2 * WallFaceArea(wall, openings);
 
-    /// <summary>Finished area of a floor: the walking surface of its plan boundary.</summary>
-    public static double FloorFinishArea(FloorSlab floor) => floor.CalculateArea();
+    /// <summary>
+    /// Finished top-surface area: floor plan area for horizontal slabs, actual pitched
+    /// and overhanging roof coverage for roofs. Does not include soffits or fascia.
+    /// </summary>
+    public static double FloorFinishArea(FloorSlab floor) => RoofGeometry.SurfaceArea(floor);
 }

@@ -95,7 +95,7 @@ public static class BudgetCalculator
         Add(lines, prices, UnitPriceList.FloorArea,
             document.Floors.Where(f => f.Kind == FloorKind.Floor).Sum(f => f.CalculateArea()));
         Add(lines, prices, UnitPriceList.RoofArea,
-            document.Floors.Where(f => f.Kind == FloorKind.Roof).Sum(f => f.CalculateArea()));
+            document.Floors.Where(f => f.Kind == FloorKind.Roof).Sum(RoofGeometry.SurfaceArea));
         Add(lines, prices, UnitPriceList.Door, document.Openings.Count(o => o.Kind == OpeningKind.Door));
         Add(lines, prices, UnitPriceList.Window, document.Openings.Count(o => o.Kind == OpeningKind.Window));
         Add(lines, prices, UnitPriceList.Column, document.Columns.Count);
