@@ -45,13 +45,17 @@ static class RoofTakeoffChecks
         check(Math.Abs(gableEdges.HorizontalBoundaryLength - 22.4) < 1e-8 &&
               Math.Abs(gableEdges.SlopedBoundaryLength - gableRakes) < 1e-8 &&
               Math.Abs(gableEdges.RidgeLength - 11.2) < 1e-8 &&
-              Math.Abs(gableEdges.HipLength) < 1e-8,
+              Math.Abs(gableEdges.HipLength) < 1e-8 &&
+              Math.Abs(gableEdges.LowEaveBoundaryLength - 22.4) < 1e-8 &&
+              Math.Abs(gableEdges.ElevatedHorizontalBoundaryLength) < 1e-8,
             "Gable roof takeoff distinguishes level eaves, 3D rakes and ridge");
 
         var shedEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Shed });
         check(Math.Abs(shedEdges.HorizontalBoundaryLength - 22.4) < 1e-8 &&
               Math.Abs(shedEdges.SlopedBoundaryLength - gableRakes) < 1e-8 &&
-              shedEdges.RidgeLength == 0 && shedEdges.HipLength == 0,
+              shedEdges.RidgeLength == 0 && shedEdges.HipLength == 0 &&
+              Math.Abs(shedEdges.LowEaveBoundaryLength - 11.2) < 1e-8 &&
+              Math.Abs(shedEdges.ElevatedHorizontalBoundaryLength - 11.2) < 1e-8,
             "Shed roof counts the high level edge without inventing a ridge or hip");
 
         var hipEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Hip });
@@ -60,7 +64,9 @@ static class RoofTakeoffChecks
         check(Math.Abs(hipEdges.HorizontalBoundaryLength - 36.8) < 1e-8 &&
               Math.Abs(hipEdges.SlopedBoundaryLength) < 1e-8 &&
               Math.Abs(hipEdges.RidgeLength - 4) < 1e-8 &&
-              Math.Abs(hipEdges.HipLength - expectedHips) < 1e-8,
+              Math.Abs(hipEdges.HipLength - expectedHips) < 1e-8 &&
+              Math.Abs(hipEdges.LowEaveBoundaryLength - 36.8) < 1e-8 &&
+              Math.Abs(hipEdges.ElevatedHorizontalBoundaryLength) < 1e-8,
             "Hip roof measures four inclined hips and its level central ridge");
 
         // The generated ridge spans the bounding box, but a U-shaped footprint
@@ -84,7 +90,9 @@ static class RoofTakeoffChecks
 
         var flatEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Flat, Pitch = 0 });
         check(Math.Abs(flatEdges.HorizontalBoundaryLength - 36.8) < 1e-8 &&
-              flatEdges.SlopedBoundaryLength == 0 && flatEdges.RidgeLength == 0 && flatEdges.HipLength == 0,
+              flatEdges.SlopedBoundaryLength == 0 && flatEdges.RidgeLength == 0 && flatEdges.HipLength == 0 &&
+              Math.Abs(flatEdges.LowEaveBoundaryLength - 36.8) < 1e-8 &&
+              Math.Abs(flatEdges.ElevatedHorizontalBoundaryLength) < 1e-8,
             "Flat roof has only horizontal perimeter and no artificial crease lengths");
 
         var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
@@ -97,7 +105,8 @@ static class RoofTakeoffChecks
                   csv.Contains("CoveredPlanArea_m2", StringComparison.Ordinal) &&
                   csv.Contains(",80.64,", StringComparison.Ordinal) &&
                   csv.Contains(",36.8,\"", StringComparison.Ordinal) &&
-                  csv.Contains("ProjectedPerimeter_m,RoofName,HorizontalBoundary_m,SlopedBoundary_m,Ridge_m,Hip_m", StringComparison.Ordinal),
+                  csv.Contains("ProjectedPerimeter_m,RoofName,HorizontalBoundary_m,SlopedBoundary_m,Ridge_m,Hip_m,LowEaveBoundary_m,ElevatedHorizontalBoundary_m", StringComparison.Ordinal) &&
+                  csv.Contains(",11.2,0,22.4,0", StringComparison.Ordinal),
                 "Roof quantity CSV includes overhang, coverage and projected perimeter in invariant culture");
         }
         finally
