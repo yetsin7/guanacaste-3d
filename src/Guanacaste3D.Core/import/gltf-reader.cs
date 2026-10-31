@@ -401,7 +401,12 @@ internal static class GltfReader
 
         private int[] ReadIndices(int accessorIndex)
         {
-            var (data, offset, stride, count, type, _) = Accessor(accessorIndex);
+            var (data, offset, stride, count, type, components) = Accessor(accessorIndex);
+            // Sparse-only accessors are not supported. In particular, never allocate an
+            // attacker-controlled count when the accessor has no backing bufferView.
+            // glTF indices must be scalar unsigned bytes, shorts or integers.
+            if (data.Length == 0 || components != 1 || type is not (5121 or 5123 or 5125))
+                throw new InvalidDataException("The glTF accessor is not valid.");
             var result = new int[count];
             for (var i = 0; i < count; i++)
             {

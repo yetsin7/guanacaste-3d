@@ -26,6 +26,7 @@ static class ImportChecks
             Stl(check, folder);
             RoundTrips(check, folder);
             GltfBufferPaths(check, folder);
+            GltfIndexAccessors(check, folder);
             GltfNodeNormals(check, folder);
             Ifc(check, folder);
             Collada(check, folder);
@@ -383,6 +384,57 @@ static class ImportChecks
         {
             Directory.Delete(sibling, recursive: true);
         }
+    }
+
+    /// <summary>Reject invalid glTF index streams before allocating from untrusted accessor counts.</summary>
+    private static void GltfIndexAccessors(Action<bool, string> check, string folder)
+    {
+        var vertices = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 }
+            .SelectMany(BitConverter.GetBytes).ToArray();
+        File.WriteAllBytes(Path.Combine(folder, "gltf-indices.bin"),
+            vertices.Concat(new byte[] { 0, 0, 1, 0, 2, 0 }).ToArray());
+        var validJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            asset = new { version = "2.0" },
+            buffers = new[] { new { uri = "gltf-indices.bin", byteLength = 42 } },
+            bufferViews = new[]
+            {
+                new { buffer = 0, byteOffset = 0, byteLength = 36 },
+                new { buffer = 0, byteOffset = 36, byteLength = 6 }
+            },
+            accessors = new[]
+            {
+                new { bufferView = 0, componentType = 5126, count = 3, type = "VEC3" },
+                new { bufferView = 1, componentType = 5123, count = 3, type = "SCALAR" }
+            },
+            meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0 }, indices = 1 } } } }
+        });
+
+        var valid = ModelImporter.Import(Write(folder, "gltf-valid-indices.gltf", validJson)).Model;
+        check(valid.TriangleCount == 1,
+            "glTF accepts ordinary unsigned-short indexed triangles");
+
+        bool Reject(string filename, System.Text.Json.Nodes.JsonNode document)
+        {
+            try
+            {
+                ModelImporter.Import(Write(folder, filename, document.ToJsonString()));
+                return false;
+            }
+            catch (InvalidDataException) { return true; }
+        }
+
+        var unbacked = System.Text.Json.Nodes.JsonNode.Parse(validJson)!;
+        var indexAccessor = unbacked["accessors"]![1]!.AsObject();
+        indexAccessor.Remove("bufferView");
+        indexAccessor["count"] = int.MaxValue;
+        check(Reject("gltf-unbacked-indices.gltf", unbacked),
+            "glTF refuses unbacked index accessors without allocating an untrusted count");
+
+        var wrongComponent = System.Text.Json.Nodes.JsonNode.Parse(validJson)!;
+        wrongComponent["accessors"]![1]!["componentType"] = 5126;
+        check(Reject("gltf-float-indices.gltf", wrongComponent),
+            "glTF refuses floating-point index accessors instead of silently replacing indices");
     }
 
     /// <summary>Non-uniform and reflected glTF nodes must preserve the surface normal direction.</summary>
