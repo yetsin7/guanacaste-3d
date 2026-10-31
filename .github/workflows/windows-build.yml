@@ -59,6 +59,17 @@ jobs:
         run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
       - name: Documentation model and WPF interaction checks
         run: dotnet run --project tests/documentation-checks/documentation-checks.csproj -c Release --no-build --no-restore
+      - name: Model workspace 3D and material regressions
+        timeout-minutes: 12
+        run: dotnet run --project tests/model-workspace-checks/model-workspace-checks.csproj -c Release --no-build --no-restore
+      - name: Upload model workspace interaction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Guanacaste3D-model-workspace-evidence
+          path: artifacts/model-workspace-evidence/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Publish self-contained portable Windows app
         run: dotnet publish src/Guanacaste3D.Desktop/Guanacaste3D.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/portable-win-x64
       - name: Verify executable and write checksum
