@@ -52,6 +52,10 @@ public sealed partial class DocumentSession
     public void SetRenderMaterial(RenderMaterialAssignment assignment)
     {
         ArgumentNullException.ThrowIfNull(assignment);
+        // Re-selecting an unchanged material must not rebuild the BIM document,
+        // invalidate the live render, or consume an undo step.
+        if (Document.RenderMaterials.Any(existing =>
+            existing.Category == assignment.Category && existing == assignment)) return;
         Commit("Transaction.SetRenderMaterial", document =>
         {
             document.RenderMaterials.RemoveAll(existing => existing.Category == assignment.Category);
