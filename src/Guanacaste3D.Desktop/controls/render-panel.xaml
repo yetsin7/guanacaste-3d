@@ -397,7 +397,7 @@
                 <StackPanel>
                   <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Materials}"/>
                   <TextBlock Style="{StaticResource PanelHint}" Text="{DynamicResource RenderPanel.MaterialsHint}"/>
-                  <TextBox x:Name="MaterialSearch" Margin="0,10,0,8" ToolTip="Buscar por nombre o identificador en la biblioteca de materiales" TextChanged="MaterialSearch_Changed"/>
+                  <TextBox x:Name="MaterialSearch" Margin="0,10,0,8" ToolTip="Buscar materiales por nombre, familia o identificador, con o sin tildes. Abre el selector para ver los resultados."/>
                   <StackPanel x:Name="MaterialRows"/>
                 </StackPanel>
               </Border>
