@@ -25,6 +25,7 @@ static class ImportChecks
             Dxf(check, folder);
             Stl(check, folder);
             RoundTrips(check, folder);
+            GltfBufferPaths(check, folder);
             Ifc(check, folder);
             Collada(check, folder);
             Detection(check, folder);
@@ -267,6 +268,63 @@ static class ImportChecks
         var solid = house.Walls.Sum(wall => WallGeometry.NetVolume(wall, house.Openings.Where(o => o.WallId == wall.Id)));
         check(ifc.Materials.Any(m => m.IsTransmissive) || ifc.TriangleCount > 0, "IFC import yields materials for the imported elements");
         _ = solid;
+    }
+
+    // ------------------------------------------------------------------ glTF external buffer path isolation
+
+    private static void GltfBufferPaths(Action<bool, string> check, string folder)
+    {
+        static string Document(string uri) => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            asset = new { version = "2.0" },
+            buffers = new[] { new { uri, byteLength = 36 } },
+            bufferViews = new[] { new { buffer = 0, byteOffset = 0, byteLength = 36 } },
+            accessors = new[] { new { bufferView = 0, componentType = 5126, count = 3, type = "VEC3" } },
+            meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0 } } } } }
+        });
+
+        var triangle = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 }
+            .SelectMany(value => BitConverter.GetBytes(value)).ToArray();
+        var nested = Path.Combine(folder, "gltf-buffers");
+        Directory.CreateDirectory(nested);
+        File.WriteAllBytes(Path.Combine(nested, "triangle.bin"), triangle);
+        var valid = ModelImporter.Import(Write(folder, "nested-buffer.gltf",
+            Document("gltf-buffers/triangle.bin"))).Model;
+        check(valid.TriangleCount == 1,
+            "glTF permits external binary buffers in subdirectories of the model folder");
+
+        // The sibling directory shares the exact prefix of the model directory.
+        // A previous StartsWith(rootDirectory) check incorrectly accepted it.
+        var sibling = folder + "-other";
+        Directory.CreateDirectory(sibling);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(sibling, "triangle.bin"), triangle);
+            var siblingUri = "../" + Path.GetFileName(sibling) + "/triangle.bin";
+            var rejected = false;
+            try { ModelImporter.Import(Write(folder, "sibling-buffer.gltf", Document(siblingUri))); }
+            catch (InvalidDataException) { rejected = true; }
+            check(rejected, "glTF cannot read a sibling directory sharing the model folder prefix");
+
+            rejected = false;
+            try
+            {
+                ModelImporter.Import(Write(folder, "encoded-buffer.gltf",
+                    Document("%2e%2e/" + Path.GetFileName(sibling) + "/triangle.bin")));
+            }
+            catch (InvalidDataException) { rejected = true; }
+            check(rejected, "glTF rejects percent-encoded parent-directory traversal");
+
+            rejected = false;
+            try { ModelImporter.Import(Write(folder, "absolute-buffer.gltf",
+                Document(Path.Combine(sibling, "triangle.bin")))); }
+            catch (InvalidDataException) { rejected = true; }
+            check(rejected, "glTF rejects absolute external buffer paths");
+        }
+        finally
+        {
+            Directory.Delete(sibling, recursive: true);
+        }
     }
 
     // ------------------------------------------------------------------ IFC
