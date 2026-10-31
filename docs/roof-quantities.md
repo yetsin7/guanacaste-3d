@@ -50,11 +50,18 @@ using the same overhang-adjusted footprint and generated roof creases as the mod
 - `RidgeLength`: horizontal crease lines at the top of gable/hip roofs.
 - `HipLength`: inclined hip creases of a hip roof.
 
-The four quantities are appended after `RoofName` in the CSV as
+The four original edge quantities are appended after `RoofName` in the CSV as
 `HorizontalBoundary_m`, `SlopedBoundary_m`, `Ridge_m`, and `Hip_m`.
-Earlier columns retain their positions. A 10 × 6 m gable roof with 0.6 m overhangs
+Two additional columns, `LowEaveBoundary_m` and `ElevatedHorizontalBoundary_m`,
+split the horizontal boundary into the lowest-level eave and the elevated
+horizontal edge (for example, the upper edge of a shed roof). Their sum equals
+`HorizontalBoundary_m`. This prevents the shed roof's high edge from being
+mistaken for low eave length. These are geometric classifications, **not**
+automatically installed gutter quantities. Earlier columns retain their positions. A 10 × 6 m gable roof with 0.6 m overhangs
 and 30° pitch has 22.4 m of horizontal boundary, about 16.628 m of sloping
-rakes and 11.2 m of ridge. This distinguishes plan perimeter from installed
+rakes and 11.2 m of ridge. Its 22.4 m of level boundary are all low eaves;
+a shed roof of the same size has 11.2 m of low eave and 11.2 m of
+elevated horizontal edge. This distinguishes plan perimeter from installed
 3D edge lengths without guessing a waste allowance.
 
 For concave footprints, ridge and hip takeoffs now intersect the generated crease
