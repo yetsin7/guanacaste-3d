@@ -210,10 +210,5 @@ public static class ScheduleEvaluator
     }
 
     /// <summary>Quotes a CSV cell and neutralizes spreadsheet formula prefixes.</summary>
-    private static string Quote(string value)
-    {
-        var safe = value.Length > 0 && "=+-@".Contains(value[0]) && !double.TryParse(value,
-            NumberStyles.Float, CultureInfo.InvariantCulture, out _) ? "'" + value : value;
-        return "\"" + safe.Replace("\"", "\"\"") + "\"";
-    }
+    private static string Quote(string value) => SpreadsheetCsv.Quote(value, preserveNumeric: true);
 }

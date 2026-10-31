@@ -37,6 +37,5 @@ public static class QuantitySchedule
         value.ToString("0.######", CultureInfo.InvariantCulture);
 
     /// <summary>Escapes a text value according to CSV quoting rules.</summary>
-    private static string EscapeCsv(string value) =>
-        "\"" + value.Replace("\"", "\"\"") + "\"";
+    private static string EscapeCsv(string value) => SpreadsheetCsv.Quote(value);
 }

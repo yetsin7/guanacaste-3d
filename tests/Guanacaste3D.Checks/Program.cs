@@ -132,6 +132,15 @@ Check(schedule.Contains("NetVolume_m3") && schedule.Contains("DoorCount") &&
     schedule.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2,
     "Quantity takeoff exports one row per wall");
 Check(schedule.Contains(",1,1"), "Quantity takeoff includes door and window counts");
+var formulaWallDocument = session.Document.Clone();
+var formulaLevelIndex = formulaWallDocument.Levels.FindIndex(item => item.Id == hostedWall.LevelId);
+formulaWallDocument.Levels[formulaLevelIndex] = formulaWallDocument.Levels[formulaLevelIndex] with
+{
+    Name = " \t=1+1,\"Q\""
+};
+var safeWallCsv = QuantitySchedule.ToCsv(formulaWallDocument);
+Check(safeWallCsv.Contains("\"' \t=1+1,\"\"Q\"\"\",", StringComparison.Ordinal),
+    "Wall quantity CSV escapes quotes and neutralizes formulas in level names");
 var wallBeforeInvalidMove = session.Document.Walls.Single(w => w.Id == hostedWallId);
 failed = false;
 try { session.MoveWall(hostedWallId, double.NaN, 0); }

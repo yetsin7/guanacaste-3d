@@ -29,7 +29,11 @@ reordering the existing numeric columns. Values use invariant decimal punctuatio
 and user-controlled level and roof names are quoted and escaped for CSV. Labels
 beginning with spreadsheet formula operators (`=`, `+`, `-`, `@`), optionally after
 whitespace, receive a leading apostrophe to prevent formula execution when
-opened in spreadsheet software. Ordinary floor slabs are excluded.
+opened in spreadsheet software. The same CSV quoting rule now protects user-authored
+level names in wall quantity reports and text fields in saved schedules, while
+legitimate signed numeric schedule values remain numeric. This reduces common
+spreadsheet-formula injection risks; importing untrusted CSV into other software
+still warrants care. Ordinary floor slabs are excluded.
 
 `RoofGeometry.ProjectedPerimeter` measures the **horizontal footprint boundary**
 of the built roof, including overhangs. It is **not** the length of installed gutters,

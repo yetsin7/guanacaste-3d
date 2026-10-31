@@ -111,6 +111,15 @@ static class ScheduleChecks
             session.Document.Schedules.Single(s => s.Id == copy), Invariant));
         check(csv.StartsWith("\"Row\",\"Name\",\"Width (m)\"", StringComparison.Ordinal) && csv.Contains("\"GrandTotal\"", StringComparison.Ordinal),
             "Evaluated schedules export to CSV with row kinds");
+        var evaluated = ScheduleEvaluator.Evaluate(session.Document,
+            session.Document.Schedules.Single(s => s.Id == copy), Invariant);
+        var guardedCsv = ScheduleEvaluator.ToCsv(evaluated with
+        {
+            Rows = [new ScheduleTableRow(ScheduleRowKind.Element, [" \t=2+2", "-12.5"], 1, 0, [])]
+        });
+        check(guardedCsv.Contains("\"' \t=2+2\"", StringComparison.Ordinal) &&
+              guardedCsv.Contains("\"-12.5\"", StringComparison.Ordinal),
+            "Schedule CSV neutralizes whitespace-prefixed formulas while preserving numeric cells");
         session.Undo();
         check(session.Document.Schedules.All(s => s.Id != copy), "Undo removes a duplicated schedule");
         var path = Path.Combine(Path.GetTempPath(), $"guanacaste-schedules-{Guid.NewGuid():N}.g3d");

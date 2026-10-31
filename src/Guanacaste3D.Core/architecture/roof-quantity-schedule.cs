@@ -41,13 +41,7 @@ public static class RoofQuantitySchedule
     /// A leading apostrophe is added only when the first non-whitespace character could
     /// start a formula in common spreadsheet programs.
     /// </summary>
-    private static string CsvText(string value)
-    {
-        var trimmed = value.AsSpan().TrimStart();
-        var formula = !trimmed.IsEmpty && trimmed[0] is '=' or '+' or '-' or '@';
-        var safe = formula ? "'" + value : value;
-        return "\"" + safe.Replace("\"", "\"\"") + "\"";
-    }
+    private static string CsvText(string value) => SpreadsheetCsv.Quote(value);
 
     private static string Number(double value) =>
         value.ToString("0.######", CultureInfo.InvariantCulture);
