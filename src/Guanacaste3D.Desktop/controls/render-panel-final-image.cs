@@ -16,14 +16,29 @@ namespace Guanacaste3D.Desktop.Controls;
 
 public partial class RenderPanel
 {
+    // A slow previous grading request must never overwrite a newer slider/filter change.
+    private int _refinishVersion;
+
     /// <summary>Re-applies exposure and grading to a finished render without rendering again.</summary>
     private async void RefinishFinal()
     {
-        if (_session is null || _rendering) return;
+        if (_session is null || _rendering || !_showingFinal) return;
+        var version = ++_refinishVersion;
         var session = _session;
         var finish = CurrentFinish();
-        var frame = await Task.Run(() => session.Refinish(finish, _lastFinal?.Elapsed ?? TimeSpan.Zero));
-        if (frame is null || session != _session) return;
+        var elapsed = _lastFinal?.Elapsed ?? TimeSpan.Zero;
+        RenderFrame? frame;
+        try
+        {
+            frame = await Task.Run(() => session.Refinish(finish, elapsed));
+        }
+        catch (ObjectDisposedException)
+        {
+            // The user closed the panel or started a new render while grading.
+            return;
+        }
+        if (frame is null || version != _refinishVersion || session != _session ||
+            _rendering || !_showingFinal) return;
         _lastFinal = frame with { IsFinal = true };
         Show(frame);
     }
