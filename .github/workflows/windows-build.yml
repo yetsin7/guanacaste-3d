@@ -66,6 +66,11 @@ jobs:
       - name: Architecture ribbon and BIM command interaction regressions
         timeout-minutes: 10
         run: dotnet run --project tests/architecture-ui-checks/architecture-ui-checks.csproj -c Release --no-build --no-restore
+      # Cover real WPF placement, editing, native save/reopen, linked imports,
+      # family samples and render-panel interaction before publishing a package.
+      - name: Desktop interaction and persistence regressions
+        timeout-minutes: 10
+        run: dotnet run --project tests/desktop-interaction-checks/desktop-interaction-checks.csproj -c Release --no-build --no-restore
       - name: Upload Architecture ribbon UI evidence
         if: always()
         uses: actions/upload-artifact@v4
