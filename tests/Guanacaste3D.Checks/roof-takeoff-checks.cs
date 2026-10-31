@@ -65,7 +65,7 @@ static class RoofTakeoffChecks
 
         // The generated ridge spans the bounding box, but a U-shaped footprint
         // has an open notch where no physical roof or ridge exists.
-        var uBoundary = new Guanacaste3D.Core.Geometry.Point2[]
+        var uBoundary = new Point2[]
         {
             new(0, 0), new(10, 0), new(10, 6), new(7, 6),
             new(7, 2), new(3, 2), new(3, 6), new(0, 6)
