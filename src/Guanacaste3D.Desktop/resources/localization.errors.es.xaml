@@ -240,4 +240,9 @@
   <sys:String x:Key="Error.The glTF accessor is not valid.">El descriptor de datos glTF no es válido.</sys:String>
   <sys:String x:Key="Error.The glTF accessor references an invalid buffer view.">El descriptor de datos glTF hace referencia a una vista de búfer inexistente.</sys:String>
   <sys:String x:Key="Error.The glTF accessor exceeds its buffer view.">El descriptor de datos glTF excede los límites de su vista de búfer.</sys:String>
+  <!-- Opaque PNG images embedded in or referenced by glTF materials. -->
+  <sys:String x:Key="Error.The glTF image is too large.">La imagen del modelo glTF supera el tamaño permitido.</sys:String>
+  <sys:String x:Key="Error.The glTF image is not valid.">La imagen del modelo glTF no es válida.</sys:String>
+  <sys:String x:Key="Error.The glTF image is not a supported PNG.">La imagen del modelo glTF no es un PNG compatible.</sys:String>
+  <sys:String x:Key="Error.The glTF image dimensions are out of range.">Las dimensiones de la imagen glTF superan los límites admitidos.</sys:String>
 </ResourceDictionary>

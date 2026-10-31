@@ -8,7 +8,8 @@ namespace Guanacaste3D.Core.Import;
 /// <summary>
 /// Reads glTF 2.0 models (.glb binary and .gltf with embedded or sibling buffers). Node hierarchies and instanced
 /// meshes are expanded, vertex normals are kept for smooth shading, and PBR materials (base color, metalness,
-/// roughness, emission, alpha blending) map onto renderer materials. glTF is Y-up and metric.
+/// roughness, emission, alpha blending) map onto renderer materials. Opaque PNG base-color textures are supported.
+/// glTF is Y-up and metric.
 /// </summary>
 internal static class GltfReader
 {
@@ -92,6 +93,8 @@ internal static class GltfReader
     {
         private readonly Dictionary<int, byte[]> _buffers = [];
         private readonly Dictionary<int, int> _materials = [];
+        private readonly Dictionary<int, RenderTexture?> _images = [];
+        private const int MaximumImageBytes = 16 * 1024 * 1024;
         public bool UsedDraco { get; private set; }
 
         public void Build(MeshAccumulator mesh, CancellationToken cancellation)
@@ -208,6 +211,7 @@ internal static class GltfReader
                             ? Vector3.Normalize(normal) : Vector3.Zero);
                     }
                     else mesh.Normals!.Add(Vector3.Zero);
+                    // Preserve glTF's top-origin UVs: the path tracer flips V at texture sampling.
                     mesh.Uvs!.Add(i < uvs.Length ? uvs[i] : Vector2.Zero);
                 }
                 for (var i = 0; i + 2 < triangles.Length; i += 3)
@@ -263,14 +267,84 @@ internal static class GltfReader
             var emission = m.TryGetProperty("emissiveFactor", out var e) && e.GetArrayLength() >= 3 ? ToVector(e) : Vector3.Zero;
             var blend = m.TryGetProperty("alphaMode", out var mode) && mode.GetString() == "BLEND" && alpha < 0.98f;
             var name = m.TryGetProperty("name", out var n) ? n.GetString() ?? "glTF" : "glTF";
-            // glTF base colors are already linear.
-            return blend
+            // glTF baseColorFactor is linear; baseColorTexture is sRGB and RenderTexture
+            // converts it to linear light when sampled. Keep the factor as a multiplier.
+            var material = blend
                 ? MaterialLibrary.ClearGlass with
                 {
                     Name = name, Transmission = Math.Clamp(1 - alpha, 0.2f, 0.97f),
                     TransmissionTint = Vector3.Lerp(new Vector3(0.9f, 0.95f, 0.97f), color, 0.3f)
                 }
                 : new RenderMaterial { Name = name, BaseColor = color, Metallic = metallic < 0.5f ? 0 : metallic, Roughness = roughness, Emission = emission };
+
+            // First stage of glTF image materials: opaque PNG base-color maps with TEXCOORD_0.
+            // MASK/BLEND alpha, JPEG, KHR_texture_transform and additional UV sets need
+            // separate implementations; do not silently treat a cutout as opaque.
+            var opaque = !m.TryGetProperty("alphaMode", out var alphaMode) || alphaMode.GetString() == "OPAQUE";
+            if (opaque && m.TryGetProperty("pbrMetallicRoughness", out var texturedPbr) &&
+                texturedPbr.TryGetProperty("baseColorTexture", out var baseTexture) &&
+                baseTexture.TryGetProperty("index", out var textureIndex) &&
+                (!baseTexture.TryGetProperty("texCoord", out var texCoord) || texCoord.GetInt32() == 0))
+            {
+                var texture = LoadBaseColorTexture(textureIndex.GetInt32());
+                if (texture is not null)
+                    material = material with { Texture = texture, UvMapped = true, Pattern = SurfacePattern.None, TextureSize = 1 };
+            }
+            return material;
+        }
+
+        /// <summary>Loads a PNG from a safe sibling URI, a data URI, or a glTF bufferView.</summary>
+        private RenderTexture? LoadBaseColorTexture(int textureIndex)
+        {
+            var textures = Array("textures");
+            if ((uint)textureIndex >= (uint)textures.Count ||
+                !textures[textureIndex].TryGetProperty("source", out var source)) return null;
+            var imageIndex = source.GetInt32();
+            if (_images.TryGetValue(imageIndex, out var cached)) return cached;
+            var images = Array("images");
+            if ((uint)imageIndex >= (uint)images.Count) return null;
+            var image = images[imageIndex];
+            byte[]? encoded = null;
+            if (image.TryGetProperty("uri", out var uri))
+            {
+                var value = uri.GetString() ?? "";
+                if (value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    const string prefix = "data:image/png;base64,";
+                    if (!value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
+                    if (value.Length > prefix.Length + (MaximumImageBytes + 2L) / 3 * 4)
+                        throw new InvalidDataException("The glTF image is too large.");
+                    try { encoded = Convert.FromBase64String(value[prefix.Length..]); }
+                    catch (FormatException) { throw new InvalidDataException("The glTF image is not valid."); }
+                }
+                else if (Path.GetExtension(Uri.UnescapeDataString(value)).Equals(".png", StringComparison.OrdinalIgnoreCase))
+                    encoded = ReadExternalResource(value, MaximumImageBytes);
+            }
+            else if (image.TryGetProperty("bufferView", out var viewIndex) &&
+                     image.TryGetProperty("mimeType", out var mime) && mime.GetString() == "image/png")
+            {
+                var views = Array("bufferViews");
+                var index = viewIndex.GetInt32();
+                if ((uint)index >= (uint)views.Count)
+                    throw new InvalidDataException("The glTF image is not valid.");
+                var view = views[index];
+                var data = Buffer(view.GetProperty("buffer").GetInt32());
+                var offset = view.TryGetProperty("byteOffset", out var vo) ? vo.GetInt32() : 0;
+                var length = view.GetProperty("byteLength").GetInt32();
+                if (offset < 0 || length < 0 || length > MaximumImageBytes || (long)offset + length > data.Length)
+                    throw new InvalidDataException("The glTF image is not valid.");
+                encoded = data.AsSpan(offset, length).ToArray();
+            }
+            if (encoded is null) return _images[imageIndex] = null;
+            if (encoded.Length > MaximumImageBytes || encoded.Length < 24 ||
+                !encoded.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }))
+                throw new InvalidDataException("The glTF image is not a supported PNG.");
+            // Reject giant dimensions before the PNG decoder allocates decompressed scanlines.
+            var width = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(encoded.AsSpan(16, 4));
+            var height = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(encoded.AsSpan(20, 4));
+            if (width is < 1 or > 4096 || height is < 1 or > 4096 || (long)width * height > 16_777_216)
+                throw new InvalidDataException("The glTF image dimensions are out of range.");
+            return _images[imageIndex] = RenderTexture.FromRaster(PngCodec.Decode(encoded));
         }
 
         // ---- accessors
@@ -290,32 +364,7 @@ internal static class GltfReader
                     data = Convert.FromBase64String(text[(text.IndexOf(',') + 1)..]);
                 else
                 {
-                    // glTF buffer URIs are relative to the model directory. A string-prefix test
-                    // is insufficient: "../model-other/data.bin" can share the model folder's prefix.
-                    var relative = Uri.UnescapeDataString(text);
-                    if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) ||
-                        Uri.TryCreate(relative, UriKind.Absolute, out _))
-                        throw new InvalidDataException("The glTF file is not valid.");
-
-                    var rootDirectory = Path.GetFullPath(directory);
-                    var file = Path.GetFullPath(Path.Combine(rootDirectory, relative));
-                    var inside = Path.GetRelativePath(rootDirectory, file);
-                    if (inside == ".." ||
-                        inside.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
-                        Path.IsPathRooted(inside) || !File.Exists(file))
-                        throw new InvalidDataException("The glTF file is not valid.");
-
-                    // Reject symbolic links and junctions below the model directory, which could
-                    // otherwise redirect an apparently local buffer outside the allowed folder.
-                    var segmentPath = rootDirectory;
-                    foreach (var segment in inside.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        segmentPath = Path.Combine(segmentPath, segment);
-                        if ((Directory.Exists(segmentPath) && new DirectoryInfo(segmentPath).LinkTarget is not null) ||
-                            (File.Exists(segmentPath) && new FileInfo(segmentPath).LinkTarget is not null))
-                            throw new InvalidDataException("The glTF file is not valid.");
-                    }
-                    data = File.ReadAllBytes(file);
+                    data = ReadExternalResource(text, long.MaxValue);
                 }
             }
             // The declared buffer length is part of the glTF contract. Without this check a
@@ -324,6 +373,35 @@ internal static class GltfReader
             if (declaredLength < 0 || data.Length < declaredLength)
                 throw new InvalidDataException("The glTF buffer is truncated.");
             return _buffers[index] = data;
+        }
+
+        /// <summary>Resolve model-local resources without allowing traversal or symlink escapes.</summary>
+        private byte[] ReadExternalResource(string uri, long maximumBytes)
+        {
+            var relative = Uri.UnescapeDataString(uri);
+            if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) ||
+                Uri.TryCreate(relative, UriKind.Absolute, out _))
+                throw new InvalidDataException("The glTF file is not valid.");
+
+            var rootDirectory = Path.GetFullPath(directory);
+            var file = Path.GetFullPath(Path.Combine(rootDirectory, relative));
+            var inside = Path.GetRelativePath(rootDirectory, file);
+            if (inside == ".." ||
+                inside.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+                Path.IsPathRooted(inside) || !File.Exists(file))
+                throw new InvalidDataException("The glTF file is not valid.");
+
+            var segmentPath = rootDirectory;
+            foreach (var segment in inside.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+            {
+                segmentPath = Path.Combine(segmentPath, segment);
+                if ((Directory.Exists(segmentPath) && new DirectoryInfo(segmentPath).LinkTarget is not null) ||
+                    (File.Exists(segmentPath) && new FileInfo(segmentPath).LinkTarget is not null))
+                    throw new InvalidDataException("The glTF file is not valid.");
+            }
+            if (new FileInfo(file).Length > maximumBytes)
+                throw new InvalidDataException("The glTF image is too large.");
+            return File.ReadAllBytes(file);
         }
 
         private (byte[] Data, int Offset, int Stride, int Count, int ComponentType, int Components) Accessor(int index)
