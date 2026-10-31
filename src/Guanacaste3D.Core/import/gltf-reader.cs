@@ -21,21 +21,43 @@ internal static class GltfReader
         var bytes = File.ReadAllBytes(path);
         string json;
         byte[]? embedded = null;
-        if (bytes.Length >= 12 && BitConverter.ToUInt32(bytes, 0) == 0x46546C67)
+        if (bytes.Length >= 4 && BitConverter.ToUInt32(bytes, 0) == 0x46546C67)
         {
+            // A GLB must have a complete version-2 header and an exact declared length.
+            // Validate chunk sizes by subtraction before converting to int: adding an
+            // attacker-controlled uint length to an int offset can overflow.
+            if (bytes.Length < 20 || BitConverter.ToUInt32(bytes, 4) != 2 ||
+                BitConverter.ToUInt32(bytes, 8) != (uint)bytes.Length)
+                throw new InvalidDataException("The glTF file is not valid.");
+
             var offset = 12;
-            var jsonText = "";
-            while (offset + 8 <= bytes.Length)
+            string? jsonText = null;
+            var firstChunk = true;
+            while (offset < bytes.Length)
             {
-                var length = (int)BitConverter.ToUInt32(bytes, offset);
+                if (bytes.Length - offset < 8)
+                    throw new InvalidDataException("The glTF file is not valid.");
+                var length = BitConverter.ToUInt32(bytes, offset);
                 var type = BitConverter.ToUInt32(bytes, offset + 4);
                 offset += 8;
-                if (length < 0 || offset + length > bytes.Length) throw new InvalidDataException("The glTF file is not valid.");
-                if (type == JsonChunk) jsonText = Encoding.UTF8.GetString(bytes, offset, length);
-                else if (type == BinaryChunk && embedded is null) embedded = bytes.AsSpan(offset, length).ToArray();
-                offset += (length + 3) & ~3;
+                if ((length & 3) != 0 || length > (uint)(bytes.Length - offset))
+                    throw new InvalidDataException("The glTF file is not valid.");
+
+                // glTF 2.0 requires the JSON chunk first and exactly once.
+                if (firstChunk && type != JsonChunk)
+                    throw new InvalidDataException("The glTF file is not valid.");
+                if (type == JsonChunk)
+                {
+                    if (!firstChunk)
+                        throw new InvalidDataException("The glTF file is not valid.");
+                    jsonText = Encoding.UTF8.GetString(bytes, offset, (int)length);
+                }
+                else if (type == BinaryChunk && embedded is null)
+                    embedded = bytes.AsSpan(offset, (int)length).ToArray();
+                offset += (int)length;
+                firstChunk = false;
             }
-            json = jsonText;
+            json = jsonText ?? throw new InvalidDataException("The glTF file is not valid.");
         }
         else
         {
