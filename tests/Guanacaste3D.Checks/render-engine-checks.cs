@@ -12,6 +12,7 @@ static class RenderEngineChecks
     public static void Run(Action<bool, string> check)
     {
         Materials(check);
+        TextureInputValidation(check);
         Sky(check);
         BvhOnLargeScene(check);
         GlassShadows(check);
@@ -44,6 +45,31 @@ static class RenderEngineChecks
         check(float.IsFinite(broken.BaseColor.X) && broken.BaseColor.Y == 1 && broken.BaseColor.Z == 0 && broken.Roughness <= 1 &&
               broken.Ior >= 1 && broken.Transmission == 1, "Materials with NaN or out-of-range values are sanitized before rendering");
         check(Math.Abs(new RenderMaterial { Ior = 1.5f }.DielectricF0 - 0.04f) < 1e-4f, "A glass index of 1.5 reflects 4 % at normal incidence");
+    }
+
+    private static void TextureInputValidation(Action<bool, string> check)
+    {
+        static bool RejectsInvalidSize(Func<RenderTexture> create)
+        {
+            try { create(); return false; }
+            catch (ArgumentException) { return true; }
+        }
+
+        // 65,536² pixels used to overflow the int-sized byte count to zero, passing
+        // validation and then failing deep in the mip-map generator.
+        check(RejectsInvalidSize(() => RenderTexture.FromBgra32(65_536, 65_536, Array.Empty<byte>())) &&
+              RejectsInvalidSize(() => RenderTexture.FromRgba(65_536, 65_536, Array.Empty<byte>())),
+            "Malformed giant BGRA/RGBA dimensions are rejected before allocation");
+        check(RejectsInvalidSize(() => RenderTexture.FromBgra32(2, 2, new byte[15])) &&
+              RejectsInvalidSize(() => RenderTexture.FromRgba(2, 2, new byte[15])) &&
+              RejectsInvalidSize(() => RenderTexture.FromBgra32(0, 1, Array.Empty<byte>())),
+            "Texture constructors reject incomplete buffers and non-positive dimensions");
+
+        var rgba = RenderTexture.FromRgba(2, 1,
+            new byte[] { 255, 0, 0, 255, 0, 255, 0, 0 });
+        check(rgba.Width == 2 && rgba.Height == 1 && rgba.HasAlpha &&
+              rgba.Alpha(0.25f, 0.5f) > 0.99f && rgba.Alpha(0.75f, 0.5f) < 0.01f,
+            "Valid RGBA cut-out textures retain their dimensions and alpha coverage");
     }
 
     private static void Sky(Action<bool, string> check)

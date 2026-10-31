@@ -47,13 +47,21 @@ public sealed class RenderTexture
     /// <summary>Approximate memory held by all levels, in bytes.</summary>
     public long Bytes => _levels.Sum(level => (long)level.Length);
 
+    // Validate before allocating: int width * height * 4 can overflow for large or malformed image dimensions.
+    // A valid 4-byte-per-pixel buffer also guarantees that pixelCount * 3 fits in an int.
+    private static int ValidatePixelCount(int width, int height, int bufferLength)
+    {
+        if (width < 1 || height < 1 || (long)width * height > bufferLength / 4)
+            throw new ArgumentException("The texture pixels do not match its size.");
+        return width * height;
+    }
+
     /// <summary>Builds a texture from BGRA32 pixels (rows top to bottom), reduced to at most <paramref name="maximumSize"/> texels a side.</summary>
     public static RenderTexture FromBgra32(int width, int height, ReadOnlySpan<byte> bgra, int maximumSize = 2048)
     {
-        if (width < 1 || height < 1 || bgra.Length < width * height * 4)
-            throw new ArgumentException("The texture pixels do not match its size.");
-        var rgb = new byte[width * height * 3];
-        for (var index = 0; index < width * height; index++)
+        var pixelCount = ValidatePixelCount(width, height, bgra.Length);
+        var rgb = new byte[pixelCount * 3];
+        for (var index = 0; index < pixelCount; index++)
         {
             rgb[index * 3] = bgra[index * 4 + 2];
             rgb[index * 3 + 1] = bgra[index * 4 + 1];
@@ -68,11 +76,10 @@ public sealed class RenderTexture
     /// </summary>
     public static RenderTexture FromRgba(int width, int height, ReadOnlySpan<byte> rgba, int maximumSize = 2048)
     {
-        if (width < 1 || height < 1 || rgba.Length < width * height * 4)
-            throw new ArgumentException("The texture pixels do not match its size.");
-        var rgb = new byte[width * height * 3];
-        var alpha = new byte[width * height];
-        for (var index = 0; index < width * height; index++)
+        var pixelCount = ValidatePixelCount(width, height, rgba.Length);
+        var rgb = new byte[pixelCount * 3];
+        var alpha = new byte[pixelCount];
+        for (var index = 0; index < pixelCount; index++)
         {
             rgb[index * 3] = rgba[index * 4];
             rgb[index * 3 + 1] = rgba[index * 4 + 1];
