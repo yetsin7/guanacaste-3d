@@ -26,6 +26,7 @@ static class ImportChecks
             Stl(check, folder);
             RoundTrips(check, folder);
             GltfBufferPaths(check, folder);
+            GltfNodeNormals(check, folder);
             Ifc(check, folder);
             Collada(check, folder);
             Detection(check, folder);
@@ -381,6 +382,62 @@ static class ImportChecks
         finally
         {
             Directory.Delete(sibling, recursive: true);
+        }
+    }
+
+    /// <summary>Non-uniform and reflected glTF nodes must preserve the surface normal direction.</summary>
+    private static void GltfNodeNormals(Action<bool, string> check, string folder)
+    {
+        // This triangle is tilted in Y/Z; a non-uniform scale changes its face normal.
+        // Multiplying normals by the forward matrix would point them in the wrong direction.
+        var faceNormal = Vector3.Normalize(Vector3.Cross(
+            new Vector3(1, 0, 0), new Vector3(0, 1, 1)));
+        var values = new float[]
+        {
+            0, 0, 0, 1, 0, 0, 0, 1, 1,
+            faceNormal.X, faceNormal.Y, faceNormal.Z,
+            faceNormal.X, faceNormal.Y, faceNormal.Z,
+            faceNormal.X, faceNormal.Y, faceNormal.Z
+        };
+        var binary = values.SelectMany(BitConverter.GetBytes).ToArray();
+        var binaryPath = Path.Combine(folder, "gltf-node-normals.bin");
+        File.WriteAllBytes(binaryPath, binary);
+
+        foreach (var (name, scale) in new[]
+        {
+            ("nonuniform", new[] { 2f, 1f, 3f }),
+            ("mirrored", new[] { -2f, 1f, 3f }),
+            ("uniform", new[] { 2f, 2f, 2f })
+        })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                asset = new { version = "2.0" },
+                buffers = new[] { new { uri = "gltf-node-normals.bin", byteLength = binary.Length } },
+                bufferViews = new[]
+                {
+                    new { buffer = 0, byteOffset = 0, byteLength = 36 },
+                    new { buffer = 0, byteOffset = 36, byteLength = 36 }
+                },
+                accessors = new[]
+                {
+                    new { bufferView = 0, componentType = 5126, count = 3, type = "VEC3" },
+                    new { bufferView = 1, componentType = 5126, count = 3, type = "VEC3" }
+                },
+                meshes = new[] { new { primitives = new[] { new { attributes = new { POSITION = 0, NORMAL = 1 } } } } },
+                nodes = new[] { new { mesh = 0, scale } },
+                scenes = new[] { new { nodes = new[] { 0 } } },
+                scene = 0
+            });
+            var imported = ModelImporter.Import(Write(folder, $"gltf-normals-{name}.gltf", json)).Model;
+            var indices = imported.Indices;
+            var a = imported.Positions[indices[0]];
+            var b = imported.Positions[indices[1]];
+            var c = imported.Positions[indices[2]];
+            var expected = Vector3.Normalize(Vector3.Cross(b - a, c - a));
+            var actual = imported.Normals is { Length: 3 } ? imported.Normals[indices[0]] : Vector3.Zero;
+            check(imported.TriangleCount == 1 && Vector3.Dot(actual, expected) > 0.9999f,
+                $"glTF {name} node transforms keep imported normals aligned with the triangle face");
         }
     }
 

@@ -190,13 +190,22 @@ internal static class GltfReader
 
                 var start = mesh.Positions.Count;
                 var mirrored = world.GetDeterminant() < 0;
+                // Positions use the node's world transform, but normals are covectors:
+                // inverse-transpose is essential for non-uniform glTF node scales.
+                // A singular transform cannot produce a reliable normal.
+                var invertible = Matrix4x4.Invert(world, out var inverseWorld);
+                var normalTransform = invertible ? Matrix4x4.Transpose(inverseWorld) : default;
                 for (var i = 0; i < positions.Length; i++)
                 {
                     mesh.Positions.Add(Vector3.Transform(positions[i], world));
                     if (i < normals.Length)
                     {
-                        var normal = Vector3.TransformNormal(normals[i], world);
-                        mesh.Normals!.Add(normal.LengthSquared() > 1e-12f ? Vector3.Normalize(normal) : Vector3.Zero);
+                        var normal = invertible
+                            ? Vector3.TransformNormal(normals[i], normalTransform)
+                            : Vector3.Zero;
+                        mesh.Normals!.Add(float.IsFinite(normal.X) && float.IsFinite(normal.Y) &&
+                            float.IsFinite(normal.Z) && normal.LengthSquared() > 1e-12f
+                            ? Vector3.Normalize(normal) : Vector3.Zero);
                     }
                     else mesh.Normals!.Add(Vector3.Zero);
                     mesh.Uvs!.Add(i < uvs.Length ? uvs[i] : Vector2.Zero);
