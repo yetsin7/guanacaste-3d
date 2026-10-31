@@ -235,4 +235,9 @@
   <sys:String x:Key="Error.The element is not a stair.">El elemento no es una escalera.</sys:String>
   <sys:String x:Key="Error.The stair riser or tread is invalid.">La contrahuella o la huella de la escalera no es válida.</sys:String>
   <sys:String x:Key="Error.A wall device needs a wall.">El dispositivo necesita un muro para alojarse.</sys:String>
+  <!-- Validation of external glTF buffers and typed accessor ranges. -->
+  <sys:String x:Key="Error.The glTF buffer is truncated.">El búfer de datos glTF está incompleto.</sys:String>
+  <sys:String x:Key="Error.The glTF accessor is not valid.">El descriptor de datos glTF no es válido.</sys:String>
+  <sys:String x:Key="Error.The glTF accessor references an invalid buffer view.">El descriptor de datos glTF hace referencia a una vista de búfer inexistente.</sys:String>
+  <sys:String x:Key="Error.The glTF accessor exceeds its buffer view.">El descriptor de datos glTF excede los límites de su vista de búfer.</sys:String>
 </ResourceDictionary>
