@@ -24,8 +24,12 @@ The calculation does not change project schema or saved geometry.
 `RoofQuantitySchedule.ToCsv(document)` exports one row per roof, ordered by level and
 stable roof identifier. Columns include the original horizontal plan area, covered
 horizontal area after supported overhangs, true top-surface area, pitch, shape and
-projected roof perimeter. Values use invariant decimal punctuation, and level names
-are CSV-escaped. Ordinary floor slabs are excluded.
+projected roof perimeter. A final `RoofName` column identifies each roof without
+reordering the existing numeric columns. Values use invariant decimal punctuation,
+and user-controlled level and roof names are quoted and escaped for CSV. Labels
+beginning with spreadsheet formula operators (`=`, `+`, `-`, `@`), optionally after
+whitespace, receive a leading apostrophe to prevent formula execution when
+opened in spreadsheet software. Ordinary floor slabs are excluded.
 
 `RoofGeometry.ProjectedPerimeter` measures the **horizontal footprint boundary**
 of the built roof, including overhangs. It is **not** the length of installed gutters,
