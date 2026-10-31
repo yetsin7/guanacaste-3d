@@ -118,6 +118,14 @@ static class RenderLookChecks
             TextureSize = 0.75, Relief = 0.65
         };
         materialsSession.SetRenderMaterial(edited);
+        var initialUndoDepth = materialsSession.UndoNames.Count;
+        var originalDocument = materialsSession.Document;
+        var redundantChangeEvents = 0;
+        materialsSession.Changed += (_, _) => redundantChangeEvents++;
+        materialsSession.SetRenderMaterial(edited with { });
+        check(ReferenceEquals(originalDocument, materialsSession.Document) &&
+              materialsSession.UndoNames.Count == initialUndoDepth && redundantChangeEvents == 0,
+            "Reapplying an identical material preserves document identity, undo depth and render notifications");
         check(materialsSession.Document.RenderMaterials.Single() == edited,
             "A custom material scale and relief are stored together");
         materialsSession.Undo();
