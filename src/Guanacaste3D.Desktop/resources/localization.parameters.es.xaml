@@ -211,6 +211,9 @@
   <sys:String x:Key="Schedules.Count">Recuento</sys:String>
   <sys:String x:Key="Schedules.SortNeedsField">Para ordenar o agrupar por un campo, añádelo primero a la tabla.</sys:String>
   <sys:String x:Key="Schedules.ConfirmDelete">¿Eliminar la tabla «{0}»? Los elementos del modelo no cambian.</sys:String>
+  <sys:String x:Key="Schedules.ExportRoofQuantities">Exportar medición de cubiertas CSV…</sys:String>
+  <sys:String x:Key="Schedules.ExportRoofQuantitiesHint">Exporta nivel, tipo, pendiente, aleros, áreas en planta y superficie real de todas las cubiertas del proyecto.</sys:String>
+  <sys:String x:Key="Schedules.NoRoofs">El proyecto no contiene cubiertas para exportar.</sys:String>
   <sys:String x:Key="ScheduleFilter.Equal">es igual a</sys:String>
   <sys:String x:Key="ScheduleFilter.NotEqual">no es igual a</sys:String>
   <sys:String x:Key="ScheduleFilter.GreaterThan">es mayor que</sys:String>
