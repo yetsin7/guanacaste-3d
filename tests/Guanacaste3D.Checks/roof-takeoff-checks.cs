@@ -63,6 +63,25 @@ static class RoofTakeoffChecks
               Math.Abs(hipEdges.HipLength - expectedHips) < 1e-8,
             "Hip roof measures four inclined hips and its level central ridge");
 
+        // The generated ridge spans the bounding box, but a U-shaped footprint
+        // has an open notch where no physical roof or ridge exists.
+        var uBoundary = new Guanacaste3D.Core.Geometry.Point2[]
+        {
+            new(0, 0), new(10, 0), new(10, 6), new(7, 6),
+            new(7, 2), new(3, 2), new(3, 6), new(0, 6)
+        };
+        var uRoof = roof with { Boundary = [.. uBoundary], Overhang = 0 };
+        var uEdges = RoofGeometry.EdgeTakeoff(uRoof);
+        check(Math.Abs(uEdges.RidgeLength - 6) < 1e-8 &&
+              Math.Abs(uEdges.HipLength) < 1e-8,
+            "Concave U-shaped roof excludes ridge length across its open notch");
+
+        var reversedURoof = uRoof with { Boundary = [.. uBoundary.Reverse()] };
+        var reversedEdges = RoofGeometry.EdgeTakeoff(reversedURoof);
+        check(Math.Abs(reversedEdges.RidgeLength - uEdges.RidgeLength) < 1e-8 &&
+              Math.Abs(reversedEdges.SlopedBoundaryLength - uEdges.SlopedBoundaryLength) < 1e-8,
+            "Concave roof edge takeoff is independent of polygon winding");
+
         var flatEdges = RoofGeometry.EdgeTakeoff(roof with { Shape = RoofShape.Flat, Pitch = 0 });
         check(Math.Abs(flatEdges.HorizontalBoundaryLength - 36.8) < 1e-8 &&
               flatEdges.SlopedBoundaryLength == 0 && flatEdges.RidgeLength == 0 && flatEdges.HipLength == 0,
