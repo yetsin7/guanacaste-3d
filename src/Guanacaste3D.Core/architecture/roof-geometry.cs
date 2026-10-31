@@ -155,21 +155,48 @@ public static class RoofGeometry
 
         var built = WithOverhang(roof);
         var outline = built.Boundary;
+        var creases = CreaseLines(built);
         var horizontal = 0d;
         var sloped = 0d;
         for (var index = 0; index < outline.Count; index++)
         {
             var from = outline[index];
             var to = outline[(index + 1) % outline.Count];
-            var riseDifference = RiseAt(built, to) - RiseAt(built, from);
-            var length = double.Hypot(from.DistanceTo(to), riseDifference);
-            if (Math.Abs(riseDifference) <= Epsilon) horizontal += length;
-            else sloped += length;
+            // A gable's rake rises to the ridge and falls again. Its endpoints
+            // have equal elevation, so measuring only the whole edge's endpoints
+            // would incorrectly report a horizontal line. Split at every crease.
+            var fractions = new List<double> { 0, 1 };
+            foreach (var (creaseFrom, creaseTo) in creases)
+            {
+                var edgeX = to.X - from.X;
+                var edgeY = to.Y - from.Y;
+                var creaseX = creaseTo.X - creaseFrom.X;
+                var creaseY = creaseTo.Y - creaseFrom.Y;
+                var denominator = edgeX * creaseY - edgeY * creaseX;
+                if (Math.Abs(denominator) <= Epsilon) continue;
+                var offsetX = creaseFrom.X - from.X;
+                var offsetY = creaseFrom.Y - from.Y;
+                var fraction = (offsetX * creaseY - offsetY * creaseX) / denominator;
+                var creaseFraction = (offsetX * edgeY - offsetY * edgeX) / denominator;
+                if (fraction > Epsilon && fraction < 1 - Epsilon &&
+                    creaseFraction >= -Epsilon && creaseFraction <= 1 + Epsilon)
+                    fractions.Add(fraction);
+            }
+            fractions.Sort();
+            for (var part = 1; part < fractions.Count; part++)
+            {
+                var start = ArchitecturalShapes.Lerp(from, to, fractions[part - 1]);
+                var end = ArchitecturalShapes.Lerp(from, to, fractions[part]);
+                var riseDifference = RiseAt(built, end) - RiseAt(built, start);
+                var length = double.Hypot(start.DistanceTo(end), riseDifference);
+                if (Math.Abs(riseDifference) <= Epsilon) horizontal += length;
+                else sloped += length;
+            }
         }
 
         var ridges = 0d;
         var hips = 0d;
-        foreach (var (from, to) in CreaseLines(built))
+        foreach (var (from, to) in creases)
         {
             var riseDifference = RiseAt(built, to) - RiseAt(built, from);
             var length = double.Hypot(from.DistanceTo(to), riseDifference);
