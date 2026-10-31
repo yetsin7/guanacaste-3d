@@ -35,6 +35,31 @@ static class RoofTakeoffChecks
               }) - 60) < 1e-8,
             "Flat roof eaves are counted, but regular floors keep their plan area");
 
+        check(Math.Abs(RoofGeometry.ProjectedPerimeter(roof) - 36.8) < 1e-8 &&
+              Math.Abs(RoofGeometry.ProjectedPerimeter(roof with { Overhang = 0 }) - 32) < 1e-8,
+            "Roof projected perimeter includes eaves without confusing it with sloped rake lengths");
+
+        var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture =
+                System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+            var csv = RoofQuantitySchedule.ToCsv(session.Document);
+            check(csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2 &&
+                  csv.Contains("CoveredPlanArea_m2", StringComparison.Ordinal) &&
+                  csv.Contains(",80.64,", StringComparison.Ordinal) &&
+                  csv.Contains(",36.8" + Environment.NewLine, StringComparison.Ordinal),
+                "Roof quantity CSV includes overhang, coverage and projected perimeter in invariant culture");
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previousCulture;
+        }
+
+        check(RoofQuantitySchedule.ToCsv(BuildingDocument.Create())
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 1,
+            "Roof quantity CSV omits non-roof slabs and retains a header for empty projects");
+
         var budget = BudgetCalculator.Build(session.Document, UnitPriceList.Default(), 0);
         var roofLine = budget.Lines.Single(line => line.Code == UnitPriceList.RoofArea);
         check(Math.Abs(roofLine.Quantity - Math.Round(expected, 3)) < 1e-9 &&

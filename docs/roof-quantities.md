@@ -18,3 +18,16 @@ The result measures the exposed **top surface only**. It does not include
 fascia, soffits, flashing, overlaps, waste, openings, or manufacturer-specific
 ordering factors. Those need separate items in a professional cost estimate.
 The calculation does not change project schema or saved geometry.
+
+## Detailed roof quantities CSV
+
+`RoofQuantitySchedule.ToCsv(document)` exports one row per roof, ordered by level and
+stable roof identifier. Columns include the original horizontal plan area, covered
+horizontal area after supported overhangs, true top-surface area, pitch, shape and
+projected roof perimeter. Values use invariant decimal punctuation, and level names
+are CSV-escaped. Ordinary floor slabs are excluded.
+
+`RoofGeometry.ProjectedPerimeter` measures the **horizontal footprint boundary**
+of the built roof, including overhangs. It is **not** the length of installed gutters,
+fascia, ridge caps or sloping rake trims. Those require explicit edge classification
+and 3D segment measurements before they can be priced accurately.

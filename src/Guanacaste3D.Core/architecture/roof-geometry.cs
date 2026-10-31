@@ -116,6 +116,20 @@ public static class RoofGeometry
         return built.IsPitched ? planArea / Math.Cos(built.Pitch * Math.PI / 180) : planArea;
     }
 
+    /// <summary>
+    /// Perimeter of the built roof's horizontal footprint in meters, including supported overhangs.
+    /// This is a plan measurement, not a gutter, fascia or sloping rake takeoff.
+    /// </summary>
+    public static double ProjectedPerimeter(FloorSlab slab)
+    {
+        ArgumentNullException.ThrowIfNull(slab);
+        var outline = WithOverhang(slab).Boundary;
+        var length = 0d;
+        for (var index = 0; index < outline.Count; index++)
+            length += outline[index].DistanceTo(outline[(index + 1) % outline.Count]);
+        return length;
+    }
+
     /// <summary>The ridge and hip lines to draw in plan, as pairs of end points. Empty for flat and shed roofs.</summary>
     public static IReadOnlyList<(Point2 From, Point2 To)> CreaseLines(FloorSlab roof)
     {
