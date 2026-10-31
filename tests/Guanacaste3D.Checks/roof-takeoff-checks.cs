@@ -48,7 +48,8 @@ static class RoofTakeoffChecks
             check(csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 2 &&
                   csv.Contains("CoveredPlanArea_m2", StringComparison.Ordinal) &&
                   csv.Contains(",80.64,", StringComparison.Ordinal) &&
-                  csv.Contains(",36.8" + Environment.NewLine, StringComparison.Ordinal),
+                  csv.Contains(",36.8,\"", StringComparison.Ordinal) &&
+                  csv.Contains("ProjectedPerimeter_m,RoofName", StringComparison.Ordinal),
                 "Roof quantity CSV includes overhang, coverage and projected perimeter in invariant culture");
         }
         finally
@@ -59,6 +60,31 @@ static class RoofTakeoffChecks
         check(RoofQuantitySchedule.ToCsv(BuildingDocument.Create())
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries).Length == 1,
             "Roof quantity CSV omits non-roof slabs and retains a header for empty projects");
+
+        // User-controlled level/roof labels must be escaped as CSV and must not execute
+        // formulas when an exported estimate is opened in a spreadsheet.
+        var exportDocument = session.Document.Clone();
+        var levelIndex = exportDocument.Levels.FindIndex(item => item.Id == level);
+        exportDocument.Levels[levelIndex] = exportDocument.Levels[levelIndex] with { Name = " =1+1" };
+        var roofIndex = exportDocument.Floors.FindIndex(item => item.Id == id);
+        exportDocument.Floors[roofIndex] = exportDocument.Floors[roofIndex] with { Name = "@SUM(1,2)" };
+        var guardedCsv = RoofQuantitySchedule.ToCsv(exportDocument);
+        check(guardedCsv.Contains("\"' =1+1\",", StringComparison.Ordinal) &&
+              guardedCsv.Contains(",\"'@SUM(1,2)\"" + Environment.NewLine, StringComparison.Ordinal),
+            "Roof CSV protects spreadsheet formulas in level and roof names");
+
+        exportDocument.Levels[levelIndex] = exportDocument.Levels[levelIndex] with
+        {
+            Name = "Nivel, \"Norte\""
+        };
+        exportDocument.Floors[roofIndex] = exportDocument.Floors[roofIndex] with
+        {
+            Name = "Techo, \"Principal\""
+        };
+        var quotedCsv = RoofQuantitySchedule.ToCsv(exportDocument);
+        check(quotedCsv.Contains("\"Nivel, \"\"Norte\"\"\",", StringComparison.Ordinal) &&
+              quotedCsv.Contains(",\"Techo, \"\"Principal\"\"\"" + Environment.NewLine, StringComparison.Ordinal),
+            "Roof CSV escapes commas and double quotes in user-authored labels");
 
         var budget = BudgetCalculator.Build(session.Document, UnitPriceList.Default(), 0);
         var roofLine = budget.Lines.Single(line => line.Code == UnitPriceList.RoofArea);
