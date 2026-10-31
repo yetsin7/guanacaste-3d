@@ -378,6 +378,7 @@ ModernHouseToolChecks.Run(Check);
 BreezeBlockHouseChecks.Run(Check);
 MeshFamilyChecks.Run(Check);
 RenderLookChecks.Run(Check);
+FinishTransactionChecks.Run(Check);
 RevitExchangeChecks.Run(Check);
 AnnotationChecks.Run(Check);
 CalloutChecks.Run(Check);
