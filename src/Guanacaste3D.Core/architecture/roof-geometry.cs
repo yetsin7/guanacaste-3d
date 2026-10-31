@@ -155,7 +155,7 @@ public static class RoofGeometry
 
         var built = WithOverhang(roof);
         var outline = built.Boundary;
-        var creases = CreaseLines(built);
+        var creases = ClipCreasesToFootprint(CreaseLines(built), outline);
         var horizontal = 0d;
         var sloped = 0d;
         for (var index = 0; index < outline.Count; index++)
@@ -204,6 +204,88 @@ public static class RoofGeometry
             else hips += length;
         }
         return new RoofEdgeTakeoff(horizontal, sloped, ridges, hips);
+    }
+
+    /// <summary>
+    /// Intersects generated roof creases with the actual footprint. Bounding-box creases
+    /// can cross the empty notch of an L- or U-shaped roof; those spans must not be
+    /// reported as installed ridge or hip lengths.
+    /// </summary>
+    private static IReadOnlyList<(Point2 From, Point2 To)> ClipCreasesToFootprint(
+        IReadOnlyList<(Point2 From, Point2 To)> creases, IReadOnlyList<Point2> boundary)
+    {
+        var clipped = new List<(Point2 From, Point2 To)>();
+        foreach (var (from, to) in creases)
+        {
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            var squaredLength = dx * dx + dy * dy;
+            if (squaredLength <= Epsilon * Epsilon) continue;
+
+            var fractions = new List<double> { 0, 1 };
+            for (var index = 0; index < boundary.Count; index++)
+            {
+                var start = boundary[index];
+                var end = boundary[(index + 1) % boundary.Count];
+                var ex = end.X - start.X;
+                var ey = end.Y - start.Y;
+                var ox = start.X - from.X;
+                var oy = start.Y - from.Y;
+                var denominator = dx * ey - dy * ex;
+                if (Math.Abs(denominator) <= Epsilon)
+                {
+                    // Preserve overlap boundaries when a crease lies along a polygon edge.
+                    if (Math.Abs(ox * dy - oy * dx) > Epsilon) continue;
+                    fractions.Add(Math.Clamp((ox * dx + oy * dy) / squaredLength, 0, 1));
+                    fractions.Add(Math.Clamp(((end.X - from.X) * dx +
+                        (end.Y - from.Y) * dy) / squaredLength, 0, 1));
+                    continue;
+                }
+
+                var fraction = (ox * ey - oy * ex) / denominator;
+                var edgeFraction = (ox * dy - oy * dx) / denominator;
+                if (fraction >= -Epsilon && fraction <= 1 + Epsilon &&
+                    edgeFraction >= -Epsilon && edgeFraction <= 1 + Epsilon)
+                    fractions.Add(Math.Clamp(fraction, 0, 1));
+            }
+
+            fractions.Sort();
+            for (var index = 1; index < fractions.Count; index++)
+            {
+                var first = fractions[index - 1];
+                var last = fractions[index];
+                if (last - first <= Epsilon) continue;
+                var midpoint = ArchitecturalShapes.Lerp(from, to, (first + last) / 2);
+                if (!ContainsPlanPoint(boundary, midpoint)) continue;
+                clipped.Add((ArchitecturalShapes.Lerp(from, to, first),
+                    ArchitecturalShapes.Lerp(from, to, last)));
+            }
+        }
+        return clipped;
+    }
+
+    /// <summary>Even-odd point containment, treating a point on the footprint edge as inside.</summary>
+    private static bool ContainsPlanPoint(IReadOnlyList<Point2> boundary, Point2 point)
+    {
+        var inside = false;
+        for (var index = 0; index < boundary.Count; index++)
+        {
+            var a = boundary[index];
+            var b = boundary[(index + 1) % boundary.Count];
+            var cross = (b.X - a.X) * (point.Y - a.Y) -
+                        (b.Y - a.Y) * (point.X - a.X);
+            if (Math.Abs(cross) <= Epsilon &&
+                point.X >= Math.Min(a.X, b.X) - Epsilon &&
+                point.X <= Math.Max(a.X, b.X) + Epsilon &&
+                point.Y >= Math.Min(a.Y, b.Y) - Epsilon &&
+                point.Y <= Math.Max(a.Y, b.Y) + Epsilon)
+                return true;
+
+            if ((a.Y > point.Y) != (b.Y > point.Y) &&
+                point.X < a.X + (b.X - a.X) * (point.Y - a.Y) / (b.Y - a.Y))
+                inside = !inside;
+        }
+        return inside;
     }
 
     /// <summary>The ridge and hip lines to draw in plan, as pairs of end points. Empty for flat and shed roofs.</summary>
