@@ -62,6 +62,18 @@ jobs:
       - name: Model workspace 3D and material regressions
         timeout-minutes: 12
         run: dotnet run --project tests/model-workspace-checks/model-workspace-checks.csproj -c Release --no-build --no-restore
+      # Exercise the actual Revit-like Architecture ribbon in WPF, not just compilation.
+      - name: Architecture ribbon and BIM command interaction regressions
+        timeout-minutes: 10
+        run: dotnet run --project tests/architecture-ui-checks/architecture-ui-checks.csproj -c Release --no-build --no-restore
+      - name: Upload Architecture ribbon UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Guanacaste3D-architecture-ui-evidence
+          path: artifacts/interaction-evidence/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload model workspace interaction evidence
         if: always()
         uses: actions/upload-artifact@v4
