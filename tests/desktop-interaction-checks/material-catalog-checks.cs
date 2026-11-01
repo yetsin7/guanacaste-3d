@@ -83,7 +83,9 @@ internal static partial class InteractionChecks
                 "Imported PBR bundle drives base color texture, roughness and metalness");
             File.WriteAllText(manifestFile,
                 "{\"version\":1,\"name\":\"Traversal\",\"albedo\":\"../brick-red.png\"}");
-            Check(pbrResolver(SurfaceKind.Wall).Texture is null,
+            var rejectedResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+                BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [pbrAssignments, null, true])!;
+            Check(rejectedResolver(SurfaceKind.Wall).Texture is null,
                 "PBR manifest cannot reference images outside its directory");
         }
         finally { Directory.Delete(pbrDirectory, true); }
