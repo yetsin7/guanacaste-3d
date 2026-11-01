@@ -67,6 +67,9 @@ public partial class MainWindow : Window
     private void OnDocumentChanged(object? sender, EventArgs e)
     {
         _dirty = true;
+        // Picking must never use geometry from the previous document snapshot while
+        // the asynchronous WPF scene is still being rebuilt.
+        _picker = null;
         RefreshAll();
     }
 
@@ -238,6 +241,9 @@ public partial class MainWindow : Window
         BuiltInProjectViews.EnsureLocation(document.Views);
         _session = new DocumentSession(document);
         _session.Changed += OnDocumentChanged;
+        // The previous project's picker may outlive the async viewport rebuild.
+        // Invalidate it synchronously before any new-project interaction is possible.
+        _picker = null;
         _activeLevelId = document.Levels[0].Id;
         _pendingWallStart = null;
         _selectedWallId = null;
