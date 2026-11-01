@@ -93,7 +93,7 @@ The **Annotate** ribbon now has real drawing workflows for **Detail Line** and *
 
 ## PBR material bundles
 
-The Render material editor supports bundled texture presets and external `.g3dpbr` sidecars for
+The Render material editor supports bundled texture presets and external `.g3dm` sidecars for
 **albedo images + physically based scalar roughness, metalness and IOR**. The sidecar can be reused
 and edited independently of the project file. [Import instructions and format](docs/importacion-materiales-pbr.md).
 Normal, displacement and per-pixel roughness/metallic maps are **not yet supported** by this importer.
