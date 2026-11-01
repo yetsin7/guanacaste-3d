@@ -67,6 +67,7 @@ internal static class ThumbnailChecks
         Reject(oversized);
         Reject("not a native document"u8.ToArray());
         VerifyRepeatedExtraction(original);
+        VerifyBusyRenderRejected(original);
         VerifyMtaExtraction(original);
         Console.WriteLine("PASS: truncated, corrupt, forged-length, unknown input, STA/MTA extraction and bitmap ownership checks");
         if (arguments.Contains("--shell")) VerifyCacheRefresh(projectPath);
@@ -127,6 +128,46 @@ internal static class ThumbnailChecks
             try { provider.Initialize(stream, 0); }
             catch (COMException) { return; }
             throw new InvalidOperationException("Repeated stream initialization was accepted.");
+        }
+        finally { Marshal.ReleaseComObject(stream); }
+    }
+
+    /// <summary>Ensures a timed-out worker cannot be overlapped by another in-process render.</summary>
+    private static void VerifyBusyRenderRejected(byte[] snapshot)
+    {
+        var stream = SHCreateMemStream(snapshot, (uint)snapshot.Length);
+        try
+        {
+            var provider = new ThumbnailProvider();
+            provider.Initialize(stream, 0);
+            // Hold the admission slot deterministically instead of depending on CPU timing.
+            var slot = typeof(ThumbnailProvider).GetField("_renderInProgress",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("The render admission slot is missing.");
+            IntPtr bitmap = IntPtr.Zero;
+            uint alpha = 0;
+            try
+            {
+                slot.SetValue(null, 1);
+                try
+                {
+                    provider.GetThumbnail(96, out bitmap, out alpha);
+                    throw new InvalidOperationException("A second thumbnail render was admitted.");
+                }
+                catch (COMException exception) when (exception.HResult == unchecked((int)0x800700AA))
+                {
+                    Require(bitmap == IntPtr.Zero && alpha == 0, "Busy extraction allocated a bitmap.");
+                }
+            }
+            finally
+            {
+                if (bitmap != IntPtr.Zero) ShellExtraction.DeleteObject(bitmap);
+                slot.SetValue(null, 0);
+            }
+            provider.GetThumbnail(96, out bitmap, out alpha);
+            Require(bitmap != IntPtr.Zero && alpha == 1, "Extraction did not recover after the busy slot cleared.");
+            Require(ShellExtraction.DeleteObject(bitmap), "Recovered bitmap was not caller-owned.");
+            Console.WriteLine("PASS: overlapping thumbnail renders are rejected and recovery works");
         }
         finally { Marshal.ReleaseComObject(stream); }
     }
