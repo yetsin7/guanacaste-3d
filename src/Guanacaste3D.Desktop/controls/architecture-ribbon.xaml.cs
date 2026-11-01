@@ -121,7 +121,9 @@ public partial class ArchitectureRibbon : UserControl
         new("RibbonGroup.RoomAndArea", true, [
             [new("Room", "Tool.Room", "Icon.Room", false,
                 new MenuEntry("Room", "Tool.Room"), new MenuEntry("RoomAutomatic", "Arch.RoomAutomatic")),
-             new("RoomSeparator", "Tool.RoomSeparator", "Icon.Section"),
+             new("RoomSeparator", "Tool.RoomSeparator", "Icon.Section", false,
+                new MenuEntry("RoomSeparator", "Arch.RoomSeparatorStraight"),
+                new MenuEntry("RoomSeparatorCurve", "Arch.RoomSeparatorCurved")),
              new("TagRoom", "Tool.TagRoom", "Icon.Apply", false,
                 new MenuEntry("TagRoom", "Tool.TagRoom"), new MenuEntry("TagAllRooms", "Arch.TagAllRooms"))],
             [new("Area", "Tool.Area", "Icon.Floor", false,
