@@ -24,6 +24,9 @@ Ejemplo de `ladrillo.g3dm`:
   "version": 1,
   "name": "Ladrillo rojo artesanal",
   "albedo": "brick_albedo.png",
+  "normal": "brick_normal.png",
+  "roughnessMap": "brick_roughness.png",
+  "metallicMap": "brick_metallic.png",
   "roughness": 0.87,
   "metallic": 0,
   "ior": 1.5,
@@ -33,13 +36,16 @@ Ejemplo de `ladrillo.g3dm`:
 ```
 
 - `albedo`: textura de color (ruta **relativa al manifiesto**, no URL).
+- `normal` (opcional): mapa normal en convención OpenGL.
+- `roughnessMap` (opcional): mapa de rugosidad por píxel.
+- `metallicMap` (opcional): mapa de metalicidad por píxel.
 - `roughness`: rugosidad constante de 0.02 a 1.
 - `metallic`: metalicidad constante de 0 a 1.
 - `ior`: índice de refracción de 1 a 3.
 - `textureSize`: metros por repetición de la textura; editable luego.
 - `relief`: detalle a partir del brillo de la imagen (no es un mapa normal ni desplazamiento geométrico).
 
-El archivo del proyecto guarda la ruta al manifiesto. Para compartir el proyecto, comparte también la carpeta de texturas. En esta primera versión se interpreta el mapa **albedo** y valores escalares de rugosidad y metalicidad; todavía **no** se interpretan mapas de rugosidad, metalicidad, normal, AO, displacement ni paquetes ZIP. No se debe llamar «importación PBR completa» a esta versión: esas extensiones requieren cambios adicionales en el shader y en el empaquetado.
+El archivo del proyecto guarda la ruta al manifiesto. Para compartir el proyecto, comparte también la carpeta de texturas. Esta versión interpreta **albedo**, mapas opcionales de **normales, rugosidad y metalicidad**, además de parámetros físicos uniformes. Todavía no incorpora AO, displacement ni paquetes ZIP. Los archivos deben permanecer junto al manifiesto, o dentro de sus subcarpetas.
 
 ## Materiales sugeridos para probar
 
