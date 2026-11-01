@@ -43,6 +43,10 @@ public sealed partial class DocumentSession
             throw new InvalidDataException("The level still hosts or constrains elements.");
         Commit("Transaction.RemoveLevel", document =>
         {
+            var removedViewIds = document.Views.Where(view => view.LevelId == levelId)
+                .Select(view => view.Id).ToHashSet();
+            document.DetailLines.RemoveAll(line => removedViewIds.Contains(line.ViewId));
+            document.FilledRegions.RemoveAll(region => removedViewIds.Contains(region.ViewId));
             document.Views.RemoveAll(view => view.LevelId == levelId);
             document.Levels.RemoveAll(level => level.Id == levelId);
         });
