@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
 using Guanacaste3D.Core.Rendering;
@@ -15,6 +16,7 @@ namespace Guanacaste3D.Desktop.Controls;
 /// </summary>
 public partial class RenderPanel
 {
+    private sealed record GalleryEntry(string Key, string Label, double Size, double Relief, bool Imported);
     private const int GalleryPageSize = 8;
     private const int GalleryCacheLimit = 24;
     private bool _galleryReady;
@@ -98,6 +100,7 @@ public partial class RenderPanel
         "bark" => key.StartsWith("tree-bark-", StringComparison.Ordinal),
         "foliage" => key.StartsWith("tree-leaves-", StringComparison.Ordinal),
         "other" => !key.StartsWith("tree-", StringComparison.Ordinal),
+        "pbr" => false,
         _ => true
     };
 
@@ -110,16 +113,24 @@ public partial class RenderPanel
         var token = _galleryLoadCancellation.Token;
         var group = (GalleryGroupPicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "trees";
         var search = GallerySearch.Text.Trim();
-        var matches = RenderTextureLibrary.BuiltIn
+        var included = RenderTextureLibrary.BuiltIn
             .Where(texture => GalleryGroupMatches(group, texture.Key) &&
                 MaterialCatalogSearch.Matches(search, texture.Key, Text(texture.LabelKey)))
-            .ToArray();
+            .Select(texture => new GalleryEntry(RenderTextureLibrary.BuiltInPrefix + texture.Key,
+                Text(texture.LabelKey), texture.Size, texture.Relief, false));
+        // Only the active project's packages and explicitly imported files: never scan a disk or network folder.
+        var packages = group is "pbr" or "all"
+            ? PbrGalleryLibrary.Entries(_source?.RenderMaterials, _source?.ProjectFilePath)
+                .Where(item => MaterialCatalogSearch.Matches(search, item.Name, item.Key))
+                .Select(item => new GalleryEntry(item.Key, item.Name, item.Size, item.Relief, true))
+            : Enumerable.Empty<GalleryEntry>();
+        var matches = included.Concat(packages).ToArray();
         var pageCount = (matches.Length + GalleryPageSize - 1) / GalleryPageSize;
         _galleryPage = Math.Clamp(_galleryPage, 0, Math.Max(0, pageCount - 1));
         GalleryTiles.Children.Clear();
         foreach (var texture in matches.Skip(_galleryPage * GalleryPageSize).Take(GalleryPageSize))
         {
-            var key = RenderTextureLibrary.BuiltInPrefix + texture.Key;
+            var key = texture.Key;
             var picture = new Image
             {
                 Width = 132, Height = 84, Stretch = Stretch.UniformToFill,
@@ -136,7 +147,7 @@ public partial class RenderPanel
             pictureFrame.Children.Add(picture);
             var label = new TextBlock
             {
-                Text = Text(texture.LabelKey), Foreground = Brushes.White,
+                Text = texture.Label, Foreground = Brushes.White,
                 FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxHeight = 32,
                 TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center,
                 Margin = new Thickness(2, 5, 2, 0)
@@ -150,7 +161,7 @@ public partial class RenderPanel
                 Padding = new Thickness(5, 5, 5, 6),
                 Margin = new Thickness(3, 3, 3, 3), BorderThickness = new Thickness(2),
                 BorderBrush = GalleryNormalBorder, Background = GalleryTileBackground,
-                ToolTip = $"{Text(texture.LabelKey)} · escala {texture.Size:0.##} m"
+                ToolTip = $"{texture.Label} · escala {texture.Size:0.##} m" + (texture.Imported ? " · .g3dm PBR" : "")
             };
             button.Click += (_, _) => ApplyGalleryTexture(texture);
             GalleryTiles.Children.Add(button);
@@ -170,6 +181,28 @@ public partial class RenderPanel
         UpdateMaterialGallerySelection();
     }
 
+    private void GalleryImportPbr_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Agregar material PBR a la biblioteca visual",
+            Filter = "Material Guanacaste 3D (*.g3dm)|*.g3dm",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        if (!PbrGalleryLibrary.Remember(dialog.FileName))
+        {
+            MessageBox.Show(Window.GetWindow(this),
+                "No se pudo guardar este material en la biblioteca. Comprueba el manifiesto y la imagen albedo.",
+                "Material .g3dm", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        foreach (var item in GalleryGroupPicker.Items.OfType<ComboBoxItem>())
+            if (item.Tag is "pbr") { GalleryGroupPicker.SelectedItem = item; break; }
+        _galleryPage = 0;
+        RefreshMaterialGallery();
+    }
+
     private void UpdateMaterialGallerySelection()
     {
         if (!_galleryReady || GalleryExpander.IsExpanded != true || _source is null) return;
@@ -178,18 +211,23 @@ public partial class RenderPanel
             material.Category == target && material.ElementId == _focusedElement)?.TexturePath;
         foreach (var button in GalleryTiles.Children.OfType<Button>())
         {
-            var selected = button.Tag is string key && string.Equals(key, activePath, StringComparison.Ordinal);
+            var selected = button.Tag is string key && (string.Equals(key, activePath, StringComparison.Ordinal) ||
+                (PbrMaterialPackages.IsPackage(key) && PbrMaterialPackages.IsPackage(activePath) &&
+                 string.Equals(PbrMaterialPackages.ResolveManifest(key, _source.ProjectFilePath),
+                    PbrMaterialPackages.ResolveManifest(activePath!, _source.ProjectFilePath),
+                    StringComparison.OrdinalIgnoreCase)));
             button.BorderBrush = selected ? GallerySelectedBorder : GalleryNormalBorder;
             button.BorderThickness = new Thickness(selected ? 3 : 1);
         }
+        UpdateGalleryAppearanceEditor();
     }
 
-    private void ApplyGalleryTexture(RenderTextureLibrary.BuiltInTexture texture)
+    private void ApplyGalleryTexture(GalleryEntry texture)
     {
         if (_source is null) return;
         var category = GalleryTarget();
         if (_focusedElement is Guid && _focusedMaterial != category) return;
-        var path = RenderTextureLibrary.BuiltInPrefix + texture.Key;
+        var path = texture.Key;
         var current = _source.RenderMaterials.FirstOrDefault(material =>
             material.Category == category && material.ElementId == _focusedElement);
         if (current is not null && current.TexturePath == path &&
