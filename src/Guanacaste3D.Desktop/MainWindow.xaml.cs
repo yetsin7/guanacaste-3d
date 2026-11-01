@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         ConfigureApplicationFileMenu();
+        InitializeGridAxisInteraction();
         ApplyDesktopOptions(DesktopOptions.Load());
         InitializeCommandCustomization();
         _session = new DocumentSession(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")));

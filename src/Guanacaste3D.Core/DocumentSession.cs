@@ -24,7 +24,8 @@ public sealed partial class DocumentSession
         var id = Guid.NewGuid();
         Commit("Transaction.AddWall", doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
         {
-            WallTypeId = selectedTypeId
+            WallTypeId = selectedTypeId,
+            GridAxisId = FindAlignedGridAxis(doc, start, end)
         }));
         return id;
     }
@@ -244,7 +245,9 @@ public sealed partial class DocumentSession
             doc.Walls[index] = wall with
             {
                 Start = Translate(wall.Start, deltaX, deltaY),
-                End = Translate(wall.End, deltaX, deltaY)
+                End = Translate(wall.End, deltaX, deltaY),
+                GridAxisId = null, // Manual wall motion releases its reference-datum constraint.
+                GridAxisAssociationDisabled = true
             };
             for (var other = 0; other < doc.Walls.Count; other++)
             {
@@ -313,7 +316,7 @@ public sealed partial class DocumentSession
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
-            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point } : wall with { End = point };
+            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point, GridAxisId = null, GridAxisAssociationDisabled = true } : wall with { End = point, GridAxisId = null, GridAxisAssociationDisabled = true };
         });
     }
 

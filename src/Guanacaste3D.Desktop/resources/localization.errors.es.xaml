@@ -4,6 +4,10 @@
     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <!-- Spanish text for Core validation messages, keyed by "Error." + the English message.
        LocalizedErrors.Translate falls back to the English text for unknown messages. -->
+  <sys:String x:Key="Error.A wall references a missing grid axis.">Un muro hace referencia a un eje que no existe.</sys:String>
+  <sys:String x:Key="Error.The wall centerline must align with the grid axis.">La línea central del muro debe coincidir con el eje.</sys:String>
+  <sys:String x:Key="Error.The grid axis name must contain between 1 and 32 characters.">El nombre del eje debe contener entre 1 y 32 caracteres.</sys:String>
+  <sys:String x:Key="Error.The grid axis translation must be finite.">El desplazamiento del eje debe ser finito.</sys:String>
   <sys:String x:Key="Error.A level cannot be null.">Un nivel no puede estar vacío.</sys:String>
   <sys:String x:Key="Error.A project parameter definition is invalid.">La definición del parámetro no es válida.</sys:String>
   <sys:String x:Key="Error.A project parameter value is invalid or orphaned.">Un valor de parámetro no es válido o perdió su elemento.</sys:String>
