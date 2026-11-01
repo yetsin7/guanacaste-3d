@@ -40,3 +40,14 @@ La ventana `PlanWorkspace` añade una cuadrícula de metros y dibujo de muros y 
 **Importante:** mover un eje y arrastrar automáticamente los muros sujetos corresponde a la rama separada `feature/associative-grid-axes-20261101`. Esa rama debe integrarse cuidadosamente antes de prometer vínculos asociativos de geometría en el cliente multiplataforma. Borrar un eje o muro en la interfaz inicial es independiente del otro, conservando las reglas de `DocumentSession`.
 
 **Próximas pruebas:** interacción real del viewport en Windows, macOS y Linux (incluyendo X11/Wayland), persistencia, coordenadas, selección y vistas con zoom/rotación, además del paquete `.app` firmado y los paquetes de Linux.
+
+## Tercer hito: navegación y seguridad de edición
+
+- Zoom con rueda del ratón anclado al cursor, limitado para evitar escalas extremas, y paneo con botón central/derecho.
+- Selección de nivel activo: muros visibles/editables por nivel, sin alterar los ejes globales del proyecto.
+- Previsualización de la línea al colocar muros o ejes y resaltado desde el navegador BIM.
+- Detección de cambios sin guardar y confirmación explícita al abrir otro proyecto, crear uno nuevo o cerrar la ventana; nunca se descartan cambios silenciosamente.
+- Guardar el proyecto actual, Guardar como y atajos del sistema (Control en Windows/Linux, Command en macOS); deshacer y rehacer desde el teclado.
+- La vista de planta sigue siendo un prototipo, no un renderizador 3D ni un sustituto completo de la versión WPF.
+
+Se requiere comprobar manualmente la precisión del puntero, la accesibilidad del teclado, el desempeño con modelos grandes y el guardado/recuperación en sistemas reales.
