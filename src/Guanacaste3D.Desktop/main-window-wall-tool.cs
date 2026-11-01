@@ -49,13 +49,13 @@ public partial class MainWindow
             RenderPlan();
             return;
         }
+        if (UpdateDetailDrawing(e)) return;
         TryStartElementDrag(e);
         if (_movingElement)
         {
             UpdateMovePreview(PlanPosition(e));
             return;
         }
-        if (UpdateDetailDrawing(e)) return;
         if (TryUpdateStructuralPreview(e)) return;
         if (!_drawingWall) return;
         var pointer = CanvasToWorld(PlanPosition(e));
