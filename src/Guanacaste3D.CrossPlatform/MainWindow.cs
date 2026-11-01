@@ -13,6 +13,7 @@ namespace Guanacaste3D.CrossPlatform;
 /// </summary>
 public sealed class MainWindow : Window
 {
+    private readonly PlanWorkspace _workspace = new();
     private BuildingDocument? _document;
     private string? _path;
     private readonly TextBlock _title = new() { FontSize = 24, FontWeight = FontWeight.SemiBold };
@@ -39,6 +40,24 @@ public sealed class MainWindow : Window
         menu.Children.Add(create);
         menu.Children.Add(open);
         menu.Children.Add(save);
+        var select = new Button { Content = "Seleccionar" };
+        select.Click += (_, _) => _workspace.SetTool(PlanWorkspace.EditTool.Select);
+        var wall = new Button { Content = "Muro" };
+        wall.Click += (_, _) => _workspace.SetTool(PlanWorkspace.EditTool.Wall);
+        var axis = new Button { Content = "Eje" };
+        axis.Click += (_, _) => _workspace.SetTool(PlanWorkspace.EditTool.GridAxis);
+        var fit = new Button { Content = "Ajustar vista" };
+        fit.Click += (_, _) => _workspace.FitToModel();
+        menu.Children.Add(select);
+        menu.Children.Add(wall);
+        menu.Children.Add(axis);
+        menu.Children.Add(fit);
+        _workspace.ModelChanged += () =>
+        {
+            _document = _workspace.Session?.Document;
+            Refresh();
+        };
+        _workspace.Message += message => _status.Text = message;
 
         var layout = new StackPanel { Spacing = 18, Margin = new Thickness(28) };
         layout.Children.Add(new TextBlock { Text = "GUANACASTE 3D", FontSize = 13,
@@ -46,26 +65,20 @@ public sealed class MainWindow : Window
         layout.Children.Add(menu);
         layout.Children.Add(_title);
         layout.Children.Add(_summary);
-        layout.Children.Add(new TextBlock { Text = "Niveles del proyecto", FontWeight = FontWeight.SemiBold });
-        layout.Children.Add(_levels);
-        layout.Children.Add(new TextBlock { Text = "Ejes del proyecto", FontWeight = FontWeight.SemiBold });
-        layout.Children.Add(_axes);
-        layout.Children.Add(new TextBlock
-        {
-            Text = "Vista preliminar multiplataforma: lectura y guardado nativos compartidos con el motor BIM. " +
-                   "La edición geométrica y el render 3D se incorporarán durante la migración de la interfaz.",
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = Brushes.Gray
-        });
         _status.Text = "Crea un proyecto nuevo o abre un archivo Guanacaste 3D.";
         layout.Children.Add(_status);
-        Content = new ScrollViewer { Content = layout };
+        var root = new DockPanel();
+        DockPanel.SetDock(layout, Dock.Top);
+        root.Children.Add(layout);
+        root.Children.Add(_workspace);
+        Content = root;
         Refresh();
     }
 
     private void CreateProject()
     {
         _document = BuildingDocument.Create("Proyecto sin título");
+        _workspace.LoadDocument(_document);
         _path = null;
         _status.Text = "Proyecto nuevo creado. Puedes guardarlo como .g3d.";
         Refresh();
@@ -94,6 +107,7 @@ public sealed class MainWindow : Window
             var loaded = ProjectFile.Load(localPath);
             loaded.Validate();
             _document = loaded;
+            _workspace.LoadDocument(_document);
             _path = localPath;
             _status.Text = "Proyecto abierto: " + localPath;
             Refresh();
@@ -145,10 +159,6 @@ public sealed class MainWindow : Window
             ? "Motor BIM compartido para Windows, Linux y macOS."
             : $"Muros: {_document.Walls.Count}  |  Niveles: {_document.Levels.Count}  |  " +
               $"Ejes: {_document.Grids.Count}  |  Puertas y ventanas: {_document.Openings.Count}";
-        _levels.ItemsSource = _document?.Levels.Select(level =>
-            $"{level.Name} — {level.Elevation:0.###} m").ToArray() ?? [];
-        _axes.ItemsSource = _document?.Grids.Select(axis =>
-            $"{axis.Name} — ({axis.Start.X:0.##}, {axis.Start.Y:0.##}) a " +
-            $"({axis.End.X:0.##}, {axis.End.Y:0.##})").ToArray() ?? [];
+
     }
 }
