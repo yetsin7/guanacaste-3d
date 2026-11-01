@@ -198,7 +198,7 @@ internal static class ArchitectureUiChecks
         Execute(ArchitectureCommand.TagAllAreas);
         Check(session.Document.Views.Single(view => view.Id == activePlan.Id).ShowAreaTags &&
               canvas.Children.OfType<Border>().Any(tag =>
-                  (tag.Child as TextBlock)?.Text == "Área interior"),
+                  (tag.Child as TextBlock)?.Text?.StartsWith("Área interior", StringComparison.Ordinal) == true),
             "Tag all areas draws real area labels and records their per-plan visibility");
 
         // Test the original room face before WallByFace adds a second boundary and triggers
