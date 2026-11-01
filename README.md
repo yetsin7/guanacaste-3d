@@ -91,6 +91,10 @@ aplicación. Se incluyen quince nuevos acabados arquitectónicos.
 Los paquetes referencian imágenes externas; comparte también esos archivos.
 [Guía de importación y creación de materiales](docs/importacion-materiales-pbr.md).
 
+## Construction-aware architectural plans
+
+Guanacaste 3D includes plan-view construction drafting for concrete block and clay brick joints, gypsum stud layout, and independent plaster/fine coats on both wall faces. Wall-type editors provide finish thickness and gypsum stud pitch (16″, 24″ or a custom value). Real 3D cut geometry for construction studs and volumetric section clipping remain future work.
+
 ## Requirements
 
 - Windows 10 or 11, x64.

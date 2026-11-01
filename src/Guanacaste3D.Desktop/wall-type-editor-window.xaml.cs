@@ -23,6 +23,8 @@ public partial class WallTypeEditorWindow : Window
     /// <summary>Creates localized choices while retaining domain enum values as stable tags.</summary>
     private void PopulateEnumPickers()
     {
+        foreach (var construction in Enum.GetValues<WallConstruction>())
+            ConstructionPicker.Items.Add(new ComboBoxItem { Content = construction.ToString(), Tag = construction });
         foreach (var function in Enum.GetValues<WallFunction>())
             FunctionPicker.Items.Add(new ComboBoxItem
             {
@@ -65,6 +67,12 @@ public partial class WallTypeEditorWindow : Window
         NameInput.Text = wallType.Name;
         ThicknessInput.Text = wallType.Thickness.ToString("0.###", CultureInfo.CurrentCulture);
         MaterialInput.Text = wallType.MaterialName;
+        SelectTaggedItem(ConstructionPicker, wallType.Construction);
+        LeftRepelloInput.Text = wallType.LeftRepelloThickness.ToString("0.####", CultureInfo.CurrentCulture);
+        LeftFineInput.Text = wallType.LeftFineThickness.ToString("0.####", CultureInfo.CurrentCulture);
+        RightRepelloInput.Text = wallType.RightRepelloThickness.ToString("0.####", CultureInfo.CurrentCulture);
+        RightFineInput.Text = wallType.RightFineThickness.ToString("0.####", CultureInfo.CurrentCulture);
+        GypsumStudSpacingInput.Text = wallType.GypsumStudSpacing.ToString("0.####", CultureInfo.CurrentCulture);
         PlanColorInput.Text = wallType.PlanFillColor;
         SectionColorInput.Text = wallType.SectionFillColor;
         SelectTaggedItem(FunctionPicker, wallType.Function);
@@ -80,8 +88,19 @@ public partial class WallTypeEditorWindow : Window
             FunctionPicker.SelectedItem is not ComboBoxItem { Tag: WallFunction function } ||
             PlanPatternPicker.SelectedItem is not ComboBoxItem { Tag: WallFillPattern planPattern } ||
             SectionPatternPicker.SelectedItem is not ComboBoxItem { Tag: WallFillPattern sectionPattern } ||
+            ConstructionPicker.SelectedItem is not ComboBoxItem { Tag: WallConstruction construction } ||
+            !double.TryParse(LeftRepelloInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var leftRepello) ||
+            !double.TryParse(LeftFineInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var leftFine) ||
+            !double.TryParse(RightRepelloInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var rightRepello) ||
+            !double.TryParse(RightFineInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var rightFine) ||
+            !double.TryParse(GypsumStudSpacingInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var studSpacing) ||
+            leftRepello is < 0 or > 0.05 || rightRepello is < 0 or > 0.05 ||
+            leftFine is < 0 or > 0.02 || rightFine is < 0 or > 0.02 ||
+            studSpacing is < 0.15 or > 1.2 || !double.IsFinite(studSpacing) ||
             !double.TryParse(ThicknessInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var thickness) ||
-            thickness is < 0.03 or > 5 || string.IsNullOrWhiteSpace(NameInput.Text) ||
+            thickness is < 0.03 or > 5 || !double.IsFinite(thickness) ||
+            leftRepello + rightRepello + leftFine + rightFine >= thickness ||
+            string.IsNullOrWhiteSpace(NameInput.Text) ||
             string.IsNullOrWhiteSpace(MaterialInput.Text) || !IsRgbColor(PlanColorInput.Text) ||
             !IsRgbColor(SectionColorInput.Text))
         {
@@ -89,7 +108,8 @@ public partial class WallTypeEditorWindow : Window
             return;
         }
         _session.UpdateWallType(typeId, NameInput.Text, function, thickness, MaterialInput.Text,
-            PlanColorInput.Text, planPattern, SectionColorInput.Text, sectionPattern);
+            PlanColorInput.Text, planPattern, SectionColorInput.Text, sectionPattern,
+            construction, leftRepello, leftFine, rightRepello, rightFine, studSpacing);
         DialogResult = true;
     }
 

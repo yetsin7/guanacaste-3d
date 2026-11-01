@@ -8,6 +8,31 @@ static void Check(bool valid, string explanation)
     Console.WriteLine("OK: " + explanation);
 }
 
+var finishedType = BuiltInWallTypes.CreateDefaults()[1] with
+{
+    Construction = WallConstruction.Block,
+    LeftRepelloThickness = 0.015, LeftFineThickness = 0.003,
+    RightRepelloThickness = 0.010, RightFineThickness = 0.005
+};
+var finishedAssembly = WallAssemblyPlanRules.For(finishedType, finishedType.Thickness);
+Check(Math.Abs(finishedAssembly.CoreThickness - 0.167) < 1e-9,
+    "Repello and fine plaster subtract from wall core");
+Check(WallAssemblyPlanRules.LayerOffsets(finishedAssembly).Count == 4,
+    "Four visible finish boundaries in a double-sided masonry wall");
+Check(Math.Abs(WallAssemblyPlanRules.Stud16Inches * 1000 - 406.4) < 1e-6 &&
+      Math.Abs(WallAssemblyPlanRules.Stud24Inches * 1000 - 609.6) < 1e-6,
+    "Gypsum studs support exact 16 and 24 inch pitches");
+Check(WallAssemblyPlanRules.StudPositions(3.0, WallAssemblyPlanRules.Stud16Inches)
+    .Zip(WallAssemblyPlanRules.StudPositions(3.0, WallAssemblyPlanRules.Stud16Inches).Skip(1))
+    .All(pair => pair.Second - pair.First <= WallAssemblyPlanRules.Stud16Inches + 1e-9),
+    "Gypsum stud intervals never exceed maximum pitch");
+var layerDocument = BuildingDocument.Create();
+layerDocument.WallTypes[1] = finishedType;
+layerDocument.Validate();
+var reloadedLayers = layerDocument.Clone().WallTypes[1];
+Check(reloadedLayers.LeftRepelloThickness == 0.015 && reloadedLayers.RightFineThickness == 0.005,
+    "Wall assembly parameters survive document cloning");
+
 var document = BuildingDocument.Create();
 document.Validate();
 Check(document.Levels.Count == 2 && document.Levels.All(BaseLevels.IsProtected), "Default protected floor and roof levels");

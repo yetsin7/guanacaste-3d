@@ -26,6 +26,7 @@ public partial class MainWindow
         AddTemplateItems(apply, [BuiltInProjectViews.Model3DId]);
         menu.Items.Add(apply);
         menu.Items.Add(new Separator());
+        menu.Items.Add(ViewMenuItem("Encuadrar elemento en 3D", (_, _) => FrameSelectedElementIn3D(), hasSelection));
         menu.Items.Add(ViewMenuItem("ViewMenu.FrameAll", (_, _) => FrameCameraToScene()));
         menu.Items.Add(ViewMenuItem("ViewMenu.Center", (_, _) => _modelNavigator?.CenterAll()));
         menu.Items.Add(new Separator());

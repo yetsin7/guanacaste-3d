@@ -1,7 +1,7 @@
 <Window x:Class="Guanacaste3D.Desktop.WallTypeEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{DynamicResource WallTypeEditor.Title}" Width="560" Height="570"
+        Title="{DynamicResource WallTypeEditor.Title}" Width="610" Height="720"
         MinWidth="500" MinHeight="520" WindowStartupLocation="CenterOwner">
   <Grid Margin="18">
     <Grid.RowDefinitions>
@@ -25,6 +25,32 @@
         <TextBlock Text="{DynamicResource WallTypeEditor.Material}"/>
         <TextBox x:Name="MaterialInput" Margin="0,4,0,16"/>
 
+        <TextBlock Text="Sistema constructivo" FontWeight="SemiBold" Margin="0,4,0,5"/>
+        <ComboBox x:Name="ConstructionPicker" Margin="0,0,0,12"/>
+        <TextBlock Text="Capas de acabado (metros, 0 = sin acabado)"
+                   FontWeight="SemiBold" Margin="0,0,0,5"/>
+        <Grid Margin="0,0,0,10">
+          <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel Margin="0,0,8,8">
+            <TextBlock Text="Cara izquierda · Repello (0.010–0.015 m)"/>
+            <TextBox x:Name="LeftRepelloInput" Margin="0,3,0,0"/>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Margin="8,0,0,8">
+            <TextBlock Text="Cara izquierda · Fino (0.003–0.005 m)"/>
+            <TextBox x:Name="LeftFineInput" Margin="0,3,0,0"/>
+          </StackPanel>
+          <StackPanel Grid.Row="1" Margin="0,0,8,0">
+            <TextBlock Text="Cara derecha · Repello (m)"/>
+            <TextBox x:Name="RightRepelloInput" Margin="0,3,0,0"/>
+          </StackPanel>
+          <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
+            <TextBlock Text="Cara derecha · Fino (m)"/>
+            <TextBox x:Name="RightFineInput" Margin="0,3,0,0"/>
+          </StackPanel>
+        </Grid>
+        <TextBlock Text="Separación de postes gypsum (m): 0.4064 = 16″, 0.6096 = 24″"/>
+        <TextBox x:Name="GypsumStudSpacingInput" Margin="0,4,0,14"/>
         <Separator Margin="0,0,0,14"/>
         <TextBlock Text="{DynamicResource WallTypeEditor.PlanAppearance}" FontWeight="SemiBold" Margin="0,0,0,7"/>
         <Grid>

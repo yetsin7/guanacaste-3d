@@ -64,6 +64,15 @@ public sealed record WallType(
 
     /// <summary>What the wall is built of: it sets the material of its faces in 3D and in the render.</summary>
     public WallConstruction Construction { get; init; }
+
+    /// <summary>Finish thickness on each wall face in metres; zero means exposed substrate.</summary>
+    public double LeftRepelloThickness { get; init; }
+    public double LeftFineThickness { get; init; }
+    public double RightRepelloThickness { get; init; }
+    public double RightFineThickness { get; init; }
+
+    /// <summary>Gypsum stud spacing in metres (16 or 24 inches, or custom).</summary>
+    public double GypsumStudSpacing { get; init; } = WallAssemblyPlanRules.Stud16Inches;
 }
 
 /// <summary>Provides stable identifiers and defaults for built-in wall types.</summary>
@@ -76,6 +85,8 @@ public static class BuiltInWallTypes
     /// <summary>Creates an independent default wall-type catalog for a new document.</summary>
     public static List<WallType> CreateDefaults() =>
     [
+        // Keep the historical default face materials for existing projects and render regressions.
+        // Users can explicitly select Gypsum/Block/Brick in the wall type editor.
         new(Interior100Id, "Interior 100 mm", WallFunction.Interior, 0.10, "Gypsum assembly"),
         new(Basic200Id, "Basic 200 mm", WallFunction.Interior, 0.20, "Concrete masonry"),
         new(Exterior300Id, "Exterior 300 mm", WallFunction.Exterior, 0.30, "Insulated masonry")
