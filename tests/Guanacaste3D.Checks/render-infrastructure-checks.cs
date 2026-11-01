@@ -259,6 +259,26 @@ static class RenderInfrastructureChecks
             catch (InvalidDataException) { bad++; }
         }
         check(bad == 4, "Malformed, unsupported-type and unordered IES files are rejected");
+
+        // Untrusted photometry must not turn finite source values into infinite
+        // candela or luminous flux, or exhaust memory while parsing a huge file.
+        static bool RejectsIes(string source)
+        {
+            try { _ = IesProfile.Parse(source); return false; }
+            catch (InvalidDataException) { return true; }
+        }
+        var overflowingIntensity = isotropic.Replace("1 -1 1 5 1 1 2 0 0 0",
+            "1 -1 1e38 5 1 1 2 0 0 0", StringComparison.Ordinal);
+        var overflowingFlux = isotropic.Replace("100 100 100 100 100",
+            "1e38 1e38 1e38 1e38 1e38", StringComparison.Ordinal);
+        check(RejectsIes(overflowingIntensity) && RejectsIes(overflowingFlux) &&
+              RejectsIes(new string(' ', IesProfile.MaxIesCharacters + 1)),
+            "IES rejects overflowed candela, overflowed integrated flux and oversized input");
+        check(profile.IntensityTowards(new Vector3(float.NaN, 0, -1)) == 0 &&
+              profile.IntensityTowards(new Vector3(float.MaxValue, 0, -1)) == 0 &&
+              profile.Candela(float.PositiveInfinity, 0) == 0 &&
+              profile.Candela(0, float.NaN) == 0,
+            "Invalid IES lookup directions do not introduce light into the renderer");
     }
 
     private static void Portals(Action<bool, string> check)
