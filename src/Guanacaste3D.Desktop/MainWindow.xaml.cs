@@ -213,7 +213,7 @@ public partial class MainWindow : Window
         try
         {
             // The render view travels with the project, so reopening it shows the same camera, sun and filters.
-            try { _session.StoreRenderSetup(RenderPanelControl.CaptureSetup(_navigation)); }
+            try { _session.StoreRenderSetup(RenderPanelControl.CaptureSetupForProject(_navigation, path!)); }
             catch (InvalidDataException) { }
             ProjectFile.Save(path!, _session.Document);
             _links.Save(path!);
@@ -258,6 +258,8 @@ public partial class MainWindow : Window
         _selectedSheetId = null;
         _selectedViewId = null;
         _filePath = filename;
+        // Prevent an async sky load from a previous document from leaking into the new project.
+        RenderPanelControl.ClearHdriForDocument();
         _dirty = false;
         _projectChosen = true;
         HideStartScreen();
@@ -277,7 +279,7 @@ public partial class MainWindow : Window
         _navigation.YawDegrees = (float)setup.YawDegrees;
         _navigation.PitchDegrees = (float)setup.PitchDegrees;
         _navigation.FieldOfViewDegrees = (float)setup.FieldOfViewDegrees;
-        RenderPanelControl.ApplySetup(setup);
+        RenderPanelControl.ApplySetupForProject(setup, _filePath);
         UpdateModelCamera();
     }
 
