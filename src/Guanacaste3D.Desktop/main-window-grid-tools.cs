@@ -147,9 +147,9 @@ public partial class MainWindow
     }
 
     /// <summary>Centers the plan on the conflicting datum so the user can inspect or edit it.</summary>
-    private void FocusExistingGridAxis(GridAxisNameConflictException exception)
+    private void FocusExistingGridAxis(Guid existingId, string attemptedName)
     {
-        var existing = _session.Document.Grids.FirstOrDefault(axis => axis.Id == exception.ExistingAxisId);
+        var existing = _session.Document.Grids.FirstOrDefault(axis => axis.Id == existingId);
         if (existing is null) return;
         _selectedGridId = existing.Id;
         var midpoint = new Point2((existing.Start.X + existing.End.X) / 2,
@@ -158,7 +158,7 @@ public partial class MainWindow
         RefreshProperties();
         RenderPlan();
         StatusText.Text = $"Ya existe el eje '{existing.Name}'. Se ha seleccionado y centrado en el plano.";
-        MessageBox.Show(this, $"El nombre '{exception.AxisName}' ya está ocupado.\nEl eje existente quedó seleccionado y centrado para editarlo o eliminarlo.",
+        MessageBox.Show(this, $"El nombre '{attemptedName}' ya está ocupado.\nEl eje existente quedó seleccionado y centrado para editarlo o eliminarlo.",
             "Nombre de eje duplicado", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
@@ -169,7 +169,10 @@ public partial class MainWindow
         var name = PromptWindow.Ask(this, GetText("Documentation.RenameAxis"), axis.Name);
         if (name is null) return;
         try { _session.UpdateGridAxis(id, name, axis.Start, axis.End); RefreshAll(); }
-        catch (GridAxisNameConflictException exception) { FocusExistingGridAxis(exception); }
+        catch (InvalidDataException exception) when (exception.Data["ExistingAxisId"] is Guid existingId)
+        {
+            FocusExistingGridAxis(existingId, exception.Data["AxisName"] as string ?? name);
+        }
         catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
     }
 
