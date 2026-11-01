@@ -8,6 +8,58 @@ static class AdvancedRoomBoundaryChecks
         DiagonalWalls(check);
         CourtyardHole(check);
         CurvedCourtyard(check);
+        WallByFaceAndRoof(check);
+    }
+
+    /// <summary>
+    /// Production workflow: draw an enclosure, auto-detect a room, build secondary walls
+    /// from that room face, then place a real pitched roof using the same room GUID.
+    /// Adding nested walls must not convert an occupied room into an unscheduled courtyard.
+    /// </summary>
+    private static void WallByFaceAndRoof(Action<bool, string> check)
+    {
+        var session = new DocumentSession(ArchitecturalLibrary.CreateProject("Room-to-roof workflow"));
+        var level = session.Document.Levels[0].Id;
+        var corners = new[] { new Point2(0, 0), new Point2(8, 0),
+            new Point2(8, 6), new Point2(0, 6) };
+        session.AddWallsAroundBoundary(level, corners, BuiltInWallTypes.Basic200Id);
+        check(session.AddAutomaticRooms(level) == 1, "Four walls form an automatic room");
+        var initial = session.Document.Rooms.Single();
+        session.RenameRoom(initial.Id, "Sala", "R-101");
+        var wallsBefore = session.Document.Walls.Count;
+        var face = RoomRegionGeometry.Outline(session.Document.Rooms.Single());
+        check(session.AddWallsAroundBoundary(level, face, BuiltInWallTypes.Basic200Id) == 4 &&
+              session.Document.Walls.Count == wallsBefore + 4,
+            "Wall by face creates four real editable walls");
+        var retained = session.Document.Rooms.FirstOrDefault(room => room.Id == initial.Id);
+        check(retained is not null && retained.Name == "Sala" && retained.Number == "R-101" &&
+              retained.Area > 20,
+            "Nested walls preserve the selected occupied room, its GUID, number, name and valid area");
+        var roofPreset = ArchitecturalLibrary.SlabPresets.Single(preset => preset.Name == "Hip Roof 25°");
+        var roofId = session.AddSlabOverRoom(initial.Id, roofPreset, 0.6);
+        var roof = session.Document.Floors.Single(floor => floor.Id == roofId);
+        check(roof.Kind == FloorKind.Roof && roof.Shape == RoofShape.Hip &&
+              roof.CalculateArea() > retained.Area,
+            "Roof by face creates a real pitched roof with overhang around the retained room");
+        session.Undo();
+        check(session.Document.Floors.All(floor => floor.Id != roofId) &&
+              session.Document.Rooms.Any(room => room.Id == initial.Id),
+            "Undo roof by face does not delete the source room or nested walls");
+        session.Redo();
+        var path = Path.Combine(Path.GetTempPath(), "g3d-room-roof-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(path, session.Document);
+            var opened = ProjectFile.Load(path);
+            check(opened.Floors.Any(floor => floor.Id == roofId && floor.Kind == FloorKind.Roof) &&
+                  opened.Rooms.Any(room => room.Id == initial.Id && room.Number == "R-101"),
+                "Room by face and pitched roof survive native save and reload");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path + ".bak")) File.Delete(path + ".bak");
+        }
     }
 
     private static void DiagonalWalls(Action<bool, string> check)
