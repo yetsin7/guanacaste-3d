@@ -72,6 +72,11 @@ public static class PbrMaterialAudit
             var root = json.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
                 return new Inspection(fullPath, null, ["The manifest must be a JSON object."], []);
+            // Duplicate property names with different casing are ambiguous between old and new
+            // JSON serializers. Reject them so auditing and subsequent rendering agree exactly.
+            if (root.EnumerateObject().Select(property => property.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count() != root.EnumerateObject().Count())
+                errors.Add("Duplicate material properties are not allowed.");
 
             var version = GetNumber(root, "version", 1);
             if (version != 1) errors.Add("Unsupported .g3dm version.");
