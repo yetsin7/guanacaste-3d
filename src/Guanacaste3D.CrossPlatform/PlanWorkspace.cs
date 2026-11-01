@@ -33,7 +33,9 @@ public sealed class PlanWorkspace : Grid
     private Point _offset = new(0, 0);
     private Point? _panPointer;
     private Point2? _previewWorldPoint;
-    private bool _leftPanning;
+    private PlanSnapping.SnapKind _previewSnapKind;
+    private readonly CheckBox _snapEndpoints = new() { Content = "Extremos de muros y ejes", IsChecked = true };
+    private readonly CheckBox _snapGrid = new() { Content = "Cuadrícula métrica 25 cm", IsChecked = true };
     private readonly TextBlock _viewInfo = new() { TextWrapping = TextWrapping.Wrap };
     private readonly ComboBox _levelPicker = new() { MinWidth = 170 };
     private Guid? _activeLevelId;
@@ -55,6 +57,13 @@ public sealed class PlanWorkspace : Grid
         _sidebar.Children.Add(new TextBlock { Text = "NIVEL ACTIVO", FontWeight = FontWeight.Bold });
         _sidebar.Children.Add(_levelPicker);
         _sidebar.Children.Add(_viewInfo);
+        _sidebar.Children.Add(new TextBlock { Text = "REFERENCIAS DE DIBUJO", FontWeight = FontWeight.Bold });
+        _sidebar.Children.Add(_snapEndpoints);
+        _sidebar.Children.Add(_snapGrid);
+        _sidebar.Children.Add(new TextBlock { Text = "Mantén Shift al dibujar para bloquear horizontal o vertical.",
+            TextWrapping = TextWrapping.Wrap });
+        _snapEndpoints.IsCheckedChanged += (_, _) => Redraw();
+        _snapGrid.IsCheckedChanged += (_, _) => Redraw();
         _levelPicker.SelectionChanged += (_, _) =>
         {
             if (_levelPicker.SelectedItem is LevelEntry level)
@@ -146,6 +155,7 @@ public sealed class PlanWorkspace : Grid
         _tool = tool;
         _firstPoint = null;
         _previewWorldPoint = null;
+        _previewSnapKind = PlanSnapping.SnapKind.None;
         _hint.Text = tool switch
         {
             EditTool.Wall => "Muro: elige punto inicial y final. Escala en metros; muros de 20 cm y 3 m de alto.",
@@ -199,17 +209,20 @@ public sealed class PlanWorkspace : Grid
             Redraw();
             return;
         }
-        var modelPoint = ToWorld(point);
+        var snap = ResolveSnap(point, e.KeyModifiers);
+        var modelPoint = snap.Point;
         if (_firstPoint is null)
         {
             _firstPoint = modelPoint;
             _previewWorldPoint = modelPoint;
+            _previewSnapKind = snap.Kind;
             Message?.Invoke("Primer punto registrado. Selecciona el segundo punto.");
             return;
         }
         var first = _firstPoint.Value;
         _firstPoint = null;
         _previewWorldPoint = null;
+        _previewSnapKind = PlanSnapping.SnapKind.None;
         if (first.DistanceTo(modelPoint) < 0.05)
         {
             Message?.Invoke("Los puntos deben estar separados al menos 5 cm.");
@@ -235,6 +248,14 @@ public sealed class PlanWorkspace : Grid
         catch (InvalidDataException ex) { Message?.Invoke(ex.Message); }
     }
 
+    private PlanSnapping.Result ResolveSnap(Point pixelPosition, KeyModifiers modifiers)
+    {
+        if (_session is null) return new PlanSnapping.Result(ToWorld(pixelPosition), PlanSnapping.SnapKind.None);
+        return PlanSnapping.Resolve(_session.Document, _activeLevelId, ToWorld(pixelPosition), _scale,
+            _snapGrid.IsChecked == true, _snapEndpoints.IsChecked == true, _firstPoint,
+            (modifiers & KeyModifiers.Shift) != 0);
+    }
+
     private void CanvasWheel(object? sender, PointerWheelEventArgs e)
     {
         var point = e.GetPosition(_canvas);
@@ -254,7 +275,9 @@ public sealed class PlanWorkspace : Grid
         {
             if (_firstPoint is not null && _tool != EditTool.Select)
             {
-                _previewWorldPoint = ToWorld(e.GetPosition(_canvas));
+                var snap = ResolveSnap(e.GetPosition(_canvas), e.KeyModifiers);
+                _previewWorldPoint = snap.Point;
+                _previewSnapKind = snap.Kind;
                 Redraw();
             }
             return;
@@ -418,6 +441,18 @@ public sealed class PlanWorkspace : Grid
             var last = ToScreen(to);
             DrawSegment(first, last, Brushes.DodgerBlue,
                 _tool == EditTool.Wall ? Math.Max(3, 0.20 * _scale) : 1.5);
+            if (_previewSnapKind != PlanSnapping.SnapKind.None)
+            {
+                var marker = new Ellipse
+                {
+                    Width = 12, Height = 12, Stroke = Brushes.DodgerBlue,
+                    StrokeThickness = 2, Fill = Brushes.White,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(marker, last.X - 6);
+                Canvas.SetTop(marker, last.Y - 6);
+                _canvas.Children.Add(marker);
+            }
         }
     }
 
