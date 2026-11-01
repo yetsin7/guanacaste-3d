@@ -94,7 +94,7 @@
           <RowDefinition Height="110"/>
           <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" Text="IMAGEN DE REFERENCIA · VISTA ACTUAL" FontSize="12" FontWeight="Bold" Foreground="#75E3CF" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="0" Text="IMAGEN DE REFERENCIA · SESIÓN ACTIVA" FontSize="12" FontWeight="Bold" Foreground="#75E3CF" Margin="0,0,0,8"/>
         <Border Grid.Row="1" Background="#0D1722" BorderBrush="#40596B" BorderThickness="1" CornerRadius="8">
           <Image x:Name="ReferenceImage" Stretch="Uniform" Margin="5"/>
         </Border>

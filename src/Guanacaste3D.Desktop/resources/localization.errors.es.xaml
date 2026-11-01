@@ -264,4 +264,10 @@
   <sys:String x:Key="Error.The glTF image is not valid.">La imagen del modelo glTF no es válida.</sys:String>
   <sys:String x:Key="Error.The glTF image is not a supported PNG.">La imagen del modelo glTF no es un PNG compatible.</sys:String>
   <sys:String x:Key="Error.The glTF image dimensions are out of range.">Las dimensiones de la imagen glTF superan los límites admitidos.</sys:String>
+  <!-- Archivo de sesiones de Render con IA. -->
+  <sys:String x:Key="Error.La vista de referencia debe ser una imagen PNG válida.">La vista de referencia debe ser una imagen PNG válida.</sys:String>
+  <sys:String x:Key="Error.La sesión seleccionada ya no contiene su prompt y referencia.">La sesión seleccionada ya no contiene su prompt y referencia.</sys:String>
+  <sys:String x:Key="Error.Solo se admiten imágenes PNG o JPEG.">Solo se admiten imágenes PNG o JPEG.</sys:String>
+  <sys:String x:Key="Error.La imagen debe tener un tamaño entre 1 byte y 100 MB.">La imagen debe tener un tamaño entre 1 byte y 100 MB.</sys:String>
+  <sys:String x:Key="Error.El contenido de la imagen no coincide con el formato indicado.">El contenido de la imagen no coincide con el formato indicado.</sys:String>
 </ResourceDictionary>

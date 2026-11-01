@@ -93,6 +93,25 @@ public partial class AiRenderWindow : Window
         if (PackagesList.SelectedItem is not AiRenderPackage selected) return;
         _current = selected;
         PromptBox.Text = selected.Prompt;
+        try
+        {
+            // A restored prompt must always be copied with the reference that generated it,
+            // not with the camera's newly displayed view.
+            var bytes = File.ReadAllBytes(selected.ReferencePath);
+            using var stream = new MemoryStream(bytes, writable: false);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            ReferenceImage.Source = bitmap;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || ex is NotSupportedException)
+        {
+            ReferenceImage.Source = null;
+            StatusText.Text = "No se pudo cargar la referencia de esa sesión: " + ex.Message;
+        }
     }
 
     private void CopyPrompt_Click(object sender, RoutedEventArgs e)
@@ -117,8 +136,13 @@ public partial class AiRenderWindow : Window
     {
         try
         {
-            Clipboard.SetImage(_reference);
-            StatusText.Text = "Imagen copiada. Pégala junto al prompt en la IA externa.";
+            if (ReferenceImage.Source is not BitmapSource selectedReference)
+            {
+                StatusText.Text = "No hay referencia disponible en esta sesión.";
+                return;
+            }
+            Clipboard.SetImage(selectedReference);
+            StatusText.Text = "Referencia de la sesión copiada. Pégala junto al prompt en la IA externa.";
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
