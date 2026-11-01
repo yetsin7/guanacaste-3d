@@ -28,7 +28,7 @@ public sealed partial class DocumentSession
     {
         var normalized = (name ?? string.Empty).Trim();
         if (normalized.Length is < 1 or > 32)
-            throw new InvalidDataException("El nombre del eje debe contener entre 1 y 32 caracteres.");
+            throw new InvalidDataException("The grid axis name must contain between 1 and 32 characters.");
         return normalized;
     }
 
@@ -56,7 +56,7 @@ public sealed partial class DocumentSession
     public void UpdateGridAxis(Guid id, string name, Point2 start, Point2 end)
     {
         var old = Document.Grids.FirstOrDefault(axis => axis.Id == id)
-            ?? throw new InvalidDataException("El eje seleccionado ya no existe.");
+            ?? throw new InvalidDataException("The grid axis does not exist.");
         name = NormalizeAxisName(name);
         CheckGridAxisName(name, id);
         var dx = start.X - old.Start.X;
@@ -76,9 +76,9 @@ public sealed partial class DocumentSession
     public void MoveGridAxis(Guid id, double deltaX, double deltaY)
     {
         var axis = Document.Grids.FirstOrDefault(grid => grid.Id == id)
-            ?? throw new InvalidDataException("El eje seleccionado ya no existe.");
+            ?? throw new InvalidDataException("The grid axis does not exist.");
         if (!double.IsFinite(deltaX) || !double.IsFinite(deltaY))
-            throw new InvalidDataException("El desplazamiento del eje debe ser finito.");
+            throw new InvalidDataException("The grid axis translation must be finite.");
         if (Math.Abs(deltaX) < 1e-9 && Math.Abs(deltaY) < 1e-9) return;
         UpdateGridAxis(id, axis.Name,
             new Point2(axis.Start.X + deltaX, axis.Start.Y + deltaY),
