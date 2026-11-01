@@ -142,6 +142,11 @@ public partial class MainWindow
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (CancelDetailDrawing()) { e.Handled = true; return; }
+        // Right-click on an existing annotation must leave its context menu intact.
+        if ((e.OriginalSource as FrameworkElement)?.Tag is Guid annotationId &&
+            (_session.Document.DetailLines.Any(line => line.Id == annotationId) ||
+             _session.Document.FilledRegions.Any(region => region.Id == annotationId)))
+            return;
         if (CancelElectricalTools() | CancelPlumbingTools())
         {
             StatusText.Text = GetText("Status.SelectionMode");
