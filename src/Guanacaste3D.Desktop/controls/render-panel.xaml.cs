@@ -53,6 +53,7 @@ public partial class RenderPanel : UserControl
     public RenderPanel()
     {
         InitializeComponent();
+        InitializeRenderModeRail();
         InitializeLooks();
         SunDatePicker.SelectedDate = DateTime.Today;
         _ready = true;
