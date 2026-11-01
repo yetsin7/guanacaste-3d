@@ -71,6 +71,9 @@ static class RenderDetailChecks
         check(Math.Abs(height.TexelSize(0) - .5f) < .001f &&
               Math.Abs(height.TexelSize(2) - 1f) < .001f,
             "Bump-map derivatives use the actual filtered texel size");
+        check(Math.Abs(height.TexelSize(float.MaxValue) - 1f) < .001f &&
+              Math.Abs(height.Sample(.25f, .75f, float.MaxValue) - .5f) < .01f,
+            "Finite extreme footprints select the coarsest mip without overflow");
         check(ReferenceEquals((new RenderMaterial { HeightMap = height, TextureRelief = .7f }).Sanitized().HeightMap, height),
             "Sanitization retains the height channel");
     }
