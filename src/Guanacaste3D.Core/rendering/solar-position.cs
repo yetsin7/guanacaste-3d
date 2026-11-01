@@ -25,7 +25,10 @@ public static class SolarPosition
 
         // Cooper's declination approximation (±0.5° accuracy is ample for shading studies).
         var declination = 23.44 * Math.PI / 180 * Math.Sin(2 * Math.PI * (284 + day) / 365);
-        var hourAngle = 15 * (solarHour - 12) * Math.PI / 180; // negative in the morning
+        // Solar time repeats every 24 hours. Reduce before multiplying to avoid
+        // overflow and NaN for large but finite values supplied by external callers.
+        var hourOfDay = solarHour % 24.0;
+        var hourAngle = (hourOfDay - 12.0) * Math.PI / 12.0; // negative in the morning
         var latitude = latitudeDegrees * Math.PI / 180;
 
         // Equatorial sun vector rotated into the local east-north-up frame.

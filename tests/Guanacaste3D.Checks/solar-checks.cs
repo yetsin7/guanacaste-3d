@@ -27,5 +27,13 @@ static class SolarChecks
         check(SolarPosition.Direction(12.1, 172, 0).Z < 0, "Midnight sun is below the horizon");
         check(MathF.Abs(SolarPosition.Direction(-33.9, 1, 10.5).Length() - 1) < 1e-5f,
             "Sun direction is a unit vector in the southern hemisphere too");
+
+        check(Near(SolarPosition.Direction(12.1, 172, 36), june, 1e-5f) &&
+              Near(SolarPosition.Direction(12.1, 172, -12), june, 1e-5f),
+            "Solar time wraps every 24 hours without changing the sun direction");
+        var extremeHourSun = SolarPosition.Direction(12.1, 172, double.MaxValue);
+        check(float.IsFinite(extremeHourSun.X) && float.IsFinite(extremeHourSun.Y) &&
+              float.IsFinite(extremeHourSun.Z) && MathF.Abs(extremeHourSun.Length() - 1) < 1e-5f,
+            "Extreme finite solar hours never propagate NaN into sky lighting");
     }
 }
