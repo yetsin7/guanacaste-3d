@@ -75,6 +75,10 @@ jobs:
             else { throw }
           }
           if (-not $blocked) { throw 'In-process COM thumbnail registration must reject missing opt-in.' }
+          $callSites = @(git grep -n -E 'register-thumbnails\.ps1.*-ProviderDirectory' -- scripts src)
+          foreach ($call in $callSites) {
+            if ($call -notmatch '-AllowInProcess') { throw "Unsafe thumbnail registration call site: $call" }
+          }
       - name: Restore
         run: dotnet restore Guanacaste3D.slnx
       - name: Compile
