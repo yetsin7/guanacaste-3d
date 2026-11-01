@@ -162,6 +162,9 @@ public static class IfcExporter
     /// <summary>IFC4 door operation semantics must follow the modeled family, not a fixed swing direction.</summary>
     private static string DoorOperation(OpeningType type, WallOpening opening) => type.Operation switch
     {
+        // The BIM mesher uses two leaves for standard doors wider than 1.2 m.
+        // Export the same topology instead of mislabeling a double door as a single swing.
+        OpeningOperation.Standard when opening.Width > 1.2 => ".DOUBLE_DOOR_SINGLE_SWING.",
         OpeningOperation.Standard => opening.FlipHand ? ".SINGLE_SWING_RIGHT." : ".SINGLE_SWING_LEFT.",
         OpeningOperation.Sliding => ".DOUBLE_DOOR_SLIDING.",
         OpeningOperation.Folding => ".DOUBLE_DOOR_FOLDING.",

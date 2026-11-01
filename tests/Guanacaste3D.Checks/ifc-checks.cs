@@ -123,6 +123,20 @@ static class IfcChecks
               ExportOpening(OpeningKind.Door, OpeningOperation.Standard, flipHand: true)
                   .Contains(",.SINGLE_SWING_RIGHT.,$)", StringComparison.Ordinal),
             "IFC door swing direction follows the instance hand");
+
+        // The standard door mesher generates two leaves above 1.2 m. Keep the IFC
+        // operation aligned with the actual 3D assembly, not just the type's name.
+        var doubleDoorHouse = house.Clone();
+        var entryDoor = doubleDoorHouse.Openings.First(item => item.Kind == OpeningKind.Door && item.Width == 1.0);
+        var entryIndex = doubleDoorHouse.Openings.FindIndex(item => item.Id == entryDoor.Id);
+        var entryTypeIndex = doubleDoorHouse.OpeningTypes.FindIndex(item => item.Id == entryDoor.OpeningTypeId);
+        doubleDoorHouse.Openings[entryIndex] = entryDoor with { Width = 1.5 };
+        doubleDoorHouse.OpeningTypes[entryTypeIndex] = doubleDoorHouse.OpeningTypes[entryTypeIndex] with { Width = 1.5 };
+        var doubleDoorId = IfcExporter.ToGlobalId(entryDoor.Id);
+        var doubleDoorLine = IfcExporter.ToStep(doubleDoorHouse, stamp).Split('\n')
+            .Single(row => row.Contains($"IFCDOOR('{doubleDoorId}',", StringComparison.Ordinal));
+        check(doubleDoorLine.Contains(",.DOUBLE_DOOR_SINGLE_SWING.,$)", StringComparison.Ordinal),
+            "IFC wide standard doors export as double-leaf swing, matching the BIM mesher");
         check(ExportOpening(OpeningKind.Door, OpeningOperation.Sliding)
                   .Contains(",.DOUBLE_DOOR_SLIDING.,$)", StringComparison.Ordinal) &&
               ExportOpening(OpeningKind.Door, OpeningOperation.Folding)
