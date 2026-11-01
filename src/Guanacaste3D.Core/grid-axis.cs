@@ -8,7 +8,7 @@ public sealed record GridAxis(Guid Id, string Name, Point2 Start, Point2 End)
 }
 
 /// <summary>Identifies the existing datum so the UI can select it when a name is reused.</summary>
-public sealed class GridAxisNameConflictException : InvalidDataException
+public sealed class GridAxisNameConflictException : IOException
 {
     public Guid ExistingAxisId { get; }
     public string AxisName { get; }
