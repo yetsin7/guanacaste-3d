@@ -13,6 +13,9 @@ internal sealed record PbrMaterialManifest
     public int Version { get; init; } = 1;
     public string Name { get; init; } = "Material PBR";
     public string Albedo { get; init; } = "";
+    public string? Normal { get; init; }
+    public string? RoughnessMap { get; init; }
+    public string? MetallicMap { get; init; }
     public double Roughness { get; init; } = 0.7;
     public double Metallic { get; init; }
     public double Ior { get; init; } = 1.5;
@@ -74,19 +77,31 @@ internal static class PbrMaterialPackages
                 !double.IsFinite(manifest.Relief) || manifest.Relief is < 0 or > 1)
                 return null;
             var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
-            var image = Path.GetFullPath(Path.Combine(directory, manifest.Albedo));
-            var relative = Path.GetRelativePath(directory, image);
-            if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
-                Path.IsPathRooted(relative)) return null;
-            if (!new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff" }
-                    .Contains(Path.GetExtension(image), StringComparer.OrdinalIgnoreCase) ||
-                !File.Exists(image)) return null;
+            var image = SafeImagePath(directory, manifest.Albedo);
+            if (image is null ||
+                (manifest.Normal is not null && SafeImagePath(directory, manifest.Normal) is null) ||
+                (manifest.RoughnessMap is not null && SafeImagePath(directory, manifest.RoughnessMap) is null) ||
+                (manifest.MetallicMap is not null && SafeImagePath(directory, manifest.MetallicMap) is null))
+                return null;
             return (manifest, image);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return null;
         }
+    }
+
+    private static string? SafeImagePath(string directory, string relativeName)
+    {
+        if (string.IsNullOrWhiteSpace(relativeName) || Path.IsPathRooted(relativeName)) return null;
+        var image = Path.GetFullPath(Path.Combine(directory, relativeName));
+        var relative = Path.GetRelativePath(directory, image);
+        if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+            Path.IsPathRooted(relative) ||
+            !new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff" }
+                .Contains(Path.GetExtension(image), StringComparer.OrdinalIgnoreCase) ||
+            !File.Exists(image)) return null;
+        return image;
     }
 
     /// <summary>
@@ -155,7 +170,13 @@ internal static class PbrMaterialPackages
             Name = manifest.Name, Texture = texture,
             TextureSize = (float)size, TextureRelief = (float)relief,
             Roughness = (float)manifest.Roughness, Metallic = (float)manifest.Metallic,
-            Ior = (float)manifest.Ior, BaseColor = System.Numerics.Vector3.One
+            Ior = (float)manifest.Ior, BaseColor = System.Numerics.Vector3.One,
+            NormalMap = manifest.Normal is null ? null : RenderTextureLibrary.LoadNormal(
+                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.Normal)),
+            RoughnessMap = manifest.RoughnessMap is null ? null : RenderTextureLibrary.LoadScalar(
+                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.RoughnessMap)),
+            MetallicMap = manifest.MetallicMap is null ? null : RenderTextureLibrary.LoadScalar(
+                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.MetallicMap))
         }.Sanitized();
     }
 }
