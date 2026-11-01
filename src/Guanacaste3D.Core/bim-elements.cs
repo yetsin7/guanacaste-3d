@@ -85,9 +85,11 @@ public static class BuiltInWallTypes
     /// <summary>Creates an independent default wall-type catalog for a new document.</summary>
     public static List<WallType> CreateDefaults() =>
     [
-        new(Interior100Id, "Interior 100 mm", WallFunction.Interior, 0.10, "Gypsum assembly") { Construction = WallConstruction.Gypsum },
-        new(Basic200Id, "Basic 200 mm", WallFunction.Interior, 0.20, "Concrete masonry") { Construction = WallConstruction.Block },
-        new(Exterior300Id, "Exterior 300 mm", WallFunction.Exterior, 0.30, "Insulated masonry") { Construction = WallConstruction.Block }
+        // Keep the historical default face materials for existing projects and render regressions.
+        // Users can explicitly select Gypsum/Block/Brick in the wall type editor.
+        new(Interior100Id, "Interior 100 mm", WallFunction.Interior, 0.10, "Gypsum assembly"),
+        new(Basic200Id, "Basic 200 mm", WallFunction.Interior, 0.20, "Concrete masonry"),
+        new(Exterior300Id, "Exterior 300 mm", WallFunction.Exterior, 0.30, "Insulated masonry")
     ];
 }
 
