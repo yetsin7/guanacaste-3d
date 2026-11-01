@@ -57,6 +57,18 @@ public static class MaterialPresets
             Matte("Teja de barro", .48f, .19f, .11f, .87f, SurfacePattern.RoofTiles, 1)),
         new("nicaragua-stone-river", "Piedra de río natural", MaterialFamily.Stone,
             Matte("Piedra de río", .38f, .36f, .32f, .84f, SurfacePattern.StoneMasonry, 1.2f)),
+        // Retaining-wall material set. These are appearance presets, not structural design details.
+        // Stone uses the optional render-only microgeometry for real contact shadows on WallStone faces.
+        new("retaining-stone-grey", "Piedra gris cortada · muro de contención", MaterialFamily.Stone,
+            Matte("Piedra gris cortada", .47f, .47f, .44f, .95f, SurfacePattern.StoneMasonry, .85f)),
+        new("retaining-stone-sand", "Piedra arenisca labrada · muro de contención", MaterialFamily.Stone,
+            Matte("Piedra arenisca labrada", .58f, .52f, .43f, .94f, SurfacePattern.StoneMasonry, 1.05f)),
+        new("retaining-footing", "Concreto expuesto de zapata", MaterialFamily.Concrete,
+            Matte("Concreto de zapata", .49f, .48f, .45f, .94f, SurfacePattern.PouredConcrete, 1.2f)),
+        Textured("retaining-drainage-gravel", "Grava drenante 20–40 mm", MaterialFamily.Outdoor,
+            "gravel", .8, .98f, .65),
+        Textured("retaining-backfill-earth", "Tierra de relleno compactado", MaterialFamily.Outdoor,
+            "ambientcg-ground108", 1.2, .98f, .35),
         new("nicaragua-paving", "Adoquín gris exterior", MaterialFamily.Outdoor,
             Matte("Adoquín gris", .35f, .36f, .34f, .92f, SurfacePattern.Blocks, 1)),
         new("nicaragua-polished-cement", "Piso de concreto afinado", MaterialFamily.Concrete,

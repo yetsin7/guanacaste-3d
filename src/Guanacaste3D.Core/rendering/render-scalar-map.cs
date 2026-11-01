@@ -72,6 +72,19 @@ public sealed class RenderScalarMap
         return from + (Bilinear(low + 1, u, v) - from) * (level - low);
     }
 
+    /// <summary>UV span of one texel at the sampled mip level, for stable finite-difference bump normals.</summary>
+    public float TexelSize(float footprint)
+    {
+        var density = Math.Max(Width, Height);
+        // Add logarithms rather than multiplying: a finite footprint can overflow
+        // when scaled by texture resolution, and casting Log2(+Infinity) to int
+        // would incorrectly select the sharpest mip instead of the coarsest.
+        var level = float.IsFinite(footprint) && footprint > 0
+            ? Math.Clamp((int)MathF.Floor(MathF.Log2(footprint) + MathF.Log2(density)), 0, _levels.Length - 1)
+            : 0;
+        return 1f / Math.Max(_widths[level], _heights[level]);
+    }
+
     private float Bilinear(int level, float u, float v)
     {
         var width = _widths[level];

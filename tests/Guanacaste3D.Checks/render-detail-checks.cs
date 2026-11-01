@@ -10,6 +10,7 @@ static class RenderDetailChecks
     {
         Trees(check);
         StoneGeometry(check);
+        HeightMaps(check);
         ScopedMaterials(check);
         Translucency(check);
         WallFaces(check);
@@ -57,6 +58,24 @@ static class RenderDetailChecks
         plain.AddQuad(new(0, 0, 0), new(2, 0, 0), new(2, 0, 2), new(0, 0, 2), SurfaceKind.WallStone);
         check(RenderStoneDisplacement.Append(plain, triangleBudget: 0) == 0 && plain.TriangleCount == 2,
             "Disabled displacement adds no geometry or cost on low-power machines");
+    }
+
+    private static void HeightMaps(Action<bool, string> check)
+    {
+        // Mip levels and border wrapping must be stable on distant building surfaces.
+        var height = RenderScalarMap.FromGray(2, 2, [0, 255, 0, 255]);
+        check(Math.Abs(height.Sample(.25f, .75f, 0)) < .001f &&
+              Math.Abs(height.Sample(.75f, .75f, 0) - 1) < .001f &&
+              Math.Abs(height.Sample(.25f, .75f, 2) - .5f) < .01f,
+            "Height maps sample linear data and produce the expected distant mip");
+        check(Math.Abs(height.TexelSize(0) - .5f) < .001f &&
+              Math.Abs(height.TexelSize(2) - 1f) < .001f,
+            "Bump-map derivatives use the actual filtered texel size");
+        check(Math.Abs(height.TexelSize(float.MaxValue) - 1f) < .001f &&
+              Math.Abs(height.Sample(.25f, .75f, float.MaxValue) - .5f) < .01f,
+            "Finite extreme footprints select the coarsest mip without overflow");
+        check(ReferenceEquals((new RenderMaterial { HeightMap = height, TextureRelief = .7f }).Sanitized().HeightMap, height),
+            "Sanitization retains the height channel");
     }
 
     private static void ScopedMaterials(Action<bool, string> check)

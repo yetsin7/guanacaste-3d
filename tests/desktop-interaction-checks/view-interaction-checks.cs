@@ -224,8 +224,8 @@ internal static partial class InteractionChecks
                   tiles.Children.OfType<Button>().Single().Tag is string cardKey &&
                   cardKey.StartsWith("pbr:", StringComparison.Ordinal),
                 "Project-referenced .g3dm materials have a searchable image card and are not treated as raw file paths");
-            Check(((WrapPanel)panel.FindName("GalleryPbrMapCards")).Children.Count == 3,
-                "PBR appearance inspector provides independent normal, roughness and metallic texture slots");
+            Check(((WrapPanel)panel.FindName("GalleryPbrMapCards")).Children.Count == 4,
+                "PBR inspector displays editable normal, roughness and metallic maps plus read-only package height");
             var roughnessControl = (Slider)panel.FindName("GalleryRoughnessSlider");
             var metallicControl = (Slider)panel.FindName("GalleryMetallicSlider");
             var reliefControl = (Slider)panel.FindName("GalleryReliefSlider");
