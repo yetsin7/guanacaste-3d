@@ -193,7 +193,8 @@
           <TextBlock Text="{DynamicResource Start.SortBy}" FontSize="14" Margin="10,0,14,0" VerticalAlignment="Center"
                      Foreground="{DynamicResource PrimaryTextBrush}"/>
           <ComboBox x:Name="SortPicker" Width="196" FontSize="14" SelectionChanged="Sort_Changed">
-            <ComboBoxItem Content="{DynamicResource Start.SortDate}" Tag="Date" IsSelected="True"/>
+            <ComboBoxItem Content="{DynamicResource Start.SortOpened}" Tag="Date" IsSelected="True"/>
+            <ComboBoxItem Content="{DynamicResource Start.SortDate}" Tag="Modified"/>
             <ComboBoxItem Content="{DynamicResource Start.SortName}" Tag="Name"/>
           </ComboBox>
           <ToggleButton x:Name="DescendingButton" Content="&#xE74B;" Style="{StaticResource ToolToggle}" IsChecked="True"
