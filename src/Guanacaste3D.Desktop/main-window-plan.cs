@@ -74,7 +74,8 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
-        if (!PlanToolArmed() && (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
+        if (!_movingElement && !PlanToolArmed() &&
+            (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
         if (TryPlaceDetail(e)) return;
         if (TryHandleGridPlacement(e)) return;
         if (TryHandleSectionPlacement(e)) return;

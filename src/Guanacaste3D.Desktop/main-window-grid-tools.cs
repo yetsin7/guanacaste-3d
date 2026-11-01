@@ -91,7 +91,11 @@ public partial class MainWindow
             rename.Click += RenameGridAxis_Click;
             var remove = new MenuItem { Header = GetText("Documentation.DeleteAxis"), Tag = axis.Id };
             remove.Click += DeleteGridAxis_Click;
+            var move = new MenuItem { Header = "Mover eje", Tag = axis.Id };
+            move.Click += MoveGridAxis_Click;
             menu.Items.Add(rename);
+            menu.Items.Add(move);
+            menu.Items.Add(new Separator());
             menu.Items.Add(remove);
         }
         PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
@@ -122,7 +126,7 @@ public partial class MainWindow
         _selectedViewId = _selectedWallId = _selectedOpeningId = _selectedColumnId = _selectedStructuralId = null;
         _selectedRoomId = _selectedFloorId = null;
         if (e.ClickCount > 1) RenameGridAxis(id);
-        else { RefreshProperties(); RenderPlan(); }
+        else { RecordPlanPress(e); RefreshProperties(); RenderPlan(); }
         e.Handled = true;
         return true;
     }
@@ -133,6 +137,31 @@ public partial class MainWindow
         if (sender is MenuItem { Tag: Guid id }) RenameGridAxis(id);
     }
 
+    /// <summary>Arms the existing move tool with the datum selected for two-click placement.</summary>
+    private void MoveGridAxis_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: Guid id }) return;
+        _selectedGridId = id;
+        BeginMoveTool();
+        _selectedGridId = id;
+    }
+
+    /// <summary>Centers the plan on the conflicting datum so the user can inspect or edit it.</summary>
+    private void FocusExistingGridAxis(GridAxisNameConflictException exception)
+    {
+        var existing = _session.Document.Grids.FirstOrDefault(axis => axis.Id == exception.ExistingAxisId);
+        if (existing is null) return;
+        _selectedGridId = existing.Id;
+        var midpoint = new Point2((existing.Start.X + existing.End.X) / 2,
+            (existing.Start.Y + existing.End.Y) / 2);
+        _panOffset = new Point(-midpoint.X * _scale, midpoint.Y * _scale);
+        RefreshProperties();
+        RenderPlan();
+        StatusText.Text = $"Ya existe el eje '{existing.Name}'. Se ha seleccionado y centrado en el plano.";
+        MessageBox.Show(this, $"El nombre '{exception.AxisName}' ya está ocupado.\nEl eje existente quedó seleccionado y centrado para editarlo o eliminarlo.",
+            "Nombre de eje duplicado", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     /// <summary>Validates a user-supplied reference name and preserves dimensions attached to its identity.</summary>
     private void RenameGridAxis(Guid id)
     {
@@ -140,6 +169,7 @@ public partial class MainWindow
         var name = PromptWindow.Ask(this, GetText("Documentation.RenameAxis"), axis.Name);
         if (name is null) return;
         try { _session.UpdateGridAxis(id, name, axis.Start, axis.End); RefreshAll(); }
+        catch (GridAxisNameConflictException exception) { FocusExistingGridAxis(exception); }
         catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
     }
 

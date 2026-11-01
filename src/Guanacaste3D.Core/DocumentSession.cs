@@ -24,7 +24,8 @@ public sealed partial class DocumentSession
         var id = Guid.NewGuid();
         Commit("Transaction.AddWall", doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
         {
-            WallTypeId = selectedTypeId
+            WallTypeId = selectedTypeId,
+            GridAxisId = MatchingWallGrid(doc.Grids, start, end)
         }));
         return id;
     }
@@ -244,17 +245,17 @@ public sealed partial class DocumentSession
             doc.Walls[index] = wall with
             {
                 Start = Translate(wall.Start, deltaX, deltaY),
-                End = Translate(wall.End, deltaX, deltaY)
+                End = Translate(wall.End, deltaX, deltaY),
+                GridAxisId = null // A manually moved wall no longer follows its old datum.
             };
             for (var other = 0; other < doc.Walls.Count; other++)
             {
                 var neighbour = doc.Walls[other];
                 if (other == index || neighbour.LevelId != wall.LevelId) continue;
-                doc.Walls[other] = neighbour with
-                {
-                    Start = FollowCorner(neighbour.Start, movedCorners, deltaX, deltaY),
-                    End = FollowCorner(neighbour.End, movedCorners, deltaX, deltaY)
-                };
+                var nextStart = FollowCorner(neighbour.Start, movedCorners, deltaX, deltaY);
+                var nextEnd = FollowCorner(neighbour.End, movedCorners, deltaX, deltaY);
+                if (nextStart != neighbour.Start || nextEnd != neighbour.End)
+                    doc.Walls[other] = neighbour with { Start = nextStart, End = nextEnd, GridAxisId = null };
             }
         });
     }
@@ -313,7 +314,9 @@ public sealed partial class DocumentSession
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
-            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point } : wall with { End = point };
+            doc.Walls[index] = end == WallEnd.Start
+                ? wall with { Start = point, GridAxisId = null }
+                : wall with { End = point, GridAxisId = null };
         });
     }
 
@@ -338,6 +341,7 @@ public sealed partial class DocumentSession
             doc.Walls.Add(original with
             {
                 Id = newId,
+                GridAxisId = null,
                 Start = new Point2(original.Start.X + deltaX, original.Start.Y + deltaY),
                 End = new Point2(original.End.X + deltaX, original.End.Y + deltaY)
             });
@@ -365,7 +369,8 @@ public sealed partial class DocumentSession
             {
                 End = new Point2(
                     wall.Start.X + dx * Math.Cos(radians) - dy * Math.Sin(radians),
-                    wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians))
+                    wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians)),
+                GridAxisId = null
             };
         });
     }

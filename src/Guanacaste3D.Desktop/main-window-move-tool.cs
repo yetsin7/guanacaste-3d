@@ -125,7 +125,7 @@ public partial class MainWindow
 
     /// <summary>Returns the one element the move tool translates; the most specific selection wins.</summary>
     private Guid? SelectedMovableId() =>
-        _selectedOpeningId ?? _selectedWallId ?? _selectedRoomId ?? _selectedFloorId ?? _selectedColumnId ?? _selectedStructuralId;
+        _selectedOpeningId ?? _selectedWallId ?? _selectedRoomId ?? _selectedFloorId ?? _selectedColumnId ?? _selectedStructuralId ?? _selectedGridId;
 
     /// <summary>Returns the selected opening, or null when the selection is not an opening that still exists.</summary>
     private WallOpening? SelectedOpening() =>
@@ -153,6 +153,7 @@ public partial class MainWindow
         else if (_selectedFloorId is Guid floorId) _session.MoveFloor(floorId, deltaX, deltaY);
         else if (_selectedColumnId is Guid columnId) _session.MoveColumn(columnId, deltaX, deltaY);
         else if (_selectedStructuralId is Guid structuralId) _session.MoveStructuralElement(structuralId, deltaX, deltaY);
+        else if (_selectedGridId is Guid gridId) _session.MoveGridAxis(gridId, deltaX, deltaY);
         return true;
     }
 
@@ -176,6 +177,12 @@ public partial class MainWindow
         var deltaY = target.Y - basePoint.Y;
         if (SelectedOpening() is WallOpening opening)
             RenderOpeningMovePreview(opening, deltaX, deltaY);
+        else if (_selectedGridId is Guid axisId &&
+                 _session.Document.Grids.FirstOrDefault(axis => axis.Id == axisId) is { } axis)
+        {
+            AddDashedLine(new Point2(axis.Start.X + deltaX, axis.Start.Y + deltaY),
+                new Point2(axis.End.X + deltaX, axis.End.Y + deltaY), MoveTrailBrush);
+        }
         else
         {
             var outline = TranslatedOutline(deltaX, deltaY);
