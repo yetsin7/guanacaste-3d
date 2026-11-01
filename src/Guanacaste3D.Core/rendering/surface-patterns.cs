@@ -91,6 +91,8 @@ internal static partial class SurfacePatterns
             }
             case SurfacePattern.PouredConcrete:
                 return PouredConcreteColor(u, v);
+            case SurfacePattern.StoneMasonry:
+                return StoneMasonryColor(u, v, scale);
             case SurfacePattern.Asphalt:
             {
                 var wear = ValueNoise(u * 0.7f, v * 0.7f);
@@ -260,6 +262,8 @@ internal static partial class SurfacePatterns
             }
             case SurfacePattern.PouredConcrete:
                 return PouredConcreteHeight(worldU, worldV, fade);
+            case SurfacePattern.StoneMasonry:
+                return StoneMasonryHeight(u, v, scale, fade);
             case SurfacePattern.Asphalt:
             {
                 var aggregate = ValueNoise(worldU * 32f + 17, worldV * 32f - 8);

@@ -3,54 +3,124 @@ using System.Numerics;
 namespace Guanacaste3D.Core.Rendering;
 
 /// <summary>
-/// A tangent-space normal map (OpenGL convention: green points along increasing v): the fine relief of bark, leaf veins
-/// and grass blades that the geometry is too coarse to carry. Its values are directions, not colours, so they are read
-/// raw, without the sRGB curve, and bilinearly from the full-resolution image; the path tracer's many samples per pixel
-/// average away the detail that a distant surface cannot resolve.
+/// An OpenGL-convention tangent-space normal map (green points toward increasing v).
+/// Directions are sampled in linear vector space, never decoded as sRGB colours. A pyramid of
+/// filtered directions preserves close-up relief while suppressing distant leaf/bark shimmer.
 /// </summary>
 public sealed class NormalMap
 {
-    private readonly byte[] _rgb;
+    private readonly byte[][] _levels;
+    private readonly int[] _widths;
+    private readonly int[] _heights;
 
-    private NormalMap(int width, int height, byte[] rgb)
+    private NormalMap(byte[][] levels, int[] widths, int[] heights)
     {
-        Width = width;
-        Height = height;
-        _rgb = rgb;
+        _levels = levels;
+        _widths = widths;
+        _heights = heights;
     }
 
-    public int Width { get; }
-    public int Height { get; }
+    public int Width => _widths[0];
+    public int Height => _heights[0];
+    public int LevelCount => _levels.Length;
 
-    /// <summary>Builds a normal map from RGB pixels (rows top to bottom).</summary>
+    /// <summary>Builds and owns a normal map from packed RGB pixels (rows top to bottom).</summary>
     public static NormalMap FromRgb(int width, int height, byte[] rgb)
     {
-        if (width < 1 || height < 1 || rgb.Length < width * height * 3)
+        ArgumentNullException.ThrowIfNull(rgb);
+        if (width < 1 || height < 1 || (long)width * height > rgb.Length / 3)
             throw new ArgumentException("The normal map pixels do not match its size.");
-        return new NormalMap(width, height, rgb);
+
+        // Do not retain the caller's mutable image buffer; subsequent edits must not alter an active render.
+        var levels = new List<byte[]> { rgb.AsSpan(0, width * height * 3).ToArray() };
+        var widths = new List<int> { width };
+        var heights = new List<int> { height };
+        while (width > 1 || height > 1)
+        {
+            var nextWidth = (width + 1) / 2;
+            var nextHeight = (height + 1) / 2;
+            var downsampled = new byte[nextWidth * nextHeight * 3];
+            var previous = levels[^1];
+            for (var y = 0; y < nextHeight; y++)
+                for (var x = 0; x < nextWidth; x++)
+                {
+                    var sum = Vector3.Zero;
+                    var count = 0;
+                    for (var yy = y * 2; yy < Math.Min(height, y * 2 + 2); yy++)
+                        for (var xx = x * 2; xx < Math.Min(width, x * 2 + 2); xx++)
+                        {
+                            sum += Decode(previous, (yy * width + xx) * 3);
+                            count++;
+                        }
+                    var average = sum / count;
+                    average = average.LengthSquared() > 1e-8f ? Vector3.Normalize(average) : Vector3.UnitZ;
+                    var index = (y * nextWidth + x) * 3;
+                    downsampled[index] = Encode(average.X);
+                    downsampled[index + 1] = Encode(average.Y);
+                    downsampled[index + 2] = Encode(average.Z);
+                }
+            levels.Add(downsampled);
+            widths.Add(nextWidth);
+            heights.Add(nextHeight);
+            width = nextWidth;
+            height = nextHeight;
+        }
+        return new NormalMap([.. levels], [.. widths], [.. heights]);
     }
 
-    /// <summary>The tangent-space direction at texture coordinates (wrapping, v up as in <see cref="RenderTexture"/>).</summary>
-    public Vector3 Sample(float u, float v)
+    /// <summary>Full-resolution sampling; compatible with callers that do not know the pixel footprint.</summary>
+    public Vector3 Sample(float u, float v) => Sample(u, v, 0);
+
+    /// <summary>
+    /// A direction at wrapping UV coordinates (v up) with pixel footprint measured in texture tiles,
+    /// using bilinear/trilinear filtering of decoded vectors rather than interpolating encoded RGB.
+    /// </summary>
+    public Vector3 Sample(float u, float v, float footprint)
     {
-        var x = (u - MathF.Floor(u)) * Width - 0.5f;
-        var y = (1 - (v - MathF.Floor(v))) * Height - 0.5f;
+        if (!float.IsFinite(u) || !float.IsFinite(v)) return Vector3.UnitZ;
+        var level = float.IsFinite(footprint) && footprint > 0
+            ? MathF.Log2(MathF.Max(footprint * Math.Max(Width, Height), 1e-6f))
+            : 0;
+        if (level <= 0) return Bilinear(0, u, v);
+        var last = _levels.Length - 1;
+        if (level >= last) return Bilinear(last, u, v);
+        var low = (int)level;
+        var blended = Vector3.Lerp(Bilinear(low, u, v), Bilinear(low + 1, u, v), level - low);
+        return blended.LengthSquared() > 1e-8f ? Vector3.Normalize(blended) : Vector3.UnitZ;
+    }
+
+    private Vector3 Bilinear(int level, float u, float v)
+    {
+        var width = _widths[level];
+        var height = _heights[level];
+        var x = (u - MathF.Floor(u)) * width - 0.5f;
+        var y = (1 - (v - MathF.Floor(v))) * height - 0.5f;
         var x0 = (int)MathF.Floor(x);
         var y0 = (int)MathF.Floor(y);
-        var (fx, fy) = (x - x0, y - y0);
-        var top = Vector3.Lerp(Texel(x0, y0), Texel(x0 + 1, y0), fx);
-        var bottom = Vector3.Lerp(Texel(x0, y0 + 1), Texel(x0 + 1, y0 + 1), fx);
-        var value = Vector3.Lerp(top, bottom, fy) * (2f / 255) - Vector3.One;
-        return value.LengthSquared() > 1e-8f ? Vector3.Normalize(value) : Vector3.UnitZ;
+        var dx = x - x0;
+        var dy = y - y0;
+        var top = Vector3.Lerp(Texel(level, x0, y0), Texel(level, x0 + 1, y0), dx);
+        var bottom = Vector3.Lerp(Texel(level, x0, y0 + 1), Texel(level, x0 + 1, y0 + 1), dx);
+        var normal = Vector3.Lerp(top, bottom, dy);
+        return normal.LengthSquared() > 1e-8f ? Vector3.Normalize(normal) : Vector3.UnitZ;
     }
 
-    private Vector3 Texel(int x, int y)
+    private Vector3 Texel(int level, int x, int y)
     {
-        x = ((x % Width) + Width) % Width;
-        y = ((y % Height) + Height) % Height;
-        var index = (y * Width + x) * 3;
-        return new Vector3(_rgb[index], _rgb[index + 1], _rgb[index + 2]);
+        var width = _widths[level];
+        var height = _heights[level];
+        x = (x % width + width) % width;
+        y = (y % height + height) % height;
+        return Decode(_levels[level], (y * width + x) * 3);
     }
+
+    private static Vector3 Decode(byte[] pixels, int offset) => new(
+        pixels[offset] * (2f / 255f) - 1f,
+        pixels[offset + 1] * (2f / 255f) - 1f,
+        pixels[offset + 2] * (2f / 255f) - 1f);
+
+    private static byte Encode(float value) =>
+        (byte)Math.Clamp((int)MathF.Round((Math.Clamp(value, -1f, 1f) + 1f) * 127.5f), 0, 255);
 
     /// <summary>
     /// Bends a shading normal by the map, given the triangle's corners and their texture coordinates (v up): the

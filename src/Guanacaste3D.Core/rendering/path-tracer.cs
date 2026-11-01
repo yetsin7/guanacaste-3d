@@ -981,7 +981,7 @@ public sealed partial class PathTracer
                 if (surface.NormalMap is { } relief)
                 {
                     static Vector2 Up(Vector2 corner) => new(corner.X, 1 - corner.Y);
-                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y), _scene.Positions[_scene.Indices[i]],
+                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y, footprint), _scene.Positions[_scene.Indices[i]],
                         _scene.Positions[_scene.Indices[i + 1]], _scene.Positions[_scene.Indices[i + 2]], Up(uvs[i]), Up(uvs[i + 1]), Up(uvs[i + 2]));
                     // A bend that would turn the surface away from the eye is dropped, as for image relief.
                     if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
