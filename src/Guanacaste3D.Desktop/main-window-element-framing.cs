@@ -23,7 +23,7 @@ public partial class MainWindow
         ViewTabs.SelectedIndex = Model3DTabIndex;
         try
         {
-            _modelNavigator.Bounds = (box.Min - margin, box.Max + margin);
+            _modelNavigator.Bounds = () => (box.Min - margin, box.Max + margin);
             _modelNavigator.FrameAll();
         }
         finally
