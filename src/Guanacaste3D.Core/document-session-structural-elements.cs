@@ -7,7 +7,12 @@ public sealed partial class DocumentSession
     {
         var id = Guid.NewGuid();
         Commit("Transaction.AddStructuralElement", document =>
-            document.StructuralElements.Add(CreateStructuralElement(id, document, levelId, kind, name, start, end)));
+        {
+            document.StructuralElements.Add(CreateStructuralElement(id, document, levelId, kind, name, start, end));
+            if (kind == StructuralElementKind.RoomSeparator &&
+                document.Rooms.Any(room => room.IsAutomatic && room.LevelId == levelId))
+                RebuildAutomaticRooms(document, levelId);
+        });
         return id;
     }
 
@@ -158,8 +163,15 @@ public sealed partial class DocumentSession
         {
             var removed = document.StructuralElements.Where(candidate => candidate.Id == id ||
                 (groupId is Guid group && candidate.GroupId == group)).Select(candidate => candidate.Id).ToHashSet();
+            var affectedRoomLevels = document.StructuralElements
+                .Where(candidate => removed.Contains(candidate.Id) &&
+                    candidate.Kind == StructuralElementKind.RoomSeparator)
+                .Select(candidate => candidate.LevelId).Distinct().ToArray();
             document.StructuralElements.RemoveAll(candidate => removed.Contains(candidate.Id) ||
                 (candidate.RailingHostId is Guid host && removed.Contains(host)));
+            foreach (var level in affectedRoomLevels)
+                if (document.Rooms.Any(room => room.IsAutomatic && room.LevelId == level))
+                    RebuildAutomaticRooms(document, level);
         });
     }
 
@@ -188,6 +200,13 @@ public sealed partial class DocumentSession
                     Geometry.SlabOpeningHosts.Resolve(document, translated).Count == 0)
                     throw new InvalidDataException("A floor opening must remain inside a host slab.");
             }
+            var affectedRoomLevels = document.StructuralElements
+                .Where(candidate => moved.Contains(candidate.Id) &&
+                    candidate.Kind == StructuralElementKind.RoomSeparator)
+                .Select(candidate => candidate.LevelId).Distinct();
+            foreach (var level in affectedRoomLevels)
+                if (document.Rooms.Any(room => room.IsAutomatic && room.LevelId == level))
+                    RebuildAutomaticRooms(document, level);
         });
     }
 
