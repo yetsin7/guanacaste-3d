@@ -25,6 +25,9 @@ public interface IThumbnailProvider
 public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvider
 {
     public const string ClassId = "2175B67E-0798-4A06-B104-4F1B6E9C42D8";
+    // A timed-out STA worker may still be parsing or meshing. Admit at most one
+    // render per Shell process until that worker actually exits, not until Join times out.
+    private static int _renderInProgress;
     private byte[]? _snapshot;
 
     /// <summary>Allows COM activation without starting the desktop application.</summary>
@@ -68,6 +71,11 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         alphaType = 0;
         if (_snapshot is null) throw new InvalidOperationException("The thumbnail provider has not been initialized.");
         if (size == 0) throw new ArgumentOutOfRangeException(nameof(size));
+        // Avoid overlapping untrusted model parsing/meshing in the same Shell process.
+        // A worker that outlives the 15-second caller wait retains this slot until exit.
+        if (Interlocked.CompareExchange(ref _renderInProgress, 1, 0) != 0)
+            throw new COMException("Another native document thumbnail is still rendering.",
+                unchecked((int)0x800700AA)); // HRESULT_FROM_WIN32(ERROR_BUSY)
         // Render on a dedicated STA, but only create the unmanaged HBITMAP after the
         // bounded wait succeeds. A late worker cannot leak a bitmap into Explorer.
         System.Windows.Media.Imaging.BitmapSource? image = null;
@@ -77,12 +85,22 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         {
             try { image = DocumentPreview.Render(snapshot, (int)Math.Min(size, 1024)); }
             catch (Exception exception) { failure = exception; }
+            finally { Volatile.Write(ref _renderInProgress, 0); }
         })
         {
             IsBackground = true
         };
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
+        try
+        {
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+        }
+        catch
+        {
+            // No worker owns the slot if apartment setup or thread startup failed.
+            Volatile.Write(ref _renderInProgress, 0);
+            throw;
+        }
         if (!thread.Join(TimeSpan.FromSeconds(15)))
             throw new COMException("The native document thumbnail exceeded the rendering time budget.",
                 unchecked((int)0x800705B4)); // HRESULT_FROM_WIN32(ERROR_TIMEOUT)
