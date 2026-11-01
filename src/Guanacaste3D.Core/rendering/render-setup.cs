@@ -34,6 +34,14 @@ public sealed record RenderSetup
     public double CloudCover { get; init; } = 0.3;
 
     public bool Haze { get; init; } = true;
+    /// <summary>Sky library selection, stable ID; null for hand-adjusted atmospheric settings.</summary>
+    public string? SkyPresetId { get; init; }
+    /// <summary>Preetham/Perez turbidity, values 1.7–10.</summary>
+    public double Turbidity { get; init; } = 2.8;
+    public uint CloudSeed { get; init; } = 7;
+    public double CloudDirectionDegrees { get; init; }
+    public double SunStrength { get; init; } = 1;
+    public double SkyStrength { get; init; } = 1;
 
     /// <summary>Null lets the panel choose the quality for the machine (AUTO).</summary>
     public RenderQuality? Quality { get; init; }
@@ -95,7 +103,8 @@ public sealed record RenderSetup
     {
         double[] finite = [CameraX, CameraY, CameraZ, YawDegrees, PitchDegrees, FieldOfViewDegrees, SolarHour, Latitude,
             CloudCover, ExposureStops, Temperature, DepthOfField, Highlights, Shadows, Vibrance, Tint, Glare, Fog, Sharpen,
-            ChromaticAberration, FilmGrain, EnvironmentYawDegrees, EnvironmentExposureStops];
+            ChromaticAberration, FilmGrain, EnvironmentYawDegrees, EnvironmentExposureStops,
+            Turbidity, CloudDirectionDegrees, SunStrength, SkyStrength];
         if (finite.Any(value => !double.IsFinite(value)) || Math.Abs(CameraX) > 1e6 || Math.Abs(CameraY) > 1e6 ||
             Math.Abs(CameraZ) > 1e6 || PitchDegrees is < -90 or > 90 || FieldOfViewDegrees is < 5 or > 150 ||
             !Enum.IsDefined(Scenario) || DayOfYear is < 1 or > 366 || SolarHour is < 0 or > 24 || Latitude is < -90 or > 90 ||
@@ -105,6 +114,9 @@ public sealed record RenderSetup
             !Enum.IsDefined(Look) ||
             ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100 ||
             EnvironmentYawDegrees is < 0 or > 360 || EnvironmentExposureStops is < -4 or > 4 ||
+            Turbidity is < 1.7 or > 10 || CloudSeed > 1023 || CloudDirectionDegrees is < -180 or > 180 ||
+            SunStrength is < 0 or > 2 || SkyStrength is < 0 or > 2 ||
+            (SkyPresetId is not null && RenderLooks.Skies.All(sky => sky.Id != SkyPresetId)) ||
             (EnvironmentPath is not null && (string.IsNullOrWhiteSpace(EnvironmentPath) || EnvironmentPath.Length > 1024)) ||
             !Enum.IsDefined(Clouds) || StyleId is null || RenderLooks.Styles.All(style => style.Id != StyleId) ||
             new[] { Highlights, Shadows, Tint }.Any(value => value is < -1 or > 1) ||
