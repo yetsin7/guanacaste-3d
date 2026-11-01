@@ -18,6 +18,7 @@ internal static partial class InteractionChecks
         var resolve = library.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)!;
         var load = library.GetMethod("Load", BindingFlags.Public | BindingFlags.Static)!;
         var count = 0;
+        var treeTextures = 0;
         foreach (var texture in catalog)
         {
             var textureType = texture.GetType();
@@ -27,9 +28,19 @@ internal static partial class InteractionChecks
             Check(path is string && load.Invoke(null, [path]) is not null &&
                   Application.Current.TryFindResource(label) is string,
                 $"Built-in texture {key} is available, decodable and localized");
+            if (key.StartsWith("tree-", StringComparison.Ordinal))
+            {
+                treeTextures++;
+                var colorPath = path as string;
+                var normalPath = colorPath is null ? null :
+                    Path.Combine(Path.GetDirectoryName(colorPath)!, Path.GetFileNameWithoutExtension(colorPath) + "_NormalGL.png");
+                Check(colorPath is not null && normalPath is not null && File.Exists(colorPath) && File.Exists(normalPath),
+                    $"Nature material {key} generates a cached albedo and an OpenGL normal image");
+            }
             count++;
         }
-        Check(count >= 19, "The built-in catalog includes the photographic texture collection");
+        Check(treeTextures == 24 && count >= 43,
+            "The library includes twelve bark/trunk and twelve foliage textures in addition to the shipped photographic collection");
         Check(resolve.Invoke(null, ["builtin:../outside", null]) is null,
             "Unknown built-in texture identifiers cannot escape the texture catalog");
         // A missing library preset may remain in a legacy project. It is an
