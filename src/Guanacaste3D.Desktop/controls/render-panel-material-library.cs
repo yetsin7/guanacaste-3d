@@ -40,7 +40,7 @@ public partial class RenderPanel
         var list = new ListBox { Margin = new Thickness(0, 0, 12, 0) };
         Grid.SetRow(list, 1);
         layout.Children.Add(list);
-        var details = new StackPanel { Margin = new Thickness(12), Spacing = 6 };
+        var details = new StackPanel { Margin = new Thickness(12) };
         var preview = new Image { Width = 224, Height = 160, Stretch = Stretch.Uniform };
         details.Children.Add(preview);
         var report = new TextBlock { TextWrapping = TextWrapping.Wrap };
