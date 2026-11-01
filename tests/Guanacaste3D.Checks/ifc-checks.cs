@@ -47,6 +47,30 @@ static class IfcChecks
             "IFC export has a STEP header, IFC4 schema and terminator");
         check(IfcExporter.ToStep(house, stamp) == step, "IFC export is deterministic");
 
+        // A roof slab must not be mislabeled as a floor in downstream BIM tools.
+        // Ceiling, water and terrain currently have no matching IfcSlab predefined type.
+        var slabForType = house.Floors[0];
+        var slabTypeCases = new (FloorKind Kind, string IfcType)[]
+        {
+            (FloorKind.Floor, ".FLOOR."),
+            (FloorKind.Roof, ".ROOF."),
+            (FloorKind.Ceiling, ".NOTDEFINED."),
+            (FloorKind.Water, ".NOTDEFINED."),
+            (FloorKind.Toposolid, ".NOTDEFINED.")
+        };
+        check(slabTypeCases.All(test =>
+        {
+            var typedHouse = house.Clone();
+            typedHouse.Floors[0] = slabForType with
+            {
+                Kind = test.Kind, Shape = RoofShape.Flat, Pitch = 0, Overhang = 0, TopoPoints = null
+            };
+            var slabId = IfcExporter.ToGlobalId(slabForType.Id);
+            var line = IfcExporter.ToStep(typedHouse, stamp).Split('\n')
+                .Single(row => row.Contains($"=IFCSLAB('{slabId}',", StringComparison.Ordinal));
+            return line.EndsWith($",{test.IfcType});", StringComparison.Ordinal);
+        }), "IFC4 slab predefined types distinguish roofs, floors and unsupported categories");
+
         // A slab's ElevationOffset describes its TOP relative to the containing storey.
         // The IFC swept solid grows upward from its local placement at the underside.
         var sourceSlab = house.Floors[0];

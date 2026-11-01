@@ -108,7 +108,16 @@ public static class IfcExporter
             var axes = writer.Add($"IFCAXIS2PLACEMENT3D({Ref(below)},$,$)");
             var placement = writer.Add($"IFCLOCALPLACEMENT({Ref(storey.Placement)},{Ref(axes)})");
             var shape = Extrusion(writer, body, zAxis, Polyline(writer, floor.Boundary), floor.Thickness);
-            var entity = writer.Add($"IFCSLAB({Id(floor.Id)},$,{Text(floor.Name)},$,$,{Ref(placement)},{Ref(shape)},$,.FLOOR.)");
+            // IFC4 distinguishes floor and roof slabs. Other Guanacaste floor kinds do not
+            // have a matching IfcSlab predefined type; do not mislabel them as floors.
+            // Pitched roofs and surveyed terrain still need dedicated geometry exporters.
+            var slabType = floor.Kind switch
+            {
+                FloorKind.Floor => ".FLOOR.",
+                FloorKind.Roof => ".ROOF.",
+                _ => ".NOTDEFINED."
+            };
+            var entity = writer.Add($"IFCSLAB({Id(floor.Id)},$,{Text(floor.Name)},$,$,{Ref(placement)},{Ref(shape)},$,{slabType})");
             contained[floor.LevelId].Add(entity);
         }
 
