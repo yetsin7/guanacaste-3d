@@ -7,20 +7,6 @@ public sealed record GridAxis(Guid Id, string Name, Point2 Start, Point2 End)
         new SectionCut(Start, End).IsValid;
 }
 
-/// <summary>Identifies the existing datum so the UI can select it when a name is reused.</summary>
-public sealed class GridAxisNameConflictException : IOException
-{
-    public Guid ExistingAxisId { get; }
-    public string AxisName { get; }
-
-    public GridAxisNameConflictException(Guid existingAxisId, string name)
-        : base($"An axis named '{name}' already exists.")
-    {
-        ExistingAxisId = existingAxisId;
-        AxisName = name;
-    }
-}
-
 /// <summary>Parametric grid operations, independent of the WPF interaction used to drag a datum.</summary>
 public sealed partial class DocumentSession
 {
@@ -57,7 +43,15 @@ public sealed partial class DocumentSession
     {
         var duplicate = document.Grids.FirstOrDefault(axis => axis.Id != editedId &&
             string.Equals(axis.Name, name, StringComparison.OrdinalIgnoreCase));
-        if (duplicate is not null) throw new GridAxisNameConflictException(duplicate.Id, duplicate.Name);
+        if (duplicate is not null)
+        {
+            // Preserve the existing InvalidDataException API contract while exposing a
+            // typed datum reference to UI callers; error text is never parsed as an ID.
+            var error = new InvalidDataException($"An axis named '{duplicate.Name}' already exists.");
+            error.Data["ExistingAxisId"] = duplicate.Id;
+            error.Data["AxisName"] = duplicate.Name;
+            throw error;
+        }
     }
 
     /// <summary>Creates an axis and links already centered, unbound walls without changing their geometry.</summary>
