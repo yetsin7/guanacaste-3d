@@ -112,20 +112,32 @@ public sealed partial class DocumentSession
         string planFillColor,
         WallFillPattern planFillPattern,
         string sectionFillColor,
-        WallFillPattern sectionFillPattern)
+        WallFillPattern sectionFillPattern,
+        WallConstruction? construction = null,
+        double? leftRepello = null,
+        double? leftFine = null,
+        double? rightRepello = null,
+        double? rightFine = null,
+        double? studSpacing = null)
     {
         if (!Document.WallTypes.Any(type => type.Id == id))
             throw new InvalidDataException("The wall type does not exist.");
         Commit("Transaction.UpdateWallType", document =>
         {
             var typeIndex = document.WallTypes.FindIndex(type => type.Id == id);
-            document.WallTypes[typeIndex] = new WallType(
-                id, name.Trim(), function, thickness, materialName.Trim())
+            var previous = document.WallTypes[typeIndex];
+            document.WallTypes[typeIndex] = previous with
             {
-                PlanFillColor = planFillColor.ToUpperInvariant(),
-                PlanFillPattern = planFillPattern,
-                SectionFillColor = sectionFillColor.ToUpperInvariant(),
-                SectionFillPattern = sectionFillPattern
+                Name = name.Trim(), Function = function, Thickness = thickness,
+                MaterialName = materialName.Trim(),
+                PlanFillColor = planFillColor.ToUpperInvariant(), PlanFillPattern = planFillPattern,
+                SectionFillColor = sectionFillColor.ToUpperInvariant(), SectionFillPattern = sectionFillPattern,
+                Construction = construction ?? previous.Construction,
+                LeftRepelloThickness = leftRepello ?? previous.LeftRepelloThickness,
+                LeftFineThickness = leftFine ?? previous.LeftFineThickness,
+                RightRepelloThickness = rightRepello ?? previous.RightRepelloThickness,
+                RightFineThickness = rightFine ?? previous.RightFineThickness,
+                GypsumStudSpacing = studSpacing ?? previous.GypsumStudSpacing
             };
             for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
             {
