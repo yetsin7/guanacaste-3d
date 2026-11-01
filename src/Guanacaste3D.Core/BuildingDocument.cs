@@ -21,6 +21,9 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 {
     public Guid WallTypeId { get; init; } = BuiltInWallTypes.Basic200Id;
 
+    /// <summary>Optional reference datum; deleting either side never deletes the other.</summary>
+    public Guid? GridAxisId { get; init; }
+
     /// <summary>Level the wall top is tied to; null means the height is unconnected.</summary>
     public Guid? TopLevelId { get; init; }
 
@@ -181,6 +184,8 @@ public sealed class BuildingDocument
             throw new InvalidDataException("The wall collection contains duplicate identifiers.");
         foreach (var wall in Walls)
         {
+            if (wall.GridAxisId is Guid linkedAxis && !Grids.Any(axis => axis.Id == linkedAxis))
+                throw new InvalidDataException("A wall references a missing grid axis.");
             if (wall.Id == Guid.Empty || !levelIds.Contains(wall.LevelId) || !wallTypeIds.Contains(wall.WallTypeId) ||
                 !double.IsFinite(wall.Start.X) || !double.IsFinite(wall.Start.Y) ||
                 !double.IsFinite(wall.End.X) || !double.IsFinite(wall.End.Y) ||
