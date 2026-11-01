@@ -20,7 +20,7 @@ public sealed class PlanWorkspace : Grid
     private readonly TextBlock _inspector = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12) };
     private readonly TextBlock _hint = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12) };
     private readonly ListBox _browser = new();
-    private readonly TextBox _axisName = new() { Watermark = "Nombre del eje", Width = 165 };
+    private readonly TextBox _axisName = new() { PlaceholderText = "Nombre del eje", Width = 165 };
     private readonly Button _rename = new() { Content = "Renombrar eje" };
     private readonly Button _delete = new() { Content = "Eliminar seleccionado" };
     private readonly Button _undo = new() { Content = "Deshacer" };
@@ -62,10 +62,15 @@ public sealed class PlanWorkspace : Grid
         _sidebar.Children.Add(_snapGrid);
         _sidebar.Children.Add(new TextBlock { Text = "Mantén Shift al dibujar para bloquear horizontal o vertical.",
             TextWrapping = TextWrapping.Wrap });
-        _snapEndpoints.Checked += (_, _) => Redraw();
-        _snapEndpoints.Unchecked += (_, _) => Redraw();
-        _snapGrid.Checked += (_, _) => Redraw();
-        _snapGrid.Unchecked += (_, _) => Redraw();
+        // Avalonia CheckBox exposes IsChecked as a styled property, not WPF Checked/Unchecked events.
+        _snapEndpoints.PropertyChanged += (_, e) =>
+        {
+            if (e.Property.Name == "IsChecked") Redraw();
+        };
+        _snapGrid.PropertyChanged += (_, e) =>
+        {
+            if (e.Property.Name == "IsChecked") Redraw();
+        };
         _levelPicker.SelectionChanged += (_, _) =>
         {
             if (_levelPicker.SelectedItem is LevelEntry level)
@@ -98,7 +103,7 @@ public sealed class PlanWorkspace : Grid
         _canvas.PointerMoved += CanvasMoved;
         _canvas.PointerReleased += CanvasReleased;
         _canvas.PointerWheelChanged += CanvasWheel;
-        _canvas.PointerCaptureLost += (_, _) => { _panPointer = null; _leftPanning = false; };
+        _canvas.PointerCaptureLost += (_, _) => _panPointer = null;
         _canvas.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) { _firstPoint = null; SetTool(EditTool.Select); e.Handled = true; }
