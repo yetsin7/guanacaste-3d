@@ -141,5 +141,16 @@ internal static partial class InteractionChecks
                 .Invoke(null, [plain, null])!;
         Check(!plainPreviews.ContainsKey(SurfaceKind.Wall),
             "Untextured presets do not resolve as nonexistent image files");
+        var renderPanel = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.Controls.RenderPanel")!;
+        var resolveHdri = renderPanel.GetMethod("ResolveSavedHdri",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+        var file = Path.Combine(Path.GetTempPath(), "render-asset-test", "example.g3d");
+        var expected = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "assets", "sky.hdr"));
+        Check((string?)resolveHdri.Invoke(null, ["assets/sky.hdr", file]) == expected,
+            "Project-relative HDRI references resolve in the project assets folder");
+        Check(resolveHdri.Invoke(null, ["../other-project/secret.hdr", file]) is null &&
+              resolveHdri.Invoke(null, [@"\\server\share\sky.hdr", file]) is null,
+            "HDRI auto-restore rejects path traversal and UNC network references");
+
     }
 }

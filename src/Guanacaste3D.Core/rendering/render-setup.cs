@@ -62,9 +62,15 @@ public sealed record RenderSetup
     public double DepthOfField { get; init; }
 
     public bool ArtificialLights { get; init; } = true;
-
-    /// <summary>Optional CPU-bounded render-only stone geometry, disabled in legacy projects.</summary>
+    /// <summary>Optional budget-limited render-only stone geometry, disabled for legacy projects.</summary>
     public bool StoneMicrogeometry { get; init; }
+
+    /// <summary>Optional HDRI source. Relative paths are interpreted from the project file folder.</summary>
+    public string? EnvironmentPath { get; init; }
+    /// <summary>Panorama rotation around the scene's vertical axis, 0–360 degrees.</summary>
+    public double EnvironmentYawDegrees { get; init; }
+    /// <summary>HDRI light intensity adjustment in photographic stops, −4 to +4.</summary>
+    public double EnvironmentExposureStops { get; init; }
 
     /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
     public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
@@ -89,7 +95,7 @@ public sealed record RenderSetup
     {
         double[] finite = [CameraX, CameraY, CameraZ, YawDegrees, PitchDegrees, FieldOfViewDegrees, SolarHour, Latitude,
             CloudCover, ExposureStops, Temperature, DepthOfField, Highlights, Shadows, Vibrance, Tint, Glare, Fog, Sharpen,
-            ChromaticAberration, FilmGrain];
+            ChromaticAberration, FilmGrain, EnvironmentYawDegrees, EnvironmentExposureStops];
         if (finite.Any(value => !double.IsFinite(value)) || Math.Abs(CameraX) > 1e6 || Math.Abs(CameraY) > 1e6 ||
             Math.Abs(CameraZ) > 1e6 || PitchDegrees is < -90 or > 90 || FieldOfViewDegrees is < 5 or > 150 ||
             !Enum.IsDefined(Scenario) || DayOfYear is < 1 or > 366 || SolarHour is < 0 or > 24 || Latitude is < -90 or > 90 ||
@@ -98,6 +104,8 @@ public sealed record RenderSetup
             (BucketSize != 0 && (BucketSize < 8 || BucketSize > 256 || (BucketSize & (BucketSize - 1)) != 0)) ||
             !Enum.IsDefined(Look) ||
             ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100 ||
+            EnvironmentYawDegrees is < 0 or > 360 || EnvironmentExposureStops is < -4 or > 4 ||
+            (EnvironmentPath is not null && (string.IsNullOrWhiteSpace(EnvironmentPath) || EnvironmentPath.Length > 1024)) ||
             !Enum.IsDefined(Clouds) || StyleId is null || RenderLooks.Styles.All(style => style.Id != StyleId) ||
             new[] { Highlights, Shadows, Tint }.Any(value => value is < -1 or > 1) ||
             new[] { Vibrance, Glare, Fog, Sharpen, ChromaticAberration, FilmGrain }.Any(value => value is < 0 or > 1))
