@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Guanacaste3D.CrossPlatform</AssemblyName>
+    <RootNamespace>Guanacaste3D.CrossPlatform</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <ProjectReference Include="../Guanacaste3D.Core/Guanacaste3D.Core.csproj" />
+  </ItemGroup>
+</Project>
