@@ -68,9 +68,14 @@ internal static class PbrMaterialAuditChecks
             check(future.IsValid && future.Warnings.Any(w => w.Contains("ao", StringComparison.OrdinalIgnoreCase)),
                 "Future PBR channels are reported without pretending the renderer supports them");
 
+            File.WriteAllText(Path.Combine(folder, "duplicate-property.g3dm"),
+                """{"version":1,"name":"Ambiguous","Albedo":"brick_albedo.png","albedo":"../secret.png"}""");
+            check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "duplicate-property.g3dm")).IsValid,
+                "Case-insensitive duplicate JSON properties cannot bypass PBR validation");
+
             var scanned = PbrMaterialAudit.Scan(folder);
-            check(scanned.Count == 7 && scanned.Count(entry => entry.IsValid) == 3 &&
-                  scanned.Count(entry => !entry.IsValid) == 4,
+            check(scanned.Count == 8 && scanned.Count(entry => entry.IsValid) == 3 &&
+                  scanned.Count(entry => !entry.IsValid) == 5,
                 "Material catalog shows both valid materials and broken packages for repair");
 
             // Cross-platform case-sensitivity: detect a missing asset rather than guessing its filename.
