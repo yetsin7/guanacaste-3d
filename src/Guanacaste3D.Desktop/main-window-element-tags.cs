@@ -25,11 +25,37 @@ public partial class MainWindow
         StatusText.Text = added == 0 ? GetText("Status.AutoDimensionedNone") : FormatText("Status.AutoDimensioned", added);
     }
 
-    /// <summary>Draws a small round mark beside each tagged element, with its description as a tooltip.</summary>
+    /// <summary>Returns the selected plan view, falling back to this level's default plan.</summary>
+    private ProjectView? CurrentPlanTagView() =>
+        _session.Document.Views.FirstOrDefault(view => view.Id == _selectedViewId &&
+            view.LevelId == _activeLevelId && view.Kind == ProjectViewKind.Plan)
+        ?? _session.Document.Views.FirstOrDefault(view => view.LevelId == _activeLevelId &&
+            view.Kind == ProjectViewKind.Plan);
+
+    /// <summary>Enable persistent associative room/area labels, without duplicating model elements.</summary>
+    private void ShowPlanCategoryTags(TagCategory category)
+    {
+        if (CurrentPlanTagView() is not { } view) return;
+        _session.SetPlanTagVisibility(view.Id, category, true);
+        RefreshAll();
+        var count = category == TagCategory.Room
+            ? _session.Document.Rooms.Count(room => room.LevelId == _activeLevelId)
+            : _session.Document.StructuralElements.Count(element => element.LevelId == _activeLevelId &&
+                element.Kind == StructuralElementKind.Area);
+        StatusText.Text = FormatText(category == TagCategory.Room ? "Status.AllRoomsTagged" :
+            "Status.AllAreasTagged", count);
+    }
+
+    /// <summary>Draws existing model-derived room and area tags as well as temporary opening tags.</summary>
     private void RenderElementTags()
     {
-        if (!_showElementTags) return;
-        foreach (var tag in ElementTags.Build(_session.Document, _activeLevelId))
+        var selected = CurrentPlanTagView();
+        var categories = new HashSet<TagCategory>();
+        if (_showElementTags) categories.UnionWith(ElementTags.Default);
+        if (selected?.ShowRoomTags == true) categories.Add(TagCategory.Room);
+        if (selected?.ShowAreaTags == true) categories.Add(TagCategory.Area);
+        if (categories.Count == 0) return;
+        foreach (var tag in ElementTags.Build(_session.Document, _activeLevelId, categories))
         {
             var center = WorldToCanvas(tag.Position);
             var mark = new Border

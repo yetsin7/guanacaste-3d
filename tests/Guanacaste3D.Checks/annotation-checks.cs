@@ -32,6 +32,62 @@ static class AnnotationChecks
         check(ElementTags.Build(demo, demoLevel, new HashSet<TagCategory> { TagCategory.Room }).Count == demo.Rooms.Count(r => r.LevelId == demoLevel),
             "Room tags follow the requested categories");
 
+        var plan = demo.Views.First(view => view.Kind == ProjectViewKind.Plan && view.LevelId == demoLevel);
+        var secondPlan = new ProjectView(Guid.NewGuid(), "Planta alternativa", ProjectViewKind.Plan,
+            demoLevel, ViewOrientation.None);
+        var twoPlanDocument = demo.Clone();
+        twoPlanDocument.Views.Add(secondPlan);
+        var tagged = new DocumentSession(twoPlanDocument);
+        var areaId = tagged.AddArea(demoLevel, "Patio de prueba", new Point2(25, 25), new Point2(30, 29));
+        var areas = ElementTags.Build(tagged.Document, demoLevel, new HashSet<TagCategory> { TagCategory.Area });
+        var newAreaTag = areas.SingleOrDefault(tag => tag.ElementId == areaId);
+        check(newAreaTag is not null && newAreaTag.Category == TagCategory.Area &&
+              newAreaTag.Mark.StartsWith("Patio de prueba", StringComparison.Ordinal) &&
+              newAreaTag.Position == new Point2(27.5, 27) &&
+              newAreaTag.Description.Contains("20"),
+            "Area labels are derived from actual geometric area and remain attached to the model element");
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true);
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true); // idempotent, no extra undo step
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Area, true);
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id).ShowRoomTags &&
+              tagged.Document.Views.Single(view => view.Id == plan.Id).ShowAreaTags,
+            "Room and area tags can be enabled independently for one plan view");
+        check(tagged.Document.Views.Single(view => view.Id == secondPlan.Id) is
+              { ShowRoomTags: false, ShowAreaTags: false },
+            "Tag visibility is scoped to the selected plan, even when two plans share a level");
+        var rejectedNonPlan = false;
+        try { tagged.SetPlanTagVisibility(BuiltInProjectViews.Model3DId, TagCategory.Room, true); }
+        catch (InvalidDataException) { rejectedNonPlan = true; }
+        check(rejectedNonPlan, "Room tags cannot be enabled on a non-plan view");
+        var file = Path.Combine(Path.GetTempPath(), "g3d-plan-tags-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(file, tagged.Document);
+            var reopened = ProjectFile.Load(file);
+            check(reopened.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: true } &&
+                  ElementTags.Build(reopened, demoLevel, new HashSet<TagCategory> { TagCategory.Area })
+                      .Any(tag => tag.ElementId == areaId),
+                "Room/area tag visibility and associative area identity survive native project reload");
+            check(reopened.Views.Single(view => view.Id == secondPlan.Id) is
+                  { ShowRoomTags: false, ShowAreaTags: false },
+                "Saving and reopening preserves independent tag settings for multiple plan views");
+        }
+        finally
+        {
+            if (File.Exists(file)) File.Delete(file);
+            if (File.Exists(file + ".bak")) File.Delete(file + ".bak");
+        }
+        tagged.Undo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: false },
+            "Undo hides area tags without hiding room tags");
+        tagged.Undo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: false, ShowAreaTags: false },
+            "Repeated tag commands do not create extra undo steps");
+        tagged.Redo();
+        tagged.Redo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: true },
+            "Redo restores both plan tag visibility states");
+
         var session = new DocumentSession(demo);
         var added = session.AutoDimensionLevel(demoLevel);
         var expected = demo.Walls.Count(w => w.LevelId == demoLevel) + demo.Openings.Count;

@@ -185,6 +185,22 @@ internal static class ArchitectureUiChecks
         Execute(ArchitectureCommand.RoomAutomatic);
         Check(session.Document.Rooms.Count == 1, "Automatic rooms create the room enclosed by the walls");
 
+        Execute(ArchitectureCommand.TagAllRooms);
+        var activePlan = session.Document.Views.Single(view =>
+            view.Kind == ProjectViewKind.Plan && view.LevelId == level);
+        Check(activePlan.ShowRoomTags, "Tag all rooms enables persistent room labels in the actual plan view");
+        var canvas = (Canvas)_window.FindName("PlanCanvas");
+        var roomNumber = session.Document.Rooms.Single().Number;
+        Check(canvas.Children.OfType<Border>().Any(tag =>
+                (tag.Child as TextBlock)?.Text == roomNumber),
+            "The room tag is really drawn on the plan canvas, not just reported in the status bar");
+        session.AddArea(level, "Área interior", new Point2(1, 1), new Point2(3, 3));
+        Execute(ArchitectureCommand.TagAllAreas);
+        Check(session.Document.Views.Single(view => view.Id == activePlan.Id).ShowAreaTags &&
+              canvas.Children.OfType<Border>().Any(tag =>
+                  (tag.Child as TextBlock)?.Text?.StartsWith("Área interior", StringComparison.Ordinal) == true),
+            "Tag all areas draws real area labels and records their per-plan visibility");
+
         // Test the original room face before WallByFace adds a second boundary and triggers
         // automatic-room topology regeneration; a stale selection is not a valid roof host.
         SetField("_selectedRoomId", (Guid?)session.Document.Rooms.Single().Id);
