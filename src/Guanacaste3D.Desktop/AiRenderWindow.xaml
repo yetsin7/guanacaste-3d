@@ -23,6 +23,9 @@
         </Trigger>
       </Style.Triggers>
     </Style>
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="#1B2B38"/>
+    </Style>
     <Style TargetType="CheckBox">
       <Setter Property="Margin" Value="0,9,0,0"/>
       <Setter Property="Foreground" Value="#E1EDF5"/>
@@ -36,7 +39,7 @@
     </Style>
     <Style TargetType="ComboBox">
       <Setter Property="Background" Value="#263B50"/>
-      <Setter Property="Foreground" Value="#182A38"/>
+      <Setter Property="Foreground" Value="#F2F7FA"/>
       <Setter Property="BorderBrush" Value="#60758A"/>
       <Setter Property="Padding" Value="6"/>
       <Setter Property="MinHeight" Value="35"/>
