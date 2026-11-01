@@ -222,6 +222,25 @@ public partial class MainWindow
                     if (overlay.Children.Count >= 10000) break;
                 }
         }
+        else if (region.Pattern == DetailFillPattern.Herringbone)
+        {
+            // Short alternating strokes create a proper woven/herringbone bond,
+            // clipped to the user-drawn region rather than the model geometry.
+            var pitch = Math.Max(5, spacing * 0.70);
+            var columns = Math.Min(300, (int)Math.Ceiling(bounds.Width / pitch) + 1);
+            var rows = Math.Min(300, (int)Math.Ceiling(bounds.Height / pitch) + 1);
+            for (var row = 0; row <= rows; row++)
+                for (var column = 0; column <= columns; column++)
+                {
+                    var x = bounds.Left + column * pitch;
+                    var y = bounds.Top + row * pitch;
+                    var rise = ((column + row) & 1) == 0 ? pitch / 2 : -pitch / 2;
+                    AddHatchLine(overlay, x, y + pitch / 2, x + pitch / 2,
+                        y + pitch / 2 + rise, foreground);
+                    AddHatchLine(overlay, x + pitch / 2, y + pitch / 2 + rise,
+                        x + pitch, y + pitch / 2, foreground);
+                }
+        }
         else
         {
             var span = bounds.Width + bounds.Height;
