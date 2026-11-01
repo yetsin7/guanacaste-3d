@@ -19,7 +19,9 @@ public sealed partial class DocumentSession
         // Build a complete proposed result first, so an idempotent refresh adds no undo step.
         var proposed = Document.Clone();
         var created = RebuildAutomaticRooms(proposed, levelId);
-        if (Document.Rooms.SequenceEqual(proposed.Rooms)) return 0;
+        if (Document.Rooms.Count == proposed.Rooms.Count &&
+            Document.Rooms.Zip(proposed.Rooms).All(pair => SameRoom(pair.First, pair.Second)))
+            return 0;
 
         Commit("Transaction.SyncAutomaticRooms", document =>
         {
@@ -28,6 +30,16 @@ public sealed partial class DocumentSession
         return created;
     }
 
+    /// <summary>Compares point contents so deep-cloned outlines do not create spurious undo history.</summary>
+    private static bool SameRoom(Room a, Room b) =>
+        a.Id == b.Id && a.LevelId == b.LevelId &&
+        a.Number == b.Number && a.Name == b.Name &&
+        a.FirstCorner == b.FirstCorner && a.SecondCorner == b.SecondCorner &&
+        a.IsAutomatic == b.IsAutomatic &&
+        (a.Boundary is null
+            ? b.Boundary is null
+            : b.Boundary is not null && a.Boundary.SequenceEqual(b.Boundary));
+
     /// <summary>
     /// Reconciles automatic rooms directly within an already open atomic transaction, for changes
     /// to room separators and other enclosing elements. Never call Commit from this helper.
@@ -35,25 +47,17 @@ public sealed partial class DocumentSession
     private static int RebuildAutomaticRooms(BuildingDocument document, Guid levelId)
     {
         var protectedRooms = document.Rooms.Where(room => room.LevelId == levelId && !room.IsAutomatic).ToArray();
-        var regions = RoomDetection.Detect(document, levelId)
-            .Where(space => protectedRooms.All(room => !RoomDetection.Overlaps(room, space.Min, space.Max)))
+        var regions = RoomPolygonDetection.Detect(document, levelId)
+            .Where(region => protectedRooms.All(room =>
+                RoomRegionGeometry.IntersectionArea(RoomRegionGeometry.Outline(room), region.Boundary) < 1e-8))
             .ToArray();
         var automatic = document.Rooms.Where(room => room.LevelId == levelId && room.IsAutomatic).ToArray();
-
-        double OverlapArea(Room room, Point2 low, Point2 high)
-        {
-            var minX = Math.Min(room.FirstCorner.X, room.SecondCorner.X);
-            var maxX = Math.Max(room.FirstCorner.X, room.SecondCorner.X);
-            var minY = Math.Min(room.FirstCorner.Y, room.SecondCorner.Y);
-            var maxY = Math.Max(room.FirstCorner.Y, room.SecondCorner.Y);
-            return Math.Max(0, Math.Min(maxX, high.X) - Math.Max(minX, low.X)) *
-                   Math.Max(0, Math.Min(maxY, high.Y) - Math.Max(minY, low.Y));
-        }
 
         var candidates = (
             from oldIndex in Enumerable.Range(0, automatic.Length)
             from regionIndex in Enumerable.Range(0, regions.Length)
-            let area = OverlapArea(automatic[oldIndex], regions[regionIndex].Min, regions[regionIndex].Max)
+            let area = RoomRegionGeometry.IntersectionArea(
+                RoomRegionGeometry.Outline(automatic[oldIndex]), regions[regionIndex].Boundary)
             where area > 1e-8
             orderby area descending, oldIndex, regionIndex
             select (oldIndex, regionIndex)
@@ -74,7 +78,8 @@ public sealed partial class DocumentSession
             replacements.Add(old.Id, old with
             {
                 FirstCorner = regions[regionIndex].Min,
-                SecondCorner = regions[regionIndex].Max
+                SecondCorner = regions[regionIndex].Max,
+                Boundary = [.. regions[regionIndex].Boundary]
             });
         }
 
@@ -96,10 +101,11 @@ public sealed partial class DocumentSession
                 nextNumber++;
             } while (!usedNumbers.Add(number));
 
-            var (min, max) = regions[index];
-            kept.Add(new Room(Guid.NewGuid(), levelId, number, $"Room {number}", min, max)
+            var region = regions[index];
+            kept.Add(new Room(Guid.NewGuid(), levelId, number, $"Room {number}", region.Min, region.Max)
             {
-                IsAutomatic = true
+                IsAutomatic = true,
+                Boundary = [.. region.Boundary]
             });
             created++;
         }
