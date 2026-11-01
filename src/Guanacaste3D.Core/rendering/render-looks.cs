@@ -21,6 +21,21 @@ public static class RenderLooks
     public static IReadOnlyList<ImageStyle> Styles { get; } =
     [
         new("none", "RenderStyle.None", finish => finish),
+        // Editorial architectural photography: natural stone and vegetation without exaggerated CGI edges.
+        new("estate-daylight", "RenderStyle.EstateDaylight", finish => finish with
+        {
+            ToneMapper = ToneMapper.AgX, AutoExposure = true, Saturation = 1.0f, Contrast = 1.03f,
+            Highlights = -0.22f, Shadows = 0.22f, Vibrance = 0.08f, Bloom = 0.06f,
+            Glare = 0.05f, Vignette = 0.06f, Sharpen = 0.12f, FilmGrain = 0f, ChromaticAberration = 0f
+        }),
+        // Blue-hour exterior: retain warm lanterns while preserving cool sky and natural stone color.
+        new("estate-twilight", "RenderStyle.EstateTwilight", finish => finish with
+        {
+            ToneMapper = ToneMapper.AgX, AutoExposure = true, ExposureStops = 0.1f, Temperature = -0.08f,
+            Saturation = 0.98f, Contrast = 1.04f, Highlights = -0.30f, Shadows = 0.30f,
+            Bloom = 0.20f, Glare = 0.16f, Vignette = 0.10f, Sharpen = 0.10f,
+            FilmGrain = 0f, ChromaticAberration = 0f
+        }),
         // Clean daylight architecture: open shadows, crisp detail, a touch of glare on glass.
         new("realistic", "RenderStyle.Realistic", finish => finish with
         {
@@ -89,6 +104,8 @@ public static class RenderLooks
     /// <summary>Skies: each pairs a light with clouds and a fitting style.</summary>
     public static IReadOnlyList<SkyPreset> Skies { get; } =
     [
+        new("estate-soft-day", "RenderSky.EstateDaylight", LightingScenario.Sunny, 172, 14.75, 0.35, CloudStyle.Cumulus, true, "estate-daylight"),
+        new("estate-blue-hour", "RenderSky.EstateTwilight", LightingScenario.Dusk, 172, 18.5, 0.25, CloudStyle.Cirrus, true, "estate-twilight"),
         new("clear-noon", "RenderSky.ClearNoon", LightingScenario.Sunny, 172, 12.0, 0.05, CloudStyle.Cumulus, true, "sunny"),
         new("morning", "RenderSky.Morning", LightingScenario.Sunny, 80, 8.5, 0.25, CloudStyle.Cumulus, true, "realistic"),
         new("summer-cumulus", "RenderSky.SummerCumulus", LightingScenario.Sunny, 200, 11.0, 0.45, CloudStyle.Cumulus, true, "realistic"),
