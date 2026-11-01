@@ -123,6 +123,18 @@ static class RenderLookChecks
         var variableClouds = new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30);
         var direction = Vector3.Normalize(new Vector3(0.65f, 0.7f, 0.55f));
         var first = variableClouds.Sample(direction);
+        var invalidDirections = new[]
+        {
+            new Vector3(float.NaN, 0, 1),
+            new Vector3(0, float.PositiveInfinity, 1),
+            new Vector3(0, 0, float.NaN),
+            new Vector3(0, 0, float.PositiveInfinity),
+            new Vector3(float.NegativeInfinity, 0, 1)
+        };
+        check(invalidDirections.All(ray => variableClouds.Sample(ray) == (0f, 0f)) &&
+              variableClouds.Sample(new Vector3(0, 0, -1)) == (0f, 0f) &&
+              float.IsFinite(first.Opacity) && float.IsFinite(first.Thickness),
+            "Cloud sampling rejects invalid sky rays without propagating NaN into rendered pixels");
         check(first == new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30).Sample(direction),
             "Cloud seeds and wind rotation reproduce the same cloud shape");
         var samplesA = Enumerable.Range(0, 100).Select(i =>
