@@ -21,7 +21,13 @@ internal static partial class InteractionChecks
     private static void Model3DSelectionChecks()
     {
         SetField("_dirty", false);
+        // The preceding tests leave a picker for another project. A project switch
+        // must discard that cache before the asynchronous viewport rebuild finishes.
+        var previousPicker = new Guanacaste3D.Core.Navigation.ElementPicker(Field<DocumentSession>("_session").Document);
+        SetField("_picker", previousPicker);
         Invoke("OpenSample_Click", _window, new RoutedEventArgs());
+        Check(!ReferenceEquals(Field<object?>("_picker"), previousPicker),
+            "Opening another project invalidates the previous 3D element picker immediately");
         var tabs = (TabControl)_window.FindName("ViewTabs");
         tabs.SelectedIndex = 1;
         Pump();
@@ -37,7 +43,8 @@ internal static partial class InteractionChecks
         Check(pixel is not null, "A wall of the sample is in front of the 3D camera");
         Invoke("HandleViewClick", new Point(pixel!.Value.X, pixel.Value.Y), surface);
         Pump();
-        Check(Field<Guid?>("_selectedWallId") is not null, "Clicking an element in the 3D view selects it");
+        Check(Field<Guid?>("_selectedWallId") is Guid selectedWall && document.Walls.Any(item => item.Id == selectedWall),
+            "Clicking an element in the 3D view selects a wall in the active project");
         Check(overlay.Children.Count >= 3, "The selected element shows its temporary dimensions in the 3D view");
         SaveBitmap("artifacts/interaction-evidence/model-3d-selection.png");
         Invoke("HandleViewClick", new Point(2, 2), surface);
