@@ -65,11 +65,24 @@ public partial class MainWindow
         }
         foreach (var room in document.Rooms.Where(room => room.LevelId == _activeLevelId))
         {
-            // Draw the exact footprint, rather than its bounding box, for concave rooms.
-            var outline = RoomRegionGeometry.Outline(room);
-            PlanCanvas.Children.Add(new Polygon
+            // Even-odd fill renders real footprints and leaves an inner courtyard unfilled.
+            var footprint = new PathGeometry { FillRule = FillRule.EvenOdd };
+            void AddRing(IReadOnlyList<Point2> ring)
             {
-                Points = new PointCollection(outline.Select(WorldToCanvas)),
+                var vertices = ring.Select(WorldToCanvas).ToArray();
+                var figure = new PathFigure
+                {
+                    StartPoint = vertices[0], IsClosed = true, IsFilled = true
+                };
+                figure.Segments.Add(new PolyLineSegment(vertices.Skip(1), true));
+                footprint.Figures.Add(figure);
+            }
+            AddRing(RoomRegionGeometry.Outline(room));
+            if (room.Holes is { Count: > 0 })
+                foreach (var hole in room.Holes) AddRing(hole);
+            PlanCanvas.Children.Add(new System.Windows.Shapes.Path
+            {
+                Data = footprint,
                 Fill = new SolidColorBrush(Color.FromArgb(45, 61, 132, 181)),
                 Stroke = room.Id == _selectedRoomId ? Brushes.DarkOrange : Brushes.SteelBlue,
                 StrokeThickness = room.Id == _selectedRoomId ? 2.5 : 1,
