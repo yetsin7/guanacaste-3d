@@ -1291,6 +1291,8 @@ public sealed partial class PathTracer
     /// <summary>Radiance of the sky dome (no sun disk) in a direction.</summary>
     private Vector3 SkyRadiance(Vector3 direction)
     {
+        if (_settings.Environment is { } environment)
+            return environment.Sample(direction, _settings.EnvironmentYawDegrees) * _skyScale;
         var sky = _sky.Radiance(direction) * _skyScale;
         if (_clouds is null || direction.Z <= 0.015f) return sky;
         var (opacity, thickness) = _clouds.Sample(direction);

@@ -16,6 +16,8 @@ namespace Guanacaste3D.Desktop.Controls;
 
 public partial class RenderPanel
 {
+    private HdriEnvironment? _hdriEnvironment;
+
     // ---------------------------------------------------------------- control state
 
     /// <summary>Reads the stable enum identifier from a localized selector entry.</summary>
@@ -65,6 +67,46 @@ public partial class RenderPanel
         HardwareText.ToolTip = _hardware.BackendSummary;
     }
 
+    /// <summary>Loads a bounded Radiance RGBE panorama and uses its radiance for the sky and indirect lighting.</summary>
+    private async void HdriLoad_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rendering) return;
+        var dialog = new OpenFileDialog
+        {
+            Title = "Elegir cielo HDRI (Radiance .hdr)",
+            Filter = "HDRI Radiance (.hdr)|*.hdr|Todos los archivos|*.*"
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            var file = dialog.FileName;
+            if (new FileInfo(file).Length > HdriEnvironment.MaximumFileBytes)
+                throw new InvalidDataException("El HDRI excede el límite de 32 MiB.");
+            var panorama = await Task.Run(() => HdriEnvironment.FromRgbe(File.ReadAllBytes(file)));
+            if (Dispatcher.HasShutdownStarted) return;
+            _hdriEnvironment = panorama;
+            HdriNameText.Text = Path.GetFileName(file) + $" · {panorama.Width}×{panorama.Height}";
+            _showingFinal = false;
+            Lighting_Changed(sender, e);
+            if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+        {
+            var localized = Application.Current?.TryFindResource("Error." + ex.Message) as string ?? ex.Message;
+            MessageBox.Show(Window.GetWindow(this), localized, "No se pudo cargar el HDRI", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void HdriClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rendering || _hdriEnvironment is null) return;
+        _hdriEnvironment = null;
+        HdriNameText.Text = "Cielo físico procedural activo";
+        _showingFinal = false;
+        Lighting_Changed(sender, e);
+        if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
+    }
+
     /// <summary>Runs the benchmark again, for instance after switching the Windows power plan.</summary>
     private async void Recalibrate_Click(object sender, RoutedEventArgs e) => await CalibrateAsync(force: true);
 
@@ -88,10 +130,12 @@ public partial class RenderPanel
         return lighting with
         {
             AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f,
-            CloudCover = (float)(CloudSlider.Value / 100),
+            CloudCover = _hdriEnvironment is null ? (float)(CloudSlider.Value / 100) : 0f,
             Clouds = SelectedClouds(),
-            SunIntensity = lighting.SunIntensity * (storm ? 0.55f : 1f),
-            SkyIntensity = lighting.SkyIntensity * (storm ? 0.6f : 1f)
+            // Radiance files can already carry the solar disk. Avoid counting the analytic sun twice.
+            SunIntensity = _hdriEnvironment is null ? lighting.SunIntensity * (storm ? 0.55f : 1f) : 0f,
+            SkyIntensity = lighting.SkyIntensity * (storm ? 0.6f : 1f),
+            Environment = _hdriEnvironment
         };
     }
 

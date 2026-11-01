@@ -18,6 +18,7 @@ static class RenderEngineChecks
         NormalMapFiltering(check);
         TextureInputValidation(check);
         Sky(check);
+        Hdri(check);
         BvhOnLargeScene(check);
         GlassShadows(check);
         EmissiveLight(check);
@@ -181,6 +182,39 @@ static class RenderEngineChecks
             "An overcast sky has no sun and is brightest overhead");
         var hazy = new SkyModel(SkyKind.Clear, Vector3.Normalize(new Vector3(0.3f, 0, 1)), float.NaN);
         check(float.IsFinite(hazy.Turbidity) && Sum(hazy.Radiance(Vector3.UnitX)) > 0, "A NaN turbidity falls back to a clear sky");
+    }
+
+    private static void Hdri(Action<bool, string> check)
+    {
+        var header = System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 2 +X 2\n");
+        // Encode 1.0 in the red or blue channel as 128 * 2^(129 - 136).
+        var values = new byte[]
+        {
+            128, 0, 0, 129, 128, 0, 0, 129,
+            0, 0, 128, 129, 0, 0, 128, 129
+        };
+        var panorama = HdriEnvironment.FromRgbe([.. header, .. values]);
+        var top = panorama.Sample(Vector3.UnitZ);
+        var bottom = panorama.Sample(-Vector3.UnitZ);
+        check(panorama.Width == 2 && panorama.Height == 2 &&
+              top.X > 0.99f && top.Z < 0.01f && bottom.Z > 0.99f && bottom.X < 0.01f,
+            "Radiance HDRI renders distinct top/bottom hemispheres in linear radiance");
+        bool Reject(byte[] bytes)
+        {
+            try { _ = HdriEnvironment.FromRgbe(bytes); return false; }
+            catch (InvalidDataException) { return true; }
+        }
+        check(Reject([.. header, .. values, 0]) &&
+              Reject(System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 99999 +X 2\n")),
+            "HDRI rejects unexpected trailing bytes and extreme dimensions");
+
+        // Width >= 8 selects Radiance's four-channel scanline RLE.
+        var rleHeader = System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 8\n");
+        var rle = HdriEnvironment.FromRgbe([.. rleHeader, 2, 2, 0, 8,
+            136, 128, 136, 64, 136, 32, 136, 129]);
+        var light = rle.Sample(Vector3.UnitX);
+        check(rle.Width == 8 && light.X > light.Y && light.Y > light.Z && light.Z > 0,
+            "RGBE per-channel RLE scanlines decode colors and exponent correctly");
     }
 
     private static float Sum(Vector3 v) => v.X + v.Y + v.Z;

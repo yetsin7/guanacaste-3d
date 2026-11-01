@@ -169,6 +169,15 @@
                   </ComboBox>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.SkyPreset}"/>
                   <ComboBox x:Name="SkyPicker" SelectionChanged="Sky_Changed" ToolTip="{DynamicResource RenderPanel.SkyPresetHint}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Margin="0,7,0,3" Text="Iluminación ambiental HDRI"/>
+                  <WrapPanel>
+                    <Button Content="Cargar HDRI…" Margin="0,0,7,0" Padding="9,5" Click="HdriLoad_Click"
+                            ToolTip="Archivo Radiance RGBE .hdr de hasta 2048×1024. Cielo e iluminación global real."/>
+                    <Button Content="Quitar HDRI" Padding="9,5" Click="HdriClear_Click"
+                            ToolTip="Restaurar cielo solar procedural sin afectar materiales del modelo."/>
+                  </WrapPanel>
+                  <TextBlock x:Name="HdriNameText" Style="{StaticResource PanelHint}" Margin="0,4,0,6"
+                             Text="Cielo físico procedural activo"/>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
                   <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
                 </StackPanel>
