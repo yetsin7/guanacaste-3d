@@ -68,6 +68,26 @@ internal static partial class InteractionChecks
         {
             var sourceImage = (string)resolve.Invoke(null, ["builtin:brick-red", null])!;
             File.Copy(sourceImage, Path.Combine(pbrDirectory, "albedo.png"));
+            // The creation wizard uses the same packaging API. Assert real files are written
+            // and that a new material can be immediately resolved by the renderer.
+            var packageApi = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.PbrMaterialPackages")!;
+            var createPackage = packageApi.GetMethod("CreateFromImage",
+                BindingFlags.Public | BindingFlags.Static)!;
+            var createdPath = Path.Combine(pbrDirectory, "generated.g3dm");
+            var generated = (string)createPackage.Invoke(null, [
+                sourceImage, createdPath, "Concreto nuevo", 0.62, 0.0, 1.2, 0.18
+            ])!;
+            Check(generated == createdPath && File.Exists(createdPath) &&
+                  File.Exists(Path.Combine(pbrDirectory, "generated-albedo.png")),
+                "Create PBR from image writes a portable .g3dm manifest and albedo file");
+            var generatedResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+                BindingFlags.Public | BindingFlags.Static)!.Invoke(null,
+                [new[] { new RenderMaterialAssignment(SurfaceKind.Wall, "pbr:" + createdPath) {
+                    TextureSize = 1.2, Relief = 0.18
+                } }, null, true])!;
+            Check(generatedResolver(SurfaceKind.Wall).Texture is not null &&
+                  Math.Abs(generatedResolver(SurfaceKind.Wall).Roughness - 0.62f) < 0.0001f,
+                "Newly created material is readable by the path tracer");
             var manifestFile = Path.Combine(pbrDirectory, "test.g3dm");
             File.WriteAllText(manifestFile,
                 "{\"version\":1,\"name\":\"Ladrillo PBR importado\",\"albedo\":\"albedo.png\"," +
