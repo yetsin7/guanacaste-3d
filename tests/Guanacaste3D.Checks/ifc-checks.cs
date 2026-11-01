@@ -97,6 +97,52 @@ static class IfcChecks
               !step.Contains($"IFCCARTESIANPOINT((0.,0.,{loweredBottom}))", StringComparison.Ordinal),
             "IFC slab placement preserves negative height offsets from the storey");
 
+        // IFC4 operation and partitioning enums must describe the modeled family and instance.
+        // Use the widest hosted opening to keep three/four-light variants valid.
+        string ExportOpening(OpeningKind kind, OpeningOperation operation, bool flipHand = false, int lights = 0)
+        {
+            var variant = house.Clone();
+            var hosted = variant.Openings.Where(item => item.Kind == kind)
+                .OrderByDescending(item => item.Width).First();
+            var typeIndex = variant.OpeningTypes.FindIndex(item => item.Id == hosted.OpeningTypeId);
+            variant.OpeningTypes[typeIndex] = variant.OpeningTypes[typeIndex] with
+            {
+                Operation = operation,
+                GlazingLightCount = lights
+            };
+            var openingIndex = variant.Openings.FindIndex(item => item.Id == hosted.Id);
+            variant.Openings[openingIndex] = hosted with { FlipHand = flipHand };
+            var entityName = kind == OpeningKind.Door ? "IFCDOOR" : "IFCWINDOW";
+            var globalId = IfcExporter.ToGlobalId(hosted.Id);
+            return IfcExporter.ToStep(variant, stamp).Split('\n')
+                .Single(row => row.Contains($"{entityName}('{globalId}',", StringComparison.Ordinal));
+        }
+
+        check(ExportOpening(OpeningKind.Door, OpeningOperation.Standard)
+                  .Contains(",.SINGLE_SWING_LEFT.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Door, OpeningOperation.Standard, flipHand: true)
+                  .Contains(",.SINGLE_SWING_RIGHT.,$)", StringComparison.Ordinal),
+            "IFC door swing direction follows the instance hand");
+        check(ExportOpening(OpeningKind.Door, OpeningOperation.Sliding)
+                  .Contains(",.DOUBLE_DOOR_SLIDING.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Door, OpeningOperation.Folding)
+                  .Contains(",.DOUBLE_DOOR_FOLDING.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Door, OpeningOperation.Overhead)
+                  .Contains(",.ROLLINGUP.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Door, OpeningOperation.Revolving)
+                  .Contains(",.REVOLVING.,$)", StringComparison.Ordinal),
+            "IFC door operations reflect sliding, folding, overhead and revolving families");
+        check(ExportOpening(OpeningKind.Window, OpeningOperation.Sliding, lights: 2)
+                  .Contains(",.DOUBLE_PANEL_VERTICAL.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Window, OpeningOperation.Hung)
+                  .Contains(",.DOUBLE_PANEL_HORIZONTAL.,$)", StringComparison.Ordinal) &&
+              ExportOpening(OpeningKind.Window, OpeningOperation.Sliding, lights: 3)
+                  .Contains(",.TRIPLE_PANEL_VERTICAL.,$)", StringComparison.Ordinal),
+            "IFC window partitioning matches the modeled pane layout");
+        check(ExportOpening(OpeningKind.Window, OpeningOperation.Sliding, lights: 4)
+                  .Contains(",.NOTDEFINED.,$)", StringComparison.Ordinal),
+            "IFC avoids falsely labeling four-pane windows as single-panel");
+
         var entities = new Dictionary<int, (string Type, List<string> Attributes)>();
         var data = step[(step.IndexOf("DATA;\n", StringComparison.Ordinal) + 6)..step.IndexOf("ENDSEC;\nEND-ISO", StringComparison.Ordinal)];
         var malformed = 0;
