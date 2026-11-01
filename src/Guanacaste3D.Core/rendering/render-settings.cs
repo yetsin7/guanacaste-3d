@@ -187,4 +187,8 @@ public sealed record ImageFinish
     public float FilmGrain { get; init; }
     /// <summary>Renders in black and white, keeping the tonal balance of the colour image.</summary>
     public bool Monochrome { get; init; }
+    /// <summary>Optional 3D color lookup table applied after tone mapping and prior to lens effects.</summary>
+    public ColorLookupTable? Lut { get; init; }
+    /// <summary>Blend from unmodified color to LUT-graded color, between zero and one.</summary>
+    public float LutStrength { get; init; }
 }

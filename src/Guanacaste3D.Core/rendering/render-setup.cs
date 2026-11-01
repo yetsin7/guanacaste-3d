@@ -89,13 +89,18 @@ public sealed record RenderSetup
     public double ChromaticAberration { get; init; }
     public double FilmGrain { get; init; }
     public bool Monochrome { get; init; }
+    /// <summary>Built-in photo LUT or custom to load a .cube file (none is neutral).</summary>
+    public string LutPresetId { get; init; } = "none";
+    /// <summary>Optional custom .cube path, relative to the .g3d when bundled with the project.</summary>
+    public string? LutPath { get; init; }
+    public double LutStrength { get; init; } = 0.7;
 
     /// <summary>Rejects values the Render panel cannot show.</summary>
     public void Validate()
     {
         double[] finite = [CameraX, CameraY, CameraZ, YawDegrees, PitchDegrees, FieldOfViewDegrees, SolarHour, Latitude,
             CloudCover, ExposureStops, Temperature, DepthOfField, Highlights, Shadows, Vibrance, Tint, Glare, Fog, Sharpen,
-            ChromaticAberration, FilmGrain, EnvironmentYawDegrees, EnvironmentExposureStops];
+            ChromaticAberration, FilmGrain, EnvironmentYawDegrees, EnvironmentExposureStops, LutStrength];
         if (finite.Any(value => !double.IsFinite(value)) || Math.Abs(CameraX) > 1e6 || Math.Abs(CameraY) > 1e6 ||
             Math.Abs(CameraZ) > 1e6 || PitchDegrees is < -90 or > 90 || FieldOfViewDegrees is < 5 or > 150 ||
             !Enum.IsDefined(Scenario) || DayOfYear is < 1 or > 366 || SolarHour is < 0 or > 24 || Latitude is < -90 or > 90 ||
@@ -105,6 +110,9 @@ public sealed record RenderSetup
             !Enum.IsDefined(Look) ||
             ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100 ||
             EnvironmentYawDegrees is < 0 or > 360 || EnvironmentExposureStops is < -4 or > 4 ||
+            LutStrength is < 0 or > 1 ||
+            (LutPresetId != "custom" && ColorLutPresets.All.All(preset => preset.Id != LutPresetId)) ||
+            (LutPath is not null && (string.IsNullOrWhiteSpace(LutPath) || LutPath.Length > 1024)) ||
             (EnvironmentPath is not null && (string.IsNullOrWhiteSpace(EnvironmentPath) || EnvironmentPath.Length > 1024)) ||
             !Enum.IsDefined(Clouds) || StyleId is null || RenderLooks.Styles.All(style => style.Id != StyleId) ||
             new[] { Highlights, Shadows, Tint }.Any(value => value is < -1 or > 1) ||
