@@ -153,9 +153,12 @@ internal static class ArchitectureUiChecks
     /// <summary>Every command in the enum must act: none may end on the "will be added later" message.</summary>
     private static void CheckEveryCommandResponds()
     {
-        // Commands that open a modal dialog would block the check; they are covered by their own windows.
+        // Commands that open modal dialogs must not run in this non-interactive sweep.
+        // RoomSeparatorCurve calls PromptWindow.Ask for radius/start/sweep and otherwise blocks CI.
         var modal = new[] { ArchitectureCommand.Levels, ArchitectureCommand.SetWorkPlane, ArchitectureCommand.WorkPlaneByLevel,
-            ArchitectureCommand.OpeningTypes, ArchitectureCommand.ApplyWallType };
+            ArchitectureCommand.OpeningTypes, ArchitectureCommand.ApplyWallType, ArchitectureCommand.RoomSeparatorCurve };
+        Check(typeof(MainWindow).GetMethod("BeginCurvedRoomSeparatorTool", PrivateInstance) is not null,
+            "Curved room separators have a dedicated parameter-dialog entry point");
         var route = typeof(MainWindow).GetMethod("ArchitectureRibbon_CommandInvoked", PrivateInstance)!;
         var unanswered = new List<ArchitectureCommand>();
         foreach (var command in Enum.GetValues<ArchitectureCommand>().Except(modal))
