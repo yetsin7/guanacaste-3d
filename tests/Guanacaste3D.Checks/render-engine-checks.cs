@@ -292,15 +292,35 @@ static class RenderEngineChecks
             check(phases.SequenceEqual(["Render.Preparing", "Render.Rendering"]) && result.Rays > 0, "A render session reports its phases and ray count");
         }
 
+        var rejectedInvalidBucket = false;
+        try
+        {
+            using var invalid = new RenderSession(scene, camera, new RenderSettings(),
+                new RenderJob(64, 64, 2, Buckets: true) { BucketSize = 7 });
+        }
+        catch (ArgumentOutOfRangeException) { rejectedInvalidBucket = true; }
+        check(rejectedInvalidBucket && new RenderSetup { BucketSize = 8 } is { BucketSize: 8 },
+            "Bucket size is validated before rendering and the selection is stored in RenderSetup");
+        var rejectedSetup = false;
+        try { (new RenderSetup { BucketSize = 7 }).Validate(); }
+        catch (InvalidDataException) { rejectedSetup = true; }
+        check(rejectedSetup, "Project render setups reject invalid bucket sizes");
+
         var bucketFrames = new List<RenderFrame>();
-        using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true)))
+        using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true) { BucketSize = 16 }))
         {
             bucketed.FrameReady += frame => { lock (bucketFrames) bucketFrames.Add(frame); };
             var result = await bucketed.RunAsync(CancellationToken.None);
             var first = bucketFrames[0].Bgra;
             var darkAtStart = first.Where((_, i) => i % 4 != 3).All(value => value <= 40);
-            check(result.Completed && result.Samples == 4 && bucketFrames[^1].IsFinal && darkAtStart,
-                "A bucket render starts fully dark and ends with a complete final image");
+            check(result.Completed && result.Samples == 4 && bucketFrames[^1].IsFinal && darkAtStart &&
+                  bucketFrames[0].Progress == 0 && bucketFrames[^1].Progress == 1,
+                "A 16px bucket render begins empty, fills its exact completion bar and ends with an image");
+            check(bucketFrames.All(frame => frame.Progress is >= 0 and <= 1) &&
+                  bucketFrames.Zip(bucketFrames.Skip(1), (a, b) => a.Progress <= b.Progress).All(value => value),
+                "Bucket progress never decreases even when many workers complete squares concurrently");
+            check(bucketed.RenderElapsed >= TimeSpan.Zero && bucketed.RenderElapsed <= result.Elapsed + TimeSpan.FromMilliseconds(50),
+                "The monotonic elapsed timer freezes when the render completes");
         }
 
         using (var cancelling = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(48, 32, 100000)))
