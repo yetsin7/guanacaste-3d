@@ -38,7 +38,11 @@ public sealed partial class DocumentSession
         a.IsAutomatic == b.IsAutomatic &&
         (a.Boundary is null
             ? b.Boundary is null
-            : b.Boundary is not null && a.Boundary.SequenceEqual(b.Boundary));
+            : b.Boundary is not null && a.Boundary.SequenceEqual(b.Boundary)) &&
+        (a.Holes is null || a.Holes.Count == 0
+            ? b.Holes is null || b.Holes.Count == 0
+            : b.Holes is not null && a.Holes.Count == b.Holes.Count &&
+              a.Holes.Zip(b.Holes).All(pair => pair.First.SequenceEqual(pair.Second)));
 
     /// <summary>
     /// Reconciles automatic rooms directly within an already open atomic transaction, for changes
@@ -48,16 +52,17 @@ public sealed partial class DocumentSession
     {
         var protectedRooms = document.Rooms.Where(room => room.LevelId == levelId && !room.IsAutomatic).ToArray();
         var regions = RoomPolygonDetection.Detect(document, levelId)
-            .Where(region => protectedRooms.All(room =>
-                RoomRegionGeometry.IntersectionArea(RoomRegionGeometry.Outline(room), region.Boundary) < 1e-8))
+            // A completely nested face is an outdoor courtyard by default; users can place
+            // their own manual room annotation inside if they need to schedule it.
+            .Where(region => !region.IsCourtyard && protectedRooms.All(room =>
+                RoomRegionGeometry.IntersectionArea(room, region) < 1e-8))
             .ToArray();
         var automatic = document.Rooms.Where(room => room.LevelId == levelId && room.IsAutomatic).ToArray();
 
         var candidates = (
             from oldIndex in Enumerable.Range(0, automatic.Length)
             from regionIndex in Enumerable.Range(0, regions.Length)
-            let area = RoomRegionGeometry.IntersectionArea(
-                RoomRegionGeometry.Outline(automatic[oldIndex]), regions[regionIndex].Boundary)
+            let area = RoomRegionGeometry.IntersectionArea(automatic[oldIndex], regions[regionIndex])
             where area > 1e-8
             orderby area descending, oldIndex, regionIndex
             select (oldIndex, regionIndex)
@@ -79,7 +84,8 @@ public sealed partial class DocumentSession
             {
                 FirstCorner = regions[regionIndex].Min,
                 SecondCorner = regions[regionIndex].Max,
-                Boundary = [.. regions[regionIndex].Boundary]
+                Boundary = [.. regions[regionIndex].Boundary],
+                Holes = regions[regionIndex].Holes.Select(hole => hole.ToList()).ToList()
             });
         }
 
@@ -105,7 +111,8 @@ public sealed partial class DocumentSession
             kept.Add(new Room(Guid.NewGuid(), levelId, number, $"Room {number}", region.Min, region.Max)
             {
                 IsAutomatic = true,
-                Boundary = [.. region.Boundary]
+                Boundary = [.. region.Boundary],
+                Holes = region.Holes.Select(hole => hole.ToList()).ToList()
             });
             created++;
         }
