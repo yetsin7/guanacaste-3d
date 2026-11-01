@@ -139,6 +139,7 @@ public sealed partial class DocumentSession
             for (var index = 0; index < boundary.Count; index++)
                 document.Walls.Add(new Wall(Guid.NewGuid(), levelId, boundary[index], boundary[(index + 1) % boundary.Count],
                     type.Thickness, height) { WallTypeId = wallTypeId });
+            RefreshRoomBoundariesIfNeeded(document, levelId);
         });
         return boundary.Count;
     }
