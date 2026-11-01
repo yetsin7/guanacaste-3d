@@ -13,6 +13,23 @@ La creación evita sobrescribir silenciosamente tanto el manifiesto como su imag
 Para compartir materiales, copia ambos archivos. Una imagen de albedo sola no es un conjunto
 completo de mapas PBR, aunque sí puede renderizarse con los parámetros físicos uniformes.
 
+## Detección automática de mapas PBR
+
+Si la imagen elegida se llama `madera_basecolor.png` o `madera_albedo.png`,
+el asistente ahora identifica archivos compatibles de la misma carpeta:
+
+- `madera_normal.png` (también `_normalgl`, `_normal_gl` o `_nrm`)
+- `madera_roughness.png` (también `_rough`)
+- `madera_metallic.png` (también `_metalness` o `_metal`)
+
+Los mapas detectados se copian junto al manifiesto `.g3dm` con nombres coherentes,
+y se utilizan en el render PBR. El asistente indica cuáles encontró antes de guardar.
+Las imágenes que no coinciden exactamente con el nombre del conjunto no se asignan
+automáticamente para evitar mezclar materiales distintos.
+
+La asignación a un elemento seleccionado se conserva: crear o importar un `.g3dm`
+desde un material individual no cambia necesariamente los demás objetos del mismo tipo.
+
 ## Paquetes PBR desde una carpeta
 
 En la pestaña **Render → Materiales**, abre el material de la categoría deseada y elige **Importar material PBR (.g3dm)…**. Un paquete consta de un archivo de texto JSON `.g3dm` y una imagen de color (PNG/JPEG/BMP/TIFF) en la misma carpeta o una subcarpeta.
