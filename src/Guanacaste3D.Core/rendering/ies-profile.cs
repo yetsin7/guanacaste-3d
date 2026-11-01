@@ -9,6 +9,8 @@ namespace Guanacaste3D.Core.Rendering;
 /// </summary>
 public sealed class IesProfile
 {
+    // Bound work before splitting untrusted LM-63 text into lines and tokens.
+    public const int MaxIesCharacters = 8 * 1024 * 1024;
     private readonly float[] _vertical;
     private readonly float[] _horizontal;
     private readonly float[,] _candela; // [horizontal, vertical]
@@ -20,6 +22,8 @@ public sealed class IesProfile
         _candela = candela;
         Title = title;
         LuminousFluxLumens = IntegrateFlux();
+        if (!float.IsFinite(LuminousFluxLumens))
+            throw new InvalidDataException("The IES luminous flux exceeds the supported range.");
     }
 
     public string Title { get; }
@@ -34,6 +38,8 @@ public sealed class IesProfile
     public static IesProfile Parse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
+        if (text.Length > MaxIesCharacters)
+            throw new InvalidDataException("The IES file is too large.");
         var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         var index = 0;
         var title = string.Empty;
@@ -56,6 +62,8 @@ public sealed class IesProfile
             {
                 if (!float.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !float.IsFinite(value))
                     throw new InvalidDataException("The IES file contains a value that is not a number.");
+                if (numbers.Count >= 2_000_000)
+                    throw new InvalidDataException("The IES photometric table is too large.");
                 numbers.Add(value);
             }
 
@@ -98,7 +106,8 @@ public sealed class IesProfile
             for (var v = 0; v < verticalCount; v++)
             {
                 var value = Next() * multiplier;
-                if (value < 0) throw new InvalidDataException("The IES candela table has a negative value.");
+                if (!float.IsFinite(value) || value < 0)
+                    throw new InvalidDataException("The IES candela table contains an invalid intensity.");
                 candela[h, v] = value;
             }
         return new IesProfile(vertical, horizontal, candela, title);
@@ -111,7 +120,7 @@ public sealed class IesProfile
     public float IntensityTowards(Vector3 localDirection)
     {
         var length = localDirection.Length();
-        if (length < 1e-8f) return 0;
+        if (!float.IsFinite(length) || length < 1e-8f) return 0;
         var direction = localDirection / length;
         var vertical = MathF.Acos(Math.Clamp(-direction.Z, -1f, 1f)) * 180f / MathF.PI;
         var horizontal = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
@@ -122,6 +131,7 @@ public sealed class IesProfile
     /// <summary>Bilinear lookup that applies the symmetry the file declares for its horizontal angles.</summary>
     public float Candela(float verticalDegrees, float horizontalDegrees)
     {
+        if (!float.IsFinite(verticalDegrees) || !float.IsFinite(horizontalDegrees)) return 0;
         var v = Math.Clamp(verticalDegrees, _vertical[0], _vertical[^1]);
         var h = FoldHorizontal(horizontalDegrees);
         var (v0, v1, vt) = Bracket(_vertical, v);
