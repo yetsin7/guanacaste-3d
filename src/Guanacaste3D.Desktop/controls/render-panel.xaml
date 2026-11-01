@@ -237,6 +237,18 @@
                   </WrapPanel>
                   <TextBlock x:Name="HdriNameText" Style="{StaticResource PanelHint}" Margin="0,4,0,6"
                              Text="Cielo físico procedural activo"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Rotación del HDRI (°)"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=HdriYawSlider, StringFormat={}{0:0}°}"/>
+                    <Slider x:Name="HdriYawSlider" Minimum="0" Maximum="360" Value="0" TickFrequency="5"
+                            IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Intensidad HDRI (pasos de luz)"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=HdriExposureSlider, StringFormat={}{0:+0.0;-0.0;0} EV}"/>
+                    <Slider x:Name="HdriExposureSlider" Minimum="-4" Maximum="4" Value="0" TickFrequency="0.25"
+                            IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
                   <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
                 </StackPanel>

@@ -9,6 +9,7 @@ static class NativeDocumentChecks
         try
         {
             CheckProjectContainer(root, check);
+            CheckRenderEnvironmentSetup(root, check);
             CheckFamilyContainer(root, check);
             CheckTemplateContainer(root, check);
             CheckDependencyCycles(check);
@@ -54,6 +55,33 @@ static class NativeDocumentChecks
         try { NativeDocumentStore.LoadFamily(path); }
         catch (InvalidDataException) { wrongKindRejected = true; }
         check(wrongKindRejected, "Native containers reject loading a project as a family");
+    }
+
+    private static void CheckRenderEnvironmentSetup(string root, Action<bool, string> check)
+    {
+        var project = BuildingDocument.Create("HDRI portable test");
+        project.RenderSetup = new Guanacaste3D.Core.Rendering.RenderSetup
+        {
+            EnvironmentPath = "assets/softbox.hdr", EnvironmentYawDegrees = 172.5,
+            EnvironmentExposureStops = -0.75
+        };
+        var path = Path.Combine(root, "hdri-preserved.g3d");
+        ProjectFile.Save(path, project);
+        var saved = ProjectFile.Load(path).RenderSetup;
+        check(saved?.EnvironmentPath == "assets/softbox.hdr" &&
+              saved.EnvironmentYawDegrees == 172.5 &&
+              saved.EnvironmentExposureStops == -0.75,
+            "HDRI source, sky rotation and exposure persist through compressed .g3d save/load");
+
+        var rejectsInvalid = false;
+        try { (saved! with { EnvironmentYawDegrees = float.PositiveInfinity }).Validate(); }
+        catch (InvalidDataException) { rejectsInvalid = true; }
+        check(rejectsInvalid, "Corrupted HDRI sky rotation is rejected on project load");
+
+        rejectsInvalid = false;
+        try { (saved! with { EnvironmentPath = new string('x', 1025) }).Validate(); }
+        catch (InvalidDataException) { rejectsInvalid = true; }
+        check(rejectsInvalid, "Oversized external asset references are rejected during validation");
     }
 
     private static void CheckFamilyContainer(string root, Action<bool, string> check)

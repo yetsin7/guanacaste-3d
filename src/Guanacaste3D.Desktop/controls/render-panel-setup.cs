@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows.Controls;
 using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Core.Rendering;
@@ -7,9 +8,13 @@ namespace Guanacaste3D.Desktop.Controls;
 
 public partial class RenderPanel
 {
-    /// <summary>Shows a project's saved render setup in the panel's controls (the window sets the camera itself).</summary>
-    public void ApplySetup(RenderSetup setup)
+    /// <summary>Loads an existing setup without an associated file (e.g., an in-memory project).</summary>
+    public void ApplySetup(RenderSetup setup) => ApplySetupForProject(setup, null);
+
+    /// <summary>Restores project render controls, including a saved and safely resolved HDRI reference.</summary>
+    public void ApplySetupForProject(RenderSetup setup, string? projectFile)
     {
+        ClearHdriForDocument();
         // First the style, which sets the look, white balance, bloom, vignette and effects; the saved values follow.
         Select(StylePicker, setup.StyleId);
         Select(ScenarioPicker, setup.Scenario.ToString());
@@ -31,6 +36,8 @@ public partial class RenderPanel
         DepthOfFieldSlider.Value = setup.DepthOfField;
         ArtificialLightsCheck.IsChecked = setup.ArtificialLights;
         StoneDetailCheck.IsChecked = setup.StoneMicrogeometry;
+        HdriYawSlider.Value = setup.EnvironmentYawDegrees;
+        HdriExposureSlider.Value = setup.EnvironmentExposureStops;
         Select(CloudStylePicker, setup.Clouds.ToString());
         // The saved sliders win over the style's own values, set when the style was selected first.
         HighlightsSlider.Value = setup.Highlights;
@@ -44,6 +51,7 @@ public partial class RenderPanel
         GrainSlider.Value = setup.FilmGrain;
         MonochromeCheck.IsChecked = setup.Monochrome;
         Select(SkyPicker, string.Empty);
+        RestoreHdriForProject(setup.EnvironmentPath, projectFile);
         OnCameraChanged();
     }
 
@@ -68,11 +76,33 @@ public partial class RenderPanel
             Vignette = VignetteCheck.IsChecked == true, CorrectVerticals = VerticalsCheck.IsChecked == true,
             DepthOfField = DepthOfFieldSlider.Value, ArtificialLights = ArtificialLightsCheck.IsChecked == true,
             StoneMicrogeometry = StoneDetailCheck.IsChecked == true,
+            EnvironmentPath = _hdriFilePath,
+            EnvironmentYawDegrees = HdriYawSlider.Value,
+            EnvironmentExposureStops = HdriExposureSlider.Value,
             Clouds = SelectedClouds(), StyleId = SelectedStyle(), Highlights = HighlightsSlider.Value, Shadows = ShadowsSlider.Value,
             Vibrance = VibranceSlider.Value, Tint = TintSlider.Value, Glare = GlareSlider.Value, Fog = FogSlider.Value,
             Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,
             Monochrome = MonochromeCheck.IsChecked == true
         };
+    }
+
+    /// <summary>Save As uses the target filename, keeping HDRIs inside the project folder portable.</summary>
+    public RenderSetup CaptureSetupForProject(NavigationCamera camera, string projectFile)
+    {
+        var setup = CaptureSetup(camera);
+        if (setup.EnvironmentPath is not { } absolute) return setup;
+        try
+        {
+            var folder = Path.GetDirectoryName(Path.GetFullPath(projectFile));
+            if (folder is null) return setup;
+            var local = Path.GetRelativePath(folder, absolute);
+            if (!Path.IsPathRooted(local) && local != ".." &&
+                !local.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                !IsNetworkHdriPath(local))
+                return setup with { EnvironmentPath = local };
+        }
+        catch (Exception error) when (error is IOException or ArgumentException or NotSupportedException) { }
+        return setup;
     }
 
     /// <summary>Selects the entry whose tag matches, leaving the picker unchanged when none does.</summary>
