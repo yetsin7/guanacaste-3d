@@ -103,14 +103,18 @@ public sealed record Room(
     /// </summary>
     public List<Point2>? Boundary { get; init; }
 
+    /// <summary>Interior rings excluded from the footprint (e.g. an unroofed courtyard).</summary>
+    public List<List<Point2>>? Holes { get; init; }
+
     [JsonIgnore]
     public double Area => Boundary is { Count: >= 3 } outline
-        ? RoomRegionGeometry.Area(outline)
+        ? RoomRegionGeometry.Area(outline) - (Holes?.Sum(RoomRegionGeometry.Area) ?? 0)
         : Math.Abs((SecondCorner.X - FirstCorner.X) * (SecondCorner.Y - FirstCorner.Y));
 
     [JsonIgnore]
     public Point2 Center => Boundary is { Count: >= 3 } outline
-        ? RoomRegionGeometry.LabelPoint(outline)
+        ? RoomRegionGeometry.LabelPoint(outline,
+            Holes?.Select(hole => (IReadOnlyList<Point2>)hole).ToArray() ?? [])
         : new((FirstCorner.X + SecondCorner.X) / 2, (FirstCorner.Y + SecondCorner.Y) / 2);
 }
 
