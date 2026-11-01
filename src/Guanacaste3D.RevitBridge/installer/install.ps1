@@ -9,15 +9,22 @@ the add-in is installed or removed. The first time Revit starts with the add-in 
 "Always load".
 #>
 [CmdletBinding()]
-param([switch]$Uninstall)
+param([switch]$Uninstall, [switch]$EnableThumbnails)
 
 $ErrorActionPreference = 'Stop'
 $package = $PSScriptRoot
 $addinsRoot = Join-Path $env:APPDATA 'Autodesk\Revit\Addins'
 $done = @()
 if (-not $Uninstall) {
-    & (Join-Path $package 'ensure-desktop-runtime.ps1') -PackageDirectory $package
-    & (Join-Path $package 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $package 'thumbnail-handler')
+    if ($EnableThumbnails) {
+        & (Join-Path $package 'ensure-desktop-runtime.ps1') -PackageDirectory $package
+        & (Join-Path $package 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $package 'thumbnail-handler') -AllowInProcess
+    }
+    else {
+        # Never enable in-process Explorer thumbnail parsing during a normal Revit add-in installation.
+        & (Join-Path $package 'register-thumbnails.ps1') -Unregister
+        Write-Host 'Explorer thumbnails disabled by default. Use -EnableThumbnails to opt in.'
+    }
 }
 
 foreach ($source in Get-ChildItem $package -Directory -Filter 'Revit20*') {
