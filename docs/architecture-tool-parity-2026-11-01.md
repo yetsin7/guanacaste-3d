@@ -116,3 +116,19 @@
 - Una fase solo se marca `verificada` cuando todas sus pruebas de aceptación tienen evidencia (automática y, para WPF, manual o UI Automation).
 - Si hay implementaciones simultáneas o ramas locales pendientes, **integrarlas sin sobrescribir trabajo**. Unificar carpetas locales es una tarea independiente, pues GitHub no puede borrar ni consolidar copias de la máquina del usuario.
 - **Primera implementación incremental:** fortalecer la integridad y los flujos de los ejes de referencia y sus relaciones con muros, antes de extender las herramientas dependientes de referencias.
+
+## 5. Incrementos realizados en la rama de trabajo
+
+### Incremento 1 — referencias paramétricas de ejes y muros
+- Vínculo opcional por GUID del muro con su eje central, actualización transaccional al mover/girar eje y eliminación independiente.
+- Control de nombres de ejes duplicados, localización del existente y edición desde plano.
+- Pruebas automáticas de undo/redo, eliminación independiente y persistencia.
+
+### Incremento 2 — recintos y separadores
+- Separadores de habitación ortogonales participan en el cálculo del conjunto de recintos, sin sólidos 3D.
+- **Incremento 2B:** las habitaciones nuevas guardan `IsAutomatic`, para distinguirlas de las creadas manualmente y no interferir con esas.
+- Al mover, añadir o quitar un separador se concilian las habitaciones automáticas *dentro de la misma transacción*; el mayor solape preserva GUID, número y nombre; los espacios nuevos reciben números únicos.
+- Al usar «Habitaciones automáticas» también se sincronizan las existentes, sin generar pasos inútiles de deshacer cuando no hubo cambios.
+- Se añadieron pruebas de dividir, fusionar, recalcular área, guardado nativo, nombres personalizados y undo/redo.
+
+**Limitaciones abiertas:** en este incremento los contornos detectables siguen siendo rectángulos ortogonales. Las habitaciones heredadas de archivos anteriores sin `IsAutomatic` permanecen manuales para no modificarlas por accidente. Todavía no se actualizan automáticamente por cambios de muros, ni se garantiza conservación de metadatos externos al fusionar habitaciones. ARQ-18 y ARQ-19 **siguen parciales**.
