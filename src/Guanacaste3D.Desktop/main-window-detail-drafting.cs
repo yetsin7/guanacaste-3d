@@ -245,13 +245,12 @@ public partial class MainWindow
         var spacing = Math.Max(4, region.PatternSpacing * _scale);
         if (region.Pattern == DetailFillPattern.Dots)
         {
-            for (var x = bounds.Left; x <= bounds.Right; x += spacing)
-                for (var y = bounds.Top; y <= bounds.Bottom; y += spacing)
+            for (var x = bounds.Left; x <= bounds.Right && overlay.Children.Count < 5000; x += spacing)
+                for (var y = bounds.Top; y <= bounds.Bottom && overlay.Children.Count < 5000; y += spacing)
                 {
                     var dot = new Ellipse { Width = 1.5, Height = 1.5, Fill = foreground };
                     Canvas.SetLeft(dot, x); Canvas.SetTop(dot, y);
                     overlay.Children.Add(dot);
-                    if (overlay.Children.Count >= 10000) break;
                 }
         }
         else if (region.Pattern == DetailFillPattern.Herringbone)
@@ -261,8 +260,8 @@ public partial class MainWindow
             var pitch = Math.Max(5, spacing * 0.70);
             var columns = Math.Min(300, (int)Math.Ceiling(bounds.Width / pitch) + 1);
             var rows = Math.Min(300, (int)Math.Ceiling(bounds.Height / pitch) + 1);
-            for (var row = 0; row <= rows; row++)
-                for (var column = 0; column <= columns; column++)
+            for (var row = 0; row <= rows && overlay.Children.Count < 5000; row++)
+                for (var column = 0; column <= columns && overlay.Children.Count < 5000; column++)
                 {
                     var x = bounds.Left + column * pitch;
                     var y = bounds.Top + row * pitch;
