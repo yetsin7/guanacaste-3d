@@ -30,15 +30,34 @@ public sealed class RecentDocuments
     /// <summary>The folder that holds the cached thumbnails.</summary>
     public string ThumbnailFolder => Path.Combine(_folder, "thumbnails");
 
-    /// <summary>The list, most recent first.</summary>
+    /// <summary>
+    /// The list, most recently opened first. Stale entries are pruned automatically so Home never advertises a
+    /// project that cannot be opened anymore.
+    /// </summary>
     public IReadOnlyList<RecentDocument> Load()
     {
         try
         {
             if (!File.Exists(_file)) return [];
-            return (JsonSerializer.Deserialize<List<RecentDocument>>(File.ReadAllText(_file), Options) ?? [])
+
+            var loaded = (JsonSerializer.Deserialize<List<RecentDocument>>(File.ReadAllText(_file), Options) ?? [])
                 .Where(item => !string.IsNullOrWhiteSpace(item.Path))
-                .OrderByDescending(item => item.LastOpened).Take(Capacity).ToArray();
+                .OrderByDescending(item => item.LastOpened)
+                .Take(Capacity)
+                .ToArray();
+
+            var existing = loaded.Where(item => File.Exists(item.Path)).ToArray();
+            if (existing.Length != loaded.Length)
+            {
+                foreach (var stale in loaded.Where(item => !File.Exists(item.Path)))
+                {
+                    try { File.Delete(ThumbnailPath(stale.Path)); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+                }
+                Save(existing);
+            }
+
+            return existing;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {

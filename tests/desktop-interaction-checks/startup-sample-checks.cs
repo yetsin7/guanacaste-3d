@@ -57,6 +57,10 @@ internal static partial class InteractionChecks
 
             // A recent list in a scratch folder: it keeps the newest first and forgets on request.
             var folder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"g3d-recents-{Guid.NewGuid():N}");
+            System.IO.Directory.CreateDirectory(folder);
+            // RecentDocuments now prunes missing paths: create real files to exercise ordering and removal.
+            System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "a.g3d"), "test");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "b.g3d"), "test");
             var recents = new RecentDocuments(folder);
             recents.Add(System.IO.Path.Combine(folder, "a.g3d"));
             recents.Add(System.IO.Path.Combine(folder, "b.g3d"));

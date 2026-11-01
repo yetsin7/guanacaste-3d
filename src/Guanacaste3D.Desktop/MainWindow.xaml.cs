@@ -34,6 +34,8 @@ public partial class MainWindow : Window
     public MainWindow(string? projectPath = null, bool showStartScreen = false)
     {
         InitializeComponent();
+        ConfigureApplicationFileMenu();
+        ApplyDesktopOptions(DesktopOptions.Load());
         InitializeCommandCustomization();
         _session = new DocumentSession(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
