@@ -38,20 +38,25 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         if (statistics.cbSize is < 1 or > 268435537)
             throw new InvalidDataException("The thumbnail input size is invalid.");
         stream.Seek(0, 0, IntPtr.Zero);
-        using var output = new MemoryStream();
+        // Allocate the bounded snapshot once. MemoryStream.ToArray previously copied up to
+        // 256 MiB a second time inside the Shell host during every thumbnail request.
+        // Publish only after the entire declared stream has been read successfully.
+        var snapshot = new byte[checked((int)statistics.cbSize)];
         var buffer = new byte[81920];
         var countPointer = Marshal.AllocCoTaskMem(sizeof(int));
         try
         {
-            while (output.Length < statistics.cbSize)
+            var offset = 0;
+            while (offset < snapshot.Length)
             {
-                var requested = (int)Math.Min(buffer.Length, statistics.cbSize - output.Length);
+                var requested = Math.Min(buffer.Length, snapshot.Length - offset);
                 stream.Read(buffer, requested, countPointer);
                 var count = Marshal.ReadInt32(countPointer);
                 if (count <= 0 || count > requested) throw new EndOfStreamException("The thumbnail stream is truncated.");
-                output.Write(buffer, 0, count);
+                Buffer.BlockCopy(buffer, 0, snapshot, offset, count);
+                offset += count;
             }
-            _snapshot = output.ToArray();
+            _snapshot = snapshot;
         }
         finally { Marshal.FreeCoTaskMem(countPointer); }
     }
