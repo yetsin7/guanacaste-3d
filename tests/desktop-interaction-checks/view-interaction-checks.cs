@@ -153,12 +153,24 @@ internal static partial class InteractionChecks
             var status = (TextBlock)panel.FindName("StatusText");
             var image = (Image)panel.FindName("PreviewImage");
             var imageHost = (FrameworkElement)panel.FindName("ImageHost");
-            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed,
-                "The Render workspace replaces the standard properties and project-browser sidebar");
-            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 425) < 2,
-                "The Render controls occupy a 420-pixel resizable sidebar beside a divider");
-            Check(panel.Background is SolidColorBrush { Color: { R: > 240, G: > 240, B: > 240 } },
-                "The Render workspace uses the application's light theme");
+            var titleBar = (FrameworkElement)_window.FindName("MainTitleBar");
+            var ribbon = (FrameworkElement)_window.FindName("RibbonTabControl");
+            var globalStatus = (FrameworkElement)_window.FindName("MainStatusStrip");
+            var return3D = (Button)_window.FindName("RenderReturn3DButton");
+            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed &&
+                  titleBar.Visibility == Visibility.Collapsed && ribbon.Visibility == Visibility.Collapsed &&
+                  globalStatus.Visibility == Visibility.Collapsed && return3D.Visibility == Visibility.Visible,
+                "Immersive Render hides the BIM chrome and palettes while leaving a visible 3D return");
+            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 475) < 4,
+                "The Render studio has its own resizable 470px sidebar and a separate mode rail");
+            Check(panel.Background is SolidColorBrush { Color: { R: < 60, G: < 60, B: < 70 } },
+                "The independent Render studio uses a dark photographic theme");
+            var sectionTabs = (TabControl)panel.FindName("SectionTabs");
+            var materialsButton = (Button)panel.FindName("RenderRailMaterials");
+            materialsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(sectionTabs.SelectedIndex == 3, "The dedicated Render rail opens the materials panel");
+            ((Button)panel.FindName("RenderRailScene")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(sectionTabs.SelectedIndex == 0, "The Render rail can return to the environment panel");
             Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
             Check(WaitFor(() => status.Text.Contains("muestra") || status.Text.Contains("lista"), 20), "The preview reports its progress in Spanish");
 
@@ -170,7 +182,7 @@ internal static partial class InteractionChecks
                 return pixels;
             }
             WaitFor(() => status.Text.Contains("lista"), 40);
-            SaveBitmap("artifacts/interaction-evidence/render-workspace-light.png");
+            SaveBitmap("artifacts/interaction-evidence/render-workspace-dark.png");
             var before = Snapshot();
             var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
             camera.Position = new System.Numerics.Vector3(-8, 8, 3);
@@ -194,9 +206,13 @@ internal static partial class InteractionChecks
                 }
             };
             accept.Start();
-            tabs.SelectedIndex = 1;
-            Check(standardSidebar.Visibility == Visibility.Visible && panel.Visibility == Visibility.Collapsed,
-                "Leaving Render restores the standard application sidebar");
+            return3D.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(tabs.SelectedIndex == 1 &&
+                  standardSidebar.Visibility == Visibility.Visible && panel.Visibility == Visibility.Collapsed &&
+                  titleBar.Visibility == Visibility.Visible && ribbon.Visibility == Visibility.Visible &&
+                  globalStatus.Visibility == Visibility.Visible && return3D.Visibility == Visibility.Collapsed,
+                "The 3D button restores the coordinated model with every BIM control, without recreating the document");
             var import = (Task)Invoke("ImportFilesAsync", (object)new[] { model })!;
             Check(WaitFor(() => import.IsCompleted, 60), "Importing a dropped file finishes");
             accept.Stop();
