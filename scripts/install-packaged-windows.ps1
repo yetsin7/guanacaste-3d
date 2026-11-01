@@ -3,7 +3,7 @@
 Installs a prebuilt Guanacaste 3D package without requiring a compiler or source checkout.
 #>
 [CmdletBinding()]
-param()
+param([switch]$EnableThumbnails)
 $ErrorActionPreference = 'Stop'
 $source = Join-Path $PSScriptRoot 'application'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\Guanacaste 3D'
@@ -11,7 +11,10 @@ $executable = Join-Path $installRoot 'Guanacaste3D.Desktop.exe'
 if (-not (Test-Path -LiteralPath (Join-Path $source 'Guanacaste3D.Desktop.exe'))) { throw 'The application payload is missing. Extract the entire ZIP before installing.' }
 $running = Get-CimInstance Win32_Process -Filter "Name='Guanacaste3D.Desktop.exe'" | Where-Object { $_.ExecutablePath -eq $executable }
 if ($running) { throw 'Save your project and close Guanacaste 3D before installing this update.' }
-& (Join-Path $PSScriptRoot 'ensure-desktop-runtime.ps1') -PackageDirectory $PSScriptRoot
+if ($EnableThumbnails) {
+    # The desktop application is self-contained; only the optional COM provider needs this runtime.
+    & (Join-Path $PSScriptRoot 'ensure-desktop-runtime.ps1') -PackageDirectory $PSScriptRoot
+}
 New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
 Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $installRoot -Recurse -Force
 $shell = New-Object -ComObject WScript.Shell
@@ -32,5 +35,12 @@ foreach ($extension in $types.Keys) {
     New-Item -Path "$typeKey\shell\open\command" -Force | Out-Null
     Set-Item -Path "$typeKey\shell\open\command" -Value "`"$executable`" `"%1`""
 }
-& (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $source 'thumbnail-handler')
+if ($EnableThumbnails) {
+    & (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $source 'thumbnail-handler') -AllowInProcess
+}
+else {
+    # Remove previously installed in-process thumbnail handlers during normal updates.
+    & (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -Unregister
+    Write-Output 'Explorer thumbnails disabled by default. Use -EnableThumbnails only if you accept in-process rendering risks.'
+}
 Write-Output "Installed Guanacaste 3D at $executable."

@@ -10,7 +10,8 @@ running Guanacaste 3D process when its executable path belongs to that install.
 #>
 [CmdletBinding()]
 param(
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$EnableThumbnails
 )
 
 $startingLocation = Get-Location
@@ -88,7 +89,14 @@ try {
         Set-Item -Path "$documentTypeKey\shell\open\command" -Value "`"$installedExecutable`" `"%1`""
     }
 
-    & (Join-Path $scriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $publishRoot 'thumbnail-handler')
+    if ($EnableThumbnails) {
+        & (Join-Path $scriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $publishRoot 'thumbnail-handler') -AllowInProcess
+    }
+    else {
+        # Older releases enabled an in-process Explorer handler automatically. Remove it on safe-default upgrades.
+        & (Join-Path $scriptRoot 'register-thumbnails.ps1') -Unregister
+        Write-Output 'Shell thumbnails are disabled by default for Explorer safety; pass -EnableThumbnails to opt in.'
+    }
 
     Write-Output "Installed Guanacaste 3D at $installedExecutable"
     Write-Output 'Registered .g3d projects, .g3df families, and .g3dt templates.'
