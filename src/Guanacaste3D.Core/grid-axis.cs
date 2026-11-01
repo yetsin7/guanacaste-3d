@@ -36,7 +36,7 @@ public sealed partial class DocumentSession
         {
             var dx = axis.End.X - axis.Start.X;
             var dy = axis.End.Y - axis.Start.Y;
-            var axisLength = Math.Hypot(dx, dy);
+            var axisLength = double.Hypot(dx, dy);
             if (axisLength < 1e-6) continue;
             var wx = end.X - start.X;
             var wy = end.Y - start.Y;
@@ -128,8 +128,8 @@ public sealed partial class DocumentSession
             var oldY = before.End.Y - before.Start.Y;
             var newX = end.X - start.X;
             var newY = end.Y - start.Y;
-            var oldLength = Math.Hypot(oldX, oldY);
-            var newLength = Math.Hypot(newX, newY);
+            var oldLength = double.Hypot(oldX, oldY);
+            var newLength = double.Hypot(newX, newY);
             if (oldLength < 1e-8 || newLength < 1e-8)
                 throw new InvalidDataException("The grid axis is too short.");
             var oux = oldX / oldLength;
