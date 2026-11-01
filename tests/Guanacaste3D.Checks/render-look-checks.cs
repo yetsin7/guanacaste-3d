@@ -30,6 +30,50 @@ static class RenderLookChecks
               RenderLooks.Skies.All(sky => RenderLooks.Styles.Any(style => style.Id == sky.StyleId)),
             "Styles have unique identifiers and every sky names an existing style");
 
+        // A neutral .cube is the identity at full intensity; reversing its channels is a true color effect.
+        var cube = "TITLE \"Identity\"\\nLUT_3D_SIZE 2\\nDOMAIN_MIN 0 0 0\\nDOMAIN_MAX 1 1 1\\n" +
+            "0 0 0\\n1 0 0\\n0 1 0\\n1 1 0\\n0 0 1\\n1 0 1\\n0 1 1\\n1 1 1\\n";
+        var lookup = ColorLookupTable.FromCube(cube.Replace("\\n", "\n"));
+        check(lookup.Size == 2 && Vector3.Distance(lookup.Sample(new Vector3(.35f,.6f,.7f)),
+              new Vector3(.35f,.6f,.7f)) < .0001f,
+            "A standard .cube file interpolates RGB with red varying fastest");
+        var sample = ColorLutPresets.Find("warm")!;
+        var colorLut = ImageProcessor.ToBgra32(image, width, height, 1, plain with
+        { Lut = sample, LutStrength = 1 });
+        var colorLutOff = ImageProcessor.ToBgra32(image, width, height, 1, plain with
+        { Lut = sample, LutStrength = 0 });
+        check(!colorLut.SequenceEqual(neutral) && colorLutOff.SequenceEqual(neutral),
+            "3D LUT filters modify the final photo and are exactly removable without rerendering");
+        check(ColorLutPresets.All.Count >= 14 &&
+              ColorLutPresets.All.Select(preset => preset.Id).Distinct().Count() == ColorLutPresets.All.Count &&
+              ColorLutPresets.All.All(preset => preset.Map.Size == 17),
+            "Offline LUT library contains 14 named presets with deterministic lookup tables");
+        var badCube = false;
+        try { _ = ColorLookupTable.FromCube("LUT_3D_SIZE 64\\n0 0 0".Replace("\\n", "\n")); }
+        catch (InvalidDataException) { badCube = true; }
+        check(badCube, "Malformed LUTs cannot allocate an unbounded 3D cube");
+
+        var lutProject = BuildingDocument.Create("Color filters");
+        lutProject.RenderSetup = new RenderSetup
+        {
+            LutPresetId = "custom", LutPath = "assets/film-look.cube", LutStrength = .65
+        };
+        var lutFile = Path.Combine(Path.GetTempPath(), "guanacaste-lut-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(lutFile, lutProject);
+            var reopened = ProjectFile.Load(lutFile).RenderSetup;
+            check(reopened?.LutPresetId == "custom" &&
+                  reopened.LutPath == "assets/film-look.cube" &&
+                  reopened.LutStrength == .65,
+                "Imported .cube references and LUT intensity survive native .g3d save/reopen");
+        }
+        finally
+        {
+            if (File.Exists(lutFile)) File.Delete(lutFile);
+            if (File.Exists(lutFile + ".bak")) File.Delete(lutFile + ".bak");
+        }
+
         var mono = ImageProcessor.ToBgra32(image, width, height, 1, plain with { Monochrome = true });
         check(Enumerable.Range(0, width * height).All(pixel => mono[pixel * 4] == mono[pixel * 4 + 1] && mono[pixel * 4 + 1] == mono[pixel * 4 + 2]),
             "Black and white has equal channels");

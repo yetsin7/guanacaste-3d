@@ -306,6 +306,20 @@
                   <TextBlock Style="{StaticResource PanelTitle}" Text="{DynamicResource RenderPanel.Image}"/>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Style}" Margin="0,4,0,4"/>
                   <ComboBox x:Name="StylePicker" SelectionChanged="Style_Changed" ToolTip="{DynamicResource RenderPanel.StyleHint}"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Margin="0,9,0,4" Text="Filtro de color fotográfico (LUT)"/>
+                  <ComboBox x:Name="LutPicker" SelectionChanged="Lut_Changed"
+                            ToolTip="Biblioteca de filtros integrada, comparable al flujo de gradación profesional; archivos .cube propios."/>
+                  <WrapPanel Margin="0,6,0,3">
+                    <Button Content="Importar .cube…" Padding="9,4" Margin="0,0,6,0" Click="LutLoad_Click"/>
+                    <Button Content="Quitar filtro" Padding="9,4" Click="LutClear_Click"/>
+                  </WrapPanel>
+                  <TextBlock x:Name="LutNameText" Style="{StaticResource PanelHint}" Text="LUT desactivado" Margin="0,2,0,5"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Intensidad del filtro"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=LutStrengthSlider, StringFormat={}{0:0%}}"/>
+                    <Slider x:Name="LutStrengthSlider" Minimum="0" Maximum="1" Value="0.7" TickFrequency="0.05"
+                            ValueChanged="LutStrength_Changed"/>
+                  </DockPanel>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.Look}"/>
                   <ComboBox x:Name="LookPicker" SelectedIndex="0" SelectionChanged="Look_Changed">
                     <ComboBoxItem Content="{DynamicResource RenderPanel.LookPhotographic}" Tag="AgX"/>

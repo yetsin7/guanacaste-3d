@@ -50,6 +50,9 @@ public partial class RenderPanel
         AberrationSlider.Value = setup.ChromaticAberration;
         GrainSlider.Value = setup.FilmGrain;
         MonochromeCheck.IsChecked = setup.Monochrome;
+        Select(LutPicker, setup.LutPresetId);
+        LutStrengthSlider.Value = setup.LutStrength;
+        RestoreLutForProject(setup.LutPath, projectFile);
         Select(SkyPicker, string.Empty);
         RestoreHdriForProject(setup.EnvironmentPath, projectFile);
         OnCameraChanged();
@@ -82,7 +85,10 @@ public partial class RenderPanel
             Clouds = SelectedClouds(), StyleId = SelectedStyle(), Highlights = HighlightsSlider.Value, Shadows = ShadowsSlider.Value,
             Vibrance = VibranceSlider.Value, Tint = TintSlider.Value, Glare = GlareSlider.Value, Fog = FogSlider.Value,
             Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,
-            Monochrome = MonochromeCheck.IsChecked == true
+            Monochrome = MonochromeCheck.IsChecked == true,
+            LutPresetId = Mode(LutPicker) is { Length: > 0 } lutId ? lutId : "none",
+            LutPath = _lutFilePath,
+            LutStrength = LutStrengthSlider.Value
         };
     }
 
@@ -90,16 +96,25 @@ public partial class RenderPanel
     public RenderSetup CaptureSetupForProject(NavigationCamera camera, string projectFile)
     {
         var setup = CaptureSetup(camera);
-        if (setup.EnvironmentPath is not { } absolute) return setup;
+        var absolute = setup.EnvironmentPath;
+        if (absolute is null && setup.LutPath is null) return setup;
         try
         {
             var folder = Path.GetDirectoryName(Path.GetFullPath(projectFile));
             if (folder is null) return setup;
-            var local = Path.GetRelativePath(folder, absolute);
-            if (!Path.IsPathRooted(local) && local != ".." &&
-                !local.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
-                !IsNetworkHdriPath(local))
-                return setup with { EnvironmentPath = local };
+            string? Portable(string? resource)
+            {
+                if (resource is null || !Path.IsPathRooted(resource)) return resource;
+                var local = Path.GetRelativePath(folder, resource);
+                return !Path.IsPathRooted(local) && local != ".." &&
+                    !local.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                    !IsNetworkHdriPath(local) ? local : resource;
+            }
+            return setup with
+            {
+                EnvironmentPath = Portable(setup.EnvironmentPath),
+                LutPath = Portable(setup.LutPath)
+            };
         }
         catch (Exception error) when (error is IOException or ArgumentException or NotSupportedException) { }
         return setup;

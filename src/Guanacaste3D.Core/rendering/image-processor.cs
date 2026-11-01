@@ -69,6 +69,8 @@ public static partial class ImageProcessor
                     var luminance = Sampling.Luminance(color);
                     color = Vector3.Max(Vector3.Zero, new Vector3(luminance) + (color - new Vector3(luminance)) * finish.Saturation);
                 }
+                if (finish.Lut is { } lut && finish.LutStrength > 0.001f)
+                    color = Vector3.Lerp(color, lut.Sample(color), Math.Clamp(finish.LutStrength, 0f, 1f));
                 if (vignette > 0)
                 {
                     var dx = (column + 0.5f) / width * 2 - 1;
