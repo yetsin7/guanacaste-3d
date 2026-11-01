@@ -1,15 +1,44 @@
 using System.Windows;
+using System.Windows.Media;
 
 namespace Guanacaste3D.Desktop;
 
 public partial class MainWindow
 {
+    private void ConfigureApplicationFileMenu()
+    {
+        FileMenu.RecentItemsProvider = () => _recents.Load();
+        FileMenu.RecentPathSelected += path =>
+        {
+            if (!ConfirmDiscard()) return;
+            OpenProjectPath(path);
+        };
+    }
+
+    private void Options_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new DesktopOptionsWindow(this, ApplyDesktopOptions);
+        dialog.ShowDialog();
+    }
+
+    private void ApplyDesktopOptions(DesktopOptions options)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(options.CanvasColor);
+            StandardWorkspace.Background = new SolidColorBrush(color);
+        }
+        catch (FormatException) { }
+        if (StartScreenControl.Visibility == Visibility.Visible) StartScreenControl.Refresh();
+    }
+
     /// <summary>Routes reusable file-menu entries to existing document and workspace commands.</summary>
     private void FileMenu_CommandInvoked(string command)
     {
         RoutedEventHandler? handler = command switch
         {
             "Home" => Home_Click,
+            "Options" => Options_Click,
             "New" => New_Click,
             "Open" => Open_Click,
             "OpenSample" => OpenSample_Click,
