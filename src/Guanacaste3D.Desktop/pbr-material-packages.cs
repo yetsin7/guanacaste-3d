@@ -89,6 +89,60 @@ internal static class PbrMaterialPackages
         }
     }
 
+    /// <summary>
+    /// Creates a self-contained folder material from one raster photograph. Both files
+    /// use the same basename and existing packages are never overwritten silently.
+    /// </summary>
+    public static string CreateFromImage(string sourceImage, string destinationManifest,
+        string name, double roughness, double metallic, double size, double relief)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 120 ||
+            !double.IsFinite(roughness) || roughness is < 0.02 or > 1 ||
+            !double.IsFinite(metallic) || metallic is < 0 or > 1 ||
+            !double.IsFinite(size) || size is < 0.01 or > 1000 ||
+            !double.IsFinite(relief) || relief is < 0 or > 1)
+            throw new ArgumentException("Invalid PBR material parameters.");
+        if (!File.Exists(sourceImage) ||
+            !new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff" }
+                .Contains(Path.GetExtension(sourceImage), StringComparer.OrdinalIgnoreCase))
+            throw new InvalidDataException("The selected PBR albedo image is invalid.");
+        if (!string.Equals(Path.GetExtension(destinationManifest), ".g3dm",
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Material packages must have a .g3dm extension.");
+        var destination = Path.GetFullPath(destinationManifest);
+        var directory = Path.GetDirectoryName(destination)!;
+        Directory.CreateDirectory(directory);
+        if (File.Exists(destination))
+            throw new IOException("The material manifest already exists.");
+        var imageName = Path.GetFileNameWithoutExtension(destination) + "-albedo" +
+            Path.GetExtension(sourceImage).ToLowerInvariant();
+        var targetImage = Path.Combine(directory, imageName);
+        if (File.Exists(targetImage))
+            throw new IOException("The material albedo already exists.");
+        // Validate that source is decodable before copying. The renderer will use its
+        // existing WPF decoder and downsampling limits after the import.
+        if (RenderTextureLibrary.Load(sourceImage) is null)
+            throw new InvalidDataException("The selected PBR image cannot be decoded.");
+        var manifest = new PbrMaterialManifest
+        {
+            Name = name.Trim(), Albedo = imageName,
+            Roughness = roughness, Metallic = metallic,
+            TextureSize = size, Relief = relief
+        };
+        File.Copy(sourceImage, targetImage);
+        try
+        {
+            var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(destination, json);
+            return destination;
+        }
+        catch
+        {
+            File.Delete(targetImage);
+            throw;
+        }
+    }
+
     public static RenderMaterial? Build(string assignment, string? projectFile, double size, double relief)
     {
         var imported = Read(ResolveManifest(assignment, projectFile));
