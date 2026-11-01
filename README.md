@@ -91,6 +91,13 @@ The **Annotate** ribbon now has real drawing workflows for **Detail Line** and *
 
 **Development status:** These changes are under review and must be tested on Windows before release. Additional work is planned for editing arbitrary polygon vertices, hatch density controls, line-weight palettes, view-specific clipboard commands and printing/export of the new annotation objects.
 
+## PBR material bundles
+
+The Render material editor supports bundled texture presets and external `.g3dpbr` sidecars for
+**albedo images + physically based scalar roughness, metalness and IOR**. The sidecar can be reused
+and edited independently of the project file. [Import instructions and format](docs/importacion-materiales-pbr.md).
+Normal, displacement and per-pixel roughness/metallic maps are **not yet supported** by this importer.
+
 ## Requirements
 
 - Windows 10 or 11, x64.
