@@ -169,6 +169,33 @@ internal static partial class InteractionChecks
             var materialsButton = (Button)panel.FindName("RenderRailMaterials");
             materialsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(sectionTabs.SelectedIndex == 3, "The dedicated Render rail opens the materials panel");
+            var gallery = (Expander)panel.FindName("GalleryExpander");
+            gallery.IsExpanded = true;
+            Pump();
+            var tiles = (WrapPanel)panel.FindName("GalleryTiles");
+            var filter = (ComboBox)panel.FindName("GalleryGroupPicker");
+            var target = (ComboBox)panel.FindName("GalleryTargetPicker");
+            var search = (TextBox)panel.FindName("GallerySearch");
+            Check(tiles.Children.OfType<Button>().Count() == 8 &&
+                  ((TextBlock)panel.FindName("GalleryPageText")).Text == "1 / 3",
+                "The optional nature gallery shows only eight thumbnail cards per page");
+            Check(target.SelectedItem is ComboBoxItem { Tag: SurfaceKind.Bark },
+                "The gallery initially targets tree bark instead of an unrelated BIM surface");
+            search.Text = "guanacaste";
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 2,
+                "Accent-insensitive gallery search filters tree bark and foliage simultaneously");
+            filter.SelectedIndex = 1;
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 1,
+                "Bark filter narrows the gallery without decoding all image previews");
+            tiles.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(Field<DocumentSession>("_session").Document.RenderMaterials.Any(material =>
+                    material.Category == SurfaceKind.Bark &&
+                    material.TexturePath == "builtin:tree-bark-guanacaste"),
+                "Clicking a thumbnail assigns its stable built-in texture key through the real project material transaction");
+            gallery.IsExpanded = false;
             ((Button)panel.FindName("RenderRailScene")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(sectionTabs.SelectedIndex == 0, "The Render rail can return to the environment panel");
             Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
