@@ -237,15 +237,15 @@ internal static class RenderTextureLibrary
             // A library preset brings its whole material (a shipped texture too, when it has one); glass may take one.
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
-                var imagePath = preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null;
-                var image = Load(imagePath);
+                var presetImagePath = preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null;
+                var image = Load(presetImagePath);
                 // Preserve the preset's PBR values while honoring the project's editable
                 // tiling and relief. Previously these edits were saved but ignored by rendering.
                 textured[assignment.Category] = MaterialPresets.Build(preset, image) with
                 {
                     TextureSize = (float)assignment.TextureSize,
                     TextureRelief = (float)assignment.Relief,
-                    NormalMap = LoadSidecarNormal(imagePath) ?? preset.Material.NormalMap
+                    NormalMap = LoadSidecarNormal(presetImagePath) ?? preset.Material.NormalMap
                 };
                 continue;
             }
