@@ -17,6 +17,7 @@ internal static class ExchangeThumbnailChecks
     internal static void Run(string directory, string[] arguments)
     {
         var original = CreateExchange();
+        VerifyChunkedStreamInitialization(original);
         var legacyPath = Path.Combine(directory, "legacy-exchange.g3dx");
         File.WriteAllText(legacyPath, original.ToJsonString());
         Verify(legacyPath, directory, arguments.Contains("--shell"));
@@ -53,6 +54,29 @@ internal static class ExchangeThumbnailChecks
         }
         throw new InvalidOperationException("Invalid exchange mesh indices were accepted.");
     }
+
+    /// <summary>Checks that the Shell provider copies a valid stream spanning multiple read chunks.</summary>
+    private static void VerifyChunkedStreamInitialization(JsonObject exchange)
+    {
+        // JSON whitespace is legal, so this exercises > 81,920 bytes without changing
+        // the geometry or requiring a large test fixture in the repository.
+        var padded = System.Text.Encoding.UTF8.GetBytes(new string(' ', 90_000) + exchange.ToJsonString());
+        var stream = SHCreateMemStream(padded, (uint)padded.Length);
+        try
+        {
+            var provider = new ThumbnailProvider();
+            provider.Initialize(stream, 0);
+            provider.GetThumbnail(96, out var bitmap, out var alpha);
+            Require(bitmap != IntPtr.Zero && alpha == 1, "Multi-chunk Shell snapshot did not render.");
+            Require(ShellExtraction.DeleteObject(bitmap), "Multi-chunk Shell bitmap ownership was not transferred.");
+        }
+        finally { Marshal.ReleaseComObject(stream); }
+        Console.WriteLine("PASS: Shell stream snapshot read across multiple bounded chunks");
+    }
+
+    [DllImport("shlwapi.dll")]
+    [return: MarshalAs(UnmanagedType.Interface)]
+    private static extern System.Runtime.InteropServices.ComTypes.IStream SHCreateMemStream(byte[] bytes, uint length);
 
     /// <summary>Untrusted exchange metadata must fail within the thumbnail allocation budget.</summary>
     private static void RejectOversizedExchange(JsonObject exchange)
