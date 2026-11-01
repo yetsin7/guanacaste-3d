@@ -73,7 +73,10 @@ public sealed class CloudLayer
     /// </summary>
     public (float Opacity, float Thickness) Sample(Vector3 direction)
     {
-        if (IsClear || direction.Z <= 0.015f) return (0, 0);
+        // Reject invalid ray directions before projection/noise: NaN and infinity otherwise
+        // propagate through the cloud opacity into the path tracer's radiance buffer.
+        if (IsClear || !float.IsFinite(direction.X) || !float.IsFinite(direction.Y) ||
+            !float.IsFinite(direction.Z) || direction.Z <= 0.015f) return (0, 0);
         var distance = _altitudeKm / direction.Z;
         var plane = new Vector2(direction.X, direction.Y) * distance;
         var point = new Vector2(plane.X * _cosWind - plane.Y * _sinWind,
