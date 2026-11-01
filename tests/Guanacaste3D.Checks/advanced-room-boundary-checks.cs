@@ -182,6 +182,9 @@ static class AdvancedRoomBoundaryChecks
               Math.Abs(room.Area - (96.04 - Math.PI * 1.5 * 1.5)) < 0.025 &&
               !RoomRegionGeometry.Contains(room, new Point2(5, 5)),
             "A complete circular separator creates a round courtyard hole with accurate tessellated area");
+        check(room.Name == "Sala alrededor del patio" && room.Number == "P-01" &&
+              session.Document.Rooms.Count == 1 && session.SynchronizeAutomaticRooms(level) == 0,
+            "Adding a nested courtyard preserves the scheduled room name, number and GUID without creating an extra room");
 
         session.UpdateCurvedRoomSeparator(circleId, new(5, 5), 2, 0, 360);
         check(session.Document.Rooms.Single().Id == id &&
