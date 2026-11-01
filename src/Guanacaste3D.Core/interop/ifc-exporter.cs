@@ -102,7 +102,9 @@ public static class IfcExporter
         foreach (var floor in document.Floors.OrderBy(floor => floor.Id))
         {
             var storey = storeys[floor.LevelId];
-            var below = writer.Add($"IFCCARTESIANPOINT((0.,0.,{Real(-floor.Thickness)}))");
+            // The model defines ElevationOffset at the slab top, relative to its storey.
+            // IFC extrusion grows upward from the underside, so subtract thickness.
+            var below = writer.Add($"IFCCARTESIANPOINT((0.,0.,{Real(floor.ElevationOffset - floor.Thickness)}))");
             var axes = writer.Add($"IFCAXIS2PLACEMENT3D({Ref(below)},$,$)");
             var placement = writer.Add($"IFCLOCALPLACEMENT({Ref(storey.Placement)},{Ref(axes)})");
             var shape = Extrusion(writer, body, zAxis, Polyline(writer, floor.Boundary), floor.Thickness);
