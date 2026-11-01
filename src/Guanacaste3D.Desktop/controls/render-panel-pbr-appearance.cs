@@ -118,21 +118,23 @@ public partial class RenderPanel
             package = PbrMaterialPackages.Read(manifestPath)?.Manifest;
             packageFolder = manifestPath is null ? null : Path.GetDirectoryName(manifestPath);
         }
-        for (var channel = 0; channel < 3; channel++)
+        for (var channel = 0; channel < 4; channel++)
         {
             var index = channel;
-            var label = channel switch { 0 => "Normal", 1 => "Rugosidad", _ => "Metálico" };
+            var label = channel switch { 0 => "Normal", 1 => "Rugosidad", 2 => "Metálico", _ => "Altura" };
             var overridePath = channel switch
             {
                 0 => selected?.NormalPath,
                 1 => selected?.RoughnessPath,
-                _ => selected?.MetallicPath
+                2 => selected?.MetallicPath,
+                _ => null
             };
             var bundledName = channel switch
             {
                 0 => package?.Normal,
                 1 => package?.RoughnessMap,
-                _ => package?.MetallicMap
+                2 => package?.MetallicMap,
+                _ => package?.HeightMap
             };
             var bundlePath = packageFolder is not null && bundledName is not null
                 ? Path.Combine(packageFolder, bundledName) : null;
@@ -170,8 +172,18 @@ public partial class RenderPanel
                 Padding = new Thickness(5, 3, 5, 3), Margin = new Thickness(2, 0, 2, 0),
                 ToolTip = "Seleccionar imagen del mapa " + label
             };
-            button.Click += (_, _) => ChoosePbrMap(category, _focusedElement, index);
-            card.Children.Add(button);
+            // Height is defined by the material package; per-element height overrides do
+            // not exist yet and must not accidentally be passed to the 3-channel editor.
+            if (channel < 3)
+            {
+                button.Click += (_, _) => ChoosePbrMap(category, _focusedElement, index);
+                card.Children.Add(button);
+            }
+            else card.Children.Add(new TextBlock
+            {
+                Text = "Desde .g3dm", Foreground = Brushes.LightGray,
+                FontSize = 10, TextAlignment = TextAlignment.Center
+            });
             if (overridePath is not null)
             {
                 var clear = new Button
