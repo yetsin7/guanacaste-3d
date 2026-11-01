@@ -82,6 +82,7 @@ public partial class MainWindow
         public int SceneVersion => window._sceneVersion;
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
+        public string? ProjectFilePath => window._filePath;
 
         /// <summary>Limits the neutral material override to rendered scenes.</summary>
         public bool ClayMode
@@ -122,6 +123,9 @@ public partial class MainWindow
         public void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
             string? normalPath, string? roughnessPath, string? metallicPath) =>
             window.SetRenderMaterialMaps(category, elementId, normalPath, roughnessPath, metallicPath);
+        public void SetRenderMaterialAppearance(SurfaceKind category, Guid? elementId,
+            double? roughness, double? metallic, double relief) =>
+            window.SetRenderMaterialAppearance(category, elementId, roughness, metallic, relief);
 
         public event Action? SceneChanged
         {
@@ -182,9 +186,31 @@ public partial class MainWindow
                 {
                     ElementId = elementId, TextureSize = size, Relief = relief,
                     NormalPath = previous?.NormalPath, RoughnessPath = previous?.RoughnessPath,
-                    MetallicPath = previous?.MetallicPath
+                    MetallicPath = previous?.MetallicPath,
+                    RoughnessOverride = previous?.RoughnessOverride, MetallicOverride = previous?.MetallicOverride
                 });
             }
+        }
+        catch (InvalidDataException exception)
+        {
+            StatusText.Text = LocalizedErrors.Translate(exception.Message);
+        }
+        RefreshAll();
+    }
+
+    /// <summary>One undoable, project-scoped update; never edits a shared .g3dm file.</summary>
+    private void SetRenderMaterialAppearance(SurfaceKind category, Guid? elementId,
+        double? roughness, double? metallic, double relief)
+    {
+        try
+        {
+            var current = _session.Document.RenderMaterials.FirstOrDefault(a =>
+                a.Category == category && a.ElementId == elementId);
+            var assignment = (current ?? new RenderMaterialAssignment(category, "stock:") { ElementId = elementId }) with
+            {
+                RoughnessOverride = roughness, MetallicOverride = metallic, Relief = relief
+            };
+            _session.SetRenderMaterial(assignment);
         }
         catch (InvalidDataException exception)
         {
