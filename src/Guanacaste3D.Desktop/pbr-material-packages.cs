@@ -5,8 +5,8 @@ using Guanacaste3D.Core.Rendering;
 namespace Guanacaste3D.Desktop;
 
 /// <summary>
-/// Portable PBR package manifest. The first version supports textured base colour and uniform
-/// physically-based roughness/metallicity (not unsupported per-pixel maps).
+/// Portable PBR package manifest for base colour and optional independently sampled normal,
+/// roughness, metallic and grayscale height channels.
 /// </summary>
 internal sealed record PbrMaterialManifest
 {
@@ -16,6 +16,7 @@ internal sealed record PbrMaterialManifest
     public string? Normal { get; init; }
     public string? RoughnessMap { get; init; }
     public string? MetallicMap { get; init; }
+    public string? HeightMap { get; init; }
     public double Roughness { get; init; } = 0.7;
     public double Metallic { get; init; }
     public double Ior { get; init; } = 1.5;
@@ -81,7 +82,8 @@ internal static class PbrMaterialPackages
             if (image is null ||
                 (manifest.Normal is not null && SafeImagePath(directory, manifest.Normal) is null) ||
                 (manifest.RoughnessMap is not null && SafeImagePath(directory, manifest.RoughnessMap) is null) ||
-                (manifest.MetallicMap is not null && SafeImagePath(directory, manifest.MetallicMap) is null))
+                (manifest.MetallicMap is not null && SafeImagePath(directory, manifest.MetallicMap) is null) ||
+                (manifest.HeightMap is not null && SafeImagePath(directory, manifest.HeightMap) is null))
                 return null;
             return (manifest, image);
         }
@@ -107,7 +109,7 @@ internal static class PbrMaterialPackages
     /// <summary>
     /// Detects a conventional PBR texture set next to a selected base-color image.
     /// Only exact stem + known channel suffixes count: unrelated images are never guessed.
-    /// Results are keyed by normal, roughnessMap, metallicMap.
+    /// Results are keyed by normal, roughnessMap, metallicMap and heightMap.
     /// </summary>
     public static IReadOnlyDictionary<string, string> DiscoverCompanionMaps(string albedoPath)
     {
@@ -127,7 +129,8 @@ internal static class PbrMaterialPackages
         {
             ("normal", ["_normal", "_normalgl", "_normal_gl", "_nor", "_nrm", "-normal"]),
             ("roughnessMap", ["_roughness", "_rough", "-roughness"]),
-            ("metallicMap", ["_metallic", "_metalness", "_metal", "-metallic"])
+            ("metallicMap", ["_metallic", "_metalness", "_metal", "-metallic"]),
+            ("heightMap", ["_height", "_displacement", "_disp", "_bump", "-height", "-displacement"])
         };
         var candidates = Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
             .Where(path => new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff" }
@@ -192,6 +195,7 @@ internal static class PbrMaterialPackages
             {
                 "normal" => "-normal",
                 "roughnessMap" => "-roughness",
+                "heightMap" => "-height",
                 _ => "-metallic"
             };
             var filename = Path.GetFileNameWithoutExtension(destination) + suffix +
@@ -206,6 +210,7 @@ internal static class PbrMaterialPackages
             Normal = names.GetValueOrDefault("normal"),
             RoughnessMap = names.GetValueOrDefault("roughnessMap"),
             MetallicMap = names.GetValueOrDefault("metallicMap"),
+            HeightMap = names.GetValueOrDefault("heightMap"),
             Roughness = roughness, Metallic = metallic,
             TextureSize = size, Relief = relief
         };
@@ -253,7 +258,9 @@ internal static class PbrMaterialPackages
             RoughnessMap = manifest.RoughnessMap is null ? null : RenderTextureLibrary.LoadScalar(
                 SafeImagePath(folder, manifest.RoughnessMap)),
             MetallicMap = manifest.MetallicMap is null ? null : RenderTextureLibrary.LoadScalar(
-                SafeImagePath(folder, manifest.MetallicMap))
+                SafeImagePath(folder, manifest.MetallicMap)),
+            HeightMap = manifest.HeightMap is null ? null : RenderTextureLibrary.LoadScalar(
+                SafeImagePath(folder, manifest.HeightMap))
         }.Sanitized();
     }
 }
