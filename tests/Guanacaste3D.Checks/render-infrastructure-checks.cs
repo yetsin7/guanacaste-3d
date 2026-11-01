@@ -81,6 +81,30 @@ static class RenderInfrastructureChecks
         catch (InvalidDataException) { rejected = true; }
         check(rejected, "PNG header requesting excessive decompression memory is rejected");
 
+        // A PNG ends at IEND: accepting appended bytes can hide malformed or polyglot files.
+        var trailingBytes = PngCodec.Encode(image).Concat(new byte[] { 0x42 }).ToArray();
+        rejected = false;
+        try { PngCodec.Decode(trailingBytes); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "PNG rejects bytes appended after IEND");
+
+        // A valid CRC does not make a shorter IHDR truthful: the zlib payload still
+        // contains the original last scanline and must be rejected as oversized.
+        var excessScanline = PngCodec.Encode(image);
+        SetBigEndian(excessScanline, 20, height - 1);
+        crc = 0xffffffff;
+        for (var i = 12; i < 29; i++)
+        {
+            crc ^= excessScanline[i];
+            for (var bit = 0; bit < 8; bit++)
+                crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xedb88320u : crc >> 1;
+        }
+        SetBigEndian(excessScanline, 29, unchecked((int)~crc));
+        rejected = false;
+        try { PngCodec.Decode(excessScanline); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "PNG rejects decompressed scanlines beyond IHDR dimensions");
+
         var invalidRaster = false;
         try { RasterImage.FromBgra32(65536, 65536, ReadOnlySpan<byte>.Empty); }
         catch (ArgumentException) { invalidRaster = true; }
