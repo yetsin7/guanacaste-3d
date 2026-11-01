@@ -294,6 +294,19 @@ public partial class MainWindow
         var wallLayer = PlanCanvas.Children.Count;
         foreach (var wall in levelWalls) AddWallBody(wall, joins);
         RenderJoinedWallOutline(levelWalls, joins, wallLayer);
+        // Draw structural columns above masonry fills. This makes the plan cut read correctly
+        // at wall/column overlaps instead of exposing block cells through a solid column.
+        foreach (var column in planDocument.Columns.Where(candidate => candidate.LevelId == _activeLevelId))
+        {
+            PlanCanvas.Children.Add(new Polygon
+            {
+                Points = new PointCollection(column.Outline.Select(WorldToCanvas)),
+                Fill = Brushes.LightGray,
+                Stroke = column.Id == _selectedColumnId ? Brushes.DarkOrange : Brushes.DimGray,
+                StrokeThickness = column.Id == _selectedColumnId ? 2 : 1,
+                Tag = column.Id
+            });
+        }
         foreach (var wall in levelWalls)
         {
             foreach (var opening in planDocument.Openings.Where(candidate => candidate.WallId == wall.Id))
