@@ -50,6 +50,10 @@ public sealed record RenderSettings
     public float SunAngularRadiusDegrees { get; init; } = 0.8f;
     public float SkyIntensity { get; init; } = 1.2f;
     public SkyKind Sky { get; init; } = SkyKind.Clear;
+    /// <summary>Optional Radiance RGBE panorama for physically based sky/environment illumination (not a flat backdrop).</summary>
+    public HdriEnvironment? Environment { get; init; }
+    /// <summary>Rotate the environment around the scene's vertical axis; degrees.</summary>
+    public float EnvironmentYawDegrees { get; init; }
     /// <summary>Atmospheric haze for <see cref="SkyKind.Clear"/>: 2 is crystal clear, 6 is hazy, 10 is smoggy.</summary>
     public float Turbidity { get; init; } = 2.5f;
     /// <summary>Number of diffuse bounces after the first hit.</summary>
