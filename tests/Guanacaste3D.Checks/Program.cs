@@ -24,14 +24,14 @@ Check(detailsSession.Document.DetailLines.Count(line => line.ViewId == firstPlan
     "A detail line appears only in its owning view");
 Check(detailsSession.Document.FilledRegions.Single(region => region.Id == regionId).Pattern ==
       DetailFillPattern.Herringbone, "Filled region retains its hatch pattern");
-var copyId = detailsSession.CopyViewDetail(drawnLine, secondPlan.Id);
-Check(detailsSession.Document.DetailLines.Single(line => line.Id == copyId).ViewId == secondPlan.Id,
+var copiedDetailId = detailsSession.CopyViewDetail(drawnLine, secondPlan.Id);
+Check(detailsSession.Document.DetailLines.Single(line => line.Id == copiedDetailId).ViewId == secondPlan.Id,
     "Copying a detail into another plan changes only its view association");
 detailsSession.Undo();
-Check(detailsSession.Document.DetailLines.All(line => line.Id != copyId),
+Check(detailsSession.Document.DetailLines.All(line => line.Id != copiedDetailId),
     "Annotation copy can be undone");
 detailsSession.Redo();
-Check(detailsSession.Document.DetailLines.Any(line => line.Id == copyId),
+Check(detailsSession.Document.DetailLines.Any(line => line.Id == copiedDetailId),
     "Annotation copy can be redone");
 var clonedDetails = detailsSession.Document.Clone();
 clonedDetails.FilledRegions[0].Boundary[0] = new Point2(50, 50);
