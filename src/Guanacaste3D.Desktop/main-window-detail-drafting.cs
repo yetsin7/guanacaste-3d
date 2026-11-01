@@ -56,14 +56,25 @@ public partial class MainWindow
         }
         else
         {
-            foreach (var style in Enum.GetValues<DetailStrokeStyle>())
-                picker.Items.Add(new ComboBoxItem { Content = style switch
-                    {
-                        DetailStrokeStyle.Solid => "Continua · paredes",
-                        DetailStrokeStyle.Dashed => "Discontinua · PISOS",
-                        DetailStrokeStyle.Dotted => "Punteada · TEXTO",
-                        _ => "Eje · SANITARIA"
-                    }, Tag = style, IsSelected = style == _detailLineStyle });
+            (string Name, DetailStrokeStyle Style)[] lineStyles =
+            [
+                ("Pared", DetailStrokeStyle.Solid),
+                ("paredes", DetailStrokeStyle.Solid),
+                ("PISOS", DetailStrokeStyle.Solid),
+                ("Potable", DetailStrokeStyle.Solid),
+                ("SANITARIA", DetailStrokeStyle.Dashed),
+                ("Storm Drain Lines", DetailStrokeStyle.Dashed),
+                ("TEXT2", DetailStrokeStyle.Dotted),
+                ("TEXTO", DetailStrokeStyle.Solid),
+                ("TEXTO MA.", DetailStrokeStyle.Solid),
+                ("TEXTOS", DetailStrokeStyle.Solid),
+                ("TEXTURAS", DetailStrokeStyle.Dotted),
+                ("línea de tubería de agua potable", DetailStrokeStyle.Center),
+                ("línea de tubería de aguas negras", DetailStrokeStyle.Dashed)
+            ];
+            foreach (var style in lineStyles)
+                picker.Items.Add(new ComboBoxItem { Content = style.Name, Tag = style.Style,
+                    IsSelected = style.Name == _detailLineName });
         }
         panel.Children.Add(picker);
         var confirm = new Button { Content = "Comenzar a dibujar", MinWidth = 155,
@@ -75,7 +86,11 @@ public partial class MainWindow
         if (picker.SelectedItem is ComboBoxItem picked)
         {
             if (region && picked.Tag is DetailFillPattern fill) _detailPattern = fill;
-            if (!region && picked.Tag is DetailStrokeStyle stroke) _detailLineStyle = stroke;
+            if (!region && picked.Tag is DetailStrokeStyle stroke)
+            {
+                _detailLineStyle = stroke;
+                _detailLineName = picked.Content?.ToString() ?? "paredes";
+            }
         }
         _detailDrawingMode = region ? DetailDrawingMode.Region : DetailDrawingMode.Line;
         _detailFirstPoint = _detailPreviewPoint = null;
