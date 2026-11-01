@@ -28,6 +28,12 @@
                   ToolTip="{DynamicResource Menu.File}" AutomationProperties.Name="{DynamicResource Menu.File}">
             <Image Source="{StaticResource Brand.Logo}" Width="20" Height="20"/>
           </Button>
+          <Button x:Name="WorkspaceToggleButton" Click="ToggleHome_Click"
+                  Style="{StaticResource QuickAccessButtonStyle}" Width="24" Height="24"
+                  ToolTip="Alternar inicio y espacio de trabajo"
+                  AutomationProperties.Name="Alternar inicio y espacio de trabajo">
+            <TextBlock Text="&#xE80F;" FontFamily="{StaticResource GlyphFont}" FontSize="15"/>
+          </Button>
           <StackPanel x:Name="QuickAccessHost" Orientation="Horizontal"/>
           <Button Click="CustomizeCommands_Click" Style="{StaticResource QuickAccessButtonStyle}" MinWidth="16"
                   ToolTip="{DynamicResource CommandCustomization.ToolTip}"
