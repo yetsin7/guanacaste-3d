@@ -44,6 +44,8 @@ public sealed class BuildingDocument
     public string Name { get; set; } = "Untitled Project";
     public List<PlanDimension> Dimensions { get; set; } = [];
     public List<Callout> Callouts { get; set; } = [];
+    public List<DetailLine> DetailLines { get; set; } = [];
+    public List<FilledRegion> FilledRegions { get; set; } = [];
     public List<Level> Levels { get; set; } = [];
     public List<GridAxis> Grids { get; set; } = [];
     public List<Wall> Walls { get; set; } = [];
@@ -101,6 +103,8 @@ public sealed class BuildingDocument
         Name = Name,
         Dimensions = [.. Dimensions],
         Callouts = [.. Callouts ?? []],
+        DetailLines = [.. DetailLines ?? []],
+        FilledRegions = (FilledRegions ?? []).Select(region => region with { Boundary = [.. region.Boundary] }).ToList(),
         Levels = [.. Levels],
         Grids = [.. Grids],
         Walls = [.. Walls],
@@ -224,6 +228,7 @@ public sealed class BuildingDocument
         WallGeometry.Validate(Walls, Openings);
         PlanDimensions.Validate(this);
         CalloutRules.Validate(this);
+        ViewDetailRules.Validate(this);
         CirculationGeometry.Validate(this);
         ArchitecturalShapes.Validate(this);
         OpeningTypeRules.Validate(this);
