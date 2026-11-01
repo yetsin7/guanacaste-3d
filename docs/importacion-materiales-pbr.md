@@ -4,9 +4,9 @@ La biblioteca incluye materiales con parámetros físicos para concreto, ladrill
 
 ## Paquetes PBR desde una carpeta
 
-En la pestaña **Render → Materiales**, abre el material de la categoría deseada y elige **Importar material PBR (.g3dpbr)…**. Un paquete consta de un archivo de texto JSON `.g3dpbr` y una imagen de color (PNG/JPEG/BMP/TIFF) en la misma carpeta o una subcarpeta.
+En la pestaña **Render → Materiales**, abre el material de la categoría deseada y elige **Importar material PBR (.g3dm)…**. Un paquete consta de un archivo de texto JSON `.g3dm` y una imagen de color (PNG/JPEG/BMP/TIFF) en la misma carpeta o una subcarpeta.
 
-Ejemplo de `ladrillo.g3dpbr`:
+Ejemplo de `ladrillo.g3dm`:
 
 ```json
 {
