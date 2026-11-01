@@ -364,6 +364,8 @@ public sealed partial class DocumentSession
             {
                 Id = newId,
                 GridAxisId = null,
+                // Never auto-reattach a copied wall when a matching datum is created or moved.
+                GridAxisAssociationDisabled = true,
                 Start = new Point2(original.Start.X + deltaX, original.Start.Y + deltaY),
                 End = new Point2(original.End.X + deltaX, original.End.Y + deltaY)
             });
@@ -381,6 +383,7 @@ public sealed partial class DocumentSession
             throw new InvalidDataException("The rotation angle is invalid.");
         if (!Document.Walls.Any(w => w.Id == id))
             throw new InvalidDataException("The wall does not exist.");
+        if (degrees % 360 == 0) return;
         var radians = degrees * Math.PI / 180;
         Commit("Transaction.RotateWall", doc =>
         {
@@ -393,7 +396,9 @@ public sealed partial class DocumentSession
                 End = new Point2(
                     wall.Start.X + dx * Math.Cos(radians) - dy * Math.Sin(radians),
                     wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians)),
-                GridAxisId = null
+                GridAxisId = null,
+                // A manual rotation is an explicit opt-out from inferred datum constraints.
+                GridAxisAssociationDisabled = true
             };
             RefreshRoomBoundariesIfNeeded(doc, wall.LevelId);
         });
