@@ -36,5 +36,44 @@ static class GridAxisChecks
         session.Redo();
         check(session.Document.Walls.Single(x => x.Id == wallId).Start == new Point2(1, 1.5),
             "Redo replays associative axis move");
+        check(session.Document.Walls.Single(x => x.Id == wallId).GridAxisId == id,
+            "Axis association persists after moving the grid");
+
+        // Removing the datum must NEVER remove the wall or its hosted door.
+        session.RemoveGridAxis(id);
+        check(!session.Document.Grids.Any(x => x.Id == id) &&
+              session.Document.Walls.Any(x => x.Id == wallId && x.GridAxisId == null) &&
+              session.Document.Openings.Any(x => x.WallId == wallId),
+            "Deleting an axis releases wall association without deleting wall or doors");
+        session.Undo();
+        check(session.Document.Grids.Any(x => x.Id == id) &&
+              session.Document.Walls.Single(x => x.Id == wallId).GridAxisId == id,
+            "Undo axis deletion restores its association");
+
+        // Removing the wall may delete its HOSTED door by the ordinary wall ownership rule,
+        // but must never delete the independent datum.
+        session.RemoveWall(wallId);
+        check(session.Document.Grids.Any(x => x.Id == id) &&
+              !session.Document.Walls.Any(x => x.Id == wallId),
+            "Deleting a wall preserves its grid axis");
+        session.Undo();
+        check(session.Document.Walls.Any(x => x.Id == wallId) &&
+              session.Document.Grids.Any(x => x.Id == id),
+            "Undo wall deletion restores wall and leaves axis intact");
+
+        var unlinkedWall = session.AddWall(level, new Point2(1, 3), new Point2(7, 3));
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId == other,
+            "A new centerline-aligned wall automatically binds to its axis");
+        session.SetWallGridAxis(unlinkedWall, null);
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId is null,
+            "A wall can explicitly release its datum association");
+        session.SetWallGridAxis(unlinkedWall, other);
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId == other,
+            "A wall can rebind to an existing aligned datum");
+        session.MoveWall(unlinkedWall, 0, 1);
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId is null &&
+              session.Document.Grids.Any(x => x.Id == other),
+            "Moving an individual wall detaches it from the axis without moving the axis");
+
     }
 }
