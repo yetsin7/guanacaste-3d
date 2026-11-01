@@ -75,6 +75,7 @@ public partial class MainWindow
             return;
         }
         if (!PlanToolArmed() && (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
+        if (TryPlaceDetail(e)) return;
         if (TryHandleGridPlacement(e)) return;
         if (TryHandleSectionPlacement(e)) return;
         if (TryPlaceOpening(e)) return;
@@ -140,6 +141,12 @@ public partial class MainWindow
     /// <summary>Cancels any in-progress sketch when the secondary mouse button is pressed.</summary>
     private void PlanCanvas_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (CancelDetailDrawing()) { e.Handled = true; return; }
+        // Right-click on an existing annotation must leave its context menu intact.
+        if ((e.OriginalSource as FrameworkElement)?.Tag is Guid annotationId &&
+            (_session.Document.DetailLines.Any(line => line.Id == annotationId) ||
+             _session.Document.FilledRegions.Any(region => region.Id == annotationId)))
+            return;
         if (CancelElectricalTools() | CancelPlumbingTools())
         {
             StatusText.Text = GetText("Status.SelectionMode");
@@ -326,6 +333,7 @@ public partial class MainWindow
         RenderElevationSymbols();
         RenderSectionSymbols();
         RenderGridAxes();
+        RenderViewDetails();
     }
 
     /// <summary>Fills a wall's mitered plan footprint, drawn above every outline so joined faces disappear.</summary>

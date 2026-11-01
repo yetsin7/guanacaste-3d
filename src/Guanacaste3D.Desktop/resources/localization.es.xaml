@@ -491,4 +491,14 @@
   <sys:String x:Key="Error.The opening cannot move across its host wall.">La abertura solo puede desplazarse a lo largo de su muro.</sys:String>
   <sys:String x:Key="Error.The dimension reference moved with the selected element.">La referencia se mueve junto al objeto. Utiliza otra referencia.</sys:String>
   <sys:String x:Key="Error.Invalid stair or railing geometry.">El tramo de escalera o barandal no tiene una geometría válida.</sys:String>
+  <sys:String x:Key="Transaction.DetailLine">Dibujar línea de detalle</sys:String>
+  <sys:String x:Key="Transaction.FilledRegion">Crear región rellenada</sys:String>
+  <sys:String x:Key="Transaction.RemoveDetail">Eliminar detalle 2D</sys:String>
+  <sys:String x:Key="Transaction.CopyDetail">Copiar detalle a otra vista</sys:String>
+  <sys:String x:Key="Error.Invalid view detail collections.">La colección de detalles 2D no es válida.</sys:String>
+  <sys:String x:Key="Error.Duplicate view annotation identifiers.">Existen identificadores duplicados en los detalles de vista.</sys:String>
+  <sys:String x:Key="Error.Invalid view detail line.">La línea de detalle no es válida.</sys:String>
+  <sys:String x:Key="Error.Invalid filled region.">La región rellenada no es válida.</sys:String>
+  <sys:String x:Key="Error.Filled region cannot have zero area.">La región rellenada debe tener superficie.</sys:String>
+  <sys:String x:Key="Error.The drawing detail does not exist.">El detalle 2D no existe.</sys:String>
 </ResourceDictionary>

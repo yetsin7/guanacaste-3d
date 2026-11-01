@@ -49,6 +49,7 @@ public partial class MainWindow
             RenderPlan();
             return;
         }
+        if (UpdateDetailDrawing(e)) return;
         TryStartElementDrag(e);
         if (_movingElement)
         {
