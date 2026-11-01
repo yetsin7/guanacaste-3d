@@ -32,6 +32,46 @@ static class AnnotationChecks
         check(ElementTags.Build(demo, demoLevel, new HashSet<TagCategory> { TagCategory.Room }).Count == demo.Rooms.Count(r => r.LevelId == demoLevel),
             "Room tags follow the requested categories");
 
+        var plan = demo.Views.First(view => view.Kind == ProjectViewKind.Plan && view.LevelId == demoLevel);
+        var tagged = new DocumentSession(demo.Clone());
+        var areaId = tagged.AddArea(demoLevel, "Patio de prueba", new Point2(25, 25), new Point2(30, 29));
+        var areas = ElementTags.Build(tagged.Document, demoLevel, new HashSet<TagCategory> { TagCategory.Area });
+        check(areas.Count == 1 && areas[0].ElementId == areaId &&
+              areas[0].Mark == "Patio de prueba" && areas[0].Position == new Point2(27.5, 27) &&
+              areas[0].Description.Contains("20"),
+            "Area labels are derived from actual geometric area and remain attached to the model element");
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true);
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true); // idempotent, no extra undo step
+        tagged.SetPlanTagVisibility(plan.Id, TagCategory.Area, true);
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id).ShowRoomTags &&
+              tagged.Document.Views.Single(view => view.Id == plan.Id).ShowAreaTags,
+            "Room and area tags can be enabled independently for one plan view");
+        var file = Path.Combine(Path.GetTempPath(), "g3d-plan-tags-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(file, tagged.Document);
+            var reopened = ProjectFile.Load(file);
+            check(reopened.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: true } &&
+                  ElementTags.Build(reopened, demoLevel, new HashSet<TagCategory> { TagCategory.Area })
+                      .Single().ElementId == areaId,
+                "Room/area tag visibility and associative area identity survive native project reload");
+        }
+        finally
+        {
+            if (File.Exists(file)) File.Delete(file);
+            if (File.Exists(file + ".bak")) File.Delete(file + ".bak");
+        }
+        tagged.Undo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: false },
+            "Undo hides area tags without hiding room tags");
+        tagged.Undo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: false, ShowAreaTags: false },
+            "Repeated tag commands do not create extra undo steps");
+        tagged.Redo();
+        tagged.Redo();
+        check(tagged.Document.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: true },
+            "Redo restores both plan tag visibility states");
+
         var session = new DocumentSession(demo);
         var added = session.AutoDimensionLevel(demoLevel);
         var expected = demo.Walls.Count(w => w.LevelId == demoLevel) + demo.Openings.Count;
