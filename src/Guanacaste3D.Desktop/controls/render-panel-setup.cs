@@ -30,6 +30,7 @@ public partial class RenderPanel
         VerticalsCheck.IsChecked = setup.CorrectVerticals;
         DepthOfFieldSlider.Value = setup.DepthOfField;
         ArtificialLightsCheck.IsChecked = setup.ArtificialLights;
+        StoneDetailCheck.IsChecked = setup.StoneMicrogeometry;
         Select(CloudStylePicker, setup.Clouds.ToString());
         // The saved sliders win over the style's own values, set when the style was selected first.
         HighlightsSlider.Value = setup.Highlights;
@@ -66,6 +67,7 @@ public partial class RenderPanel
             AutoExposure = AutoExposureCheck.IsChecked == true, Bloom = BloomCheck.IsChecked == true,
             Vignette = VignetteCheck.IsChecked == true, CorrectVerticals = VerticalsCheck.IsChecked == true,
             DepthOfField = DepthOfFieldSlider.Value, ArtificialLights = ArtificialLightsCheck.IsChecked == true,
+            StoneMicrogeometry = StoneDetailCheck.IsChecked == true,
             Clouds = SelectedClouds(), StyleId = SelectedStyle(), Highlights = HighlightsSlider.Value, Shadows = ShadowsSlider.Value,
             Vibrance = VibranceSlider.Value, Tint = TintSlider.Value, Glare = GlareSlider.Value, Fog = FogSlider.Value,
             Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,

@@ -22,6 +22,7 @@ static class NativeDocumentChecks
     private static void CheckProjectContainer(string root, Action<bool, string> check)
     {
         var project = BuildingDocument.Create("Native Project");
+        project.RenderSetup = new Guanacaste3D.Core.Rendering.RenderSetup { StoneMicrogeometry = true };
         var path = Path.Combine(root, "native-project.g3d");
         ProjectFile.Save(path, project);
 
@@ -36,6 +37,10 @@ static class NativeDocumentChecks
         var reopened = ProjectFile.Load(path);
         check(reopened.Id == project.Id && reopened.Name == project.Name,
             ".G3D project survives a validated native round trip");
+        check(reopened.RenderSetup?.StoneMicrogeometry == true,
+            "Render-only stone detail preference survives the compressed .g3d round trip");
+        check(!new Guanacaste3D.Core.Rendering.RenderSetup().StoneMicrogeometry,
+            "Legacy render setup defaults to lightweight stone shading");
 
         var disguised = Path.Combine(root, "native-project.bin");
         File.Copy(path, disguised);

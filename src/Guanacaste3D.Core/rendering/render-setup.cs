@@ -63,6 +63,9 @@ public sealed record RenderSetup
 
     public bool ArtificialLights { get; init; } = true;
 
+    /// <summary>Optional CPU-bounded render-only stone geometry, disabled in legacy projects.</summary>
+    public bool StoneMicrogeometry { get; init; }
+
     /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
     public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
 
