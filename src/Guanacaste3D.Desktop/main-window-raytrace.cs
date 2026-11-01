@@ -30,6 +30,7 @@ public partial class MainWindow
     private DispatcherTimer? _sceneDebounce;
     private bool _modelDirty = true;
     private bool _renderClay;
+    private bool _stoneMicrogeometry;
     private int _modelBuildRequest;
     private readonly System.Threading.SemaphoreSlim _modelBuildGate = new(1, 1);
     private event Action? SceneChanged;
@@ -90,6 +91,17 @@ public partial class MainWindow
             {
                 if (window._renderClay == value) return;
                 window._renderClay = value;
+                window.MarkSceneDirty();
+            }
+        }
+
+        public bool StoneMicrogeometry
+        {
+            get => window._stoneMicrogeometry;
+            set
+            {
+                if (window._stoneMicrogeometry == value) return;
+                window._stoneMicrogeometry = value;
                 window.MarkSceneDirty();
             }
         }
@@ -227,9 +239,11 @@ public partial class MainWindow
         var projectFile = _filePath;
         var lightsOn = _artificialLights;
         var clay = _renderClay;
+        var stoneDetail = _stoneMicrogeometry;
         var task = Task.Run<RenderScene?>(() =>
         {
             var mesh = BuildingMesher.Build(document, includeGround: true, plants: PlantDetail.Render);
+            if (stoneDetail) RenderStoneDisplacement.Append(mesh);
             var builder = new RenderSceneBuilder().AddBuilding(mesh,
                 RenderTextureLibrary.Resolver(materials, projectFile, lightsOn),
                 RenderTextureLibrary.ElementResolver(materials, projectFile, lightsOn));
