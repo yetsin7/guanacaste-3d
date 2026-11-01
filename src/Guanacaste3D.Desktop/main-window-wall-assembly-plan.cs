@@ -15,6 +15,10 @@ public partial class MainWindow
     private void RenderWallAssemblyPlan(Wall wall, WallType type, IReadOnlyList<Point2> footprint)
     {
         if (wall.Length <= 0.001 || _scale <= 0) return;
+        // An instance can be thinner than its type: never crash the plan viewport for an invalid overlay.
+        var finishTotal = type.LeftRepelloThickness + type.LeftFineThickness +
+                          type.RightRepelloThickness + type.RightFineThickness;
+        if (finishTotal >= wall.Thickness) return;
         var assembly = WallAssemblyPlanRules.For(type, wall.Thickness);
         var dx = (wall.End.X - wall.Start.X) / wall.Length;
         var dy = (wall.End.Y - wall.Start.Y) / wall.Length;
