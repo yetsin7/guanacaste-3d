@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Builds a downloadable Windows application installer with native file thumbnails and an offline runtime prerequisite.
+Builds a downloadable Windows application installer with optional in-process file thumbnails and an offline runtime prerequisite.
 #>
 [CmdletBinding()]
 param([string]$Version = '0.23.2')
@@ -17,7 +17,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -Dest
 & (Join-Path $PSScriptRoot 'package-runtime.ps1') -Destination $package
 @'
 @echo off
-rem Installs the application and file previews for the current Windows user.
+rem Installs the application for the current Windows user; unsafe in-process previews are disabled.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
 pause
 '@ | Set-Content -LiteralPath (Join-Path $package 'install.cmd') -Encoding ascii
@@ -25,9 +25,13 @@ pause
 # Guanacaste 3D for Windows x64
 
 Extract this entire ZIP, close Guanacaste 3D after saving your work, and run install.cmd.
-The installer creates a Start Menu shortcut and enables .g3d/.g3dt/.g3df/.g3dx file thumbnails.
-The application is self-contained. The thumbnail provider uses the bundled .NET 10 Desktop
-runtime installer only if needed; Windows may request administrator credentials for that prerequisite.
+The installer creates a Start Menu shortcut and associates .g3d/.g3dt/.g3df/.g3dx files.
+Explorer thumbnails are DISABLED by default because the current COM provider runs inside the
+requesting Shell process and may continue work after a 15-second timeout. To explicitly opt in,
+run PowerShell in this extracted directory and execute: .\install.ps1 -EnableThumbnails
+To disable them again, run: .\register-thumbnails.ps1 -Unregister
+The application is self-contained. Only optional thumbnails may need the bundled .NET 10 Desktop
+runtime installer; Windows may request administrator credentials for that prerequisite.
 No SDK is needed. Refresh Explorer with F5 after installation.
 This is an unsigned technical preview, not a certified construction tool.
 '@ | Set-Content -LiteralPath (Join-Path $package 'readme.md') -Encoding UTF8
