@@ -180,8 +180,13 @@ internal static class TreeTextureGenerator
                 return (hash & 0xFFFFFF) / 16777215f;
             }
         }
-        var a = N(ix, iy) + (N(ix + 1, iy) - N(ix, iy)) * fx;
-        var b = N(ix, iy + 1) + (N(ix + 1, iy + 1) - N(ix, iy + 1)) * fx;
+        // Hash each corner just once: saves millions of operations in a 512px texture on slower CPUs.
+        var n00 = N(ix, iy);
+        var n10 = N(ix + 1, iy);
+        var n01 = N(ix, iy + 1);
+        var n11 = N(ix + 1, iy + 1);
+        var a = n00 + (n10 - n00) * fx;
+        var b = n01 + (n11 - n01) * fx;
         return a + (b - a) * fy;
     }
 
