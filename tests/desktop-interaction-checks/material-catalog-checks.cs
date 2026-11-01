@@ -61,6 +61,55 @@ internal static partial class InteractionChecks
               Math.Abs(rendered.TextureRelief - 0.64f) < 0.0001f,
             "Preset material edits affect texture scale and relief in the renderer");
 
+        // An external PBR bundle can ship alongside a project without embedding its raster images.
+        var pbrDirectory = Path.Combine(Path.GetTempPath(), "guanacaste-pbr-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(pbrDirectory);
+        try
+        {
+            var sourceImage = (string)resolve.Invoke(null, ["builtin:brick-red", null])!;
+            File.Copy(sourceImage, Path.Combine(pbrDirectory, "albedo.png"));
+            // The creation wizard uses the same packaging API. Assert real files are written
+            // and that a new material can be immediately resolved by the renderer.
+            var packageApi = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.PbrMaterialPackages")!;
+            var createPackage = packageApi.GetMethod("CreateFromImage",
+                BindingFlags.Public | BindingFlags.Static)!;
+            var createdPath = Path.Combine(pbrDirectory, "generated.g3dm");
+            var generated = (string)createPackage.Invoke(null, [
+                sourceImage, createdPath, "Concreto nuevo", 0.62, 0.0, 1.2, 0.18
+            ])!;
+            Check(generated == createdPath && File.Exists(createdPath) &&
+                  File.Exists(Path.Combine(pbrDirectory, "generated-albedo.png")),
+                "Create PBR from image writes a portable .g3dm manifest and albedo file");
+            var generatedResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+                BindingFlags.Public | BindingFlags.Static)!.Invoke(null,
+                [new[] { new RenderMaterialAssignment(SurfaceKind.Wall, "pbr:" + createdPath) {
+                    TextureSize = 1.2, Relief = 0.18
+                } }, null, true])!;
+            Check(generatedResolver(SurfaceKind.Wall).Texture is not null &&
+                  Math.Abs(generatedResolver(SurfaceKind.Wall).Roughness - 0.62f) < 0.0001f,
+                "Newly created material is readable by the path tracer");
+            var manifestFile = Path.Combine(pbrDirectory, "test.g3dm");
+            File.WriteAllText(manifestFile,
+                "{\"version\":1,\"name\":\"Ladrillo PBR importado\",\"albedo\":\"albedo.png\"," +
+                "\"roughness\":0.87,\"metallic\":0.05,\"textureSize\":0.4,\"relief\":0.2}");
+            var pbrAssignments = new[] { new RenderMaterialAssignment(SurfaceKind.Wall, "pbr:" + manifestFile)
+                { TextureSize = 0.4, Relief = 0.2 } };
+            var pbrResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+                BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [pbrAssignments, null, true])!;
+            var pbrMaterial = pbrResolver(SurfaceKind.Wall);
+            Check(pbrMaterial.Texture is not null && pbrMaterial.Name == "Ladrillo PBR importado" &&
+                  Math.Abs(pbrMaterial.Roughness - 0.87f) < 0.0001f &&
+                  Math.Abs(pbrMaterial.Metallic - 0.05f) < 0.0001f,
+                "Imported PBR bundle drives base color texture, roughness and metalness");
+            File.WriteAllText(manifestFile,
+                "{\"version\":1,\"name\":\"Traversal\",\"albedo\":\"../brick-red.png\"}");
+            var rejectedResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+                BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [pbrAssignments, null, true])!;
+            Check(rejectedResolver(SurfaceKind.Wall).Texture is null,
+                "PBR manifest cannot reference images outside its directory");
+        }
+        finally { Directory.Delete(pbrDirectory, true); }
+
         // The ordinary WPF 3D viewport should show the same photographic texture.
         var previews = (IReadOnlyDictionary<SurfaceKind, (ImageSource Image, double Size)>)
             library.GetMethod("Previews3D", BindingFlags.Public | BindingFlags.Static)!
