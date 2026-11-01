@@ -85,39 +85,68 @@ public sealed partial class DocumentSession
             new Point2(axis.End.X + deltaX, axis.End.Y + deltaY));
     }
 
-    // A wall belongs to an axis geometrically only if the whole wall centre line sits on that datum
-    // and both finite segments overlap. It is not enough to merely cross the axis.
-    private static void TranslateAxisAlignedWalls(BuildingDocument document, GridAxis axis, double dx, double dy)
+    /// <summary>Finds an axis coinciding with the centerline of the entire wall.</summary>
+    private static Guid? FindAlignedGridAxis(BuildingDocument doc, Point2 start, Point2 end) =>
+        doc.Grids.FirstOrDefault(axis => IsAligned(axis, start, end))?.Id;
+
+    private static bool IsAligned(GridAxis axis, Point2 start, Point2 end)
     {
         const double toleranceMeters = 0.015;
-        var axisDx = axis.End.X - axis.Start.X;
-        var axisDy = axis.End.Y - axis.Start.Y;
-        var axisLength = double.Hypot(axisDx, axisDy);
-        var ux = axisDx / axisLength;
-        var uy = axisDy / axisLength;
+        var dx = axis.End.X - axis.Start.X;
+        var dy = axis.End.Y - axis.Start.Y;
+        var length = double.Hypot(dx, dy);
+        if (length < 1e-8) return false;
+        var ux = dx / length;
+        var uy = dy / length;
+        var d1 = Math.Abs((start.X - axis.Start.X) * uy - (start.Y - axis.Start.Y) * ux);
+        var d2 = Math.Abs((end.X - axis.Start.X) * uy - (end.Y - axis.Start.Y) * ux);
+        if (d1 > toleranceMeters || d2 > toleranceMeters) return false;
+        var from = (start.X - axis.Start.X) * ux + (start.Y - axis.Start.Y) * uy;
+        var to = (end.X - axis.Start.X) * ux + (end.Y - axis.Start.Y) * uy;
+        return Math.Max(Math.Min(from, to), 0) < Math.Min(Math.Max(from, to), length) - 1e-8;
+    }
 
+    /// <summary>Explicitly binds/unbinds a wall without changing either element's geometry.</summary>
+    public void SetWallGridAxis(Guid wallId, Guid? axisId)
+    {
+        var wall = Document.Walls.FirstOrDefault(w => w.Id == wallId)
+            ?? throw new InvalidDataException("The wall does not exist.");
+        if (axisId is Guid grid && !Document.Grids.Any(axis => axis.Id == grid))
+            throw new InvalidDataException("The grid axis does not exist.");
+        if (axisId is Guid selected && !IsAligned(Document.Grids.Single(a => a.Id == selected), wall.Start, wall.End))
+            throw new InvalidDataException("The wall centerline must align with the grid axis.");
+        Commit("Transaction.BindWallGridAxis", doc =>
+        {
+            var index = doc.Walls.FindIndex(w => w.Id == wallId);
+            doc.Walls[index] = doc.Walls[index] with { GridAxisId = axisId };
+        });
+    }
+
+    /// <summary>Moves only linked walls, plus legacy aligned walls not linked to another axis.</summary>
+    private static void TranslateAxisAlignedWalls(BuildingDocument document, GridAxis axis, double dx, double dy)
+    {
         for (var i = 0; i < document.Walls.Count; i++)
         {
             var wall = document.Walls[i];
-            var distanceStart = Math.Abs((wall.Start.X - axis.Start.X) * uy -
-                                         (wall.Start.Y - axis.Start.Y) * ux);
-            var distanceEnd = Math.Abs((wall.End.X - axis.Start.X) * uy -
-                                       (wall.End.Y - axis.Start.Y) * ux);
-            if (distanceStart > toleranceMeters || distanceEnd > toleranceMeters) continue;
-            var from = (wall.Start.X - axis.Start.X) * ux + (wall.Start.Y - axis.Start.Y) * uy;
-            var to = (wall.End.X - axis.Start.X) * ux + (wall.End.Y - axis.Start.Y) * uy;
-            if (Math.Max(Math.Min(from, to), 0) >= Math.Min(Math.Max(from, to), axisLength) - 1e-8) continue;
-
+            if (wall.GridAxisId != axis.Id &&
+                (wall.GridAxisId is not null || !IsAligned(axis, wall.Start, wall.End))) continue;
             document.Walls[i] = wall with
             {
                 Start = new Point2(wall.Start.X + dx, wall.Start.Y + dy),
-                End = new Point2(wall.End.X + dx, wall.End.Y + dy)
+                End = new Point2(wall.End.X + dx, wall.End.Y + dy),
+                GridAxisId = axis.Id
             };
-            // Wall-hosted openings use the wall ID and local offset: they follow the moved host automatically.
         }
     }
 
     /// <summary>Removes the datum and dependent annotations, preserving existing building elements.</summary>
     public void RemoveGridAxis(Guid id) =>
-        Commit("Transaction.RemoveGridAxis", document => document.Grids.RemoveAll(axis => axis.Id == id));
+        Commit("Transaction.RemoveGridAxis", document =>
+        {
+            document.Grids.RemoveAll(axis => axis.Id == id);
+            for (var i = 0; i < document.Walls.Count; i++)
+                if (document.Walls[i].GridAxisId == id)
+                    document.Walls[i] = document.Walls[i] with { GridAxisId = null };
+            // Existing walls and their hosted openings are deliberately retained.
+        });
 }
