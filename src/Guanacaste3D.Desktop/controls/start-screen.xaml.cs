@@ -45,6 +45,7 @@ public sealed class StartItem : INotifyPropertyChanged
     public string? Path { get; init; }
     public StartSample? Sample { get; init; }
     public DateTime Modified { get; init; }
+    public DateTime FileModified { get; init; }
 
     public ImageSource? Thumbnail
     {
@@ -95,12 +96,20 @@ public partial class StartScreen : UserControl
         if (query.Length > 0)
             items = items.Where(item => item.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                                         item.Location.Contains(query, StringComparison.CurrentCultureIgnoreCase));
-        var byName = (SortPicker.SelectedItem as ComboBoxItem)?.Tag as string == "Name";
+        var sortMode = (SortPicker.SelectedItem as ComboBoxItem)?.Tag as string;
         var descending = DescendingButton.IsChecked == true;
-        items = byName
-            ? descending ? items.OrderByDescending(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
-                : items.OrderBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
-            : descending ? items.OrderByDescending(item => item.Modified) : items.OrderBy(item => item.Modified);
+        items = sortMode switch
+        {
+            "Name" => descending
+                ? items.OrderByDescending(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
+                : items.OrderBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase),
+            "Modified" => descending
+                ? items.OrderByDescending(item => item.FileModified)
+                : items.OrderBy(item => item.FileModified),
+            _ => descending
+                ? items.OrderByDescending(item => item.Modified)
+                : items.OrderBy(item => item.Modified)
+        };
         var list = items.ToList();
         Items.ItemsSource = list;
         EmptyText.Text = Text(query.Length > 0 ? "Start.NoMatches" : "Start.Empty");
@@ -121,7 +130,8 @@ public partial class StartScreen : UserControl
                 Detail = lastOpened.ToString("d/M/yy, H:mm", CultureInfo.CurrentCulture),
                 Location = System.IO.Path.GetDirectoryName(recent.Path) ?? string.Empty,
                 ToolTip = recent.Path,
-                Modified = lastOpened
+                Modified = lastOpened,
+                FileModified = File.GetLastWriteTime(recent.Path)
             };
             item.Thumbnail = CachedThumbnail(_host.Recents.ThumbnailPath(recent.Path)) ?? Placeholder();
             if (!File.Exists(_host.Recents.ThumbnailPath(recent.Path)))
@@ -139,7 +149,8 @@ public partial class StartScreen : UserControl
                 Title = Text(sample.TitleKey), Detail = Text(sample.DetailKey), Badge = Text("Start.SampleBadge"),
                 Sample = sample, ToolTip = Text(sample.DetailKey),
                 // Samples keep the order the application lists them in when sorted "by date".
-                Modified = DateTime.MaxValue.AddDays(-order)
+                Modified = DateTime.MaxValue.AddDays(-order),
+                FileModified = DateTime.MaxValue.AddDays(-order)
             };
             var cached = System.IO.Path.Combine(_host.Recents.ThumbnailFolder, $"sample-{sample.Id}.png");
             item.Thumbnail = CachedThumbnail(sample.Thumbnail ?? cached) ?? Placeholder();
