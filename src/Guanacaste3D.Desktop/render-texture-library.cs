@@ -76,6 +76,11 @@ internal static class RenderTextureLibrary
     public static string? Resolve(string texturePath, string? projectFile)
     {
         // Library identifiers are not file paths. Presets resolve to their shipped texture key when available.
+        if (PbrMaterialPackages.IsPackage(texturePath))
+        {
+            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(texturePath, projectFile));
+            return imported?.AlbedoPath;
+        }
         if (texturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
         {
             var preset = MaterialPresets.FromPath(texturePath);
@@ -142,7 +147,9 @@ internal static class RenderTextureLibrary
             // Presets store a material: identifier, not a filesystem path. Resolve the
             // preset's bundled texture so the interactive 3D viewport matches the render.
             var preset = MaterialPresets.FromPath(assignment.TexturePath);
-            var path = preset is not null
+            var path = PbrMaterialPackages.IsPackage(assignment.TexturePath)
+                ? Resolve(assignment.TexturePath, projectFile)
+                : preset is not null
                 ? preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null
                 : assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal)
                     ? null : Resolve(assignment.TexturePath, projectFile);
@@ -183,6 +190,13 @@ internal static class RenderTextureLibrary
         var textured = new Dictionary<SurfaceKind, RenderMaterial>();
         foreach (var assignment in assignments)
         {
+            if (PbrMaterialPackages.IsPackage(assignment.TexturePath))
+            {
+                if (PbrMaterialPackages.Build(assignment.TexturePath, projectFile,
+                        assignment.TextureSize, assignment.Relief) is { } imported)
+                    textured[assignment.Category] = imported;
+                continue;
+            }
             // A library preset brings its whole material (a shipped texture too, when it has one); glass may take one.
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
