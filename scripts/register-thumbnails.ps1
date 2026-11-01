@@ -9,9 +9,13 @@ the user's thumbnail visibility preferences. Requires the .NET 10 Desktop runtim
 [CmdletBinding()]
 param(
     [string]$ProviderDirectory,
-    [switch]$Unregister
+    [switch]$Unregister,
+    [switch]$AllowInProcess
 )
 $ErrorActionPreference = 'Stop'
+if (-not $Unregister -and -not $AllowInProcess) {
+    throw 'In-process Windows Shell thumbnail registration is unsafe by default. Explicitly pass -AllowInProcess to opt in.'
+}
 $providerClass = '{2175B67E-0798-4A06-B104-4F1B6E9C42D8}'
 $thumbnailInterface = '{E357FCCD-A995-4576-B01F-234630154E96}'
 $classesRoot = 'HKCU:\Software\Classes'
