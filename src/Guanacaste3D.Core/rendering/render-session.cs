@@ -297,6 +297,10 @@ public sealed class RenderSession : IDisposable
         var thick = Math.Max(1, Math.Min(2, Math.Min(width, height) / 8));
         void Set(int column, int row)
         {
+            // The final bucket on each edge can be only one pixel wide/high.
+            // Never paint bracket pixels outside that bucket or the image buffer.
+            if (column < x || column >= x + width || row < y || row >= y + height)
+                return;
             var offset = (row * stride + column) * 4;
             bgra[offset] = 60; bgra[offset + 1] = 170; bgra[offset + 2] = 255;
         }
