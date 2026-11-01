@@ -551,8 +551,12 @@
                         <ComboBoxItem Content="{DynamicResource RenderGallery.Bark}" Tag="bark"/>
                         <ComboBoxItem Content="{DynamicResource RenderGallery.Foliage}" Tag="foliage"/>
                         <ComboBoxItem Content="{DynamicResource RenderGallery.Other}" Tag="other"/>
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.Pbr}" Tag="pbr"/>
                         <ComboBoxItem Content="{DynamicResource RenderGallery.All}" Tag="all"/>
                       </ComboBox>
+                      <Button x:Name="GalleryImportPbrButton" Content="{DynamicResource RenderGallery.AddPbr}"
+                              Click="GalleryImportPbr_Click" HorizontalAlignment="Stretch" Margin="0,8,0,0"
+                              Padding="12,8" Background="#25445A" Foreground="#F5F9FC" BorderBrush="#4B7280"/>
                       <TextBox x:Name="GallerySearch" Margin="0,9,0,10"
                                TextChanged="GalleryFilter_Changed"
                                ToolTip="{DynamicResource RenderGallery.SearchHint}"/>
@@ -569,6 +573,54 @@
                         <TextBlock x:Name="GalleryPageText" HorizontalAlignment="Center" TextAlignment="Center"
                                    VerticalAlignment="Center" Foreground="#DBE7F3" FontSize="12"/>
                       </DockPanel>
+                      <Border x:Name="GalleryAppearanceEditor" Background="#1F3042"
+                              BorderBrush="#406075" BorderThickness="1" CornerRadius="9"
+                              Padding="12" Margin="0,15,0,0">
+                        <StackPanel>
+                          <TextBlock Text="{DynamicResource RenderGallery.Appearance}" FontWeight="SemiBold"
+                                     Foreground="White" FontSize="14" Margin="0,0,0,8"/>
+                          <TextBlock x:Name="GalleryAppearanceName" Text="{DynamicResource RenderGallery.NoMaterial}"
+                                     TextWrapping="Wrap" Foreground="#ABC3D1" FontSize="11" Margin="0,0,0,8"/>
+                          <DockPanel>
+                            <TextBlock x:Name="GalleryRoughnessValue" DockPanel.Dock="Right" Foreground="#70DAC9"
+                                       Text="0.70" Width="45" TextAlignment="Right"/>
+                            <TextBlock Text="{DynamicResource RenderGallery.Roughness}" Foreground="#EDF5FA"/>
+                          </DockPanel>
+                          <Slider x:Name="GalleryRoughnessSlider" Minimum="0.02" Maximum="1" Value="0.7"
+                                  SmallChange="0.01" TickFrequency="0.01" Margin="0,2,0,10"
+                                  ValueChanged="GalleryAppearanceValue_Changed"/>
+                          <DockPanel>
+                            <TextBlock x:Name="GalleryMetallicValue" DockPanel.Dock="Right" Foreground="#70DAC9"
+                                       Text="0.00" Width="45" TextAlignment="Right"/>
+                            <TextBlock Text="{DynamicResource RenderGallery.Metallic}" Foreground="#EDF5FA"/>
+                          </DockPanel>
+                          <Slider x:Name="GalleryMetallicSlider" Minimum="0" Maximum="1" Value="0"
+                                  SmallChange="0.01" TickFrequency="0.01" Margin="0,2,0,10"
+                                  ValueChanged="GalleryAppearanceValue_Changed"/>
+                          <DockPanel>
+                            <TextBlock x:Name="GalleryReliefValue" DockPanel.Dock="Right" Foreground="#70DAC9"
+                                       Text="0.30" Width="45" TextAlignment="Right"/>
+                            <TextBlock Text="{DynamicResource RenderGallery.Relief}" Foreground="#EDF5FA"/>
+                          </DockPanel>
+                          <Slider x:Name="GalleryReliefSlider" Minimum="0" Maximum="1" Value="0.3"
+                                  SmallChange="0.01" TickFrequency="0.01" Margin="0,2,0,8"
+                                  ValueChanged="GalleryAppearanceValue_Changed"/>
+                          <WrapPanel Margin="0,4,0,8">
+                            <Button x:Name="GalleryApplyAppearanceButton"
+                                    Content="{DynamicResource RenderGallery.Apply}"
+                                    Click="GalleryApplyAppearance_Click" Padding="11,7"
+                                    Background="#246E68" Foreground="White" Margin="0,0,7,5"/>
+                            <Button x:Name="GalleryResetAppearanceButton"
+                                    Content="{DynamicResource RenderGallery.Reset}"
+                                    Click="GalleryResetAppearance_Click" Padding="11,7" Margin="0,0,0,5"/>
+                          </WrapPanel>
+                          <TextBlock Text="{DynamicResource RenderGallery.MapChannels}" Foreground="#EDF5FA"
+                                     FontWeight="SemiBold" Margin="0,4,0,6"/>
+                          <WrapPanel x:Name="GalleryPbrMapCards" HorizontalAlignment="Center"/>
+                          <TextBlock Text="{DynamicResource RenderGallery.MapHint}" Foreground="#8FA8BC"
+                                     TextWrapping="Wrap" FontSize="10.5" Margin="0,6,0,0"/>
+                        </StackPanel>
+                      </Border>
                     </StackPanel>
                   </Expander>
                   <CheckBox x:Name="StoneDetailCheck" Margin="0,8,0,4" IsChecked="False"

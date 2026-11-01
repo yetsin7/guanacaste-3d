@@ -308,6 +308,8 @@ internal static class RenderTextureLibrary
             if (material is null) continue;
             textured[assignment.Category] = material with
             {
+                Roughness = assignment.RoughnessOverride is { } roughness ? (float)roughness : material.Roughness,
+                Metallic = assignment.MetallicOverride is { } metallic ? (float)metallic : material.Metallic,
                 NormalMap = assignment.NormalPath is null ? material.NormalMap :
                     LoadNormal(Resolve(assignment.NormalPath, projectFile)),
                 RoughnessMap = assignment.RoughnessPath is null ? material.RoughnessMap :

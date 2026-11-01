@@ -264,7 +264,7 @@ public partial class RenderPanel
             .FirstOrDefault(item => item.Tag as string == (assignment?.TexturePath ?? StockTag)) ?? picker.Items[0];
     }
 
-    private static string MaterialDisplayName(string path)
+    private string MaterialDisplayName(string path)
     {
         if (path == "stock:") return "Material original + mapas PBR";
         if (MaterialPresets.FromPath(path) is { } preset) return preset.Name;
@@ -280,7 +280,7 @@ public partial class RenderPanel
         }
         if (PbrMaterialPackages.IsPackage(path))
         {
-            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(path, null));
+            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(path, _source?.ProjectFilePath));
             return imported?.Manifest.Name ?? "⚠ Paquete PBR no disponible: " + Path.GetFileName(path);
         }
         return Path.GetFileName(path);
@@ -312,8 +312,12 @@ public partial class RenderPanel
                             "El paquete no es válido. Comprueba los parámetros y que la imagen albedo esté junto al manifiesto.",
                             "Importación PBR", MessageBoxButton.OK, MessageBoxImage.Warning);
                     else
+                    {
+                        PbrGalleryLibrary.Remember(pbrDialog.FileName);
                         _source.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + pbrDialog.FileName,
                             package.Value.Manifest.TextureSize, package.Value.Manifest.Relief, scope);
+                        RefreshMaterialGallery();
+                    }
                 }
                 RefreshMaterialRows();
                 return;
@@ -421,7 +425,9 @@ public partial class RenderPanel
             // No silent overwrite: protect both the manifest and its companion image.
             var destination = PbrMaterialPackages.CreateFromImage(chooseImage.FileName,
                 save.FileName, nameInput.Text, roughness, metallic, size, relief);
+            PbrGalleryLibrary.Remember(destination);
             _source?.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + destination, size, relief, scope);
+            RefreshMaterialGallery();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
                                             ArgumentException or NotSupportedException)

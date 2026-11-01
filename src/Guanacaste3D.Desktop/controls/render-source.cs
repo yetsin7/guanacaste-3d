@@ -21,6 +21,8 @@ internal interface IRenderSource
     NavigationCamera Camera { get; }
 
     string ProjectName { get; }
+    /// <summary>Current project's path for resolving relative .g3dm references; null for new projects.</summary>
+    string? ProjectFilePath { get; }
 
     (Vector3 Min, Vector3 Max) SceneBounds();
 
@@ -48,6 +50,9 @@ internal interface IRenderSource
     /// <summary>Set or remove independently loaded PBR maps, preserving the selected base material and undo history.</summary>
     void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
         string? normalPath, string? roughnessPath, string? metallicPath);
+    /// <summary>Non-destructive per-surface sliders: one undoable transaction, never edits the .g3dm manifest.</summary>
+    void SetRenderMaterialAppearance(SurfaceKind category, Guid? elementId,
+        double? roughness, double? metallic, double relief);
 
     /// <summary>Render-only stone tessellation. Off leaves low-power machines and the BIM model unaffected.</summary>
     bool StoneMicrogeometry { get; set; }
