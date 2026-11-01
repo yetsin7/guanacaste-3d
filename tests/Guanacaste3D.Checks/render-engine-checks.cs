@@ -12,6 +12,7 @@ static class RenderEngineChecks
     public static void Run(Action<bool, string> check)
     {
         Materials(check);
+        ProjectedNormalMaps(check);
         CastConcrete(check);
         TextureInputValidation(check);
         Sky(check);
@@ -46,6 +47,24 @@ static class RenderEngineChecks
         check(float.IsFinite(broken.BaseColor.X) && broken.BaseColor.Y == 1 && broken.BaseColor.Z == 0 && broken.Roughness <= 1 &&
               broken.Ior >= 1 && broken.Transmission == 1, "Materials with NaN or out-of-range values are sanitized before rendering");
         check(Math.Abs(new RenderMaterial { Ior = 1.5f }.DielectricF0 - 0.04f) < 1e-4f, "A glass index of 1.5 reflects 4 % at normal incidence");
+    }
+
+    /// <summary>A scanned normal map bends a BIM floor or wall without altering its mesh.</summary>
+    private static void ProjectedNormalMaps(Action<bool, string> check)
+    {
+        var tilted = NormalMap.FromRgb(1, 1, [218, 128, 218]);
+        var neutral = NormalMap.FromRgb(1, 1, [128, 128, 255]);
+        var sample = tilted.Sample(0.3f, 0.7f);
+        var floor = NormalMap.PerturbProjected(Vector3.UnitZ, sample);
+        var half = NormalMap.PerturbProjected(Vector3.UnitZ, sample, 0.5f);
+        var wall = NormalMap.PerturbProjected(-Vector3.UnitY, sample);
+        var flat = NormalMap.PerturbProjected(Vector3.UnitZ, neutral.Sample(0.3f, 0.7f));
+        check(floor.X > 0.3f && floor.Z > 0.3f && half.X > 0 && half.X < floor.X &&
+              Vector3.Distance(flat, Vector3.UnitZ) < 0.01f &&
+              wall.X > 0.3f && Vector3.Dot(wall, -Vector3.UnitY) > 0.3f,
+            "Normal maps tilt stone and masonry in world projection, preserve flat maps and fade with strength");
+        check(Vector3.Distance(NormalMap.PerturbProjected(Vector3.UnitZ, sample, 0), Vector3.UnitZ) < 1e-6f,
+            "Distant projected normal detail fades completely without changing the BIM surface");
     }
 
     /// <summary>Checks that exposed concrete varies across its surface while painted walls keep their own finish.</summary>
