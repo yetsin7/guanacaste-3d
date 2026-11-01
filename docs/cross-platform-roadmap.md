@@ -4,7 +4,7 @@
 
 - **Motor:** `Guanacaste3D.Core` usa `net10.0`, sin depender de WPF. La geometría BIM, el almacenamiento nativo `.g3d` y las transacciones se comparten entre sistemas.
 - **Interfaz Windows actual:** `Guanacaste3D.Desktop` usa WPF (`net10.0-windows`). Se conserva íntegra durante la transición.
-- **Interfaz multiplataforma inicial:** `Guanacaste3D.CrossPlatform` usa Avalonia 12.1.4, `net10.0`, y referencia el mismo `Guanacaste3D.Core`. Actualmente permite crear, abrir, validar, resumir y guardar proyectos; **no tiene paridad de modelado, anotación ni renderizado con WPF**.
+- **Interfaz multiplataforma inicial:** `Guanacaste3D.CrossPlatform` usa Avalonia 12.1.4, `net10.0`, y referencia el mismo `Guanacaste3D.Core`. Actualmente permite crear, abrir, validar y guardar proyectos, visualizar una planta 2D, seleccionar muros/ejes, crear muros y ejes, renombrar ejes y gestionar deshacer/rehacer mediante DocumentSession. **Todavía no tiene paridad de modelado, anotación ni renderizado con WPF**.
 - **CI:** matriz de Windows x64, Linux x64 y macOS Apple Silicon (arm64). El build no sustituye a las pruebas de interacción real en esos sistemas.
 
 ## Principios de migración
@@ -32,3 +32,11 @@ dotnet run --project src/Guanacaste3D.CrossPlatform/Guanacaste3D.CrossPlatform.c
 ```
 
 La ventana preliminar no debe comercializarse como editor BIM completo. La interfaz WPF continúa siendo la versión de trabajo principal mientras avanza la migración.
+
+## Segundo hito: edición BIM 2D (prototipo)
+
+La ventana `PlanWorkspace` añade una cuadrícula de metros y dibujo de muros y ejes mediante clic en dos puntos. La selección presenta propiedades y navegador BIM, con controles de renombrado de ejes, eliminación individual y deshacer/rehacer. La geometría procede de `DocumentSession`; el guardado escribe el documento modificado.
+
+**Importante:** mover un eje y arrastrar automáticamente los muros sujetos corresponde a la rama separada `feature/associative-grid-axes-20261101`. Esa rama debe integrarse cuidadosamente antes de prometer vínculos asociativos de geometría en el cliente multiplataforma. Borrar un eje o muro en la interfaz inicial es independiente del otro, conservando las reglas de `DocumentSession`.
+
+**Próximas pruebas:** interacción real del viewport en Windows, macOS y Linux (incluyendo X11/Wayland), persistencia, coordenadas, selección y vistas con zoom/rotación, además del paquete `.app` firmado y los paquetes de Linux.
