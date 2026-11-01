@@ -201,6 +201,62 @@ internal static partial class InteractionChecks
                     material.Category == SurfaceKind.Bark &&
                     material.TexturePath == "builtin:tree-bark-guanacaste"),
                 "Clicking a thumbnail assigns its stable built-in texture key through the real project material transaction");
+
+            // A referenced .g3dm appears as a picture in the same gallery, without a filesystem scan.
+            var libraryType = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.RenderTextureLibrary")!;
+            var sourceImage = (string)libraryType.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, ["builtin:brick-red", null])!;
+            var pbrApi = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.PbrMaterialPackages")!;
+            var createPackage = pbrApi.GetMethod("CreateFromImage", BindingFlags.Public | BindingFlags.Static)!;
+            var packagePath = Path.Combine(folder, "galeria-pbr.g3dm");
+            createPackage.Invoke(null, [
+                sourceImage, packagePath, "Piedra Galería PBR", 0.76, 0.08, 1.5, 0.3
+            ]);
+            Field<DocumentSession>("_session").SetRenderMaterial(
+                new RenderMaterialAssignment(SurfaceKind.Bark, "pbr:" + packagePath)
+                { TextureSize = 1.5, Relief = 0.3 });
+            Invoke("RefreshAll");
+            Pump();
+            filter.SelectedIndex = 4;
+            search.Text = "Piedra Galeria PBR";
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 1 &&
+                  tiles.Children.OfType<Button>().Single().Tag is string cardKey &&
+                  cardKey.StartsWith("pbr:", StringComparison.Ordinal),
+                "Project-referenced .g3dm materials have a searchable image card and are not treated as raw file paths");
+            Check(((WrapPanel)panel.FindName("GalleryPbrMapCards")).Children.Count == 3,
+                "PBR appearance inspector provides independent normal, roughness and metallic texture slots");
+            var roughnessControl = (Slider)panel.FindName("GalleryRoughnessSlider");
+            var metallicControl = (Slider)panel.FindName("GalleryMetallicSlider");
+            var reliefControl = (Slider)panel.FindName("GalleryReliefSlider");
+            Check(Math.Abs(roughnessControl.Value - 0.76) < 0.001 &&
+                  Math.Abs(metallicControl.Value - 0.08) < 0.001,
+                "The inspector reads the physical defaults from the imported .g3dm manifest");
+            roughnessControl.Value = 0.28;
+            metallicControl.Value = 0.47;
+            reliefControl.Value = 0.63;
+            ((Button)panel.FindName("GalleryApplyAppearanceButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var pbrApplied = Field<DocumentSession>("_session").Document.RenderMaterials.Single(material =>
+                material.Category == SurfaceKind.Bark && material.ElementId is null);
+            Check(pbrApplied.RoughnessOverride is { } rr && Math.Abs(rr - 0.28) < 0.001 &&
+                  pbrApplied.MetallicOverride is { } mm && Math.Abs(mm - 0.47) < 0.001 &&
+                  Math.Abs(pbrApplied.Relief - 0.63) < 0.001,
+                "Sliders commit one non-destructive, project-scoped material appearance edit");
+            var persistenceFile = Path.Combine(folder, "apariencia-pbr.g3d");
+            ProjectFile.Save(persistenceFile, Field<DocumentSession>("_session").Document);
+            Check(ProjectFile.Load(persistenceFile).RenderMaterials.Any(material =>
+                    material.Category == SurfaceKind.Bark && material.RoughnessOverride is > 0.27 and < 0.29),
+                "The material appearance sliders survive native save and reload");
+            Check(File.ReadAllText(packagePath).Contains("0.76") && !File.ReadAllText(packagePath).Contains("0.28"),
+                "Editing one surface leaves the shared original .g3dm material unchanged");
+            ((Button)panel.FindName("GalleryResetAppearanceButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var restored = Field<DocumentSession>("_session").Document.RenderMaterials.Single(material =>
+                material.Category == SurfaceKind.Bark && material.ElementId is null);
+            Check(restored.RoughnessOverride is null && restored.MetallicOverride is null &&
+                  Math.Abs(restored.Relief - 0.3) < 0.001,
+                "Reset removes only per-project overrides and restores the package relief");
             gallery.IsExpanded = false;
             ((Button)panel.FindName("RenderRailScene")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(sectionTabs.SelectedIndex == 0, "The Render rail can return to the environment panel");
