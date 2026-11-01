@@ -240,6 +240,33 @@ public partial class RenderPanel
         RefreshMaterialRows();
     }
 
+    /// <summary>
+    /// Decode only the longest edge of a thumbnail. DecodePixelWidth alone can
+    /// allocate an enormous bitmap for a narrow, very tall user-supplied image.
+    /// Read dimensions from metadata first, without decoding the full raster.
+    /// </summary>
+    private static BitmapSource DecodeGalleryImage(string file, int maxDimension)
+    {
+        using var metadataStream = File.OpenRead(file);
+        var decoder = BitmapDecoder.Create(metadataStream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+        var frame = decoder.Frames[0];
+        if (frame.PixelWidth < 1 || frame.PixelHeight < 1)
+            throw new InvalidDataException("Invalid material image dimensions.");
+
+        using var stream = File.OpenRead(file);
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        if (frame.PixelWidth >= frame.PixelHeight)
+            image.DecodePixelWidth = maxDimension;
+        else
+            image.DecodePixelHeight = maxDimension;
+        image.StreamSource = stream;
+        image.EndInit();
+        image.Freeze();
+        return image;
+    }
+
     private async Task LoadGalleryThumbnailAsync(string key, Image view, TextBlock placeholder,
         int revision, CancellationToken token, bool sphere = false, double roughness = .8,
         double metallic = 0, double relief = 0)
@@ -257,15 +284,8 @@ public partial class RenderPanel
                     var file = RenderTextureLibrary.Resolve(key, null);
                     token.ThrowIfCancellationRequested();
                     if (file is null || !File.Exists(file)) return null;
-                    using var stream = File.OpenRead(file);
-                    var image = new BitmapImage();
-                    image.BeginInit();
-                    image.CacheOption = BitmapCacheOption.OnLoad;
-                    image.DecodePixelWidth = sphere ? 192 : 132;
-                    image.StreamSource = stream;
-                    image.EndInit();
-                    image.Freeze();
-                    return sphere ? MaterialSpherePreview.Create(image, roughness, metallic, relief) : (BitmapSource)image;
+                    var image = DecodeGalleryImage(file, sphere ? 192 : 132);
+                    return sphere ? MaterialSpherePreview.Create(image, roughness, metallic, relief) : image;
                 }, token);
             }
             finally { _galleryDecodeGate.Release(); }
