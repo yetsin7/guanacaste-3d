@@ -152,6 +152,39 @@ public sealed class CloudLayer
     }
 
     /// <summary>
+    /// Attenuates the sun at a world-space point by intersecting the same procedural cloud plane that
+    /// is visible in the sky. Model coordinates are metres; cloud noise coordinates are kilometres.
+    /// This is a lightweight cloud-layer shadow, not a volumetric march or a geometric shadow ray.
+    /// Clear skies and points above the layer always transmit all sunlight.
+    /// </summary>
+    public float SunTransmittance(Vector3 surfacePosition, Vector3 sunDirection)
+    {
+        if (IsClear || sunDirection.Z <= 0.015f ||
+            !float.IsFinite(surfacePosition.X) || !float.IsFinite(surfacePosition.Y) ||
+            !float.IsFinite(surfacePosition.Z) || !float.IsFinite(sunDirection.X) ||
+            !float.IsFinite(sunDirection.Y) || !float.IsFinite(sunDirection.Z))
+            return 1f;
+
+        var distance = (_altitudeKm * 1000f - surfacePosition.Z) / sunDirection.Z;
+        if (!float.IsFinite(distance) || distance <= 0f) return 1f;
+        var cloudHit = surfacePosition + sunDirection * distance;
+        if (!float.IsFinite(cloudHit.X) || !float.IsFinite(cloudHit.Y)) return 1f;
+        // Normalizing the point on the layer gives Sample() exactly the same planar coordinates
+        // as a sky ray from world origin. Moving across a site shifts the projected cloud shadow.
+        var skyRay = Vector3.Normalize(new Vector3(cloudHit.X / 1000f, cloudHit.Y / 1000f, _altitudeKm));
+        var (opacity, thickness) = Sample(skyRay);
+        var depth = _style switch
+        {
+            CloudStyle.Cirrus => 0.15f + 0.12f * thickness,
+            CloudStyle.Altostratus => 0.38f + 0.30f * thickness,
+            CloudStyle.Storm or CloudStyle.Cumulonimbus => 0.65f + 0.30f * thickness,
+            CloudStyle.Stratocumulus => 0.38f + 0.40f * thickness,
+            _ => 0.35f + 0.47f * thickness
+        };
+        return Math.Clamp(1f - opacity * depth, 0.05f, 1f);
+    }
+
+    /// <summary>
     /// Radiance of the cloud seen in <paramref name="direction"/>, given the light that reaches it: the sun's
     /// irradiance over π (<paramref name="sunlight"/>), the direction to the sun and the sky's zenith radiance.
     /// </summary>

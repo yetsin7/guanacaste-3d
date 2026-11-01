@@ -82,6 +82,11 @@ static class RenderLookChecks
             if (File.Exists(lutFile + ".bak")) File.Delete(lutFile + ".bak");
         }
 
+        check(RenderSetup.SelectedCustomLutPath("custom", "assets/film-look.cube") == "assets/film-look.cube" &&
+              RenderSetup.SelectedCustomLutPath("warm", "assets/film-look.cube") is null &&
+              RenderSetup.SelectedCustomLutPath("none", "assets/film-look.cube") is null,
+            "Switching from a custom LUT to a built-in filter never reloads or stores the old .cube path");
+
         var mono = ImageProcessor.ToBgra32(image, width, height, 1, plain with { Monochrome = true });
         check(Enumerable.Range(0, width * height).All(pixel => mono[pixel * 4] == mono[pixel * 4 + 1] && mono[pixel * 4 + 1] == mono[pixel * 4 + 2]),
             "Black and white has equal channels");
@@ -138,6 +143,23 @@ static class RenderLookChecks
         }).ToArray();
         check(samplesA.Zip(samplesB).Count(pair => Math.Abs(pair.First - pair.Second) > .001f) >= 10,
             "Cloud seed and wind direction create distinct usable skies without downloading assets");
+
+        var clearSun = new CloudLayer(0, 7, CloudStyle.Cumulus);
+        var shadowSun = Vector3.Normalize(new Vector3(.3f, .2f, .9f));
+        check(clearSun.SunTransmittance(Vector3.Zero, shadowSun) == 1f &&
+              new CloudLayer(.8f, 7, CloudStyle.Storm)
+                  .SunTransmittance(new Vector3(0, 0, 1500), shadowSun) == 1f,
+            "Clear skies and positions above the clouds do not lose sunlight");
+        var castClouds = new CloudLayer(.65f, 39, CloudStyle.Cumulonimbus, -50);
+        var cloudShadows = Enumerable.Range(0, 625).Select(i =>
+            castClouds.SunTransmittance(new Vector3((i % 25 - 12) * 350, (i / 25 - 12) * 350, 0), shadowSun)).ToArray();
+        check(cloudShadows.All(t => float.IsFinite(t) && t is >= .05f and <= 1f) &&
+              cloudShadows.Min() < .97f && cloudShadows.Max() - cloudShadows.Min() > .04f,
+            "Procedural clouds cast spatially varying, bounded shadows on the model and site");
+        var shadowPoint = new Vector3(280, -90, 0);
+        check(castClouds.SunTransmittance(shadowPoint, shadowSun) ==
+              new CloudLayer(.65f, 39, CloudStyle.Cumulonimbus, -50).SunTransmittance(shadowPoint, shadowSun),
+            "Cloud shadow positions reproduce exactly for the same seed and wind");
 
         var atmosphereSetup = new RenderSetup
         {

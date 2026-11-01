@@ -15,6 +15,7 @@ public partial class RenderPanel
     public void ApplySetupForProject(RenderSetup setup, string? projectFile)
     {
         ClearHdriForDocument();
+        ClearLutForDocument();
         // First the style, which sets the look, white balance, bloom, vignette and effects; the saved values follow.
         Select(StylePicker, setup.StyleId);
         Select(ScenarioPicker, setup.Scenario.ToString());
@@ -57,7 +58,7 @@ public partial class RenderPanel
         MonochromeCheck.IsChecked = setup.Monochrome;
         Select(LutPicker, setup.LutPresetId);
         LutStrengthSlider.Value = setup.LutStrength;
-        RestoreLutForProject(setup.LutPath, projectFile);
+        RestoreLutForProject(RenderSetup.SelectedCustomLutPath(setup.LutPresetId, setup.LutPath), projectFile);
         // Selecting a saved library ID is a label restore, not a reapplication of its defaults.
         _applyingLook = true;
         try { Select(SkyPicker, setup.SkyPresetId ?? string.Empty); }
@@ -99,7 +100,7 @@ public partial class RenderPanel
             Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,
             Monochrome = MonochromeCheck.IsChecked == true,
             LutPresetId = Mode(LutPicker) is { Length: > 0 } lutId ? lutId : "none",
-            LutPath = _lutFilePath,
+            LutPath = RenderSetup.SelectedCustomLutPath(Mode(LutPicker), _lutFilePath),
             LutStrength = LutStrengthSlider.Value
         };
     }

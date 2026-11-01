@@ -1117,7 +1117,9 @@ public sealed partial class PathTracer
                 {
                     var weight = previousDelta ? 1f : Sampling.PowerHeuristic(previousPdf, _sunPdf);
                     var visible = Vector3.Min(_sunRadiance, new Vector3(CameraSunRadianceLimit));
-                    radiance += visible * weight;
+                    // Clouds can obscure the disk, instead of the former artificial clear circle around it.
+                    radiance += visible * weight *
+                        (_clouds?.SunTransmittance(origin, direction) ?? 1f);
                 }
                 if (cache is not null && vertexCount > 0)
                 {
@@ -1296,9 +1298,7 @@ public sealed partial class PathTracer
         var sky = _sky.Radiance(direction) * _skyScale;
         if (_clouds is null || direction.Z <= 0.015f) return sky;
         var (opacity, thickness) = _clouds.Sample(direction);
-        // Clouds part around the sun's disk, so the sun that lights the scene and casts its shadows is never hidden.
-        var clearOfSun = 1 - MathF.Pow(Math.Clamp((Vector3.Dot(direction, _sunDirection) - 0.985f) / 0.0145f, 0f, 1f), 0.5f);
-        opacity *= _sunRadiance == Vector3.Zero ? 1 : clearOfSun;
+        // The sun disk is attenuated separately in Trace(), allowing clouds to pass in front of it.
         if (opacity <= 0.001f) return sky;
         var cloud = _clouds.ShadeFor(direction, thickness, _sunDirection, _cloudSunlight, _cloudSkylight);
         return Vector3.Lerp(sky, cloud, opacity);
@@ -1323,8 +1323,10 @@ public sealed partial class PathTracer
                 if (transmittance != Vector3.Zero)
                 {
                     var f = Evaluate(in surface, point.Diffuse, point.Normal, view, light, nDotV, nDotL, out var pdf);
+                    // Keep sunlit roofs and ground consistent with the visible cloud layer.
+                    var cloudTransmission = _clouds?.SunTransmittance(point.Position, light) ?? 1f;
                     total += transmittance * _sunRadiance * f *
-                             (cosine / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf));
+                             (cosine / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf) * cloudTransmission);
                 }
             }
         }
