@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource App.Name}" Icon="pack://application:,,,/Guanacaste3D.Desktop;component/resources/brand/guanacaste3d.ico"
         Width="460" Height="260" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" ShowInTaskbar="True" WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Display, Segoe UI">
   <Border Margin="12" Padding="34,30" CornerRadius="18" Background="#FFFFFF"
           BorderBrush="#D8D8DD" BorderThickness="1">
