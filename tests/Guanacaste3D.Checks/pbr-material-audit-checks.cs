@@ -51,6 +51,13 @@ internal static class PbrMaterialAuditChecks
             check(!traversal.IsValid && traversal.Errors.Any(x => x.Contains("albedo", StringComparison.OrdinalIgnoreCase)),
                 "PBR import rejects parent-directory traversal on every operating system");
 
+            File.WriteAllText(Path.Combine(folder, "bad-height-traversal.g3dm"),
+                """{"version":1,"name":"Unsafe height","albedo":"brick_albedo.png","heightMap":"../secret.png"}""");
+            var heightTraversal = PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-height-traversal.g3dm"));
+            check(!heightTraversal.IsValid &&
+                  heightTraversal.Errors.Any(x => x.Contains("heightMap", StringComparison.OrdinalIgnoreCase)),
+                "Height maps use the same path-traversal protections as other PBR channels");
+
             File.WriteAllText(Path.Combine(folder, "bad-absolute.g3dm"),
                 """{"version":1,"name":"Absolute","albedo":"/tmp/external.png"}""");
             check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-absolute.g3dm")).IsValid,
@@ -78,8 +85,8 @@ internal static class PbrMaterialAuditChecks
                 "Case-insensitive duplicate JSON properties cannot bypass PBR validation");
 
             var scanned = PbrMaterialAudit.Scan(folder);
-            check(scanned.Count == 8 && scanned.Count(entry => entry.IsValid) == 3 &&
-                  scanned.Count(entry => !entry.IsValid) == 5,
+            check(scanned.Count == 9 && scanned.Count(entry => entry.IsValid) == 3 &&
+                  scanned.Count(entry => !entry.IsValid) == 6,
                 "Material catalog shows both valid materials and broken packages for repair");
 
             // Cross-platform case-sensitivity: detect a missing asset rather than guessing its filename.
