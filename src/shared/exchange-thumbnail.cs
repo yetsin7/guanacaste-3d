@@ -12,6 +12,11 @@ namespace Guanacaste3D.ExchangePreview;
 internal static class ExchangeThumbnail
 {
     private const int MaximumTriangles = 500000;
+    private const int MaximumMeshVertices = 1_500_000;
+    private const int MaximumExchangeMeshes = 2048;
+    private const int MaximumExchangeMaterials = 16384;
+    private const int MaximumExchangeElements = 50000;
+    private const long MaximumDecodedMeshBytes = 64L * 1024 * 1024;
     private sealed record Mesh(Vector3[] Positions, int[] Indices, int[] Materials);
     private readonly record struct Face(Point A, Point B, Point C, double Depth, Color Color);
 
@@ -29,9 +34,21 @@ internal static class ExchangeThumbnail
                 // A damaged optional preview must not hide otherwise usable exchange geometry.
             }
         }
-        var meshes = root.GetProperty("meshes").EnumerateArray().Select(ReadMesh).ToArray();
-        var materials = root.GetProperty("materials").EnumerateArray().Select(ReadColor).ToArray();
-        var elements = root.GetProperty("elements").EnumerateArray().ToArray();
+        // Limit counts and decoded buffers before materializing untrusted exchange geometry.
+        // The Shell provider can run inside Explorer, so input size alone is not a memory budget.
+        var meshItems = root.GetProperty("meshes");
+        var materialItems = root.GetProperty("materials");
+        var elementItems = root.GetProperty("elements");
+        if (meshItems.GetArrayLength() > MaximumExchangeMeshes ||
+            materialItems.GetArrayLength() > MaximumExchangeMaterials ||
+            elementItems.GetArrayLength() > MaximumExchangeElements)
+            throw new InvalidDataException("The exchange thumbnail exceeds its collection budget.");
+        long decodedBytes = 0;
+        var meshes = new List<Mesh>(meshItems.GetArrayLength());
+        foreach (var item in meshItems.EnumerateArray())
+            meshes.Add(ReadMesh(item, ref decodedBytes));
+        var materials = materialItems.EnumerateArray().Select(ReadColor).ToArray();
+        var elements = elementItems.EnumerateArray().ToArray();
         foreach (var element in elements)
             if (element.TryGetProperty("mesh", out var reference) && reference.ValueKind == JsonValueKind.Number)
             {
@@ -117,22 +134,38 @@ internal static class ExchangeThumbnail
     }
 
     /// <summary>Validates binary mesh alignment, finite coordinates, and every vertex index before drawing.</summary>
-    private static Mesh ReadMesh(JsonElement mesh)
+    private static Mesh ReadMesh(JsonElement mesh, ref long decodedBytes)
     {
-        var positions = ReadArray<Vector3>(mesh.GetProperty("positions").GetString()!);
-        var indices = ReadArray<int>(mesh.GetProperty("indices").GetString()!);
-        var materials = ReadArray<int>(mesh.GetProperty("materials").GetString()!);
+        var positionsBase64 = mesh.GetProperty("positions").GetString()!;
+        var indicesBase64 = mesh.GetProperty("indices").GetString()!;
+        var materialsBase64 = mesh.GetProperty("materials").GetString()!;
+        // Base64 may contain far more decoded geometry than the final 500k-triangle preview.
+        // Check the upper bound before allocating the decoded buffers and their typed copies.
+        var estimatedBytes = (long)(positionsBase64.Length / 4) * 3 +
+                             (long)(indicesBase64.Length / 4) * 3 +
+                             (long)(materialsBase64.Length / 4) * 3;
+        if (estimatedBytes > MaximumDecodedMeshBytes - decodedBytes)
+            throw new InvalidDataException("The exchange thumbnail exceeds its decoded mesh budget.");
+        var positions = ReadArray<Vector3>(positionsBase64, MaximumMeshVertices);
+        var indices = ReadArray<int>(indicesBase64, MaximumTriangles * 3);
+        var materials = ReadArray<int>(materialsBase64, MaximumTriangles);
         if (indices.Length != materials.Length * 3 || indices.Any(index => (uint)index >= (uint)positions.Length) ||
             positions.Any(point => !float.IsFinite(point.X) || !float.IsFinite(point.Y) || !float.IsFinite(point.Z) || point.Length() > 10000000))
             throw new InvalidDataException("Invalid exchange thumbnail mesh.");
+        decodedBytes += estimatedBytes;
         return new Mesh(positions, indices, materials);
     }
 
-    /// <summary>Rejects partial binary records rather than silently ignoring trailing bytes.</summary>
-    private static T[] ReadArray<T>(string encoded) where T : unmanaged
+    /// <summary>Rejects oversized and misaligned base64 buffers before copying them to typed arrays.</summary>
+    private static T[] ReadArray<T>(string encoded, int maximumItems) where T : unmanaged
     {
+        var stride = Marshal.SizeOf<T>();
+        var maximumEncodedLength = ((long)maximumItems * stride + 2) / 3 * 4;
+        if (encoded.Length > maximumEncodedLength)
+            throw new InvalidDataException("The exchange thumbnail mesh buffer is too large.");
         var bytes = Convert.FromBase64String(encoded);
-        if (bytes.Length % Marshal.SizeOf<T>() != 0) throw new InvalidDataException("Misaligned exchange mesh buffer.");
+        if (bytes.Length % stride != 0 || bytes.Length / stride > maximumItems)
+            throw new InvalidDataException("Invalid exchange thumbnail mesh buffer length.");
         return MemoryMarshal.Cast<byte, T>(bytes).ToArray();
     }
 
