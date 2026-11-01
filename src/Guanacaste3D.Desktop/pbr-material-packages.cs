@@ -105,6 +105,48 @@ internal static class PbrMaterialPackages
     }
 
     /// <summary>
+    /// Detects a conventional PBR texture set next to a selected base-color image.
+    /// Only exact stem + known channel suffixes count: unrelated images are never guessed.
+    /// Results are keyed by normal, roughnessMap, metallicMap.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> DiscoverCompanionMaps(string albedoPath)
+    {
+        var found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(albedoPath) || !File.Exists(albedoPath))
+            return found;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(albedoPath))!;
+        var stem = Path.GetFileNameWithoutExtension(albedoPath);
+        var colorSuffixes = new[] { "_basecolor", "_base_color", "_albedo", "_diffuse", "_color", "_colour", "-basecolor", "-albedo", "-diffuse" };
+        foreach (var suffix in colorSuffixes.OrderByDescending(item => item.Length))
+            if (stem.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                stem = stem[..^suffix.Length];
+                break;
+            }
+        var channelSuffixes = new (string Channel, string[] Suffixes)[]
+        {
+            ("normal", ["_normal", "_normalgl", "_normal_gl", "_nor", "_nrm", "-normal"]),
+            ("roughnessMap", ["_roughness", "_rough", "-roughness"]),
+            ("metallicMap", ["_metallic", "_metalness", "_metal", "-metallic"])
+        };
+        var candidates = Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
+            .Where(path => new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff" }
+                .Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).Take(500).ToArray();
+        foreach (var (channel, suffixes) in channelSuffixes)
+            foreach (var suffix in suffixes)
+            {
+                var match = candidates.FirstOrDefault(path =>
+                    string.Equals(Path.GetFileNameWithoutExtension(path), stem + suffix,
+                        StringComparison.OrdinalIgnoreCase));
+                if (match is null) continue;
+                found[channel] = match;
+                break;
+            }
+        return found;
+    }
+
+    /// <summary>
     /// Creates a self-contained folder material from one raster photograph. Both files
     /// use the same basename and existing packages are never overwritten silently.
     /// </summary>
@@ -138,22 +180,56 @@ internal static class PbrMaterialPackages
         // existing WPF decoder and downsampling limits after the import.
         if (RenderTextureLibrary.Load(sourceImage) is null)
             throw new InvalidDataException("The selected PBR image cannot be decoded.");
+        var companions = DiscoverCompanionMaps(sourceImage);
+        var copied = new List<string>();
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (channel, path) in companions)
+        {
+            if ((channel == "normal" && RenderTextureLibrary.LoadNormal(path) is null) ||
+                (channel != "normal" && RenderTextureLibrary.LoadScalar(path) is null))
+                throw new InvalidDataException("One of the PBR companion maps cannot be decoded.");
+            var suffix = channel switch
+            {
+                "normal" => "-normal",
+                "roughnessMap" => "-roughness",
+                _ => "-metallic"
+            };
+            var filename = Path.GetFileNameWithoutExtension(destination) + suffix +
+                Path.GetExtension(path).ToLowerInvariant();
+            if (File.Exists(Path.Combine(directory, filename)))
+                throw new IOException("A destination PBR companion map already exists.");
+            names[channel] = filename;
+        }
         var manifest = new PbrMaterialManifest
         {
             Name = name.Trim(), Albedo = imageName,
+            Normal = names.GetValueOrDefault("normal"),
+            RoughnessMap = names.GetValueOrDefault("roughnessMap"),
+            MetallicMap = names.GetValueOrDefault("metallicMap"),
             Roughness = roughness, Metallic = metallic,
             TextureSize = size, Relief = relief
         };
-        File.Copy(sourceImage, targetImage);
         try
         {
+            File.Copy(sourceImage, targetImage);
+            copied.Add(targetImage);
+            foreach (var (channel, path) in companions)
+            {
+                var file = Path.Combine(directory, names[channel]);
+                File.Copy(path, file);
+                copied.Add(file);
+            }
             var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(destination, json);
+            using var stream = new FileStream(destination, FileMode.CreateNew, FileAccess.Write);
+            using var writer = new StreamWriter(stream);
+            writer.Write(json);
             return destination;
         }
         catch
         {
-            File.Delete(targetImage);
+            foreach (var copy in copied)
+                File.Delete(copy);
+            // Never delete the target manifest: another process may have created it.
             throw;
         }
     }

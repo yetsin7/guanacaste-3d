@@ -292,7 +292,7 @@ public partial class RenderPanel
                 _source.AssignRenderMaterial(category, null, 1, 0, scope);
                 break;
             case CreatePbrTag:
-                CreatePbrMaterialFromImage(category);
+                CreatePbrMaterialFromImage(category, scope);
                 RefreshMaterialRows();
                 return;
             case PbrPackageTag:
@@ -310,7 +310,7 @@ public partial class RenderPanel
                             "Importación PBR", MessageBoxButton.OK, MessageBoxImage.Warning);
                     else
                         _source.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + pbrDialog.FileName,
-                            package.Value.Manifest.TextureSize, package.Value.Manifest.Relief);
+                            package.Value.Manifest.TextureSize, package.Value.Manifest.Relief, scope);
                 }
                 RefreshMaterialRows();
                 return;
@@ -338,7 +338,7 @@ public partial class RenderPanel
     }
 
     /// <summary>Creates an editable standalone material package and immediately assigns it.</summary>
-    private void CreatePbrMaterialFromImage(SurfaceKind category)
+    private void CreatePbrMaterialFromImage(SurfaceKind category, Guid? scope)
     {
         var owner = Window.GetWindow(this);
         var chooseImage = new OpenFileDialog
@@ -347,11 +347,12 @@ public partial class RenderPanel
             Filter = "Imágenes (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff)|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"
         };
         if (chooseImage.ShowDialog(owner) != true) return;
+        var companions = PbrMaterialPackages.DiscoverCompanionMaps(chooseImage.FileName);
 
         var dialog = new Window
         {
             Title = "Nuevo material PBR · Guanacaste 3D",
-            Owner = owner, Width = 380, Height = 370,
+            Owner = owner, Width = 420, Height = 420,
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
@@ -364,6 +365,17 @@ public partial class RenderPanel
             return input;
         }
         var nameInput = AddField("Nombre del material", Path.GetFileNameWithoutExtension(chooseImage.FileName));
+        panel.Children.Add(new TextBlock
+        {
+            Text = companions.Count == 0
+                ? "No se detectaron mapas adicionales. Se usará albedo y propiedades físicas."
+                : "Mapas encontrados: " + string.Join(", ", companions.Keys.Select(key => key switch
+                {
+                    "normal" => "Normal", "roughnessMap" => "Rugosidad", _ => "Metalicidad"
+                })),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 8, 0, 4)
+        });
         var roughnessInput = AddField("Rugosidad (0.02 a 1)", "0.75");
         var metalInput = AddField("Metalicidad (0 a 1)", "0");
         var sizeInput = AddField("Escala de textura (metros)", "1");
@@ -406,7 +418,7 @@ public partial class RenderPanel
             // No silent overwrite: protect both the manifest and its companion image.
             var destination = PbrMaterialPackages.CreateFromImage(chooseImage.FileName,
                 save.FileName, nameInput.Text, roughness, metallic, size, relief);
-            _source?.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + destination, size, relief);
+            _source?.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + destination, size, relief, scope);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
                                             ArgumentException or NotSupportedException)
