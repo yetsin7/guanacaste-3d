@@ -38,11 +38,14 @@ public sealed class MainWindow : Window
         };
         var open = new Button { Content = "Abrir .g3d", Padding = new Thickness(14, 9) };
         open.Click += async (_, _) => await OpenProjectAsync();
-        var save = new Button { Content = "Guardar como...", Padding = new Thickness(14, 9) };
-        save.Click += async (_, _) => await SaveProjectAsync();
+        var save = new Button { Content = "Guardar", Padding = new Thickness(14, 9) };
+        save.Click += async (_, _) => await SaveProjectAsync(false);
+        var saveAs = new Button { Content = "Guardar como...", Padding = new Thickness(14, 9) };
+        saveAs.Click += async (_, _) => await SaveProjectAsync(true);
         menu.Children.Add(create);
         menu.Children.Add(open);
         menu.Children.Add(save);
+        menu.Children.Add(saveAs);
         var select = new Button { Content = "Seleccionar" };
         select.Click += (_, _) => _workspace.SetTool(PlanWorkspace.EditTool.Select);
         var wall = new Button { Content = "Muro" };
@@ -70,6 +73,18 @@ public sealed class MainWindow : Window
         layout.Children.Add(_summary);
         _status.Text = "Crea un proyecto nuevo o abre un archivo Guanacaste 3D.";
         layout.Children.Add(_status);
+        KeyDown += async (_, e) =>
+        {
+            var modifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+            if ((e.KeyModifiers & modifier) == 0) return;
+            if (e.Key == Key.S) { await SaveProjectAsync((e.KeyModifiers & KeyModifiers.Shift) != 0); e.Handled = true; }
+            else if (e.Key == Key.Z)
+            {
+                _workspace.Undo();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Y) { _workspace.Redo(); e.Handled = true; }
+        };
         Closing += (_, e) =>
         {
             if (_closingAuthorized || !_workspace.HasUnsavedChanges) return;
@@ -130,11 +145,16 @@ public sealed class MainWindow : Window
         }
     }
 
-    private async Task SaveProjectAsync()
+    private async Task SaveProjectAsync(bool saveAs)
     {
         if (_document is null)
         {
             _status.Text = "Primero crea o abre un proyecto.";
+            return;
+        }
+        if (!saveAs && _path is not null)
+        {
+            WriteProject(_path);
             return;
         }
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -151,6 +171,12 @@ public sealed class MainWindow : Window
             _status.Text = "Selecciona una ubicación de archivos local para guardar.";
             return;
         }
+        WriteProject(localPath);
+    }
+
+    private void WriteProject(string localPath)
+    {
+        if (_document is null) return;
         try
         {
             ProjectFile.Save(localPath, _workspace.Session?.Document ?? _document);
@@ -213,6 +239,8 @@ public sealed class MainWindow : Window
     private void Refresh()
     {
         _title.Text = _document?.Name ?? "Bienvenido a Guanacaste 3D";
+        Title = "Guanacaste 3D — " + (_document?.Name ?? "Inicio") +
+            (_workspace.HasUnsavedChanges ? " *" : "");
         _summary.Text = _document is null
             ? "Motor BIM compartido para Windows, Linux y macOS."
             : $"Muros: {_document.Walls.Count}  |  Niveles: {_document.Levels.Count}  |  " +
