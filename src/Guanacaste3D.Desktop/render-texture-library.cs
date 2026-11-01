@@ -200,6 +200,21 @@ internal static class RenderTextureLibrary
         return map;
     }
 
+    /// <summary>Optional OpenGL tangent normal beside an albedo image. Missing sidecars are free to ignore.</summary>
+    private static NormalMap? LoadSidecarNormal(string? albedoPath)
+    {
+        if (string.IsNullOrWhiteSpace(albedoPath) || !File.Exists(albedoPath)) return null;
+        var folder = Path.GetDirectoryName(albedoPath);
+        var name = Path.GetFileNameWithoutExtension(albedoPath);
+        if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(name)) return null;
+        foreach (var suffix in new[] { "_NormalGL.png", "_normal.png", "_Normal.png", "_nrm.png" })
+        {
+            var sidecar = Path.Combine(folder, name + suffix);
+            if (File.Exists(sidecar) && LoadNormal(sidecar) is { } result) return result;
+        }
+        return null;
+    }
+
     private static readonly ConcurrentDictionary<string, (DateTime Stamp, BitmapSource Image)> Previews = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -285,11 +300,13 @@ internal static class RenderTextureLibrary
                     assignment.TextureSize, assignment.Relief);
             else if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
-                var image = preset.TextureKey is { } key ? Load(Resolve(BuiltInPrefix + key, projectFile)) : null;
+                var albedoPath = preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null;
+                var image = Load(albedoPath);
                 material = MaterialPresets.Build(preset, image) with
                 {
                     TextureSize = (float)assignment.TextureSize,
-                    TextureRelief = (float)assignment.Relief
+                    TextureRelief = (float)assignment.Relief,
+                    NormalMap = LoadSidecarNormal(albedoPath) ?? preset.Material.NormalMap
                 };
             }
             else if (assignment.TexturePath == "stock:")
@@ -303,7 +320,8 @@ internal static class RenderTextureLibrary
             else if (assignment.Category != SurfaceKind.Glass &&
                      Load(Resolve(assignment.TexturePath, projectFile)) is { } texture)
             {
-                material = MaterialLibrary.Textured(assignment.Category, texture, assignment.TextureSize, assignment.Relief);
+                material = MaterialLibrary.Textured(assignment.Category, texture, assignment.TextureSize, assignment.Relief)
+                    with { NormalMap = LoadSidecarNormal(Resolve(assignment.TexturePath, projectFile)) };
             }
             if (material is null) continue;
             textured[assignment.Category] = material with

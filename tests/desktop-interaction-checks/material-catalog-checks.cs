@@ -64,6 +64,14 @@ internal static partial class InteractionChecks
             TextureSize = 0.73,
             Relief = 0.64
         };
+        var barkWithNormal = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
+            BindingFlags.Public | BindingFlags.Static)!.Invoke(null,
+            [new[] { new RenderMaterialAssignment(SurfaceKind.Bark, "builtin:tree-bark-guanacaste")
+            { TextureSize = 1.2, Relief = 0.6 } }, null, true])!;
+        Check(barkWithNormal(SurfaceKind.Bark).Texture is not null &&
+              barkWithNormal(SurfaceKind.Bark).NormalMap is not null,
+            "Procedural tree bark loads its bundled OpenGL normal map as well as albedo");
+
         var assignments = new[] { assignment };
         var resolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
             BindingFlags.Public | BindingFlags.Static)!.Invoke(null, [assignments, null, true])!;
