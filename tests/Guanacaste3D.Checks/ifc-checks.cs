@@ -47,6 +47,24 @@ static class IfcChecks
             "IFC export has a STEP header, IFC4 schema and terminator");
         check(IfcExporter.ToStep(house, stamp) == step, "IFC export is deterministic");
 
+        // A slab's ElevationOffset describes its TOP relative to the containing storey.
+        // The IFC swept solid grows upward from its local placement at the underside.
+        var sourceSlab = house.Floors[0];
+        var shiftedHouse = house.Clone();
+        shiftedHouse.Floors[0] = sourceSlab with { ElevationOffset = 0.4375 };
+        var shiftedStep = IfcExporter.ToStep(shiftedHouse, stamp);
+        var raisedBottom = IfcExporter.Real(0.4375 - sourceSlab.Thickness);
+        check(shiftedStep.Contains($"IFCCARTESIANPOINT((0.,0.,{raisedBottom}))", StringComparison.Ordinal) &&
+              !step.Contains($"IFCCARTESIANPOINT((0.,0.,{raisedBottom}))", StringComparison.Ordinal),
+            "IFC slab placement preserves positive height offsets from the storey");
+
+        shiftedHouse.Floors[0] = sourceSlab with { ElevationOffset = -0.625 };
+        var loweredStep = IfcExporter.ToStep(shiftedHouse, stamp);
+        var loweredBottom = IfcExporter.Real(-0.625 - sourceSlab.Thickness);
+        check(loweredStep.Contains($"IFCCARTESIANPOINT((0.,0.,{loweredBottom}))", StringComparison.Ordinal) &&
+              !step.Contains($"IFCCARTESIANPOINT((0.,0.,{loweredBottom}))", StringComparison.Ordinal),
+            "IFC slab placement preserves negative height offsets from the storey");
+
         var entities = new Dictionary<int, (string Type, List<string> Attributes)>();
         var data = step[(step.IndexOf("DATA;\n", StringComparison.Ordinal) + 6)..step.IndexOf("ENDSEC;\nEND-ISO", StringComparison.Ordinal)];
         var malformed = 0;
