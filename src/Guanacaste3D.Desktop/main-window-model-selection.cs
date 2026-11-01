@@ -83,7 +83,7 @@ public partial class MainWindow
 
     /// <summary>Whether a drawing, placing or picking tool is waiting for a click.</summary>
     private bool PlanToolArmed() =>
-        _creatingGrid || _creatingSection || _placingOpening is not null || _movingElement || _drawingRoom || _drawingColumn || _drawingWall ||
+        _detailDrawingMode != DetailDrawingMode.None || _creatingGrid || _creatingSection || _placingOpening is not null || _movingElement || _drawingRoom || _drawingColumn || _drawingWall ||
         _awaitingSimilarWallPick || _awaitingGroupPick || _groupToPlace is not null || _pickingWorkPlane ||
         _pickWallAction is not null || _structuralTool is not null || _slabSketch is not null || _placingTopoPoints ||
         _electricalTool is not null || _wiring || _plumbingPointTool is not null || _piping;
