@@ -36,6 +36,10 @@
   <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>
   <sys:String x:Key="Error.The toposolid does not exist.">El sólido topográfico no existe.</sys:String>
   <sys:String x:Key="Error.Invalid render material.">El material de render no es válido.</sys:String>
+  <sys:String x:Key="Error.Symbolic-link textures cannot be packed.">No se pueden incluir texturas mediante enlaces simbólicos.</sys:String>
+  <sys:String x:Key="Error.Texture size must be between 1 byte and 128 MiB.">La textura debe ocupar entre 1 byte y 128 MiB.</sys:String>
+  <sys:String x:Key="Error.Texture file format is not supported.">El formato de la textura no es compatible.</sys:String>
+
   <sys:String x:Key="Error.HDRI must be a Radiance file smaller than 32 MiB.">El archivo HDRI debe ser Radiance y ocupar menos de 32 MiB.</sys:String>
   <sys:String x:Key="Error.HDRI header contains a line longer than 256 bytes.">El encabezado HDRI contiene una línea demasiado larga.</sys:String>
   <sys:String x:Key="Error.HDRI header is incomplete.">El encabezado HDRI está incompleto.</sys:String>
