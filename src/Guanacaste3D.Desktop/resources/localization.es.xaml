@@ -500,4 +500,12 @@
   <sys:String x:Key="Error.The room level does not exist.">El nivel de la habitación no existe.</sys:String>
   <sys:String x:Key="Error.The room boundary grid is too large.">El plano contiene demasiadas divisiones para detectar habitaciones automáticamente. Simplifica los límites o divide el proyecto por zonas.</sys:String>
   <sys:String x:Key="Error.The room outline cannot be offset.">No se puede ampliar este contorno de habitación con la distancia solicitada. Reduce el margen o revisa las esquinas.</sys:String>
+  <sys:String x:Key="Transaction.AddCurvedRoomSeparator">Crear separador curvo</sys:String>
+  <sys:String x:Key="Transaction.UpdateCurvedRoomSeparator">Editar separador curvo</sys:String>
+  <sys:String x:Key="Transaction.RemoveCurvedRoomSeparator">Eliminar separador curvo</sys:String>
+  <sys:String x:Key="Error.The curved room separator is invalid.">El separador curvo tiene parámetros inválidos.</sys:String>
+  <sys:String x:Key="Error.The curved room separator does not exist.">El separador curvo no existe.</sys:String>
+  <sys:String x:Key="Error.Invalid curved room separators.">Existen separadores curvos inválidos en el proyecto.</sys:String>
+  <sys:String x:Key="Error.The room boundary graph is too complex.">Hay demasiados límites de habitación para detectar los recintos. Divide el plano en zonas.</sys:String>
+  <sys:String x:Key="Error.The room polygon cannot be triangulated.">El perímetro no se puede triangular; revisa sus cruces y esquinas.</sys:String>
 </ResourceDictionary>
