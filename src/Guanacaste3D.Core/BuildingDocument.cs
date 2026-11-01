@@ -173,7 +173,14 @@ public sealed class BuildingDocument
                 type.Thickness is < 0.03 or > 5 || string.IsNullOrWhiteSpace(type.MaterialName) ||
                 type.MaterialName.Length > 120 || !Enum.IsDefined(type.PlanFillPattern) ||
                 !Enum.IsDefined(type.SectionFillPattern) || !IsRgbColor(type.PlanFillColor) ||
-                !IsRgbColor(type.SectionFillColor)) ||
+                !IsRgbColor(type.SectionFillColor) ||
+                !Enum.IsDefined(type.Construction) ||
+                !double.IsFinite(type.LeftRepelloThickness) || type.LeftRepelloThickness is < 0 or > 0.05 ||
+                !double.IsFinite(type.RightRepelloThickness) || type.RightRepelloThickness is < 0 or > 0.05 ||
+                !double.IsFinite(type.LeftFineThickness) || type.LeftFineThickness is < 0 or > 0.02 ||
+                !double.IsFinite(type.RightFineThickness) || type.RightFineThickness is < 0 or > 0.02 ||
+                type.LeftRepelloThickness + type.LeftFineThickness + type.RightRepelloThickness + type.RightFineThickness >= type.Thickness ||
+                !double.IsFinite(type.GypsumStudSpacing) || type.GypsumStudSpacing is < 0.15 or > 1.2) ||
             WallTypes.Select(type => type.Id).Distinct().Count() != WallTypes.Count)
             throw new InvalidDataException("Invalid wall-type catalog.");
         var wallTypeIds = WallTypes.Select(type => type.Id).ToHashSet();
