@@ -49,6 +49,9 @@ internal interface IRenderSource
     void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
         string? normalPath, string? roughnessPath, string? metallicPath);
 
+    /// <summary>Render-only stone tessellation. Off leaves low-power machines and the BIM model unaffected.</summary>
+    bool StoneMicrogeometry { get; set; }
+
     /// <summary>Whether light fixtures are on; changing it rebuilds the scene.</summary>
     bool ArtificialLights { get; set; }
 

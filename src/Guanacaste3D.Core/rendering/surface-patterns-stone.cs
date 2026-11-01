@@ -55,6 +55,10 @@ internal static partial class SurfacePatterns
         return new Vector3(tone * 1.05f, tone, tone * 0.93f);
     }
 
+    /// <summary>Unfaded world-projected stone height, in meters, for optional render-only tessellation.</summary>
+    internal static float StoneDisplacement(float worldU, float worldV) =>
+        StoneMasonryHeight(worldU, worldV, 1f, 1f);
+
     /// <summary>
     /// Recesses the mortar about a centimetre, rounds protruding stone edges and adds centimetre-scale
     /// mineral undulations plus small chips. This is shading relief, not geometric displacement.

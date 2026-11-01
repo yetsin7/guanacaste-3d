@@ -9,6 +9,7 @@ static class RenderDetailChecks
     public static void Run(Action<bool, string> check)
     {
         Trees(check);
+        StoneGeometry(check);
         ScopedMaterials(check);
         Translucency(check);
         WallFaces(check);
@@ -33,6 +34,29 @@ static class RenderDetailChecks
             check(again.Positions.Count == render.Positions.Count && again.Positions[^1] == render.Positions[^1],
                 $"The render-quality {preset.Style} regenerates identically");
         }
+    }
+
+    private static void StoneGeometry(Action<bool, string> check)
+    {
+        var mesh = new SceneMesh();
+        var wallOwner = Guid.NewGuid();
+        mesh.AddQuad(new(0, 0, 0), new(2, 0, 0), new(2, 0, 2), new(0, 0, 2), SurfaceKind.WallStone);
+        mesh.MarkElement(wallOwner, 0);
+        var original = mesh.Positions.ToArray();
+        var triangles = mesh.TriangleCount;
+        var added = RenderStoneDisplacement.Append(mesh, triangleBudget: 256, targetEdgeMeters: 0.1f);
+        var raised = mesh.Positions.Skip(original.Length).ToArray();
+        check(added is > 10 and <= 256 && mesh.TriangleCount == triangles + added &&
+              mesh.Positions.Take(original.Length).SequenceEqual(original) &&
+              mesh.ElementRanges.Last().ElementId == wallOwner,
+            "Optional render-only stone microgeometry has a strict budget and does not mutate original BIM triangles");
+        check(raised.Length > 0 && raised.All(p => p.Y < -0.001f && p.Y > -0.029f) &&
+              raised.Select(p => p.Y).Max() - raised.Select(p => p.Y).Min() > 0.002f,
+            "Raised stone faces have real varied silhouettes and remain within 2.8 cm of the source wall");
+        var plain = new SceneMesh();
+        plain.AddQuad(new(0, 0, 0), new(2, 0, 0), new(2, 0, 2), new(0, 0, 2), SurfaceKind.WallStone);
+        check(RenderStoneDisplacement.Append(plain, triangleBudget: 0) == 0 && plain.TriangleCount == 2,
+            "Disabled displacement adds no geometry or cost on low-power machines");
     }
 
     private static void ScopedMaterials(Action<bool, string> check)
