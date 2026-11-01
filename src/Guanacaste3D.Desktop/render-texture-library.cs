@@ -139,6 +139,7 @@ internal static class RenderTextureLibrary
         var result = new Dictionary<SurfaceKind, (ImageSource, double)>();
         foreach (var assignment in assignments)
         {
+            if (assignment.ElementId is not null) continue;
             // Presets store a material: identifier, not a filesystem path. Resolve the
             // preset's bundled texture so the interactive 3D viewport matches the render.
             var preset = MaterialPresets.FromPath(assignment.TexturePath);

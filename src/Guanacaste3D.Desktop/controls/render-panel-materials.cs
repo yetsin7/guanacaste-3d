@@ -20,14 +20,22 @@ public partial class RenderPanel
     private const string CustomTag = "custom";
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
+    private Guid? _focusedElement;
 
-    internal void FocusMaterial(SurfaceKind category)
+    internal void FocusMaterial(SurfaceKind category, Guid? elementId = null)
     {
         _focusedMaterial = category;
+        _focusedElement = elementId;
         if (SectionTabs.Items.Count > 3) SectionTabs.SelectedIndex = 3;
         RefreshMaterialRows();
     }
 
+
+    private void MaterialScopeReset_Click(object sender, RoutedEventArgs e)
+    {
+        _focusedElement = null;
+        RefreshMaterialRows();
+    }
 
     /// <summary>Rebuilds the material rows from the project, for example after undo or opening another project.</summary>
     private void RefreshMaterialRows()
@@ -35,9 +43,18 @@ public partial class RenderPanel
         if (_source is null || MaterialRows is null) return;
         _refreshingMaterials = true;
         MaterialRows.Children.Clear();
-        foreach (var (category, labelKey) in RenderTextureLibrary.Categories)
+        MaterialScopeInfo.Text = _focusedElement is Guid
+            ? "Material propio del elemento seleccionado (solo esta categoría de caras)"
+            : "Material general: afecta a elementos sin personalización";
+        MaterialScopeReset.Visibility = _focusedElement is Guid ? Visibility.Visible : Visibility.Collapsed;
+        var categories = _focusedElement is Guid
+            ? RenderTextureLibrary.Categories.Where(item => item.Category == _focusedMaterial)
+            : RenderTextureLibrary.Categories;
+        foreach (var (category, labelKey) in categories)
         {
-            var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+            var scope = _focusedElement;
+            var assignment = _source.RenderMaterials.FirstOrDefault(material =>
+                material.Category == category && material.ElementId == scope);
             var label = new TextBlock { Style = (Style)FindResource("PanelLabel"), Text = Text(labelKey) };
             if (_focusedMaterial == category) { label.FontWeight = FontWeights.Bold; label.Foreground = System.Windows.Media.Brushes.DarkOrange; }
             MaterialRows.Children.Add(label);
@@ -51,7 +68,8 @@ public partial class RenderPanel
             var picker = new ComboBox();
             if (_focusedMaterial == category) { picker.BorderBrush = System.Windows.Media.Brushes.DarkOrange; picker.BorderThickness = new Thickness(2); }
             // Keep the current assignment visible, but defer the large searchable catalog until opened.
-            picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
+            picker.Items.Add(new ComboBoxItem {
+                Content = scope is Guid ? "Heredar material general" : Text("RenderPanel.MaterialStock"), Tag = StockTag });
             if (assignment is not null)
                 picker.Items.Add(new ComboBoxItem
                 {
@@ -66,15 +84,15 @@ public partial class RenderPanel
                 try
                 {
                     PopulateMaterialOptions(picker, _source?.RenderMaterials.FirstOrDefault(material =>
-                        material.Category == category));
+                        material.Category == category && material.ElementId == scope));
                 }
                 finally { loadingOptions = false; }
             };
-            picker.SelectionChanged += (_, _) => { if (!loadingOptions) MaterialChosen(category, picker, size); };
-            size.LostFocus += (_, _) => MaterialSizeChanged(category, size);
+            picker.SelectionChanged += (_, _) => { if (!loadingOptions) MaterialChosen(category, picker, size, scope); };
+            size.LostFocus += (_, _) => MaterialSizeChanged(category, size, scope);
             size.KeyDown += (_, e) =>
             {
-                if (e.Key == System.Windows.Input.Key.Enter) MaterialSizeChanged(category, size);
+                if (e.Key == System.Windows.Input.Key.Enter) MaterialSizeChanged(category, size, scope);
             };
             var restore = new Button
             {
@@ -84,14 +102,14 @@ public partial class RenderPanel
             };
             restore.Click += (_, _) =>
             {
-                _source?.AssignRenderMaterial(category, null, 1, 0);
-                FocusMaterial(category);
+                _source?.AssignRenderMaterial(category, null, 1, 0, scope);
+                FocusMaterial(category, scope);
             };
             var duplicate = new Button
             {
                 Content = "Duplicar a…", ToolTip = "Copiar este material a otra categoría",
                 Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(7, 2, 7, 2),
-                IsEnabled = assignment is not null
+                IsEnabled = assignment is not null && scope is null
             };
             var menu = new ContextMenu();
             foreach (var (targetCategory, targetLabel) in RenderTextureLibrary.Categories)
@@ -102,9 +120,9 @@ public partial class RenderPanel
                 item.Click += (_, _) =>
                 {
                     if (_source is null) return;
-                    var current = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+                    var current = _source.RenderMaterials.FirstOrDefault(material => material.Category == category && material.ElementId == scope);
                     if (current is null) return;
-                    _source.AssignRenderMaterial(target, current.TexturePath, current.TextureSize, current.Relief);
+                    _source.AssignRenderMaterial(target, current.TexturePath, current.TextureSize, current.Relief, scope);
                     FocusMaterial(target);
                 };
                 menu.Items.Add(item);
@@ -128,10 +146,10 @@ public partial class RenderPanel
                 ToolTip = "Relieve de la textura: 0 (plano) a 1 (máximo)",
                 IsEnabled = assignment is not null
             };
-            relief.LostFocus += (_, _) => MaterialReliefChanged(category, relief);
+            relief.LostFocus += (_, _) => MaterialReliefChanged(category, relief, scope);
             relief.KeyDown += (_, e) =>
             {
-                if (e.Key == System.Windows.Input.Key.Enter) MaterialReliefChanged(category, relief);
+                if (e.Key == System.Windows.Input.Key.Enter) MaterialReliefChanged(category, relief, scope);
             };
             details.Children.Add(new TextBlock
             {
@@ -148,7 +166,7 @@ public partial class RenderPanel
         if (_focusedMaterial is { } focused)
         {
             var index = 0;
-            foreach (var (category, _) in RenderTextureLibrary.Categories)
+            foreach (var (category, _) in categories)
             {
                 if (category == focused && MaterialRows.Children[index * 2] is FrameworkElement label)
                 {
@@ -165,7 +183,7 @@ public partial class RenderPanel
     private void PopulateMaterialOptions(ComboBox picker, RenderMaterialAssignment? assignment)
     {
         picker.Items.Clear();
-        picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialStock"), Tag = StockTag });
+        picker.Items.Add(new ComboBoxItem { Content = _focusedElement is Guid ? "Heredar material general" : Text("RenderPanel.MaterialStock"), Tag = StockTag });
         // The material library, grouped under headings that cannot be chosen themselves.
         var search = MaterialSearch.Text.Trim();
         foreach (var group in MaterialPresets.All
@@ -248,13 +266,13 @@ public partial class RenderPanel
         return Path.GetFileName(path);
     }
 
-    private void MaterialChosen(SurfaceKind category, ComboBox picker, TextBox size)
+    private void MaterialChosen(SurfaceKind category, ComboBox picker, TextBox size, Guid? scope)
     {
         if (_refreshingMaterials || _source is null || picker.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
         switch (tag)
         {
             case StockTag:
-                _source.AssignRenderMaterial(category, null, 1, 0);
+                _source.AssignRenderMaterial(category, null, 1, 0, scope);
                 break;
             case CustomTag:
                 var dialog = new OpenFileDialog
@@ -263,42 +281,42 @@ public partial class RenderPanel
                     Filter = Text("RenderPanel.TextureFilter")
                 };
                 if (dialog.ShowDialog(Window.GetWindow(this)) == true)
-                    _source.AssignRenderMaterial(category, dialog.FileName, ReadSize(size, 1), 0.3);
+                    _source.AssignRenderMaterial(category, dialog.FileName, ReadSize(size, 1), 0.3, scope);
                 // Cancel must restore the actual selection rather than leave "From file" selected.
                 RefreshMaterialRows();
                 return;
             case var preset when MaterialPresets.FromPath(preset) is { } chosen:
-                _source.AssignRenderMaterial(category, preset, chosen.TextureSize, chosen.Relief);
+                _source.AssignRenderMaterial(category, preset, chosen.TextureSize, chosen.Relief, scope);
                 break;
             default:
                 var builtIn = RenderTextureLibrary.BuiltIn.FirstOrDefault(texture =>
                     RenderTextureLibrary.BuiltInPrefix + texture.Key == tag);
-                _source.AssignRenderMaterial(category, tag, builtIn?.Size ?? ReadSize(size, 1), builtIn?.Relief ?? 0.3);
+                _source.AssignRenderMaterial(category, tag, builtIn?.Size ?? ReadSize(size, 1), builtIn?.Relief ?? 0.3, scope);
                 break;
         }
         RefreshMaterialRows();
     }
 
-    private void MaterialSizeChanged(SurfaceKind category, TextBox size)
+    private void MaterialSizeChanged(SurfaceKind category, TextBox size, Guid? scope)
     {
         if (_refreshingMaterials || _source is null) return;
-        var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+        var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category && material.ElementId == scope);
         if (assignment is null) return;
         var value = ReadSize(size, assignment.TextureSize);
         if (Math.Abs(value - assignment.TextureSize) < 1e-9) return;
-        _source.AssignRenderMaterial(category, assignment.TexturePath, value, assignment.Relief);
+        _source.AssignRenderMaterial(category, assignment.TexturePath, value, assignment.Relief, scope);
     }
 
     /// <summary>Updates the image relief independently of texture scale; the change is undoable.</summary>
-    private void MaterialReliefChanged(SurfaceKind category, TextBox relief)
+    private void MaterialReliefChanged(SurfaceKind category, TextBox relief, Guid? scope)
     {
         if (_refreshingMaterials || _source is null) return;
-        var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category);
+        var assignment = _source.RenderMaterials.FirstOrDefault(material => material.Category == category && material.ElementId == scope);
         if (assignment is null) return;
         var value = double.TryParse(relief.Text.Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out var parsed)
             && double.IsFinite(parsed) && parsed is >= 0 and <= 1 ? parsed : assignment.Relief;
         if (Math.Abs(value - assignment.Relief) < 1e-9) return;
-        _source.AssignRenderMaterial(category, assignment.TexturePath, assignment.TextureSize, value);
+        _source.AssignRenderMaterial(category, assignment.TexturePath, assignment.TextureSize, value, scope);
     }
 
     private static double ReadSize(TextBox box, double fallback) =>
