@@ -27,6 +27,7 @@ public enum ArchitectureCommand
     ModelGroup,
     Room,
     RoomSeparator,
+    RoomSeparatorCurve,
     TagRoom,
     Area,
     AreaBoundary,
