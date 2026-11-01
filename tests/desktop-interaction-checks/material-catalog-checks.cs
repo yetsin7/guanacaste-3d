@@ -88,10 +88,14 @@ internal static partial class InteractionChecks
             Check(generatedResolver(SurfaceKind.Wall).Texture is not null &&
                   Math.Abs(generatedResolver(SurfaceKind.Wall).Roughness - 0.62f) < 0.0001f,
                 "Newly created material is readable by the path tracer");
+            File.Copy(sourceImage, Path.Combine(pbrDirectory, "normal.png"));
+            File.Copy(sourceImage, Path.Combine(pbrDirectory, "roughness.png"));
+            File.Copy(sourceImage, Path.Combine(pbrDirectory, "metallic.png"));
             var manifestFile = Path.Combine(pbrDirectory, "test.g3dm");
             File.WriteAllText(manifestFile,
                 "{\"version\":1,\"name\":\"Ladrillo PBR importado\",\"albedo\":\"albedo.png\"," +
-                "\"roughness\":0.87,\"metallic\":0.05,\"textureSize\":0.4,\"relief\":0.2}");
+                "\"roughness\":0.87,\"metallic\":0.05,\"textureSize\":0.4,\"relief\":0.2," +
+                "\"normal\":\"normal.png\",\"roughnessMap\":\"roughness.png\",\"metallicMap\":\"metallic.png\"}");
             var pbrAssignments = new[] { new RenderMaterialAssignment(SurfaceKind.Wall, "pbr:" + manifestFile)
                 { TextureSize = 0.4, Relief = 0.2 } };
             var pbrResolver = (Func<SurfaceKind, RenderMaterial>)library.GetMethod("Resolver",
@@ -99,7 +103,9 @@ internal static partial class InteractionChecks
             var pbrMaterial = pbrResolver(SurfaceKind.Wall);
             Check(pbrMaterial.Texture is not null && pbrMaterial.Name == "Ladrillo PBR importado" &&
                   Math.Abs(pbrMaterial.Roughness - 0.87f) < 0.0001f &&
-                  Math.Abs(pbrMaterial.Metallic - 0.05f) < 0.0001f,
+                  Math.Abs(pbrMaterial.Metallic - 0.05f) < 0.0001f &&
+                  pbrMaterial.NormalMap is not null && pbrMaterial.RoughnessMap is not null &&
+                  pbrMaterial.MetallicMap is not null,
                 "Imported PBR bundle drives base color texture, roughness and metalness");
             File.WriteAllText(manifestFile,
                 "{\"version\":1,\"name\":\"Traversal\",\"albedo\":\"../brick-red.png\"}");
