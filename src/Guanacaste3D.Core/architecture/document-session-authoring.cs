@@ -92,12 +92,12 @@ public sealed partial class DocumentSession
     {
         var room = Document.Rooms.FirstOrDefault(candidate => candidate.Id == roomId)
             ?? throw new InvalidDataException("The room does not exist.");
-        var minimum = new Point2(Math.Min(room.FirstCorner.X, room.SecondCorner.X) - margin,
-            Math.Min(room.FirstCorner.Y, room.SecondCorner.Y) - margin);
-        var maximum = new Point2(Math.Max(room.FirstCorner.X, room.SecondCorner.X) + margin,
-            Math.Max(room.FirstCorner.Y, room.SecondCorner.Y) + margin);
-        return AddSlabFromPreset(room.LevelId,
-            [minimum, new(maximum.X, minimum.Y), maximum, new(minimum.X, maximum.Y)], preset, SlabElevation(room.LevelId, preset));
+        // Face-derived floors, ceilings and roofs preserve L-shaped rooms instead of
+        // silently filling their unused bounding-box corners.
+        var footprint = RoomRegionGeometry.Outline(room);
+        var boundary = RoomRegionGeometry.OffsetOrthogonal(footprint, margin);
+        return AddSlabFromPreset(room.LevelId, boundary,
+            preset, SlabElevation(room.LevelId, preset));
     }
 
     /// <summary>Adds a slab with the footprint of another slab, grown outward by <paramref name="margin"/> meters.</summary>
