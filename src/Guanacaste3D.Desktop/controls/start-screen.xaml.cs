@@ -118,6 +118,7 @@ public partial class StartScreen : UserControl
 
     private IEnumerable<StartItem> RecentItems()
     {
+        if (!DesktopOptions.Load().ShowRecentFiles) yield break;
         foreach (var recent in _host!.Recents.Load())
         {
             // Recents are intentionally ordered by the last time the user opened the project, not by when Windows last
