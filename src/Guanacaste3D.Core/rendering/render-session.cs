@@ -115,7 +115,7 @@ public sealed class RenderSession : IDisposable
     private RenderResult Run(CancellationToken cancellation)
     {
         var clock = _renderClock;
-        clock.Restart();
+        clock.Reset();
         RenderFrame? last = null;
         try
         {
@@ -187,6 +187,10 @@ public sealed class RenderSession : IDisposable
             }
             return new RenderResult(last, tracer?.SampleCount ?? 0, clock.Elapsed, tracer?.RayCount ?? 0,
                 tracer?.TriangleCount ?? _scene.TriangleCount, false, true);
+        }
+        finally
+        {
+            clock.Stop();
         }
     }
 
