@@ -53,6 +53,32 @@ public sealed class NormalMap
     }
 
     /// <summary>
+    /// Projects tangent-space relief onto BIM geometry without UV coordinates. Uses the same dominant world
+    /// plane as the colour texture; strength 0 returns the original normal for distant-pixel filtering.
+    /// </summary>
+    public static Vector3 PerturbProjected(Vector3 normal, Vector3 sample, float strength = 1)
+    {
+        strength = float.IsFinite(strength) ? Math.Clamp(strength, 0f, 1f) : 0;
+        if (strength <= 0) return normal;
+        var ax = MathF.Abs(normal.X);
+        var ay = MathF.Abs(normal.Y);
+        var az = MathF.Abs(normal.Z);
+        var horizontal = az >= ax && az >= ay;
+        var tangent = horizontal ? Vector3.UnitX : ax >= ay ? Vector3.UnitY : Vector3.UnitX;
+        var bitangent = horizontal ? Vector3.UnitY : Vector3.UnitZ;
+        tangent -= normal * Vector3.Dot(tangent, normal);
+        if (tangent.LengthSquared() < 1e-10f) return normal;
+        tangent = Vector3.Normalize(tangent);
+        bitangent -= normal * Vector3.Dot(bitangent, normal);
+        bitangent -= tangent * Vector3.Dot(bitangent, tangent);
+        if (bitangent.LengthSquared() < 1e-10f) return normal;
+        bitangent = Vector3.Normalize(bitangent);
+        var bent = normal * MathF.Max(sample.Z, 0.01f) +
+                   tangent * (sample.X * strength) + bitangent * (sample.Y * strength);
+        return bent.LengthSquared() > 1e-10f ? Vector3.Normalize(bent) : normal;
+    }
+
+    /// <summary>
     /// Bends a shading normal by the map, given the triangle's corners and their texture coordinates (v up): the
     /// tangent follows increasing u and the bitangent increasing v, made perpendicular to the normal.
     /// </summary>
