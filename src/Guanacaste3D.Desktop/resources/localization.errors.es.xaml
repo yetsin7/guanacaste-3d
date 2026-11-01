@@ -4,6 +4,10 @@
     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <!-- Spanish text for Core validation messages, keyed by "Error." + the English message.
        LocalizedErrors.Translate falls back to the English text for unknown messages. -->
+  <sys:String x:Key="Error.A wall references a missing grid axis.">Un muro hace referencia a un eje que no existe.</sys:String>
+  <sys:String x:Key="Error.The wall centerline must align with the grid axis.">La línea central del muro debe coincidir con el eje.</sys:String>
+  <sys:String x:Key="Error.The grid axis name must contain between 1 and 32 characters.">El nombre del eje debe contener entre 1 y 32 caracteres.</sys:String>
+  <sys:String x:Key="Error.The grid axis translation must be finite.">El desplazamiento del eje debe ser finito.</sys:String>
   <sys:String x:Key="Error.A level cannot be null.">Un nivel no puede estar vacío.</sys:String>
   <sys:String x:Key="Error.A project parameter definition is invalid.">La definición del parámetro no es válida.</sys:String>
   <sys:String x:Key="Error.A project parameter value is invalid or orphaned.">Un valor de parámetro no es válido o perdió su elemento.</sys:String>
@@ -36,6 +40,24 @@
   <sys:String x:Key="Error.Invalid toposolid point.">El punto de elevación debe estar dentro del sólido topográfico y tener una elevación válida.</sys:String>
   <sys:String x:Key="Error.The toposolid does not exist.">El sólido topográfico no existe.</sys:String>
   <sys:String x:Key="Error.Invalid render material.">El material de render no es válido.</sys:String>
+  <sys:String x:Key="Error.Symbolic-link textures cannot be packed.">No se pueden incluir texturas mediante enlaces simbólicos.</sys:String>
+  <sys:String x:Key="Error.Texture size must be between 1 byte and 128 MiB.">La textura debe ocupar entre 1 byte y 128 MiB.</sys:String>
+  <sys:String x:Key="Error.Texture file format is not supported.">El formato de la textura no es compatible.</sys:String>
+
+  <sys:String x:Key="Error.HDRI must be a Radiance file smaller than 32 MiB.">El archivo HDRI debe ser Radiance y ocupar menos de 32 MiB.</sys:String>
+  <sys:String x:Key="Error.HDRI header contains a line longer than 256 bytes.">El encabezado HDRI contiene una línea demasiado larga.</sys:String>
+  <sys:String x:Key="Error.HDRI header is incomplete.">El encabezado HDRI está incompleto.</sys:String>
+  <sys:String x:Key="Error.Unsupported HDRI signature.">La firma del archivo HDRI no es compatible.</sys:String>
+  <sys:String x:Key="Error.Radiance RGBE format is required.">Se requiere un archivo HDRI con formato Radiance RGBE.</sys:String>
+  <sys:String x:Key="Error.HDRI must use -Y +X orientation, at most 2048 x 1024 pixels.">El HDRI debe usar orientación -Y +X y medir como máximo 2048 × 1024 píxeles.</sys:String>
+  <sys:String x:Key="Error.HDRI scanline is truncated.">Una línea de píxeles del HDRI está incompleta.</sys:String>
+  <sys:String x:Key="Error.HDRI RLE channel is truncated.">Un canal comprimido RLE del HDRI está incompleto.</sys:String>
+  <sys:String x:Key="Error.HDRI RLE run length is zero.">El HDRI tiene una secuencia RLE de longitud cero.</sys:String>
+  <sys:String x:Key="Error.HDRI RLE exceeds its scanline.">Una secuencia RLE excede la longitud de la línea HDRI.</sys:String>
+  <sys:String x:Key="Error.HDRI RLE repeat value is missing.">Falta el valor repetido de una secuencia RLE del HDRI.</sys:String>
+  <sys:String x:Key="Error.HDRI RLE literals are missing.">Faltan datos literales comprimidos en el HDRI.</sys:String>
+  <sys:String x:Key="Error.HDRI uncompressed scanline is truncated.">Una línea sin compresión del HDRI está incompleta.</sys:String>
+  <sys:String x:Key="Error.HDRI has unexpected data after its final scanline.">El archivo HDRI contiene bytes inesperados después de la última línea.</sys:String>
   <sys:String x:Key="Error.Invalid project views.">Las vistas del proyecto no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid room definitions.">Las habitaciones no son válidas.</sys:String>
   <sys:String x:Key="Error.Invalid wall-type catalog.">El catálogo de tipos de muro no es válido.</sys:String>
@@ -250,4 +272,10 @@
   <sys:String x:Key="Error.The glTF image is not valid.">La imagen del modelo glTF no es válida.</sys:String>
   <sys:String x:Key="Error.The glTF image is not a supported PNG.">La imagen del modelo glTF no es un PNG compatible.</sys:String>
   <sys:String x:Key="Error.The glTF image dimensions are out of range.">Las dimensiones de la imagen glTF superan los límites admitidos.</sys:String>
+  <!-- Archivo de sesiones de Render con IA. -->
+  <sys:String x:Key="Error.La vista de referencia debe ser una imagen PNG válida.">La vista de referencia debe ser una imagen PNG válida.</sys:String>
+  <sys:String x:Key="Error.La sesión seleccionada ya no contiene su prompt y referencia.">La sesión seleccionada ya no contiene su prompt y referencia.</sys:String>
+  <sys:String x:Key="Error.Solo se admiten imágenes PNG o JPEG.">Solo se admiten imágenes PNG o JPEG.</sys:String>
+  <sys:String x:Key="Error.La imagen debe tener un tamaño entre 1 byte y 100 MB.">La imagen debe tener un tamaño entre 1 byte y 100 MB.</sys:String>
+  <sys:String x:Key="Error.El contenido de la imagen no coincide con el formato indicado.">El contenido de la imagen no coincide con el formato indicado.</sys:String>
 </ResourceDictionary>

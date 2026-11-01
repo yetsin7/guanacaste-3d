@@ -80,22 +80,20 @@ sections, associative annotation, placed sheet views, IFC and DXF exchange,
 collaboration, structural and MEP authoring, physical rendering, and large-model
 performance engineering.
 
-## Construction-aware architectural plans (in development)
+## Materiales PBR .g3dm
 
-Guanacaste 3D is evolving toward a plan view that explains **how a wall is built**, not just where it stands.
+Desde **Render → Materiales** puedes importar un paquete `.g3dm` o crear uno a partir de
+una fotografía de albedo con un asistente. El material conserva su nombre, escala real,
+rugosidad, metalicidad y parámetros ópticos. Los paquetes también pueden referenciar mapas
+independientes de normales, rugosidad y metalicidad, aprovechando el renderizador PBR de la
+aplicación. Se incluyen quince nuevos acabados arquitectónicos.
 
-| Wall system | Plan drafting at higher zoom | Editable construction settings |
-| --- | --- | --- |
-| Concrete masonry block | Mortar joints and paired block cells | Left/right plaster and fine coats |
-| Exposed clay brick | Brick module and warm terracotta tone | Independent finishes on both faces |
-| Gypsum partition | Repeated stud markers inside wall outlines | Stud pitch of 16″, 24″, or custom |
-| Other materials | Existing filled/hatched wall representation | Standard wall type properties |
+Los paquetes referencian imágenes externas; comparte también esos archivos.
+[Guía de importación y creación de materiales](docs/importacion-materiales-pbr.md).
 
-This work is being reviewed in [PR #35](https://github.com/yetsin7/guanacaste-3d/pull/35); it is **not yet a released capability**. Planned follow-ups include actual column/wall Boolean joins, complete gypsum stud/channel solids, and genuine 3D section-box clipping.
+## Construction-aware architectural plans
 
-### Contribute to wall modeling
-
-Contributors can help by reviewing rendering precision at 100%, 125% and 150% Windows scaling, drawing junctions and hosted door openings, or writing tests for legacy `.g3d` project compatibility. Please open an issue with an example project and annotated expected/actual screenshots before introducing a new renderer or incompatible model format.
+Guanacaste 3D includes plan-view construction drafting for concrete block and clay brick joints, gypsum stud layout, and independent plaster/fine coats on both wall faces. Wall-type editors provide finish thickness and gypsum stud pitch (16″, 24″ or a custom value). Real 3D cut geometry for construction studs and volumetric section clipping remain future work.
 
 ## Requirements
 

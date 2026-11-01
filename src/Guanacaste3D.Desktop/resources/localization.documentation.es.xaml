@@ -33,6 +33,7 @@
   <sys:String x:Key="Documentation.DeleteAxis">Eliminar eje</sys:String>
   <sys:String x:Key="Transaction.AddGridAxis">Crear eje</sys:String>
   <sys:String x:Key="Transaction.EditGridAxis">Editar eje</sys:String>
+  <sys:String x:Key="Transaction.BindWallGridAxis">Vincular o desvincular muro del eje</sys:String>
   <sys:String x:Key="Transaction.RemoveGridAxis">Eliminar eje</sys:String>
   <sys:String x:Key="Error.Invalid grid axis definitions.">Los ejes deben tener nombres únicos de hasta 32 caracteres y extremos válidos.</sys:String>
   <sys:String x:Key="Error.The grid axis does not exist.">El eje ya no existe.</sys:String>

@@ -84,12 +84,25 @@ public sealed record SceneTexture(Rendering.RenderTexture Texture, float AlphaCu
 /// <summary>The texture coordinates of a triangle's three corners and the <see cref="SceneMesh.Textures"/> entry it uses.</summary>
 public readonly record struct TexturedTriangle(Vector2 A, Vector2 B, Vector2 C, int Texture);
 
+/// <summary>Contiguous triangle range attributed to one editable BIM element.</summary>
+public readonly record struct MeshElementRange(int First, int End, Guid ElementId);
+
 /// <summary>An indexed triangle soup in Z-up model coordinates (meters).</summary>
 public sealed class SceneMesh
 {
     public List<Vector3> Positions { get; } = [];
     public List<int> Indices { get; } = [];
     public List<SurfaceKind> TriangleKinds { get; } = [];
+    /// <summary>Sorted non-overlapping ranges; unowned triangles inherit global appearance.</summary>
+    public List<MeshElementRange> ElementRanges { get; } = [];
+
+    /// <summary>Associates newly appended triangles with one element, with constant metadata per range.</summary>
+    public void MarkElement(Guid elementId, int first)
+    {
+        if (elementId == Guid.Empty || first < 0 || first > TriangleCount)
+            throw new ArgumentOutOfRangeException(nameof(first));
+        if (first < TriangleCount) ElementRanges.Add(new MeshElementRange(first, TriangleCount, elementId));
+    }
 
     /// <summary>Textures that triangles of this mesh map with their own coordinates (detailed family meshes).</summary>
     public List<SceneTexture> Textures { get; } = [];
@@ -231,6 +244,7 @@ public static class BuildingMesher
                 inside(new Point2(middle.X + outward.X * 0.3, middle.Y + outward.Y * 0.3))
                     ? exposedInside ? facade : SurfaceKind.InteriorWall
                     : facade;
+            var wallFirst = mesh.TriangleCount;
             foreach (var solid in WallGeometry.Solids(wall, openings))
             {
                 if (construction == WallConstruction.Glass)
@@ -241,11 +255,14 @@ public static class BuildingMesher
                 AddPrism(mesh, joins.SectionOutline(wall, solid.From, solid.To).Select(point => new Vector2((float)point.X, (float)point.Y)).ToArray(),
                     (float)(z + solid.Bottom), (float)(z + solid.Top), facade, Face);
             }
+            mesh.MarkElement(wall.Id, wallFirst);
             foreach (var opening in openings)
             {
                 if (!typesById.TryGetValue(opening.OpeningTypeId, out var type)) continue;
+                var openingFirst = mesh.TriangleCount;
                 AddOpeningAssembly(mesh, wall, opening, type, z);
                 if (type.SecurityBars) AddSecurityBars(mesh, wall, opening, z, inside);
+                mesh.MarkElement(opening.Id, openingFirst);
             }
         }
 
@@ -253,6 +270,7 @@ public static class BuildingMesher
         double? siteEdge = null;
         foreach (var floor in document.Floors)
         {
+            var floorFirst = mesh.TriangleCount;
             var slabTop = elevations[floor.LevelId] + floor.ElevationOffset;
             if (floor.IsToposolid)
             {
@@ -263,6 +281,7 @@ public static class BuildingMesher
                     var z = elevations[floor.LevelId] + surface.ElevationAt(corner.X, corner.Y);
                     siteEdge = siteEdge is { } edge ? Math.Min(edge, z) : z;
                 }
+                mesh.MarkElement(floor.Id, floorFirst);
                 continue;
             }
             if (floor.IsPitched)
@@ -277,10 +296,15 @@ public static class BuildingMesher
                     FloorOpenings(document, floor, elevations),
                     SlabSurface(floor));
             }
+            mesh.MarkElement(floor.Id, floorFirst);
         }
 
         foreach (var column in document.Columns)
+        {
+            var first = mesh.TriangleCount;
             AddColumn(mesh, column, elevations[column.LevelId], document.Levels);
+            mesh.MarkElement(column.Id, first);
+        }
 
         // The electrical simulation decides which fixtures glow: switches, dimmers, breakers and panels.
         var electrical = ElectricalAnalysis.Analyze(document);
@@ -291,6 +315,7 @@ public static class BuildingMesher
             var brightness = device.IsLuminaire ? electrical.Brightness(device.Id) : 0;
             ElectricalGeometry.AppendTo(mesh, device, elevations[device.LevelId], brightness);
             if (brightness > 0) mesh.Dim(first, brightness);
+            mesh.MarkElement(device.Id, first);
         }
 
         // Plumbing follows the hydraulic layout: pipes sized and routed by the analysis.
@@ -301,6 +326,7 @@ public static class BuildingMesher
 
         foreach (var element in document.StructuralElements.Where(element => element.HasSolid))
         {
+            var elementFirst = mesh.TriangleCount;
             var datum = elevations[element.LevelId];
             if (ComponentFamilyRules.MeshOf(document, element) is { } familyMesh)
             {
@@ -313,6 +339,7 @@ public static class BuildingMesher
                     planting ? size.X * spread : element.Width,
                     planting ? size.Y * spread : element.Depth > 0 ? element.Depth : element.Width,
                     element.Height, datum + ground + element.Offset, preview: plants == PlantDetail.Model);
+                mesh.MarkElement(element.Id, elementFirst);
                 continue;
             }
             if (element.Kind == StructuralElementKind.Planting)
@@ -321,6 +348,7 @@ public static class BuildingMesher
                 var ground = datum + TerrainUnder(document, element.LevelId, element.Start);
                 if (plants == PlantDetail.Render) PlantDetailGeometry.AppendTo(mesh, element, ground);
                 else PlantGeometry.AppendTo(mesh, element, ground);
+                mesh.MarkElement(element.Id, elementFirst);
                 continue;
             }
             var output = element.Kind == StructuralElementKind.Component ? electrical.Brightness(element.Id) : 1;
@@ -328,10 +356,15 @@ public static class BuildingMesher
             foreach (var part in ElementGeometry.Parts(element))
                 AddPart(mesh, output > 0 || part.Kind != SurfaceKind.LightEmitter ? part : part with { Kind = SurfaceKind.LightOff }, datum);
             if (output > 0) mesh.Dim(first, output);
+            mesh.MarkElement(element.Id, elementFirst);
         }
 
         foreach (var family in document.InPlaceFamilies)
+        {
+            var first = mesh.TriangleCount;
             FamilyGeometry.AppendTo(mesh, family);
+            mesh.MarkElement(family.Id, first);
+        }
 
         if (includeGround)
         {

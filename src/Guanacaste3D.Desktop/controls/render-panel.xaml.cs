@@ -53,7 +53,9 @@ public partial class RenderPanel : UserControl
     public RenderPanel()
     {
         InitializeComponent();
+        InitializeRenderModeRail();
         InitializeLooks();
+        InitializeMaterialGallery();
         SunDatePicker.SelectedDate = DateTime.Today;
         _ready = true;
         IsVisibleChanged += (_, _) => OnVisibilityChanged();
@@ -64,10 +66,18 @@ public partial class RenderPanel : UserControl
 
     // ---------------------------------------------------------------- wiring
 
+    /// <summary>Optional geometric stone details are isolated to the path-traced scene.</summary>
+    private void StoneDetail_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || _source is null) return;
+        _source.StoneMicrogeometry = StoneDetailCheck.IsChecked == true;
+    }
+
     /// <summary>Connects shared scene, camera, query, and material notifications to the render panel.</summary>
     internal void Attach(IRenderSource source)
     {
         _source = source;
+        StoneDetailCheck.IsChecked = source.StoneMicrogeometry;
         _navigator = new SceneNavigator(ImageHost, source.Camera)
         {
             Bounds = source.SceneBounds,
@@ -118,6 +128,7 @@ public partial class RenderPanel : UserControl
         // Invalidate asynchronous scene requests before disposing the preview.
         _sceneRefreshVersion++;
         _cancel?.Cancel();
+        StopRenderTelemetry();
         StopTour();
         _preview?.Dispose();
         _preview = null;

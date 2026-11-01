@@ -50,6 +50,10 @@ public sealed record RenderSettings
     public float SunAngularRadiusDegrees { get; init; } = 0.8f;
     public float SkyIntensity { get; init; } = 1.2f;
     public SkyKind Sky { get; init; } = SkyKind.Clear;
+    /// <summary>Optional Radiance RGBE panorama for physically based sky/environment illumination (not a flat backdrop).</summary>
+    public HdriEnvironment? Environment { get; init; }
+    /// <summary>Rotate the environment around the scene's vertical axis; degrees.</summary>
+    public float EnvironmentYawDegrees { get; init; }
     /// <summary>Atmospheric haze for <see cref="SkyKind.Clear"/>: 2 is crystal clear, 6 is hazy, 10 is smoggy.</summary>
     public float Turbidity { get; init; } = 2.5f;
     /// <summary>Number of diffuse bounces after the first hit.</summary>
@@ -113,6 +117,10 @@ public sealed record RenderSettings
     public float CloudCover { get; init; } = 0.3f;
     /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
     public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
+    /// <summary>Fixed cloud shape seed; stable for screenshots, saved render setups and animation frames.</summary>
+    public uint CloudSeed { get; init; } = 7;
+    /// <summary>Rotation of the cloud pattern around the zenith (degrees).</summary>
+    public float CloudDirectionDegrees { get; init; }
     /// <summary>Reflectance of the ground seen below the horizon when the scene has none.</summary>
     public Vector3 GroundColor { get; init; } = new(0.30f, 0.29f, 0.27f);
 
@@ -183,4 +191,8 @@ public sealed record ImageFinish
     public float FilmGrain { get; init; }
     /// <summary>Renders in black and white, keeping the tonal balance of the colour image.</summary>
     public bool Monochrome { get; init; }
+    /// <summary>Optional 3D color lookup table applied after tone mapping and prior to lens effects.</summary>
+    public ColorLookupTable? Lut { get; init; }
+    /// <summary>Blend from unmodified color to LUT-graded color, between zero and one.</summary>
+    public float LutStrength { get; init; }
 }

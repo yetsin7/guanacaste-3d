@@ -37,6 +37,48 @@ var document = BuildingDocument.Create();
 document.Validate();
 Check(document.Levels.Count == 2 && document.Levels.All(BaseLevels.IsProtected), "Default protected floor and roof levels");
 
+var appearanceDocument = BuildingDocument.Create();
+var appearanceSession = new DocumentSession(appearanceDocument);
+var pbrAppearance = new RenderMaterialAssignment(SurfaceKind.Wall, "stock:")
+{
+    RoughnessOverride = 0.24, MetallicOverride = 0.36, Relief = 0.61
+};
+appearanceSession.SetRenderMaterial(pbrAppearance);
+Check(appearanceSession.Document.RenderMaterials.Single().RoughnessOverride == 0.24 &&
+      appearanceSession.Document.RenderMaterials.Single().MetallicOverride == 0.36,
+    "PBR appearance overrides are stored in a project-scoped material transaction");
+appearanceSession.Undo();
+Check(appearanceSession.Document.RenderMaterials.Count == 0, "PBR appearance edit is undoable");
+appearanceSession.Redo();
+Check(appearanceSession.Document.RenderMaterials.Single().Relief == 0.61,
+    "Undo-redo restores the original appearance assignment");
+var appearancePath = Path.Combine(Path.GetTempPath(), $"guanacaste-pbr-appearance-{Guid.NewGuid():N}.g3d");
+try
+{
+    ProjectFile.Save(appearancePath, appearanceSession.Document);
+    var restoredAppearance = ProjectFile.Load(appearancePath).RenderMaterials.Single();
+    Check(restoredAppearance.RoughnessOverride == 0.24 &&
+          restoredAppearance.MetallicOverride == 0.36 &&
+          restoredAppearance.Relief == 0.61,
+        "Native project persistence round-trips roughness, metalness and relief without editing .g3dm");
+}
+finally
+{
+    if (File.Exists(appearancePath)) File.Delete(appearancePath);
+    if (File.Exists(appearancePath + ".bak")) File.Delete(appearancePath + ".bak");
+}
+foreach (var invalidAppearance in new[] {
+    pbrAppearance with { RoughnessOverride = double.NaN },
+    pbrAppearance with { RoughnessOverride = 0.01 },
+    pbrAppearance with { MetallicOverride = 1.5 }
+})
+{
+    var rejected = false;
+    try { appearanceSession.SetRenderMaterial(invalidAppearance); }
+    catch (InvalidDataException) { rejected = true; }
+    Check(rejected && appearanceSession.Document.RenderMaterials.Single() == pbrAppearance,
+        "Invalid PBR overrides are rejected atomically without changing the material");
+}
 var session = new DocumentSession(document);
 var id = session.AddWall(document.Levels[0].Id, new Point2(0, 0), new Point2(5, 0));
 Check(session.Document.Walls.Single().Length == 5, "Metric wall geometry");
@@ -431,6 +473,7 @@ NavigationChecks.Run(Check);
 OpeningFamilyChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
+GridAxisChecks.Run(Check);
 LevelCopyChecks.Run(Check);
 LifeSafetyChecks.Run(Check);
 FloorPlanHatchChecks.Run(Check);
@@ -450,6 +493,7 @@ ToiletFamilyChecks.Run(Check);
 RenderDetailChecks.Run(Check);
 ElectricalChecks.Run(Check);
 CatalogChecks.Run(Check);
+PbrMaterialAuditChecks.Run(Check);
 PlumbingChecks.Run(Check);
 CoolingChecks.Run(Check);
 SiteDrainageChecks.Run(Check);
@@ -458,4 +502,5 @@ PhotovoltaicChecks.Run(Check);
 LightingChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 ModelViewIntegrationChecks.Run(Check);
+AiRenderChecks.Run();
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

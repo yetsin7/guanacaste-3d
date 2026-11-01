@@ -214,6 +214,7 @@ internal static partial class DocumentationChecks
     {
         try { action(); }
         catch (InvalidDataException) { Check(true, explanation); return; }
+        catch (DuplicateGridAxisNameException) { Check(true, explanation); return; }
         throw new InvalidOperationException(explanation);
     }
 
