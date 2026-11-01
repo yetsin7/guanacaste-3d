@@ -32,7 +32,9 @@ public enum SurfacePattern : byte
     /// <summary>Weathered asphalt with fine aggregate and irregular surface variation.</summary>
     Asphalt,
     /// <summary>Subtle mineral variation and pores on exposed cast concrete.</summary>
-    PouredConcrete
+    PouredConcrete,
+    /// <summary>Irregular coursed natural-stone masonry with individually toned stones, recessed mortar and mineral relief.</summary>
+    StoneMasonry
 }
 
 /// <summary>
@@ -215,7 +217,7 @@ public static class MaterialLibrary
         },
         SurfaceKind.WallStone => new RenderMaterial
         {
-            Name = "Piedra", BaseColor = new(0.46f, 0.43f, 0.38f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 1.5f
+            Name = "Piedra natural", BaseColor = new(0.55f, 0.50f, 0.43f), Roughness = 0.92f, Pattern = SurfacePattern.StoneMasonry, PatternScale = 1f
         },
         SurfaceKind.WallWood => new RenderMaterial
         {

@@ -13,6 +13,8 @@ static class RenderEngineChecks
     {
         Materials(check);
         CastConcrete(check);
+        NaturalStone(check);
+        NormalMapFiltering(check);
         TextureInputValidation(check);
         Sky(check);
         BvhOnLargeScene(check);
@@ -58,6 +60,60 @@ static class RenderEngineChecks
         check(exposed.Pattern == SurfacePattern.PouredConcrete && painted.Pattern != exposed.Pattern &&
               values.All(value => float.IsFinite(value) && value is > 0.5f and < 1.3f) && values.Max() - values.Min() > 0.05f,
             "Exposed concrete has bounded surface variation without changing painted walls");
+    }
+
+    /// <summary>Natural-stone patterns have irregular joints and a stone-specific relief without changing concrete blocks.</summary>
+    private static void NaturalStone(Action<bool, string> check)
+    {
+        var stone = MaterialLibrary.ForKind(SurfaceKind.WallStone);
+        var blocks = MaterialLibrary.ForKind(SurfaceKind.WallBlock);
+        var samples = (from y in Enumerable.Range(0, 64)
+                       from x in Enumerable.Range(0, 64)
+                       select SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale,
+                           new Vector3(x * 0.017f, 0, y * 0.017f), Vector3.UnitY).X).ToArray();
+        check(stone.Pattern == SurfacePattern.StoneMasonry && blocks.Pattern == SurfacePattern.Blocks &&
+              samples.All(value => float.IsFinite(value) && value > 0.15f && value < 1.6f) &&
+              samples.Max() - samples.Min() > 0.35f,
+            "Natural-stone walls have distinct recessed joints and varied stones without affecting concrete blocks");
+
+        var p = new Vector3(-0.19f, 0, 0.31f);
+        var a = SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale, p, Vector3.UnitY);
+        var b = SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale, p, -Vector3.UnitY);
+        var details = Enumerable.Range(0, 80)
+            .Select(i => SurfacePatterns.Relief(stone.Pattern, stone.PatternScale,
+                new Vector3(i * 0.013f, 0, 0.16f), Vector3.UnitY, 2f)).ToArray();
+        check(a == b && details.All(n => float.IsFinite(n.X) && float.IsFinite(n.Y) && float.IsFinite(n.Z) &&
+              MathF.Abs(n.Length() - 1) < 0.001f) && details.Any(n => Vector3.Dot(n, Vector3.UnitY) < 0.99f),
+            "Stone relief is deterministic, unit length and continuous across opposite wall faces");
+    }
+
+    /// <summary>Distant normal maps converge toward their area-average direction instead of shimmering.</summary>
+    private static void NormalMapFiltering(Action<bool, string> check)
+    {
+        byte[] texels = [255, 128, 255, 0, 128, 255,
+                         0, 128, 255, 255, 128, 255];
+        var map = NormalMap.FromRgb(2, 2, texels);
+        var near = map.Sample(0.25f, 0.75f, 0);
+        var far = map.Sample(0.25f, 0.75f, 2);
+        texels[0] = 0;
+        var retained = map.Sample(0.25f, 0.75f);
+        check(map.LevelCount == 2 && near.X > 0.6f && far.Z > 0.99f &&
+              MathF.Abs(far.X) < 0.03f && retained.X > 0.6f,
+            "Normal maps retain near detail, filter distant opposing slopes and own the source buffer");
+
+        bool Rejects(Func<NormalMap> create)
+        {
+            try { create(); return false; }
+            catch (ArgumentException) { return true; }
+        }
+        var odd = NormalMap.FromRgb(3, 1,
+            [128, 128, 255, 255, 128, 255, 128, 128, 255]);
+        var sample = odd.Sample(0.2f, 0.4f, 4);
+        check(Rejects(() => NormalMap.FromRgb(65_536, 65_536, [])) &&
+              Rejects(() => NormalMap.FromRgb(2, 2, new byte[11])) &&
+              odd.LevelCount == 3 && float.IsFinite(sample.X) &&
+              MathF.Abs(sample.Length() - 1f) < 1e-4f,
+            "Normal maps reject malformed dimensions and filter odd-sized maps safely");
     }
 
     private static void TextureInputValidation(Action<bool, string> check)
