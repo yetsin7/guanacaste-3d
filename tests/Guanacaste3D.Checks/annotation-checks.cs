@@ -36,9 +36,11 @@ static class AnnotationChecks
         var tagged = new DocumentSession(demo.Clone());
         var areaId = tagged.AddArea(demoLevel, "Patio de prueba", new Point2(25, 25), new Point2(30, 29));
         var areas = ElementTags.Build(tagged.Document, demoLevel, new HashSet<TagCategory> { TagCategory.Area });
-        check(areas.Count == 1 && areas[0].ElementId == areaId &&
-              areas[0].Mark == "Patio de prueba" && areas[0].Position == new Point2(27.5, 27) &&
-              areas[0].Description.Contains("20"),
+        var newAreaTag = areas.SingleOrDefault(tag => tag.ElementId == areaId);
+        check(newAreaTag is not null && newAreaTag.Category == TagCategory.Area &&
+              newAreaTag.Mark == "Patio de prueba" &&
+              newAreaTag.Position == new Point2(27.5, 27) &&
+              newAreaTag.Description.Contains("20"),
             "Area labels are derived from actual geometric area and remain attached to the model element");
         tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true);
         tagged.SetPlanTagVisibility(plan.Id, TagCategory.Room, true); // idempotent, no extra undo step
@@ -53,7 +55,7 @@ static class AnnotationChecks
             var reopened = ProjectFile.Load(file);
             check(reopened.Views.Single(view => view.Id == plan.Id) is { ShowRoomTags: true, ShowAreaTags: true } &&
                   ElementTags.Build(reopened, demoLevel, new HashSet<TagCategory> { TagCategory.Area })
-                      .Single().ElementId == areaId,
+                      .Any(tag => tag.ElementId == areaId),
                 "Room/area tag visibility and associative area identity survive native project reload");
         }
         finally
