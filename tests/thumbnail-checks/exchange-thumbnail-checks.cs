@@ -31,16 +31,35 @@ internal static class ExchangeThumbnailChecks
         Verify(embeddedPath, directory, arguments.Contains("--shell"));
         embedded["thumbnailPng"] = "broken preview";
         DocumentPreview.Render(System.Text.Encoding.UTF8.GetBytes(embedded.ToJsonString()), 256);
+        var oversizedBuffer = CreateExchange();
+        // One extra base64 record beyond the 500k-triangle material budget must fail
+        // before allocating or copying the binary buffer.
+        oversizedBuffer["meshes"]![0]!["materials"] = new string('A', 2_666_672);
+        RejectOversizedExchange(oversizedBuffer);
+        var excessiveCollections = CreateExchange();
+        var meshCollection = excessiveCollections["meshes"]!.AsArray();
+        var sampleMesh = meshCollection[0]!.DeepClone();
+        for (var index = 1; index <= 2048; index++)
+            meshCollection.Add(sampleMesh.DeepClone());
+        RejectOversizedExchange(excessiveCollections);
         original["meshes"]![0]!["indices"] = Convert.ToBase64String(MemoryMarshal.AsBytes(new[] { 99, 1, 2 }.AsSpan()));
         try { DocumentPreview.Render(System.Text.Encoding.UTF8.GetBytes(original.ToJsonString()), 256); }
         catch (InvalidDataException)
         {
-            Console.WriteLine("PASS: exchange mesh bounds, optional preview fallback, unchanged BIM payload and importer compatibility");
+            Console.WriteLine("PASS: exchange mesh bounds and allocation budgets, optional preview fallback, unchanged BIM payload and importer compatibility");
             foreach (var argument in arguments.Where(argument => argument.StartsWith("--exchange-file=")))
                 Verify(argument["--exchange-file=".Length..], directory, arguments.Contains("--shell"));
             return;
         }
         throw new InvalidOperationException("Invalid exchange mesh indices were accepted.");
+    }
+
+    /// <summary>Untrusted exchange metadata must fail within the thumbnail allocation budget.</summary>
+    private static void RejectOversizedExchange(JsonObject exchange)
+    {
+        try { DocumentPreview.Render(System.Text.Encoding.UTF8.GetBytes(exchange.ToJsonString()), 256); }
+        catch (InvalidDataException) { return; }
+        throw new InvalidOperationException("Oversized exchange thumbnail input was accepted.");
     }
 
     /// <summary>Renders a file read-only and optionally asks Windows for its actual cached thumbnail.</summary>
