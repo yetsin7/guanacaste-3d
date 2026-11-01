@@ -384,6 +384,7 @@ GridAxisAssociationChecks.Run(Check);
 RoomSeparatorBoundaryChecks.Run(Check);
 AutomaticRoomSynchronizationChecks.Run(Check);
 IrregularRoomChecks.Run(Check);
+AdvancedRoomBoundaryChecks.Run(Check);
 AgentChecks.Run(Check);
 StairAndWallChecks.Run(Check);
 ModernHouseChecks.Run(Check);
