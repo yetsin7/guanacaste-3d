@@ -117,6 +117,10 @@ public sealed record RenderSettings
     public float CloudCover { get; init; } = 0.3f;
     /// <summary>The kind of cloud that <see cref="CloudCover"/> draws.</summary>
     public CloudStyle Clouds { get; init; } = CloudStyle.Cumulus;
+    /// <summary>Fixed cloud shape seed; stable for screenshots, saved render setups and animation frames.</summary>
+    public uint CloudSeed { get; init; } = 7;
+    /// <summary>Rotation of the cloud pattern around the zenith (degrees).</summary>
+    public float CloudDirectionDegrees { get; init; }
     /// <summary>Reflectance of the ground seen below the horizon when the scene has none.</summary>
     public Vector3 GroundColor { get; init; } = new(0.30f, 0.29f, 0.27f);
 
