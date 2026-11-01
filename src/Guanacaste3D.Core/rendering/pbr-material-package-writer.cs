@@ -23,7 +23,7 @@ public static class PbrMaterialPackageWriter
         IReadOnlyList<string>? Tags = null);
 
     /// <summary>
-    /// Maps: albedo (required), normal, roughnessMap, metallicMap.
+    /// Maps: albedo (required), normal, roughnessMap, metallicMap, heightMap.
     /// Writes all images next to the manifest, then writes the manifest last.
     /// Never overwrites an existing output, and rolls back files created on failure.
     /// </summary>
@@ -45,9 +45,9 @@ public static class PbrMaterialPackageWriter
             options.Tags?.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 48) == true)
             throw new ArgumentException("Invalid material properties.", nameof(options));
 
-        var acceptedChannels = new[] { "albedo", "normal", "roughnessMap", "metallicMap" };
+        var acceptedChannels = new[] { "albedo", "normal", "roughnessMap", "metallicMap", "heightMap" };
         if (!maps.ContainsKey("albedo") || maps.Keys.Any(key => !acceptedChannels.Contains(key, StringComparer.Ordinal)))
-            throw new ArgumentException("Map channels must be albedo, normal, roughnessMap or metallicMap.", nameof(maps));
+            throw new ArgumentException("Map channels must be albedo, normal, roughnessMap, metallicMap or heightMap.", nameof(maps));
 
         var destination = Path.GetFullPath(manifestPath);
         var directory = Path.GetDirectoryName(destination)!;
@@ -69,6 +69,7 @@ public static class PbrMaterialPackageWriter
             {
                 "roughnessMap" => "roughness",
                 "metallicMap" => "metallic",
+                "heightMap" => "height",
                 _ => channel
             };
             inputs[channel] = (file.FullName, stem + "-" + suffix + extension);
