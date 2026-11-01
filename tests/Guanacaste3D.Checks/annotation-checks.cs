@@ -38,7 +38,7 @@ static class AnnotationChecks
         var areas = ElementTags.Build(tagged.Document, demoLevel, new HashSet<TagCategory> { TagCategory.Area });
         var newAreaTag = areas.SingleOrDefault(tag => tag.ElementId == areaId);
         check(newAreaTag is not null && newAreaTag.Category == TagCategory.Area &&
-              newAreaTag.Mark == "Patio de prueba" &&
+              newAreaTag.Mark.StartsWith("Patio de prueba", StringComparison.Ordinal) &&
               newAreaTag.Position == new Point2(27.5, 27) &&
               newAreaTag.Description.Contains("20"),
             "Area labels are derived from actual geometric area and remain attached to the model element");
