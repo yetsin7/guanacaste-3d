@@ -196,6 +196,7 @@ internal static class TreeTextureGenerator
             {
                 stream.Write([137, 80, 78, 71, 13, 10, 26, 10]);
                 Span<byte> header = stackalloc byte[13];
+                header.Clear();
                 BinaryPrimitives.WriteInt32BigEndian(header, width);
                 BinaryPrimitives.WriteInt32BigEndian(header[4..], height);
                 header[8] = 8;
