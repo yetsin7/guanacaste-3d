@@ -28,6 +28,20 @@ static class IrregularRoomChecks
         check(RoomRegionGeometry.Contains(room.Boundary!, room.Center),
             "An irregular room's label anchor remains inside its actual footprint");
 
+        var floorType = ArchitecturalLibrary.SlabPresets.First(preset => preset.Kind == FloorKind.Floor);
+        var floorId = session.AddSlabOverRoom(room.Id, floorType);
+        var footprintFloor = session.Document.Floors.Single(floor => floor.Id == floorId);
+        check(footprintFloor.Boundary.Count == 6 &&
+              Math.Abs(footprintFloor.CalculateArea() - 44.84) < 1e-8,
+            "A slab created from an L-shaped room follows the actual footprint rather than filling its bounding box");
+        var expandedId = session.AddSlabOverRoom(room.Id, floorType, 0.4);
+        var expandedFloor = session.Document.Floors.Single(floor => floor.Id == expandedId);
+        check(expandedFloor.Boundary.Count == 6 &&
+              expandedFloor.CalculateArea() > footprintFloor.CalculateArea() &&
+              RoomRegionGeometry.IsValid(expandedFloor.Boundary),
+            "A roof or slab overhang expands an L-shaped perimeter without filling its recessed corner");
+
+
         var copy = session.Document.Clone();
         copy.Rooms[0].Boundary![0] = new Point2(20, 20);
         check(session.Document.Rooms[0].Boundary![0] != new Point2(20, 20),
