@@ -8,6 +8,42 @@ static void Check(bool valid, string explanation)
     Console.WriteLine("OK: " + explanation);
 }
 
+// Two-dimensional drawing primitives belong to a view, not a 3D geometry layer.
+var detailsProject = BuildingDocument.Create();
+var detailsSession = new DocumentSession(detailsProject);
+var firstPlan = detailsSession.Document.Views.First(view => view.Kind == ProjectViewKind.Plan);
+var secondPlan = detailsSession.Document.Views.First(view => view.Kind == ProjectViewKind.Plan && view.Id != firstPlan.Id);
+var drawnLine = detailsSession.AddDetailLine(firstPlan.Id, new Point2(0, 0),
+    new Point2(1, 0), "paredes", style: DetailStrokeStyle.Dashed);
+var regionId = detailsSession.AddFilledRegion(firstPlan.Id,
+    [new Point2(0, 0), new Point2(2, 0), new Point2(2, 1), new Point2(0, 1)],
+    DetailFillPattern.Herringbone);
+detailsSession.Document.Validate();
+Check(detailsSession.Document.DetailLines.Count(line => line.ViewId == firstPlan.Id) == 1 &&
+      detailsSession.Document.DetailLines.All(line => line.ViewId != secondPlan.Id),
+    "A detail line appears only in its owning view");
+Check(detailsSession.Document.FilledRegions.Single(region => region.Id == regionId).Pattern ==
+      DetailFillPattern.Herringbone, "Filled region retains its hatch pattern");
+var copyId = detailsSession.CopyViewDetail(drawnLine, secondPlan.Id);
+Check(detailsSession.Document.DetailLines.Single(line => line.Id == copyId).ViewId == secondPlan.Id,
+    "Copying a detail into another plan changes only its view association");
+detailsSession.Undo();
+Check(detailsSession.Document.DetailLines.All(line => line.Id != copyId),
+    "Annotation copy can be undone");
+detailsSession.Redo();
+Check(detailsSession.Document.DetailLines.Any(line => line.Id == copyId),
+    "Annotation copy can be redone");
+var clonedDetails = detailsSession.Document.Clone();
+clonedDetails.FilledRegions[0].Boundary[0] = new Point2(50, 50);
+Check(detailsSession.Document.FilledRegions[0].Boundary[0].X == 0,
+    "Cloning a drawing deep-copies region vertices");
+var invalidDetails = detailsSession.Document.Clone();
+invalidDetails.DetailLines[0] = invalidDetails.DetailLines[0] with { ViewId = Guid.NewGuid() };
+var badDetailRejected = false;
+try { invalidDetails.Validate(); }
+catch (InvalidDataException) { badDetailRejected = true; }
+Check(badDetailRejected, "Reject detail elements referring to non-existent views");
+
 var document = BuildingDocument.Create();
 document.Validate();
 Check(document.Levels.Count == 2 && document.Levels.All(BaseLevels.IsProtected), "Default protected floor and roof levels");
