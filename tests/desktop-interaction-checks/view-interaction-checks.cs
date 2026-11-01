@@ -181,6 +181,12 @@ internal static partial class InteractionChecks
                 "The optional nature gallery shows only eight thumbnail cards per page");
             Check(target.SelectedItem is ComboBoxItem { Tag: SurfaceKind.Bark },
                 "The gallery initially targets tree bark instead of an unrelated BIM surface");
+            ((Button)panel.FindName("GalleryNextButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(((TextBlock)panel.FindName("GalleryPageText")).Text == "2 / 3" &&
+                  tiles.Children.OfType<Button>().Count() == 8,
+                "Next page reveals another eight thumbnails without mounting the entire texture collection");
+            ((Button)panel.FindName("GalleryPreviousButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             search.Text = "guanacaste";
             Pump();
             Check(tiles.Children.OfType<Button>().Count() == 2,
