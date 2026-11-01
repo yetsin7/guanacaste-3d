@@ -80,6 +80,34 @@ internal static class PbrMaterialAuditChecks
                 check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "different-case.g3dm")).IsValid,
                     "Linux/macOS case-sensitive assets must preserve their filename spelling");
 
+            var packedPath = Path.Combine(folder, "exported.g3dm");
+            var exported = PbrMaterialPackageWriter.Create(packedPath,
+                new PbrMaterialPackageWriter.Options("Repello fino", "Acabados",
+                    "Con textura real a escala", "Guanacaste", "CC0",
+                    .92, 0, 1.5, 1.25, .16, ["paredes", "interior"]),
+                new Dictionary<string, string>
+                {
+                    ["albedo"] = Path.Combine(folder, "brick_albedo.png"),
+                    ["roughnessMap"] = Path.Combine(folder, "brick_roughness.png")
+                });
+            var exportedAudit = PbrMaterialAudit.Inspect(exported);
+            check(exportedAudit.IsValid && exportedAudit.Material?.Maps.Count == 2 &&
+                  exportedAudit.Material.License == "CC0" &&
+                  File.Exists(Path.Combine(folder, "exported-albedo.png")),
+                "Portable writer creates a complete self-contained .g3dm material without WPF");
+
+            var overwriteRejected = false;
+            try
+            {
+                PbrMaterialPackageWriter.Create(packedPath,
+                    new PbrMaterialPackageWriter.Options("No sobrescribir"),
+                    new Dictionary<string, string> { ["albedo"] = Path.Combine(folder, "brick_albedo.png") });
+            }
+            catch (IOException) { overwriteRejected = true; }
+            check(overwriteRejected &&
+                  PbrMaterialAudit.Inspect(packedPath).Material?.Name == "Repello fino",
+                "Exporting a material never silently overwrites an existing .g3dm package");
+
             check(PbrMaterialAudit.Scan(Path.Combine(folder, "not-a-folder")).Count == 0,
                 "Missing material library directory is safe to inspect");
         }
