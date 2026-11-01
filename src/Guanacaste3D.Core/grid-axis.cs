@@ -9,7 +9,7 @@ public sealed record GridAxis(Guid Id, string Name, Point2 Start, Point2 End)
 }
 
 /// <summary>Reports the existing datum so the UI can offer to locate it instead of silently failing.</summary>
-public sealed class DuplicateGridAxisNameException : IOException
+public sealed class DuplicateGridAxisNameException : InvalidDataException
 {
     public Guid ExistingAxisId { get; }
     public string AxisName { get; }
