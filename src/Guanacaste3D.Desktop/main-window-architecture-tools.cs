@@ -176,7 +176,7 @@ public partial class MainWindow
         {
             var room = _session.Document.Rooms.LastOrDefault(candidate =>
                 candidate.LevelId == _activeLevelId &&
-                RoomRegionGeometry.Contains(RoomRegionGeometry.Outline(candidate), point));
+                RoomRegionGeometry.Contains(candidate, point));
             id = room?.Id;
             current = room?.Name ?? string.Empty;
         }
