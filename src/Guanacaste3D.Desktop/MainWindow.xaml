@@ -18,7 +18,7 @@
   <Border x:Name="WindowFrame" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1">
   <Grid>
   <DockPanel LastChildFill="True">
-    <Border DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="30">
+    <Border x:Name="MainTitleBar" DockPanel.Dock="Top" Background="{DynamicResource ChromeBrush}" Height="30">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0"
@@ -82,7 +82,7 @@
         <controls:ProfessionalRibbon Workspace="Wall" CommandInvoked="ProfessionalRibbon_CommandInvoked"/>
       </TabItem>
     </TabControl>
-    <Border DockPanel.Dock="Bottom" Background="{DynamicResource RibbonBrush}" Height="24"
+    <Border x:Name="MainStatusStrip" DockPanel.Dock="Bottom" Background="{DynamicResource RibbonBrush}" Height="24"
             BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,1,0,0">
       <DockPanel Margin="4,0,8,0">
         <TextBlock x:Name="ActiveViewText" DockPanel.Dock="Right" Text="{DynamicResource View.Plan}"
@@ -411,6 +411,14 @@
                             Panel.ZIndex="10" Visibility="Collapsed"/>
     </Grid>
   </DockPanel>
+  <!-- The Render workspace hides the entire BIM ribbon/chrome. Its single navigation
+       action is always available above the renderer's own controls. -->
+  <Button x:Name="RenderReturn3DButton" Content="↩  3D" AutomationProperties.Name="Volver a la vista 3D"
+          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,22,0" MinWidth="102" Height="42"
+          Padding="16,8" FontSize="15" FontWeight="SemiBold" Panel.ZIndex="35"
+          Background="#142B38" Foreground="#FFFFFF" BorderBrush="#6BC7B9" BorderThickness="1"
+          Visibility="Collapsed" Click="RenderReturn3D_Click"
+          WindowChrome.IsHitTestVisibleInChrome="True"/>
   <!-- The Home screen covers the workspace below the title bar until a project is chosen. -->
   <controls:StartScreen x:Name="StartScreenControl" Margin="0,30,0,0" Visibility="Collapsed"/>
   </Grid>
