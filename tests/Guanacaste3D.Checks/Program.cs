@@ -406,6 +406,7 @@ NavigationChecks.Run(Check);
 OpeningFamilyChecks.Run(Check);
 FormulaChecks.Run(Check);
 LevelChecks.Run(Check);
+GridAxisChecks.Run(Check);
 LevelCopyChecks.Run(Check);
 LifeSafetyChecks.Run(Check);
 FloorPlanHatchChecks.Run(Check);
