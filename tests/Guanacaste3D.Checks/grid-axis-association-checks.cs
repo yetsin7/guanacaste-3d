@@ -95,5 +95,41 @@ static class GridAxisAssociationChecks
               rotating.Document.Walls.Single(w => w.Id == rotatingWall).End.DistanceTo(new(0, 4)) < 1e-8,
             "Rotating an axis rigidly rotates its centered wall without changing the wall length");
         rotating.Document.Validate();
+
+        // Copies and manual rotations are explicit detach operations, including when a new
+        // coincident datum is added later (legacy geometric inference must not reattach them).
+        var editing = new DocumentSession(BuildingDocument.Create("Detached wall edits"));
+        var editingLevel = editing.Document.Levels[0].Id;
+        var editingAxis = editing.AddGridAxis("C", new(0, 0), new(10, 0));
+        var original = editing.AddWall(editingLevel, new(1, 0), new(7, 0));
+        var copy = editing.DuplicateWall(original, 0, 2);
+        check(editing.Document.Walls.Single(w => w.Id == copy) is
+                { GridAxisId: null, GridAxisAssociationDisabled: true },
+            "Duplicated walls explicitly opt out of their source datum");
+        editing.AddGridAxis("D", new(0, 2), new(10, 2));
+        check(editing.Document.Walls.Single(w => w.Id == copy).GridAxisId is null,
+            "A newly created coincident axis cannot silently reattach a copied wall");
+
+        editing.RotateWall(original, 15);
+        var rotatedWall = editing.Document.Walls.Single(w => w.Id == original);
+        check(rotatedWall.GridAxisId is null && rotatedWall.GridAxisAssociationDisabled,
+            "Manual wall rotation explicitly releases the datum");
+        var rotatedStart = rotatedWall.Start;
+        var rotatedEnd = rotatedWall.End;
+        editing.AddGridAxis("E", rotatedStart, rotatedEnd);
+        check(editing.Document.Walls.Single(w => w.Id == original).GridAxisId is null,
+            "Creating a coincident axis cannot reattach a manually rotated wall");
+        editing.MoveGridAxis(editingAxis, 0, 1);
+        check(editing.Document.Walls.Single(w => w.Id == original).Start == rotatedStart &&
+              editing.Document.Walls.Single(w => w.Id == original).End == rotatedEnd,
+            "Moving the former datum leaves a manually rotated wall unchanged");
+        editing.Undo(); // MoveGridAxis
+        editing.Undo(); // AddGridAxis E
+        editing.Undo(); // RotateWall
+        check(editing.Document.Walls.Single(w => w.Id == original).GridAxisId == editingAxis,
+            "Undoing a rotation restores its previous datum constraint");
+        editing.RotateWall(original, 0);
+        check(editing.Document.Walls.Single(w => w.Id == original).GridAxisId == editingAxis,
+            "A zero-degree rotation preserves the existing datum constraint");
     }
 }
