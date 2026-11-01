@@ -433,4 +433,5 @@ PhotovoltaicChecks.Run(Check);
 LightingChecks.Run(Check);
 NativeDocumentChecks.Run(Check);
 ModelViewIntegrationChecks.Run(Check);
+AiRenderChecks.Run();
 Console.WriteLine("Guanacaste 3D: all core checks passed.");

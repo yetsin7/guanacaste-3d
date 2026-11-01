@@ -218,6 +218,7 @@ public partial class MainWindow : Window
             ProjectFile.Save(path!, _session.Document);
             _links.Save(path!);
             _filePath = path;
+            RenderPanelControl.SetProjectFilePath(_filePath);
             _dirty = false;
             RememberRecent(path!, _session.Document);
             UpdateWindowTitle();
@@ -258,6 +259,7 @@ public partial class MainWindow : Window
         _selectedSheetId = null;
         _selectedViewId = null;
         _filePath = filename;
+        RenderPanelControl.SetProjectFilePath(_filePath);
         // Prevent an async sky load from a previous document from leaking into the new project.
         RenderPanelControl.ClearHdriForDocument();
         _dirty = false;
