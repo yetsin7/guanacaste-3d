@@ -29,6 +29,54 @@ public partial class MainWindow
     {
         CancelStructuralTool();
         SetWallTool(false);
+        // Pick the drafting style before sketching, without touching model-space geometry.
+        var options = new Window
+        {
+            Title = region ? "Estilo de región rellenada" : "Estilo de línea de detalle",
+            Owner = this, Width = 360, Height = 190, MinWidth = 320,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize
+        };
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock { Text = region ? "Patrón de relleno" : "Estilo de línea",
+            Margin = new Thickness(0, 0, 0, 6) });
+        var picker = new ComboBox { Margin = new Thickness(0, 0, 0, 14) };
+        if (region)
+        {
+            foreach (var pattern in Enum.GetValues<DetailFillPattern>())
+                picker.Items.Add(new ComboBoxItem { Content = pattern switch
+                    {
+                        DetailFillPattern.Solid => "Sólido",
+                        DetailFillPattern.Diagonal => "Diagonal",
+                        DetailFillPattern.Crosshatch => "Retícula cruzada",
+                        DetailFillPattern.Herringbone => "Espiga (tipo Bóndex)",
+                        _ => "Puntos"
+                    }, Tag = pattern,
+                    IsSelected = pattern == _detailPattern });
+        }
+        else
+        {
+            foreach (var style in Enum.GetValues<DetailStrokeStyle>())
+                picker.Items.Add(new ComboBoxItem { Content = style switch
+                    {
+                        DetailStrokeStyle.Solid => "Continua · paredes",
+                        DetailStrokeStyle.Dashed => "Discontinua · PISOS",
+                        DetailStrokeStyle.Dotted => "Punteada · TEXTO",
+                        _ => "Eje · SANITARIA"
+                    }, Tag = style, IsSelected = style == _detailLineStyle });
+        }
+        panel.Children.Add(picker);
+        var confirm = new Button { Content = "Comenzar a dibujar", MinWidth = 155,
+            HorizontalAlignment = HorizontalAlignment.Right, IsDefault = true };
+        confirm.Click += (_, _) => options.DialogResult = true;
+        panel.Children.Add(confirm);
+        options.Content = panel;
+        if (options.ShowDialog() != true) return;
+        if (picker.SelectedItem is ComboBoxItem picked)
+        {
+            if (region && picked.Tag is DetailFillPattern fill) _detailPattern = fill;
+            if (!region && picked.Tag is DetailStrokeStyle stroke) _detailLineStyle = stroke;
+        }
         _detailDrawingMode = region ? DetailDrawingMode.Region : DetailDrawingMode.Line;
         _detailFirstPoint = _detailPreviewPoint = null;
         ViewTabs.SelectedIndex = 0;
