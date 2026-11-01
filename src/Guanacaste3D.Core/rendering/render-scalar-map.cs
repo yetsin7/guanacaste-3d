@@ -68,7 +68,8 @@ public sealed class RenderScalarMap
         var last = _levels.Length - 1;
         if (level >= last) return Bilinear(last, u, v);
         var low = (int)level;
-        return MathF.Lerp(Bilinear(low, u, v), Bilinear(low + 1, u, v), level - low);
+        var from = Bilinear(low, u, v);
+        return from + (Bilinear(low + 1, u, v) - from) * (level - low);
     }
 
     private float Bilinear(int level, float u, float v)
