@@ -165,6 +165,7 @@ internal static class PbrMaterialPackages
         var texture = RenderTextureLibrary.Load(package.AlbedoPath);
         if (texture is null) return null;
         var manifest = package.Manifest;
+        var folder = Path.GetDirectoryName(ResolveManifest(assignment, projectFile)!)!;
         return new RenderMaterial
         {
             Name = manifest.Name, Texture = texture,
@@ -172,11 +173,11 @@ internal static class PbrMaterialPackages
             Roughness = (float)manifest.Roughness, Metallic = (float)manifest.Metallic,
             Ior = (float)manifest.Ior, BaseColor = System.Numerics.Vector3.One,
             NormalMap = manifest.Normal is null ? null : RenderTextureLibrary.LoadNormal(
-                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.Normal)),
+                SafeImagePath(folder, manifest.Normal)),
             RoughnessMap = manifest.RoughnessMap is null ? null : RenderTextureLibrary.LoadScalar(
-                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.RoughnessMap)),
+                SafeImagePath(folder, manifest.RoughnessMap)),
             MetallicMap = manifest.MetallicMap is null ? null : RenderTextureLibrary.LoadScalar(
-                SafeImagePath(Path.GetDirectoryName(package.AlbedoPath)!, manifest.MetallicMap))
+                SafeImagePath(folder, manifest.MetallicMap))
         }.Sanitized();
     }
 }
