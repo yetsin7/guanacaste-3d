@@ -105,7 +105,7 @@ public partial class MainWindow
             }
         }
         public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null) =>
-            window.AssignRenderMaterial(category, texturePath, size, relief, elementId);
+            window.AssignElementRenderMaterial(category, texturePath, size, relief, elementId);
 
         public event Action? SceneChanged
         {
@@ -149,7 +149,11 @@ public partial class MainWindow
     private bool _artificialLights = true;
 
     /// <summary>Assigns (or, with no path, clears) the render texture of a surface category as one undoable step.</summary>
-    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null)
+    // Keep this four-argument entry point for existing callers and reflection-based interaction tests.
+    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
+        AssignElementRenderMaterial(category, texturePath, size, relief, null);
+
+    private void AssignElementRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId)
     {
         try
         {
