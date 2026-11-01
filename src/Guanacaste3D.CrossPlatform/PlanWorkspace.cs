@@ -32,6 +32,7 @@ public sealed class PlanWorkspace : Grid
     private double _scale = 43;
     private Point _offset = new(0, 0);
     private Point? _panPointer;
+    private Point2? _previewWorldPoint;
     private bool _leftPanning;
     private readonly TextBlock _viewInfo = new() { TextWrapping = TextWrapping.Wrap };
     private readonly ComboBox _levelPicker = new() { MinWidth = 170 };
@@ -99,6 +100,7 @@ public sealed class PlanWorkspace : Grid
             {
                 _selectedId = entry.Id;
                 ShowSelected();
+                Redraw();
             }
         };
         _rename.Click += (_, _) => RenameAxis();
@@ -129,6 +131,7 @@ public sealed class PlanWorkspace : Grid
     {
         _tool = tool;
         _firstPoint = null;
+        _previewWorldPoint = null;
         _hint.Text = tool switch
         {
             EditTool.Wall => "Muro: elige punto inicial y final. Escala en metros; muros de 20 cm y 3 m de alto.",
@@ -186,11 +189,13 @@ public sealed class PlanWorkspace : Grid
         if (_firstPoint is null)
         {
             _firstPoint = modelPoint;
+            _previewWorldPoint = modelPoint;
             Message?.Invoke("Primer punto registrado. Selecciona el segundo punto.");
             return;
         }
         var first = _firstPoint.Value;
         _firstPoint = null;
+        _previewWorldPoint = null;
         if (first.DistanceTo(modelPoint) < 0.05)
         {
             Message?.Invoke("Los puntos deben estar separados al menos 5 cm.");
@@ -231,7 +236,15 @@ public sealed class PlanWorkspace : Grid
 
     private void CanvasMoved(object? sender, PointerEventArgs e)
     {
-        if (_panPointer is not Point last) return;
+        if (_panPointer is not Point last)
+        {
+            if (_firstPoint is not null && _tool != EditTool.Select)
+            {
+                _previewWorldPoint = ToWorld(e.GetPosition(_canvas));
+                Redraw();
+            }
+            return;
+        }
         var current = e.GetPosition(_canvas);
         _offset = new Point(_offset.X + current.X - last.X, _offset.Y + current.Y - last.Y);
         _panPointer = current;
@@ -384,6 +397,13 @@ public sealed class PlanWorkspace : Grid
             Canvas.SetLeft(bubble, start.X - 13);
             Canvas.SetTop(bubble, start.Y - 13);
             _canvas.Children.Add(bubble);
+        }
+        if (_firstPoint is Point2 from && _previewWorldPoint is Point2 to)
+        {
+            var first = ToScreen(from);
+            var last = ToScreen(to);
+            DrawSegment(first, last, Brushes.DodgerBlue,
+                _tool == EditTool.Wall ? Math.Max(3, 0.20 * _scale) : 1.5);
         }
     }
 
