@@ -32,7 +32,10 @@ public sealed class MainWindow : Window
 
         var menu = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var create = new Button { Content = "Nuevo proyecto", Padding = new Thickness(14, 9) };
-        create.Click += (_, _) => CreateProject();
+        create.Click += async (_, _) =>
+        {
+            if (await ConfirmReplaceAsync()) CreateProject();
+        };
         var open = new Button { Content = "Abrir .g3d", Padding = new Thickness(14, 9) };
         open.Click += async (_, _) => await OpenProjectAsync();
         var save = new Button { Content = "Guardar como...", Padding = new Thickness(14, 9) };
@@ -67,6 +70,14 @@ public sealed class MainWindow : Window
         layout.Children.Add(_summary);
         _status.Text = "Crea un proyecto nuevo o abre un archivo Guanacaste 3D.";
         layout.Children.Add(_status);
+        Closing += (_, e) =>
+        {
+            if (_closingAuthorized || !_workspace.HasUnsavedChanges) return;
+            // Avalonia Closing is synchronous; prevent accidental loss and request explicit
+            // save/discard before the user uses the window close control.
+            e.Cancel = true;
+            _ = CloseSafelyAsync();
+        };
         var root = new DockPanel();
         DockPanel.SetDock(layout, Dock.Top);
         root.Children.Add(layout);
@@ -86,6 +97,7 @@ public sealed class MainWindow : Window
 
     private async Task OpenProjectAsync()
     {
+        if (!await ConfirmReplaceAsync()) return;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Abrir proyecto de Guanacaste 3D",
@@ -141,7 +153,8 @@ public sealed class MainWindow : Window
         }
         try
         {
-            ProjectFile.Save(localPath, _document);
+            ProjectFile.Save(localPath, _workspace.Session?.Document ?? _document);
+            _workspace.MarkSaved();
             _path = localPath;
             _status.Text = "Proyecto guardado: " + localPath;
             Refresh();
@@ -150,6 +163,51 @@ public sealed class MainWindow : Window
         {
             _status.Text = "No se pudo guardar: " + ex.Message;
         }
+    }
+
+    private bool _closingAuthorized;
+
+    private async Task CloseSafelyAsync()
+    {
+        if (_closingAuthorized || await ConfirmReplaceAsync())
+        {
+            _closingAuthorized = true;
+            Close();
+        }
+    }
+
+    private async Task<bool> ConfirmReplaceAsync()
+    {
+        if (!_workspace.HasUnsavedChanges) return true;
+        var dialog = new Window
+        {
+            Title = "Cambios sin guardar",
+            Width = 420,
+            Height = 190,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+        var body = new StackPanel { Spacing = 18, Margin = new Thickness(20) };
+        body.Children.Add(new TextBlock
+        {
+            Text = "Hay cambios sin guardar. ¿Quieres descartarlos?\nCancelar conservará el proyecto abierto.",
+            TextWrapping = TextWrapping.Wrap
+        });
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 12
+        };
+        var discard = new Button { Content = "Descartar cambios", MinWidth = 130 };
+        var cancel = new Button { Content = "Cancelar", MinWidth = 90 };
+        discard.Click += (_, _) => dialog.Close(true);
+        cancel.Click += (_, _) => dialog.Close(false);
+        actions.Children.Add(discard);
+        actions.Children.Add(cancel);
+        body.Children.Add(actions);
+        dialog.Content = body;
+        return await dialog.ShowDialog<bool>(this);
     }
 
     private void Refresh()
