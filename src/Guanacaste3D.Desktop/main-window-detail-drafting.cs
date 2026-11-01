@@ -163,6 +163,7 @@ public partial class MainWindow
                 StrokeDashArray = DashFor(detail.StrokeStyle),
                 Tag = detail.Id,
                 ToolTip = detail.StyleName,
+                ContextMenu = CreateDetailContextMenu(detail.Id),
                 SnapsToDevicePixels = true
             });
         }
@@ -179,6 +180,36 @@ public partial class MainWindow
             DrawRegion(new FilledRegion(Guid.Empty, viewId, [
                 from, new Point2(to.X, from.Y), to, new Point2(from.X, to.Y)
             ]) { Pattern = _detailPattern });
+    }
+
+    /// <summary>Manage view-bound annotations without altering BIM model objects.</summary>
+    private ContextMenu CreateDetailContextMenu(Guid id)
+    {
+        var menu = new ContextMenu();
+        var copy = new MenuItem { Header = "Copiar a otra vista de planta" };
+        foreach (var view in _session.Document.Views.Where(view =>
+                     view.Kind == ProjectViewKind.Plan && view.Id != ActiveDetailViewId()))
+        {
+            var destination = view;
+            var item = new MenuItem { Header = destination.Name };
+            item.Click += (_, _) =>
+            {
+                _session.CopyViewDetail(id, destination.Id);
+                RefreshAll();
+            };
+            copy.Items.Add(item);
+        }
+        copy.IsEnabled = copy.Items.Count > 0;
+        menu.Items.Add(copy);
+        menu.Items.Add(new Separator());
+        var remove = new MenuItem { Header = "Eliminar detalle" };
+        remove.Click += (_, _) =>
+        {
+            _session.DeleteViewDetail(id);
+            RefreshAll();
+        };
+        menu.Items.Add(remove);
+        return menu;
     }
 
     private static DoubleCollection? DashFor(DetailStrokeStyle style) => style switch
@@ -202,6 +233,7 @@ public partial class MainWindow
             Data = geometry, Fill = background,
             Stroke = region.ShowBoundary ? foreground : Brushes.Transparent,
             StrokeThickness = 1, Tag = region.Id == Guid.Empty ? null : region.Id,
+            ContextMenu = region.Id == Guid.Empty ? null : CreateDetailContextMenu(region.Id),
             IsHitTestVisible = region.Id != Guid.Empty
         };
         PlanCanvas.Children.Add(polygon);
