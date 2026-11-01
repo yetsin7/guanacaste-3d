@@ -251,6 +251,43 @@
                   </DockPanel>
                   <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.CloudStyle}"/>
                   <ComboBox x:Name="CloudStylePicker" SelectionChanged="Lighting_Changed"/>
+                  <TextBlock Style="{StaticResource PanelLabel}" Margin="0,6,0,2" Text="Forma de las nubes"/>
+                  <DockPanel>
+                    <Button Content="Generar nueva distribución de nubes" Padding="9,5" Click="NewClouds_Click"
+                            ToolTip="Cambia la semilla del cielo. El resultado será repetible al guardar el proyecto."/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Semilla (distribución reproducible)"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=CloudSeedSlider, StringFormat={}{0:0}}"/>
+                    <Slider x:Name="CloudSeedSlider" Minimum="0" Maximum="1023" Value="7" TickFrequency="1"
+                            IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Dirección de las nubes"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=CloudDirectionSlider, StringFormat={}{0:0}°}"/>
+                    <Slider x:Name="CloudDirectionSlider" Minimum="-180" Maximum="180" Value="0" TickFrequency="5"
+                            IsSnapToTickEnabled="True" ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Turbidez atmosférica"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=TurbiditySlider, StringFormat={}{0:0.0}}"/>
+                    <Slider x:Name="TurbiditySlider" Minimum="1.7" Maximum="10" Value="2.8" TickFrequency="0.1"
+                            ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Potencia solar"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=SunStrengthSlider, StringFormat={}{0:0.00}}"/>
+                    <Slider x:Name="SunStrengthSlider" Minimum="0" Maximum="2" Value="1" TickFrequency="0.1"
+                            ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="Intensidad ambiental"/>
+                  <DockPanel>
+                    <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Value, ElementName=SkyStrengthSlider, StringFormat={}{0:0.00}}"/>
+                    <Slider x:Name="SkyStrengthSlider" Minimum="0" Maximum="2" Value="1" TickFrequency="0.1"
+                            ValueChanged="Lighting_SliderChanged"/>
+                  </DockPanel>
+
+
                 </StackPanel>
               </Border>
               <Border Style="{StaticResource SettingsCard}">

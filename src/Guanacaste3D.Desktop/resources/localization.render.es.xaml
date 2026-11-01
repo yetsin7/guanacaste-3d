@@ -319,6 +319,11 @@
   <sys:String x:Key="RenderGallery.Other">Construcción y otros</sys:String>
   <sys:String x:Key="RenderGallery.All">Todas las texturas</sys:String>
   <sys:String x:Key="RenderGallery.SearchHint">Buscar por nombre o identificador sin importar tildes.</sys:String>
+  <!-- Built-in cloud families used in the Render atmosphere library -->
+  <sys:String x:Key="CloudStyle.Altocumulus">Altocúmulos (manchas altas)</sys:String>
+  <sys:String x:Key="CloudStyle.Altostratus">Altoestratos (velo suave)</sys:String>
+  <sys:String x:Key="CloudStyle.Cumulonimbus">Cumulonimbos (tormenta)</sys:String>
+  <sys:String x:Key="CloudStyle.Lenticular">Nubes lenticulares</sys:String>
   <sys:String x:Key="RenderGallery.Pbr">Materiales PBR .g3dm</sys:String>
   <sys:String x:Key="RenderGallery.AddPbr">Añadir material .g3dm a la biblioteca…</sys:String>
   <sys:String x:Key="RenderGallery.Appearance">Propiedades físicas de la superficie</sys:String>

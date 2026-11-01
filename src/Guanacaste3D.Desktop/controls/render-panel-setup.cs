@@ -23,6 +23,11 @@ public partial class RenderPanel
         CloudSlider.Value = setup.CloudCover * 100;
         LatitudeInput.Text = setup.Latitude.ToString("0.###", CultureInfo.InvariantCulture);
         HazeCheck.IsChecked = setup.Haze;
+        TurbiditySlider.Value = setup.Turbidity;
+        CloudSeedSlider.Value = setup.CloudSeed;
+        CloudDirectionSlider.Value = setup.CloudDirectionDegrees;
+        SunStrengthSlider.Value = setup.SunStrength;
+        SkyStrengthSlider.Value = setup.SkyStrength;
         Select(QualityPicker, setup.Quality?.ToString() ?? "Auto");
         Select(SizePicker, $"{setup.Width}x{setup.Height}");
         Select(BucketSizePicker, setup.BucketSize.ToString(CultureInfo.InvariantCulture));
@@ -53,7 +58,10 @@ public partial class RenderPanel
         Select(LutPicker, setup.LutPresetId);
         LutStrengthSlider.Value = setup.LutStrength;
         RestoreLutForProject(setup.LutPath, projectFile);
-        Select(SkyPicker, string.Empty);
+        // Selecting a saved library ID is a label restore, not a reapplication of its defaults.
+        _applyingLook = true;
+        try { Select(SkyPicker, setup.SkyPresetId ?? string.Empty); }
+        finally { _applyingLook = false; }
         RestoreHdriForProject(setup.EnvironmentPath, projectFile);
         OnCameraChanged();
     }
@@ -72,6 +80,10 @@ public partial class RenderPanel
             Scenario = Scenario(), DayOfYear = (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear,
             SolarHour = HourSlider.Value, Latitude = Latitude(), CloudCover = CloudSlider.Value / 100,
             Haze = HazeCheck.IsChecked == true, Quality = RequestedQuality(),
+            SkyPresetId = string.IsNullOrEmpty(Mode(SkyPicker)) ? null : Mode(SkyPicker),
+            Turbidity = TurbiditySlider.Value, CloudSeed = (uint)CloudSeedSlider.Value,
+            CloudDirectionDegrees = CloudDirectionSlider.Value,
+            SunStrength = SunStrengthSlider.Value, SkyStrength = SkyStrengthSlider.Value,
             Width = width > 0 && height > 0 ? width : 0, Height = width > 0 && height > 0 ? height : 0,
             BucketSize = int.TryParse(Mode(BucketSizePicker), out var bucketSize) ? bucketSize : 0,
             Look = CurrentFinish().ToneMapper, ExposureStops = ExposureSlider.Value, Temperature = TemperatureSlider.Value,

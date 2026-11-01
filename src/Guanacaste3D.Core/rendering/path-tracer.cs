@@ -169,7 +169,7 @@ public sealed partial class PathTracer
             ? sunColor * (MathF.PI * settings.SunIntensity / solidAngle)
             : Vector3.Zero;
         _skyScale = new Vector3(Math.Max(0, settings.SkyIntensity));
-        _clouds = settings.Sky == SkyKind.Clear && settings.CloudCover > 0.001f ? new CloudLayer(settings.CloudCover, 7, settings.Clouds) : null;
+        _clouds = settings.Sky == SkyKind.Clear && settings.CloudCover > 0.001f ? new CloudLayer(settings.CloudCover, settings.CloudSeed, settings.Clouds, settings.CloudDirectionDegrees) : null;
         _cloudSunlight = settings.SunIntensity > 0 ? sunColor * settings.SunIntensity : Vector3.Zero;
         _cloudSkylight = _sky.Radiance(Vector3.UnitZ) * _skyScale;
         // Koschmieder: visibility V gives 2 % contrast left, so the extinction is 3.912 / V. Clear air (turbidity 2.5)

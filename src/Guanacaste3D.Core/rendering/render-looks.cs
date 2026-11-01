@@ -10,7 +10,16 @@ public sealed record ImageStyle(string Id, string NameKey, Func<ImageFinish, Ima
 
 /// <summary>A sky: the light scenario, the hour and season, the clouds and the air that suit one kind of picture.</summary>
 public sealed record SkyPreset(string Id, string NameKey, LightingScenario Scenario, int DayOfYear, double SolarHour,
-    double CloudCover, CloudStyle Clouds, bool Haze, string StyleId);
+    double CloudCover, CloudStyle Clouds, bool Haze, string StyleId)
+{
+    /// <summary>Physical atmospheric haze, 1.7–10.</summary>
+    public double Turbidity { get; init; } = 2.8;
+    /// <summary>Deterministic procedural cloud pattern variant.</summary>
+    public uint CloudSeed { get; init; } = 7;
+    public double CloudDirectionDegrees { get; init; }
+    public double SunStrength { get; init; } = 1;
+    public double SkyStrength { get; init; } = 1;
+}
 
 /// <summary>The catalog of picture styles and skies offered by the Render panel.</summary>
 public static class RenderLooks
@@ -99,7 +108,28 @@ public static class RenderLooks
         new("overcast", "RenderSky.Overcast", LightingScenario.Overcast, 100, 11.0, 1.0, CloudStyle.Stratocumulus, true, "soft"),
         new("broken", "RenderSky.Broken", LightingScenario.Sunny, 250, 13.0, 0.7, CloudStyle.Stratocumulus, true, "realistic"),
         new("storm", "RenderSky.Storm", LightingScenario.Sunny, 260, 16.0, 0.8, CloudStyle.Storm, true, "dramatic"),
-        new("misty-morning", "RenderSky.MistyMorning", LightingScenario.Sunny, 320, 7.5, 0.4, CloudStyle.Stratocumulus, true, "misty")
+        new("misty-morning", "RenderSky.MistyMorning", LightingScenario.Sunny, 320, 7.5, 0.4, CloudStyle.Stratocumulus, true, "misty"),
+        new("tropical-dawn", "Amanecer tropical", LightingScenario.Sunny, 80, 6.25, .32, CloudStyle.Cumulus, true, "golden") { Turbidity = 4, CloudSeed = 21, SunStrength = 1.1 },
+        new("tropical-blue", "Cielo tropical azul", LightingScenario.Sunny, 185, 12.5, .20, CloudStyle.Cumulus, true, "realistic") { Turbidity = 2, CloudSeed = 54 },
+        new("caribbean-cumulus", "Cúmulos del Caribe", LightingScenario.Sunny, 155, 10.0, .61, CloudStyle.Cumulus, true, "lush-landscape") { Turbidity = 2.6, CloudSeed = 80 },
+        new("pacific-haze", "Bruma del Pacífico", LightingScenario.Sunny, 300, 15.75, .23, CloudStyle.Altostratus, true, "soft") { Turbidity = 6.4, CloudSeed = 15, SunStrength = .75 },
+        new("mountain-lenses", "Nubes lenticulares de montaña", LightingScenario.Sunny, 43, 9.5, .51, CloudStyle.Lenticular, true, "realistic") { CloudSeed = 101, CloudDirectionDegrees = 65 },
+        new("altocumulus", "Altocúmulos moteados", LightingScenario.Sunny, 122, 13.25, .65, CloudStyle.Altocumulus, true, "realistic") { CloudSeed = 132, CloudDirectionDegrees = -35 },
+        new("altostratus", "Velo de altoestratos", LightingScenario.Sunny, 280, 14.5, .78, CloudStyle.Altostratus, true, "soft") { Turbidity = 5, CloudSeed = 36 },
+        new("high-cirrus", "Cirros altos transparentes", LightingScenario.Sunny, 205, 13.5, .34, CloudStyle.Cirrus, true, "realistic") { CloudSeed = 226, CloudDirectionDegrees = 75 },
+        new("soft-clouds", "Nubes suaves de estudio", LightingScenario.Overcast, 130, 11.0, .82, CloudStyle.Altostratus, true, "high-key") { CloudSeed = 78, SunStrength = 0, SkyStrength = 1.3 },
+        new("silver-overcast", "Cielo plateado uniforme", LightingScenario.Overcast, 64, 10.5, 1, CloudStyle.Stratocumulus, true, "soft") { Turbidity = 5.4, SunStrength = 0 },
+        new("winter-blue", "Invierno azul cristalino", LightingScenario.Sunny, 355, 10.5, .10, CloudStyle.Cirrus, false, "cool-modern") { Turbidity = 1.7, CloudSeed = 17 },
+        new("warm-afternoon", "Tarde soleada cálida", LightingScenario.Sunny, 235, 16.25, .28, CloudStyle.Cumulus, true, "sunny") { Turbidity = 3.8, CloudSeed = 34 },
+        new("storm-front", "Frente de tormenta", LightingScenario.Sunny, 260, 15.75, .90, CloudStyle.Storm, true, "dramatic") { Turbidity = 8, CloudSeed = 407, SunStrength = .40, SkyStrength = .6 },
+        new("thunderstorm", "Cumulonimbos de tormenta", LightingScenario.Sunny, 176, 15.25, .88, CloudStyle.Cumulonimbus, true, "dramatic") { Turbidity = 7, CloudSeed = 461, SunStrength = .25, SkyStrength = .7 },
+        new("rain-break", "Claridad tras la lluvia", LightingScenario.Sunny, 210, 16.0, .67, CloudStyle.Stratocumulus, true, "lush-landscape") { Turbidity = 4.6, CloudSeed = 47, CloudDirectionDegrees = 115 },
+        new("sunset-red", "Atardecer rojizo", LightingScenario.GoldenHour, 270, 17.8, .48, CloudStyle.Altocumulus, true, "golden") { Turbidity = 6.5, CloudSeed = 69, SunStrength = .90 },
+        new("sunset-clear", "Atardecer despejado", LightingScenario.GoldenHour, 171, 17.7, .09, CloudStyle.Cirrus, false, "golden") { Turbidity = 3, CloudSeed = 81 },
+        new("twilight-violet", "Crepúsculo violeta", LightingScenario.Dusk, 185, 18.35, .33, CloudStyle.Cirrus, true, "blue-hour") { CloudSeed = 26, SkyStrength = .65 },
+        new("blue-moon", "Azul nocturno", LightingScenario.Dusk, 160, 18.95, .08, CloudStyle.Cirrus, false, "night-architecture") { SunStrength = 0, SkyStrength = .15, CloudSeed = 22 },
+        new("midnight-clouds", "Noche con nubes", LightingScenario.Dusk, 160, 19.0, .55, CloudStyle.Altostratus, true, "night-architecture") { SunStrength = 0, SkyStrength = .10, CloudSeed = 188 },
+        new("architectural-softbox", "Estudio arquitectónico difuso", LightingScenario.Overcast, 90, 12, 1, CloudStyle.Altostratus, false, "editorial") { SkyStrength = 1.4, SunStrength = 0 }
     ];
 
     /// <summary>The style with an identifier, or the neutral one.</summary>

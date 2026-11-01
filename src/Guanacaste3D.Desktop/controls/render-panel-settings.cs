@@ -207,11 +207,16 @@ public partial class RenderPanel
             AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f,
             CloudCover = _hdriEnvironment is null ? (float)(CloudSlider.Value / 100) : 0f,
             Clouds = SelectedClouds(),
+            CloudSeed = (uint)CloudSeedSlider.Value,
+            CloudDirectionDegrees = (float)CloudDirectionSlider.Value,
+            Turbidity = (float)TurbiditySlider.Value,
             // Radiance files can already carry the solar disk. Avoid counting the analytic sun twice.
-            SunIntensity = _hdriEnvironment is null ? lighting.SunIntensity * (storm ? 0.55f : 1f) : 0f,
+            SunIntensity = _hdriEnvironment is null
+                ? lighting.SunIntensity * (storm ? 0.55f : 1f) * (float)SunStrengthSlider.Value : 0f,
             SkyIntensity = _hdriEnvironment is null
-                ? lighting.SkyIntensity * (storm ? 0.6f : 1f)
-                : lighting.SkyIntensity * MathF.Pow(2f, (float)HdriExposureSlider.Value),
+                ? lighting.SkyIntensity * (storm ? 0.6f : 1f) * (float)SkyStrengthSlider.Value
+                : lighting.SkyIntensity * (float)SkyStrengthSlider.Value *
+                    MathF.Pow(2f, (float)HdriExposureSlider.Value),
             EnvironmentYawDegrees = (float)HdriYawSlider.Value,
             Environment = _hdriEnvironment
         };
