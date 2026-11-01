@@ -1,7 +1,7 @@
 namespace Guanacaste3D.Core;
 
 /// <summary>The kinds of element that can carry an automatic tag in plan.</summary>
-public enum TagCategory { Door, Window, Wall, Column, Slab, Room }
+public enum TagCategory { Door, Window, Wall, Column, Slab, Room, Area }
 
 /// <summary>
 /// A computed label for one element: where to draw it, a short mark (P1, V2, C1...) and a longer description.
@@ -68,6 +68,16 @@ public static class ElementTags
         if (categories.Contains(TagCategory.Room))
             foreach (var room in document.Rooms.Where(room => room.LevelId == levelId))
                 tags.Add(new ElementTag(room.Id, TagCategory.Room, room.Center, room.Number, $"{room.Name}, {room.Area:0.##} m²"));
+
+        if (categories.Contains(TagCategory.Area))
+            foreach (var area in document.StructuralElements.Where(element =>
+                         element.LevelId == levelId && element.Kind == StructuralElementKind.Area))
+            {
+                var center = new Point2((area.Start.X + area.End.X) / 2,
+                    (area.Start.Y + area.End.Y) / 2);
+                tags.Add(new ElementTag(area.Id, TagCategory.Area, center, area.Name,
+                    $"{area.Name}, {area.PlanArea:0.##} m²"));
+            }
 
         return tags;
     }
