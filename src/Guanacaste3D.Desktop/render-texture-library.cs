@@ -127,6 +127,57 @@ internal static class RenderTextureLibrary
         }
     }
 
+    // PBR companion normal maps can sit next to stone.jpg as stone_NormalGL.png or stone_normal.png.
+    // Decode as linear vectors; do not use gamma conversion intended for colour textures.
+    private static readonly ConcurrentDictionary<string, (DateTime Stamp, NormalMap Map)> NormalCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static NormalMap? LoadSidecarNormal(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath)) return null;
+        var directory = Path.GetDirectoryName(imagePath);
+        if (string.IsNullOrWhiteSpace(directory)) return null;
+        var name = Path.GetFileNameWithoutExtension(imagePath);
+        foreach (var suffix in new[] { "_NormalGL.png", "_normal.png", "_Normal.png", "_nrm.png" })
+        {
+            var path = Path.Combine(directory, name + suffix);
+            if (!File.Exists(path)) continue;
+            try
+            {
+                var stamp = File.GetLastWriteTimeUtc(path);
+                if (NormalCache.TryGetValue(path, out var cached) && cached.Stamp == stamp) return cached.Map;
+                using var stream = File.OpenRead(path);
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                BitmapSource frame = decoder.Frames[0];
+                if (frame.PixelWidth > 2048 || frame.PixelHeight > 2048)
+                {
+                    var factor = 2048.0 / Math.Max(frame.PixelWidth, frame.PixelHeight);
+                    frame = new TransformedBitmap(frame, new ScaleTransform(factor, factor));
+                }
+                var converted = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+                var stride = converted.PixelWidth * 4;
+                var pixels = new byte[stride * converted.PixelHeight];
+                converted.CopyPixels(pixels, stride, 0);
+                var rgb = new byte[converted.PixelWidth * converted.PixelHeight * 3];
+                for (var i = 0; i < rgb.Length / 3; i++)
+                {
+                    rgb[i * 3] = pixels[i * 4 + 2];
+                    rgb[i * 3 + 1] = pixels[i * 4 + 1];
+                    rgb[i * 3 + 2] = pixels[i * 4];
+                }
+                var normal = NormalMap.FromRgb(converted.PixelWidth, converted.PixelHeight, rgb);
+                NormalCache[path] = (stamp, normal);
+                return normal;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException
+                                                  or FileFormatException or ArgumentException or InvalidOperationException)
+            {
+                // A missing or invalid companion map must never break the original colour material.
+            }
+        }
+        return null;
+    }
+
     private static readonly ConcurrentDictionary<string, (DateTime Stamp, BitmapSource Image)> Previews = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -186,20 +237,23 @@ internal static class RenderTextureLibrary
             // A library preset brings its whole material (a shipped texture too, when it has one); glass may take one.
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
-                var image = preset.TextureKey is { } key ? Load(Resolve(BuiltInPrefix + key, projectFile)) : null;
+                var imagePath = preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null;
+                var image = Load(imagePath);
                 // Preserve the preset's PBR values while honoring the project's editable
                 // tiling and relief. Previously these edits were saved but ignored by rendering.
                 textured[assignment.Category] = MaterialPresets.Build(preset, image) with
                 {
                     TextureSize = (float)assignment.TextureSize,
-                    TextureRelief = (float)assignment.Relief
+                    TextureRelief = (float)assignment.Relief,
+                    NormalMap = LoadSidecarNormal(imagePath) ?? preset.Material.NormalMap
                 };
                 continue;
             }
             if (assignment.Category == SurfaceKind.Glass) continue;
-            if (Load(Resolve(assignment.TexturePath, projectFile)) is not { } texture) continue;
+            var imagePath = Resolve(assignment.TexturePath, projectFile);
+            if (Load(imagePath) is not { } texture) continue;
             textured[assignment.Category] = MaterialLibrary.Textured(assignment.Category, texture,
-                assignment.TextureSize, assignment.Relief);
+                assignment.TextureSize, assignment.Relief) with { NormalMap = LoadSidecarNormal(imagePath) };
         }
         // With the lights off a fixture is just its white diffuser.
         if (!lightsOn)
