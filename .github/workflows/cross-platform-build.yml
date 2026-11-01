@@ -38,6 +38,8 @@ jobs:
         run: dotnet restore src/Guanacaste3D.CrossPlatform/Guanacaste3D.CrossPlatform.csproj
       - name: Compile cross-platform desktop
         run: dotnet build src/Guanacaste3D.CrossPlatform/Guanacaste3D.CrossPlatform.csproj --configuration Release --no-restore
+      - name: Run portable model snapping checks
+        run: dotnet run --project tests/cross-platform-snapping-checks/cross-platform-snapping-checks.csproj --configuration Release
       - name: Publish self-contained desktop
         run: dotnet publish src/Guanacaste3D.CrossPlatform/Guanacaste3D.CrossPlatform.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true --output artifacts/guanacaste-${{ matrix.rid }}
       - name: Upload portable build
