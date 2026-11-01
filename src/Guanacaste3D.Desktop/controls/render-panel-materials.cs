@@ -29,6 +29,7 @@ public partial class RenderPanel
         _focusedMaterial = category;
         _focusedElement = elementId;
         if (SectionTabs.Items.Count > 3) SectionTabs.SelectedIndex = 3;
+        SyncMaterialGalleryTarget();
         RefreshMaterialRows();
     }
 
@@ -36,6 +37,7 @@ public partial class RenderPanel
     private void MaterialScopeReset_Click(object sender, RoutedEventArgs e)
     {
         _focusedElement = null;
+        SyncMaterialGalleryTarget();
         RefreshMaterialRows();
     }
 
@@ -174,6 +176,7 @@ public partial class RenderPanel
             MaterialRows.Children.Add(row);
         }
         _refreshingMaterials = false;
+        UpdateMaterialGallerySelection();
         if (_focusedMaterial is { } focused)
         {
             var index = 0;
