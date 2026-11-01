@@ -104,7 +104,7 @@ public static class RenderMaterialRules
                 !double.IsFinite(material.TextureSize) || material.TextureSize is < 0.01 or > 1000 ||
                 !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1 ||
                 (material.RoughnessOverride is { } rough && (!double.IsFinite(rough) || rough is < 0.02 or > 1)) ||
-                (material.MetallicOverride is { } metal && (!double.IsFinite(metal) || metal is < 0 or > 1)))
+                (material.MetallicOverride is { } metal && (!double.IsFinite(metal) || metal is < 0 or > 1))))
             throw new InvalidDataException("Invalid render material.");
     }
 }
