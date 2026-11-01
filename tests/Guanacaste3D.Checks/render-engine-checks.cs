@@ -306,6 +306,23 @@ static class RenderEngineChecks
         catch (InvalidDataException) { rejectedSetup = true; }
         check(rejectedSetup, "Project render setups reject invalid bucket sizes");
 
+        // Partial buckets at the image edge can be 1px wide or high.
+        // Verify corner markers neither escape the tile nor write past the BGRA buffer.
+        var bracketMethod = typeof(RenderSession).GetMethod("Brackets",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var cornerFrame = new byte[17 * 17 * 4];
+        var stripFrame = new byte[17 * 17 * 4];
+        var clippedBrackets = bracketMethod is not null;
+        try
+        {
+            bracketMethod?.Invoke(null, new object[] { cornerFrame, 17, 16, 16, 1, 1 });
+            bracketMethod?.Invoke(null, new object[] { stripFrame, 17, 16, 0, 1, 16 });
+        }
+        catch (System.Reflection.TargetInvocationException) { clippedBrackets = false; }
+        check(clippedBrackets && cornerFrame.Count(value => value != 0) == 3 &&
+              Enumerable.Range(0, stripFrame.Length).All(i => (i / 4) % 17 == 16 || stripFrame[i] == 0),
+            "Bucket corner markers stay inside one-pixel edge tiles and the image buffer");
+
         var bucketFrames = new List<RenderFrame>();
         using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true) { BucketSize = 16 }))
         {
