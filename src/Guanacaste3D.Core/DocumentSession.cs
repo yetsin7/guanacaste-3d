@@ -354,7 +354,10 @@ public sealed partial class DocumentSession
             {
                 Id = newId,
                 Start = new Point2(original.Start.X + deltaX, original.Start.Y + deltaY),
-                End = new Point2(original.End.X + deltaX, original.End.Y + deltaY)
+                End = new Point2(original.End.X + deltaX, original.End.Y + deltaY),
+                // A copied wall must never inherit a reference constraint from its source.
+                GridAxisId = null,
+                GridAxisAssociationDisabled = true
             });
             foreach (var opening in doc.Openings.Where(o => o.WallId == id).ToArray())
                 doc.Openings.Add(opening with { Id = Guid.NewGuid(), WallId = newId });
@@ -369,6 +372,7 @@ public sealed partial class DocumentSession
             throw new InvalidDataException("The rotation angle is invalid.");
         if (!Document.Walls.Any(w => w.Id == id))
             throw new InvalidDataException("The wall does not exist.");
+        if (degrees % 360 == 0) return;
         var radians = degrees * Math.PI / 180;
         Commit("Transaction.RotateWall", doc =>
         {
@@ -380,7 +384,10 @@ public sealed partial class DocumentSession
             {
                 End = new Point2(
                     wall.Start.X + dx * Math.Cos(radians) - dy * Math.Sin(radians),
-                    wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians))
+                    wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians)),
+                // Rotating a wall changes its centerline: release the old datum constraint.
+                GridAxisId = null,
+                GridAxisAssociationDisabled = true
             };
         });
     }
