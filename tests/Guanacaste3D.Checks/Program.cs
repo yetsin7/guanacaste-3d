@@ -467,6 +467,7 @@ ToiletFamilyChecks.Run(Check);
 RenderDetailChecks.Run(Check);
 ElectricalChecks.Run(Check);
 CatalogChecks.Run(Check);
+PbrMaterialAuditChecks.Run(Check);
 PlumbingChecks.Run(Check);
 CoolingChecks.Run(Check);
 SiteDrainageChecks.Run(Check);

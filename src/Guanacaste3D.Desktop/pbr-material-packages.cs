@@ -12,6 +12,11 @@ internal sealed record PbrMaterialManifest
 {
     public int Version { get; init; } = 1;
     public string Name { get; init; } = "Material PBR";
+    public string Category { get; init; } = "General";
+    public string Description { get; init; } = "";
+    public string Author { get; init; } = "";
+    public string License { get; init; } = "";
+    public string[] Tags { get; init; } = [];
     public string Albedo { get; init; } = "";
     public string? Normal { get; init; }
     public string? RoughnessMap { get; init; }
@@ -65,6 +70,9 @@ internal static class PbrMaterialPackages
             return null;
         try
         {
+            // Portable validation also blocks unsafe subdirectories, oversized assets and symlink escapes.
+            // Keep the same contract on Windows, Linux and macOS before invoking any image decoder.
+            if (!PbrMaterialAudit.Inspect(path).IsValid) return null;
             if (new FileInfo(path).Length > 65536) return null;
             var data = File.ReadAllText(path);
             var manifest = JsonSerializer.Deserialize<PbrMaterialManifest>(data, JsonOptions);
