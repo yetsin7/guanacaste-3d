@@ -91,6 +91,12 @@ public sealed record Room(
     Point2 FirstCorner,
     Point2 SecondCorner)
 {
+    /// <summary>
+    /// True only for rooms discovered from enclosure geometry. Hand-placed rooms and existing
+    /// legacy room records remain independent of automatic boundary synchronization.
+    /// </summary>
+    public bool IsAutomatic { get; init; }
+
     [JsonIgnore]
     public double Area => Math.Abs(
         (SecondCorner.X - FirstCorner.X) * (SecondCorner.Y - FirstCorner.Y));
