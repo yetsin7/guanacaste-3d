@@ -139,6 +139,55 @@ public static class RoomRegionGeometry
         return best;
     }
 
+    /// <summary>
+    /// Parallel offset for a simple, orthogonal footprint. A positive value grows the footprint
+    /// outward, including its inward notches; a zero value returns the unchanged outline.
+    /// Invalid or self-crossing offsets are rejected instead of changing a roof into a rectangle.
+    /// </summary>
+    public static IReadOnlyList<Point2> OffsetOrthogonal(IReadOnlyList<Point2> boundary, double margin)
+    {
+        if (!double.IsFinite(margin) || margin < 0 || margin > 5 || !IsValid(boundary))
+            throw new InvalidDataException("The room outline cannot be offset.");
+        if (margin < 1e-10) return boundary;
+        var normalized = SignedArea(boundary) >= 0
+            ? boundary.ToList() : boundary.Reverse().ToList();
+        // Remove redundant straight-run vertices before intersecting parallel offset lines.
+        for (var i = normalized.Count - 1; i >= 0 && normalized.Count > 3; i--)
+        {
+            var a = normalized[(i + normalized.Count - 1) % normalized.Count];
+            var b = normalized[i];
+            var c = normalized[(i + 1) % normalized.Count];
+            if (Math.Abs(Cross(a, b, c)) < 1e-8)
+                normalized.RemoveAt(i);
+        }
+
+        var result = new List<Point2>();
+        for (var i = 0; i < normalized.Count; i++)
+        {
+            var previous = normalized[(i + normalized.Count - 1) % normalized.Count];
+            var current = normalized[i];
+            var next = normalized[(i + 1) % normalized.Count];
+            var prevHorizontal = Math.Abs(previous.Y - current.Y) < 1e-8;
+            var nextHorizontal = Math.Abs(next.Y - current.Y) < 1e-8;
+            if (prevHorizontal == nextHorizontal)
+                throw new InvalidDataException("The room outline cannot be offset.");
+            double x, y;
+            if (prevHorizontal)
+            {
+                y = current.Y - Math.Sign(current.X - previous.X) * margin;
+                x = current.X + Math.Sign(next.Y - current.Y) * margin;
+            }
+            else
+            {
+                x = current.X + Math.Sign(current.Y - previous.Y) * margin;
+                y = current.Y - Math.Sign(next.X - current.X) * margin;
+            }
+            result.Add(new Point2(x, y));
+        }
+        if (!IsValid(result)) throw new InvalidDataException("The room outline cannot be offset.");
+        return result;
+    }
+
     /// <summary>Exact planar intersection area for orthogonal polygons, including concave L-shaped rooms.</summary>
     public static double IntersectionArea(IReadOnlyList<Point2> a, IReadOnlyList<Point2> b)
     {
