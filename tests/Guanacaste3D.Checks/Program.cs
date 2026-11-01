@@ -382,6 +382,7 @@ Check(renderTimer.ElapsedMilliseconds < 10000, "Path tracer renders a 64k-pixel 
 
 GridAxisAssociationChecks.Run(Check);
 RoomSeparatorBoundaryChecks.Run(Check);
+AutomaticRoomSynchronizationChecks.Run(Check);
 AgentChecks.Run(Check);
 StairAndWallChecks.Run(Check);
 ModernHouseChecks.Run(Check);
