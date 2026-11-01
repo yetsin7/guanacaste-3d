@@ -501,4 +501,9 @@
   <sys:String x:Key="Error.Invalid filled region.">La región rellenada no es válida.</sys:String>
   <sys:String x:Key="Error.Filled region cannot have zero area.">La región rellenada debe tener superficie.</sys:String>
   <sys:String x:Key="Error.The drawing detail does not exist.">El detalle 2D no existe.</sys:String>
+  <sys:String x:Key="Transaction.AttachWallToGrid">Vincular muro al eje</sys:String>
+  <sys:String x:Key="Transaction.DetachWallFromGrid">Desvincular muro del eje</sys:String>
+  <sys:String x:Key="Error.The wall centerline is not aligned with the selected grid.">El centro del muro no está alineado con el eje seleccionado.</sys:String>
+  <sys:String x:Key="Error.The grid axis is too short.">El eje es demasiado corto.</sys:String>
+  <sys:String x:Key="Error.The grid movement must be finite.">El desplazamiento del eje debe tener valores numéricos válidos.</sys:String>
 </ResourceDictionary>
