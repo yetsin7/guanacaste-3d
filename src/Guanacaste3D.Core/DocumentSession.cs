@@ -22,11 +22,15 @@ public sealed partial class DocumentSession
         if (wallTypeId is not null)
             thickness = Document.WallTypes.Single(type => type.Id == selectedTypeId).Thickness;
         var id = Guid.NewGuid();
-        Commit("Transaction.AddWall", doc => doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
+        Commit("Transaction.AddWall", doc =>
         {
-            WallTypeId = selectedTypeId,
-            GridAxisId = MatchingWallGrid(doc.Grids, start, end)
-        }));
+            doc.Walls.Add(new Wall(id, levelId, start, end, thickness, height)
+            {
+                WallTypeId = selectedTypeId,
+                GridAxisId = MatchingWallGrid(doc.Grids, start, end)
+            });
+            RefreshRoomBoundariesIfNeeded(doc, levelId);
+        });
         return id;
     }
 
@@ -63,6 +67,7 @@ public sealed partial class DocumentSession
                 ? levels[wall.LevelId].Elevation + height - levels[topId].Elevation
                 : 0;
             doc.Walls[index] = wall with { Thickness = thickness, Height = height, TopOffset = offset };
+            RefreshRoomBoundariesIfNeeded(doc, wall.LevelId);
         });
     }
 
@@ -81,6 +86,7 @@ public sealed partial class DocumentSession
                 WallTypeId = wallTypeId,
                 Thickness = type.Thickness
             };
+            RefreshRoomBoundariesIfNeeded(document, document.Walls[index].LevelId);
         });
     }
 
@@ -128,11 +134,14 @@ public sealed partial class DocumentSession
                 SectionFillColor = sectionFillColor.ToUpperInvariant(),
                 SectionFillPattern = sectionFillPattern
             };
+            var affectedLevels = document.Walls.Where(wall => wall.WallTypeId == id)
+                .Select(wall => wall.LevelId).Distinct().ToArray();
             for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
             {
                 if (document.Walls[wallIndex].WallTypeId == id)
                     document.Walls[wallIndex] = document.Walls[wallIndex] with { Thickness = thickness };
             }
+            foreach (var levelId in affectedLevels) RefreshRoomBoundariesIfNeeded(document, levelId);
         });
     }
 
@@ -257,6 +266,7 @@ public sealed partial class DocumentSession
                 if (nextStart != neighbour.Start || nextEnd != neighbour.End)
                     doc.Walls[other] = neighbour with { Start = nextStart, End = nextEnd, GridAxisId = null };
             }
+            RefreshRoomBoundariesIfNeeded(doc, wall.LevelId);
         });
     }
 
@@ -317,6 +327,7 @@ public sealed partial class DocumentSession
             doc.Walls[index] = end == WallEnd.Start
                 ? wall with { Start = point, GridAxisId = null }
                 : wall with { End = point, GridAxisId = null };
+            RefreshRoomBoundariesIfNeeded(doc, wall.LevelId);
         });
     }
 
@@ -347,6 +358,7 @@ public sealed partial class DocumentSession
             });
             foreach (var opening in doc.Openings.Where(o => o.WallId == id).ToArray())
                 doc.Openings.Add(opening with { Id = Guid.NewGuid(), WallId = newId });
+            RefreshRoomBoundariesIfNeeded(doc, original.LevelId);
         });
         return newId;
     }
@@ -372,6 +384,7 @@ public sealed partial class DocumentSession
                     wall.Start.Y + dx * Math.Sin(radians) + dy * Math.Cos(radians)),
                 GridAxisId = null
             };
+            RefreshRoomBoundariesIfNeeded(doc, wall.LevelId);
         });
     }
 
@@ -388,8 +401,10 @@ public sealed partial class DocumentSession
         if (!Document.Walls.Any(w => w.Id == id)) return;
         Commit("Transaction.RemoveWall", doc =>
         {
+            var levelId = doc.Walls.Single(w => w.Id == id).LevelId;
             doc.Openings.RemoveAll(o => o.WallId == id);
             doc.Walls.RemoveAll(w => w.Id == id);
+            RefreshRoomBoundariesIfNeeded(doc, levelId);
         });
     }
 
