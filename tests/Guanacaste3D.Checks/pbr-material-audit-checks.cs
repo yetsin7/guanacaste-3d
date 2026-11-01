@@ -10,6 +10,7 @@ internal static class PbrMaterialAuditChecks
         {
             File.WriteAllBytes(Path.Combine(folder, "brick_albedo.png"), [137, 80, 78, 71, 13, 10, 26, 10]);
             File.WriteAllBytes(Path.Combine(folder, "brick_roughness.png"), [42, 73, 76]);
+            File.WriteAllBytes(Path.Combine(folder, "brick_height.png"), [42, 73, 77]);
             var path = Path.Combine(folder, "brick.g3dm");
             File.WriteAllText(path, """
             {
@@ -22,6 +23,7 @@ internal static class PbrMaterialAuditChecks
               "license": "CC0",
               "albedo": "brick_albedo.png",
               "roughnessMap": "brick_roughness.png",
+              "heightMap": "brick_height.png",
               "roughness": 0.85,
               "metallic": 0,
               "ior": 1.5,
@@ -30,7 +32,9 @@ internal static class PbrMaterialAuditChecks
             }
             """);
             var valid = PbrMaterialAudit.Inspect(path);
-            check(valid.IsValid && valid.Material?.Maps.Count == 2 &&
+            check(valid.IsValid && valid.Material?.Maps.Count == 3 &&
+                  valid.Material.Maps.ContainsKey("heightMap") &&
+                  !valid.Warnings.Any(w => w.Contains("heightMap", StringComparison.OrdinalIgnoreCase)) &&
                   valid.Material.Tags.Contains("exterior") && valid.Material.TextureSize == 0.4,
                 "Portable PBR manifest retains real-world dimensions, categories and optional map metadata");
 
@@ -93,12 +97,15 @@ internal static class PbrMaterialAuditChecks
                 new Dictionary<string, string>
                 {
                     ["albedo"] = Path.Combine(folder, "brick_albedo.png"),
-                    ["roughnessMap"] = Path.Combine(folder, "brick_roughness.png")
+                    ["roughnessMap"] = Path.Combine(folder, "brick_roughness.png"),
+                    ["heightMap"] = Path.Combine(folder, "brick_height.png")
                 });
             var exportedAudit = PbrMaterialAudit.Inspect(exported);
-            check(exportedAudit.IsValid && exportedAudit.Material?.Maps.Count == 2 &&
+            check(exportedAudit.IsValid && exportedAudit.Material?.Maps.Count == 3 &&
+                  exportedAudit.Material.Maps.ContainsKey("heightMap") &&
                   exportedAudit.Material.License == "CC0" &&
-                  File.Exists(Path.Combine(folder, "exported-albedo.png")),
+                  File.Exists(Path.Combine(folder, "exported-albedo.png")) &&
+                  File.Exists(Path.Combine(folder, "exported-height.png")),
                 "Portable writer creates a complete self-contained .g3dm material without WPF");
 
             var overwriteRejected = false;
