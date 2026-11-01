@@ -33,7 +33,11 @@ static class AnnotationChecks
             "Room tags follow the requested categories");
 
         var plan = demo.Views.First(view => view.Kind == ProjectViewKind.Plan && view.LevelId == demoLevel);
-        var tagged = new DocumentSession(demo.Clone());
+        var secondPlan = new ProjectView(Guid.NewGuid(), "Planta alternativa", ProjectViewKind.Plan,
+            demoLevel, ViewOrientation.None);
+        var twoPlanDocument = demo.Clone();
+        twoPlanDocument.Views.Add(secondPlan);
+        var tagged = new DocumentSession(twoPlanDocument);
         var areaId = tagged.AddArea(demoLevel, "Patio de prueba", new Point2(25, 25), new Point2(30, 29));
         var areas = ElementTags.Build(tagged.Document, demoLevel, new HashSet<TagCategory> { TagCategory.Area });
         var newAreaTag = areas.SingleOrDefault(tag => tag.ElementId == areaId);
@@ -48,6 +52,13 @@ static class AnnotationChecks
         check(tagged.Document.Views.Single(view => view.Id == plan.Id).ShowRoomTags &&
               tagged.Document.Views.Single(view => view.Id == plan.Id).ShowAreaTags,
             "Room and area tags can be enabled independently for one plan view");
+        check(tagged.Document.Views.Single(view => view.Id == secondPlan.Id) is
+              { ShowRoomTags: false, ShowAreaTags: false },
+            "Tag visibility is scoped to the selected plan, even when two plans share a level");
+        var rejectedNonPlan = false;
+        try { tagged.SetPlanTagVisibility(BuiltInProjectViews.Model3DId, TagCategory.Room, true); }
+        catch (InvalidDataException) { rejectedNonPlan = true; }
+        check(rejectedNonPlan, "Room tags cannot be enabled on a non-plan view");
         var file = Path.Combine(Path.GetTempPath(), "g3d-plan-tags-" + Guid.NewGuid().ToString("N") + ".g3d");
         try
         {
@@ -57,6 +68,9 @@ static class AnnotationChecks
                   ElementTags.Build(reopened, demoLevel, new HashSet<TagCategory> { TagCategory.Area })
                       .Any(tag => tag.ElementId == areaId),
                 "Room/area tag visibility and associative area identity survive native project reload");
+            check(reopened.Views.Single(view => view.Id == secondPlan.Id) is
+                  { ShowRoomTags: false, ShowAreaTags: false },
+                "Saving and reopening preserves independent tag settings for multiple plan views");
         }
         finally
         {
