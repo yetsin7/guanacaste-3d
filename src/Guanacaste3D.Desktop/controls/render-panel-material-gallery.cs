@@ -307,7 +307,7 @@ public partial class RenderPanel
         }
         catch (OperationCanceledException) { /* A search or page change superseded this thumbnail. */ }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
-                                            NotSupportedException or ArgumentException or
+                                            NotSupportedException or ArgumentException or FormatException or
                                             InvalidOperationException or System.Runtime.InteropServices.COMException)
         {
             if (revision == _galleryRevision) placeholder.Text = "Sin vista previa";
