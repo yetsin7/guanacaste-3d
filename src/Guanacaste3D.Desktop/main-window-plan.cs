@@ -336,7 +336,13 @@ public partial class MainWindow
         PlanCanvas.Children.Add(new Polygon
         {
             Points = new PointCollection(footprint.Points.Select(WorldToCanvas)),
-            Fill = WallAppearanceRendering.CreateBrush(wallType.PlanFillColor, wallType.PlanFillPattern),
+            Fill = WallAppearanceRendering.CreateBrush(
+                wallType.PlanFillColor == "#59636B" && wallType.Construction == WallConstruction.Brick
+                    ? "#B9795B"
+                    : wallType.PlanFillColor == "#59636B" && wallType.Construction == WallConstruction.Block
+                        ? "#BFC1BD"
+                        : wallType.PlanFillColor,
+                wallType.PlanFillPattern),
             SnapsToDevicePixels = true,
             Tag = wall.Id
         });
