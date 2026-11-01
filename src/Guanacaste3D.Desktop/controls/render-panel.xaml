@@ -474,6 +474,46 @@
                   <TextBlock x:Name="MaterialScopeInfo" Style="{StaticResource PanelHint}" Text="Material general por categoría"/>
                   <Button x:Name="MaterialScopeReset" Visibility="Collapsed" Content="Volver a materiales generales"
                           HorizontalAlignment="Left" Margin="0,6,0,3" Padding="8,4" Click="MaterialScopeReset_Click"/>
+                  <!-- Eight thumbnails per page, generated off the UI thread only when expanded. -->
+                  <Expander x:Name="GalleryExpander" IsExpanded="False" Margin="0,12,0,12"
+                            Expanded="GalleryExpanded" Collapsed="GalleryCollapsed"
+                            Foreground="#F0F6FB" Background="#1B2A3A">
+                    <Expander.Header>
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource RenderGallery.Title}" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="{DynamicResource RenderGallery.Subtitle}" Foreground="#9CB5C8" FontSize="11" Margin="0,2,0,0"/>
+                      </StackPanel>
+                    </Expander.Header>
+                    <StackPanel Margin="2,12,2,4">
+                      <TextBlock Text="{DynamicResource RenderGallery.Target}" Style="{StaticResource PanelLabel}" Margin="0,0,0,4"/>
+                      <ComboBox x:Name="GalleryTargetPicker" SelectionChanged="GalleryFilter_Changed"
+                                ToolTip="{DynamicResource RenderGallery.TargetHint}"/>
+                      <TextBlock Text="{DynamicResource RenderGallery.Filter}" Style="{StaticResource PanelLabel}" Margin="0,10,0,4"/>
+                      <ComboBox x:Name="GalleryGroupPicker" SelectedIndex="0" SelectionChanged="GalleryFilter_Changed">
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.Trees}" Tag="trees"/>
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.Bark}" Tag="bark"/>
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.Foliage}" Tag="foliage"/>
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.Other}" Tag="other"/>
+                        <ComboBoxItem Content="{DynamicResource RenderGallery.All}" Tag="all"/>
+                      </ComboBox>
+                      <TextBox x:Name="GallerySearch" Margin="0,9,0,10"
+                               TextChanged="GalleryFilter_Changed"
+                               ToolTip="{DynamicResource RenderGallery.SearchHint}"/>
+                      <WrapPanel x:Name="GalleryTiles" HorizontalAlignment="Center"/>
+                      <TextBlock x:Name="GalleryFeedback" Foreground="#9CB5C8" TextWrapping="Wrap"
+                                 FontSize="11" Margin="0,6,0,0"/>
+                      <DockPanel Margin="0,10,0,0">
+                        <Button x:Name="GalleryPreviousButton" DockPanel.Dock="Left"
+                                Content="‹" MinWidth="42" Padding="10,5"
+                                Click="GalleryPrevious_Click"/>
+                        <Button x:Name="GalleryNextButton" DockPanel.Dock="Right"
+                                Content="›" MinWidth="42" Padding="10,5"
+                                Click="GalleryNext_Click"/>
+                        <TextBlock x:Name="GalleryPageText" HorizontalAlignment="Center" TextAlignment="Center"
+                                   VerticalAlignment="Center" Foreground="#DBE7F3" FontSize="12"/>
+                      </DockPanel>
+                    </StackPanel>
+                  </Expander>
                   <CheckBox x:Name="StoneDetailCheck" Margin="0,8,0,4" IsChecked="False"
                             Content="Relieve geométrico en piedra natural"
                             ToolTip="Añade microgeometría auténtica solo al render de muros de piedra; hasta 80 000 triángulos adicionales. Desactivar para máquinas lentas."

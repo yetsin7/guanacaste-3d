@@ -55,6 +55,7 @@ public partial class RenderPanel : UserControl
         InitializeComponent();
         InitializeRenderModeRail();
         InitializeLooks();
+        InitializeMaterialGallery();
         SunDatePicker.SelectedDate = DateTime.Today;
         _ready = true;
         IsVisibleChanged += (_, _) => OnVisibilityChanged();

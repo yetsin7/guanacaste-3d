@@ -308,4 +308,15 @@
   <sys:String x:Key="RenderPanel.TravelSpeedHint">De 0,2 a 10 m/s. Mayús acelera; Alt permite movimientos precisos.</sys:String>
   <sys:String x:Key="RenderPanel.HorizontalTravel">Mantener altura al avanzar</sys:String>
   <sys:String x:Key="RenderPanel.FlightHint">Clic en la vista para navegar. W/A/S/D o flechas: desplazarse. Q/E: bajar/subir. Botón derecho: mirar. Rueda: avanzar/retroceder. Desactiva las colisiones para atravesar paredes.</sys:String>
+  <sys:String x:Key="RenderGallery.Title">Biblioteca visual de texturas</sys:String>
+  <sys:String x:Key="RenderGallery.Subtitle">Miniaturas · búsqueda · aplicar material</sys:String>
+  <sys:String x:Key="RenderGallery.Target">Aplicar a la superficie</sys:String>
+  <sys:String x:Key="RenderGallery.TargetHint">Elige la categoría del modelo que recibirá la textura; al editar un elemento específico se bloquea su categoría.</sys:String>
+  <sys:String x:Key="RenderGallery.Filter">Categoría de texturas</sys:String>
+  <sys:String x:Key="RenderGallery.Trees">Árboles y plantas</sys:String>
+  <sys:String x:Key="RenderGallery.Bark">Cortezas y troncos</sys:String>
+  <sys:String x:Key="RenderGallery.Foliage">Follaje y hojas</sys:String>
+  <sys:String x:Key="RenderGallery.Other">Construcción y otros</sys:String>
+  <sys:String x:Key="RenderGallery.All">Todas las texturas</sys:String>
+  <sys:String x:Key="RenderGallery.SearchHint">Buscar por nombre o identificador sin importar tildes.</sys:String>
 </ResourceDictionary>
