@@ -246,7 +246,8 @@ public sealed partial class DocumentSession
             {
                 Start = Translate(wall.Start, deltaX, deltaY),
                 End = Translate(wall.End, deltaX, deltaY),
-                GridAxisId = null // Manual wall motion releases its reference-datum constraint.
+                GridAxisId = null, // Manual wall motion releases its reference-datum constraint.
+                GridAxisAssociationDisabled = true
             };
             for (var other = 0; other < doc.Walls.Count; other++)
             {
@@ -315,7 +316,7 @@ public sealed partial class DocumentSession
         {
             var index = doc.Walls.FindIndex(w => w.Id == id);
             var wall = doc.Walls[index];
-            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point, GridAxisId = null } : wall with { End = point, GridAxisId = null };
+            doc.Walls[index] = end == WallEnd.Start ? wall with { Start = point, GridAxisId = null, GridAxisAssociationDisabled = true } : wall with { End = point, GridAxisId = null, GridAxisAssociationDisabled = true };
         });
     }
 
