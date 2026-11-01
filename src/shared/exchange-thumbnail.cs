@@ -53,7 +53,7 @@ internal static class ExchangeThumbnail
             if (element.TryGetProperty("mesh", out var reference) && reference.ValueKind == JsonValueKind.Number)
             {
                 var index = reference.GetInt32();
-                if ((uint)index >= (uint)meshes.Length) throw new InvalidDataException("Invalid exchange mesh reference.");
+                if ((uint)index >= (uint)meshes.Count) throw new InvalidDataException("Invalid exchange mesh reference.");
             }
         var faces = new List<Face>();
         foreach (var element in elements.OrderBy(ElementPriority))
