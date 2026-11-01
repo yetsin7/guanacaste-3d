@@ -117,6 +117,9 @@ public static class MaterialPresets
         new("travertine", "Travertino", MaterialFamily.Stone, Matte("Travertino", 0.62f, 0.53f, 0.40f, 0.6f, SurfacePattern.Concrete, 0.8f)),
         new("slate", "Pizarra", MaterialFamily.Stone, Matte("Pizarra", 0.09f, 0.10f, 0.11f, 0.7f, SurfacePattern.Blocks, 0.6f)),
         new("stone-ledge", "Piedra laja", MaterialFamily.Stone, Matte("Piedra laja", 0.40f, 0.36f, 0.30f, 0.9f, SurfacePattern.Blocks, 1.5f)),
+        // Photographic rough stone from the bundled image, ideal for garden walls and estate exteriors.
+        Textured("stone-natural-wall", "Mampostería de piedra natural", MaterialFamily.Stone, "stone-paving", 1.8, 0.94f, 0.65),
+        Textured("stone-beige-facade", "Piedra beige para fachada", MaterialFamily.Stone, "stone-paving", 2.1, 0.88f, 0.45),
 
         // Wood.
         Textured("oak-light", "Roble claro", MaterialFamily.Wood, "ambientcg-wood096", 0.5, 0.55f, 0.15),

@@ -126,6 +126,10 @@
   <sys:String x:Key="Texture.Stucco">Repello blanco</sys:String>
   <sys:String x:Key="Texture.Gravel">Grava</sys:String>
   <sys:String x:Key="RenderPanel.CloudsHint">Parte del cielo cubierta por cúmulos. Las nubes no tapan el sol: la luz y las sombras no cambian.</sys:String>
+  <sys:String x:Key="RenderStyle.EstateDaylight">Fotografía arquitectónica · natural</sys:String>
+  <sys:String x:Key="RenderStyle.EstateTwilight">Fotografía arquitectónica · anochecer</sys:String>
+  <sys:String x:Key="RenderSky.EstateDaylight">Exterior de piedra y jardines · día</sys:String>
+  <sys:String x:Key="RenderSky.EstateTwilight">Exterior con lámparas cálidas · anochecer</sys:String>
   <sys:String x:Key="RenderPanel.Look">Estilo de imagen</sys:String>
   <sys:String x:Key="RenderPanel.LookPhotographic">Fotográfico (AgX)</sys:String>
   <sys:String x:Key="RenderPanel.LookContrast">Contrastado (ACES)</sys:String>
