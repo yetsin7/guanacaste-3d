@@ -80,7 +80,7 @@ sections, associative annotation, placed sheet views, IFC and DXF exchange,
 collaboration, structural and MEP authoring, physical rendering, and large-model
 performance engineering.
 
-## 2D architectural drafting (proposed in PR #36)
+## 2D architectural drafting (proposed in PR #38)
 
 The **Annotate** ribbon now has real drawing workflows for **Detail Line** and **Filled Region** in the plan viewport. These annotations are attached to a specific plan view ID; they do not generate 3D surfaces or alter any wall, slab, or structural element.
 
