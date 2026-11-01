@@ -10,3 +10,13 @@ artifacts/
 *.suo
 *.tmp
 *.bak
+
+# Machine-local diagnostic reports can contain usernames and device identifiers.
+# Keep CAD crash dumps and logs out of the public source repository.
+**/ErrorReports/
+**/CrashDumps/
+*.log
+*.dmp
+*.mdmp
+*.hdmp
+*.wer
