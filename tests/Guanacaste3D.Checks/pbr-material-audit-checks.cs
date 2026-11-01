@@ -1,0 +1,84 @@
+using Guanacaste3D.Core.Rendering;
+
+internal static class PbrMaterialAuditChecks
+{
+    public static void Run(Action<bool, string> check)
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "guanacaste-pbr-audit-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(folder, "brick_albedo.png"), [137, 80, 78, 71, 13, 10, 26, 10]);
+            File.WriteAllBytes(Path.Combine(folder, "brick_roughness.png"), [42, 73, 76]);
+            var path = Path.Combine(folder, "brick.g3dm");
+            File.WriteAllText(path, """
+            {
+              "version": 1,
+              "name": "Ladrillo artesanal",
+              "category": "Mampostería",
+              "description": "Acabado exterior de ladrillo",
+              "tags": ["exterior", "rojo"],
+              "author": "Equipo Guanacaste",
+              "license": "CC0",
+              "albedo": "brick_albedo.png",
+              "roughnessMap": "brick_roughness.png",
+              "roughness": 0.85,
+              "metallic": 0,
+              "ior": 1.5,
+              "textureSize": 0.4,
+              "relief": 0.2
+            }
+            """);
+            var valid = PbrMaterialAudit.Inspect(path);
+            check(valid.IsValid && valid.Material?.Maps.Count == 2 &&
+                  valid.Material.Tags.Contains("exterior") && valid.Material.TextureSize == 0.4,
+                "Portable PBR manifest retains real-world dimensions, categories and optional map metadata");
+
+            File.WriteAllText(Path.Combine(folder, "bad-traversal.g3dm"),
+                """{"version":1,"name":"Unsafe","albedo":"../secret.png"}""");
+            var traversal = PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-traversal.g3dm"));
+            check(!traversal.IsValid && traversal.Errors.Any(x => x.Contains("albedo", StringComparison.OrdinalIgnoreCase)),
+                "PBR import rejects parent-directory traversal on every operating system");
+
+            File.WriteAllText(Path.Combine(folder, "bad-absolute.g3dm"),
+                """{"version":1,"name":"Absolute","albedo":"/tmp/external.png"}""");
+            check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-absolute.g3dm")).IsValid,
+                "PBR import rejects absolute image paths");
+
+            File.WriteAllText(Path.Combine(folder, "bad-physics.g3dm"),
+                """{"version":1,"name":"Impossible","albedo":"brick_albedo.png","metallic":7}""");
+            check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-physics.g3dm")).IsValid,
+                "PBR import rejects invalid physical parameters");
+
+            File.WriteAllText(Path.Combine(folder, "bad-missing.g3dm"),
+                """{"version":1,"name":"Missing","albedo":"missing.png"}""");
+            check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-missing.g3dm")).IsValid,
+                "PBR import detects unavailable referenced textures");
+
+            File.WriteAllText(Path.Combine(folder, "with-ao.g3dm"),
+                """{"version":1,"name":"Future","albedo":"brick_albedo.png","ao":"occlusion.png"}""");
+            var future = PbrMaterialAudit.Inspect(Path.Combine(folder, "with-ao.g3dm"));
+            check(future.IsValid && future.Warnings.Any(w => w.Contains("ao", StringComparison.OrdinalIgnoreCase)),
+                "Future PBR channels are reported without pretending the renderer supports them");
+
+            var scanned = PbrMaterialAudit.Scan(folder);
+            check(scanned.Count == 6 && scanned.Count(entry => entry.IsValid) == 2 &&
+                  scanned.Count(entry => !entry.IsValid) == 4,
+                "Material catalog shows both valid materials and broken packages for repair");
+
+            // Cross-platform case-sensitivity: detect a missing asset rather than guessing its filename.
+            File.WriteAllText(Path.Combine(folder, "different-case.g3dm"),
+                """{"version":1,"name":"Case mismatch","albedo":"BRICK_ALBEDO.PNG"}""");
+            if (!OperatingSystem.IsWindows())
+                check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "different-case.g3dm")).IsValid,
+                    "Linux/macOS case-sensitive assets must preserve their filename spelling");
+
+            check(PbrMaterialAudit.Scan(Path.Combine(folder, "not-a-folder")).Count == 0,
+                "Missing material library directory is safe to inspect");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+}
