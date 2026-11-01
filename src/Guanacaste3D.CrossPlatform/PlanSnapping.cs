@@ -46,6 +46,10 @@ public static class PlanSnapping
             var axes = document.Grids.SelectMany(g => new[] { g.Start, g.End });
             foreach (var candidate in walls.Concat(axes))
             {
+                if (orthogonal && firstPoint is Point2 fixedPoint &&
+                    ((Math.Abs(constrained.Y - fixedPoint.Y) < 1e-9 && Math.Abs(candidate.Y - fixedPoint.Y) > 1e-8) ||
+                     (Math.Abs(constrained.X - fixedPoint.X) < 1e-9 && Math.Abs(candidate.X - fixedPoint.X) > 1e-8)))
+                    continue;
                 var dx = candidate.X - constrained.X;
                 var dy = candidate.Y - constrained.Y;
                 var distanceSquared = dx * dx + dy * dy;
@@ -61,9 +65,14 @@ public static class PlanSnapping
 
         if (useGrid)
         {
-            var gridPoint = new Point2(
-                Math.Round(constrained.X / gridMeters, MidpointRounding.AwayFromZero) * gridMeters,
-                Math.Round(constrained.Y / gridMeters, MidpointRounding.AwayFromZero) * gridMeters);
+            var snapX = Math.Round(constrained.X / gridMeters, MidpointRounding.AwayFromZero) * gridMeters;
+            var snapY = Math.Round(constrained.Y / gridMeters, MidpointRounding.AwayFromZero) * gridMeters;
+            if (orthogonal && firstPoint is Point2 anchor)
+            {
+                if (Math.Abs(constrained.X - anchor.X) < 1e-9) snapX = anchor.X;
+                else snapY = anchor.Y;
+            }
+            var gridPoint = new Point2(snapX, snapY);
             if (gridPoint.DistanceTo(constrained) <= radius)
                 return new Result(gridPoint, SnapKind.Grid);
         }
