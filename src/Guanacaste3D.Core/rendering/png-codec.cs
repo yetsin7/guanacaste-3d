@@ -138,6 +138,9 @@ public static class PngCodec
         }
         if (!sawEnd || width == 0 || compressed.Length == 0)
             throw new InvalidDataException("The PNG file has no complete image data.");
+        // IEND must be the final chunk: otherwise corrupt or appended data is silently accepted.
+        if (position != data.Length)
+            throw new InvalidDataException("The PNG file is corrupt.");
 
         var stride = width * channels;
         var raw = new byte[(stride + 1) * height];
@@ -151,6 +154,10 @@ public static class PngCodec
                 if (count == 0) throw new InvalidDataException("The PNG image data is incomplete.");
                 read += count;
             }
+            // A valid PNG expands to exactly the advertised scanlines, not just at least that many.
+            // Reject extra decompressed bytes before allocating the final pixel buffer.
+            if (zlib.ReadByte() != -1)
+                throw new InvalidDataException("The PNG file is corrupt.");
         }
 
         var pixels = new byte[stride * height];
