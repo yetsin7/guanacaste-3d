@@ -10,7 +10,7 @@ public partial class ApplicationFileMenu : ContextMenu
     public ApplicationFileMenu() => InitializeComponent();
 
     public event Action<string>? CommandInvoked;
-    public Func<IReadOnlyList<RecentDocument>>? RecentItemsProvider { get; set; };
+    public Func<IReadOnlyList<RecentDocument>>? RecentItemsProvider { get; set; }
 
 
     private void ApplicationMenu_Opened(object sender, RoutedEventArgs e)
