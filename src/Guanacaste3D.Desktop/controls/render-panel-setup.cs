@@ -20,6 +20,7 @@ public partial class RenderPanel
         HazeCheck.IsChecked = setup.Haze;
         Select(QualityPicker, setup.Quality?.ToString() ?? "Auto");
         Select(SizePicker, $"{setup.Width}x{setup.Height}");
+        Select(BucketSizePicker, setup.BucketSize.ToString(CultureInfo.InvariantCulture));
         Select(LookPicker, setup.Look switch { ToneMapper.Aces => "Aces", ToneMapper.Soft => "Soft", _ => "AgX" });
         ExposureSlider.Value = setup.ExposureStops;
         TemperatureSlider.Value = setup.Temperature;
@@ -60,6 +61,7 @@ public partial class RenderPanel
             SolarHour = HourSlider.Value, Latitude = Latitude(), CloudCover = CloudSlider.Value / 100,
             Haze = HazeCheck.IsChecked == true, Quality = RequestedQuality(),
             Width = width > 0 && height > 0 ? width : 0, Height = width > 0 && height > 0 ? height : 0,
+            BucketSize = int.TryParse(Mode(BucketSizePicker), out var bucketSize) ? bucketSize : 0,
             Look = CurrentFinish().ToneMapper, ExposureStops = ExposureSlider.Value, Temperature = TemperatureSlider.Value,
             AutoExposure = AutoExposureCheck.IsChecked == true, Bloom = BloomCheck.IsChecked == true,
             Vignette = VignetteCheck.IsChecked == true, CorrectVerticals = VerticalsCheck.IsChecked == true,
