@@ -208,6 +208,16 @@ internal static partial class SurfacePatterns
         return length > 1e-6f ? bent / length : normal;
     }
 
+    /// <summary>Converts a tangent-space normal from a planar projected map into a world-space shading normal.</summary>
+    public static Vector3 MapNormal(Vector3 normal, Vector3 tangentNormal)
+    {
+        var (u, v) = PlaneTangents(normal);
+        u -= normal * Vector3.Dot(normal, u);
+        v -= normal * Vector3.Dot(normal, v);
+        var result = normal * tangentNormal.Z + u * tangentNormal.X + v * tangentNormal.Y;
+        return result.LengthSquared() > 1e-10f ? Vector3.Normalize(result) : normal;
+    }
+
     /// <summary>World-space plane coordinates in meters, the same projection the patterns use; textures share it.</summary>
     public static (float U, float V) PlaneUv(Vector3 position, Vector3 normal) => PlaneCoordinates(position, normal);
 

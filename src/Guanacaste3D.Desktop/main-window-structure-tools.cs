@@ -68,7 +68,6 @@ public partial class MainWindow
     /// <summary>Disarms the placement tool and drops its provisional geometry.</summary>
     private void CancelStructuralTool()
     {
-        CancelDetailDrawing();
         CancelSectionTool();
         CancelGridTool();
         _structuralTool = null;

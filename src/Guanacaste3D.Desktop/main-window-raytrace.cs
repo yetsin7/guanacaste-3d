@@ -107,6 +107,10 @@ public partial class MainWindow
         public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null) =>
             window.AssignElementRenderMaterial(category, texturePath, size, relief, elementId);
 
+        public void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
+            string? normalPath, string? roughnessPath, string? metallicPath) =>
+            window.SetRenderMaterialMaps(category, elementId, normalPath, roughnessPath, metallicPath);
+
         public event Action? SceneChanged
         {
             add => window.SceneChanged += value;
@@ -158,15 +162,39 @@ public partial class MainWindow
         try
         {
             if (texturePath is null) _session.ClearRenderMaterial(category, elementId);
-            else _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath)
+            else
             {
-                ElementId = elementId, TextureSize = size, Relief = relief
-            });
+                var previous = _session.Document.RenderMaterials.FirstOrDefault(a =>
+                    a.Category == category && a.ElementId == elementId);
+                _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath)
+                {
+                    ElementId = elementId, TextureSize = size, Relief = relief,
+                    NormalPath = previous?.NormalPath, RoughnessPath = previous?.RoughnessPath,
+                    MetallicPath = previous?.MetallicPath
+                });
+            }
         }
         catch (InvalidDataException exception)
         {
             StatusText.Text = LocalizedErrors.Translate(exception.Message);
         }
+        RefreshAll();
+    }
+
+    /// <summary>One undoable update of a material's independent PBR maps; stock materials may also receive maps.</summary>
+    private void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
+        string? normalPath, string? roughnessPath, string? metallicPath)
+    {
+        var current = _session.Document.RenderMaterials.FirstOrDefault(a =>
+            a.Category == category && a.ElementId == elementId);
+        var updated = (current ?? new RenderMaterialAssignment(category, "stock:") { ElementId = elementId }) with
+        {
+            NormalPath = normalPath, RoughnessPath = roughnessPath, MetallicPath = metallicPath
+        };
+        if (updated.TexturePath == "stock:" && normalPath is null && roughnessPath is null && metallicPath is null)
+            _session.ClearRenderMaterial(category, elementId);
+        else
+            _session.SetRenderMaterial(updated);
         RefreshAll();
     }
 

@@ -934,7 +934,7 @@ public sealed partial class PathTracer
 
     /// <summary>The state of a path vertex that shading needs.</summary>
     private readonly record struct ShadePoint(Vector3 Position, Vector3 Geometric, Vector3 Normal, Vector3 Diffuse,
-        int Material);
+        int Material, SurfaceData Surface);
 
     /// <summary>Computes facing normals and the pattern-modulated diffuse color at a hit; <paramref name="detailed"/> evaluates the pattern exactly.</summary>
     private ShadePoint Shade(in RayHit hit, Bvh bvh, Vector3 position, Vector3 direction, bool detailed)
@@ -960,7 +960,35 @@ public sealed partial class PathTracer
             normal = -normal;
         }
         ref readonly var surface = ref _surfaces[material];
-        var diffuse = surface.Diffuse;
+        var materialAtPoint = surface;
+        if (surface.RoughnessMap is not null || surface.MetallicMap is not null)
+        {
+            float u, v, footprint;
+            if (surface.UvMapped && _scene.TriangleUvs is { } mapUvs)
+            {
+                var i = triangle * 3;
+                var uv = mapUvs[i] * (1 - hit.U - hit.V) + mapUvs[i + 1] * hit.U + mapUvs[i + 2] * hit.V;
+                var area2 = Vector3.Cross(_scene.Positions[_scene.Indices[i + 1]] - _scene.Positions[_scene.Indices[i]],
+                    _scene.Positions[_scene.Indices[i + 2]] - _scene.Positions[_scene.Indices[i]]).Length();
+                var uv1 = mapUvs[i + 1] - mapUvs[i];
+                var uv2 = mapUvs[i + 2] - mapUvs[i];
+                var density = area2 > 1e-12f ? MathF.Sqrt(MathF.Abs(uv1.X * uv2.Y - uv2.X * uv1.Y) / area2) : 1;
+                u = uv.X;
+                v = 1 - uv.Y;
+                footprint = MathF.Max(hit.Distance * PixelAngle * density, 1e-5f);
+            }
+            else
+            {
+                (u, v) = SurfacePatterns.PlaneUv(position, geometric);
+                u *= surface.TextureScale;
+                v *= surface.TextureScale;
+                footprint = MathF.Max(hit.Distance * PixelAngle * surface.TextureScale, 1e-5f);
+            }
+            var roughness = surface.RoughnessMap?.Sample(u, v, footprint) ?? surface.Roughness;
+            var metallic = surface.MetallicMap?.Sample(u, v, footprint) ?? surface.Metallic;
+            materialAtPoint = surface.WithPbr(roughness, metallic);
+        }
+        var diffuse = materialAtPoint.Diffuse;
         // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
         // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
         if (surface.Texture is { } mapped && surface.UvMapped && _scene.TriangleUvs is { } uvs)
@@ -1032,7 +1060,15 @@ public sealed partial class PathTracer
                 diffuse *= new Vector3(surface.PatternMean);
             }
         }
-        return new ShadePoint(position, geometric, normal, diffuse, material);
+        if (detailed && !surface.UvMapped && surface.NormalMap is { } worldNormal)
+        {
+            var (u, v) = SurfacePatterns.PlaneUv(position, geometric);
+            var footprint = MathF.Max(hit.Distance * PixelAngle * surface.TextureScale, 1e-5f);
+            var sample = worldNormal.Sample(u * surface.TextureScale, v * surface.TextureScale, footprint);
+            var bent = SurfacePatterns.MapNormal(normal, sample);
+            if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+        }
+        return new ShadePoint(position, geometric, normal, diffuse, material, materialAtPoint);
     }
 
     /// <summary>
@@ -1109,7 +1145,7 @@ public sealed partial class PathTracer
                 }
             }
             var point = Shade(hit, bvh, position, direction, detailed: previousDelta);
-            ref readonly var surface = ref _surfaces[point.Material];
+            var surface = point.Surface;
 
             // Thin glass or a perforated film: a share of rays pass through, optionally reflecting at grazing angles.
             if (surface.Transmission > 0 && (surface.Transmission >= 1 || sampler.NextFloat() < surface.Transmission))
@@ -1486,8 +1522,13 @@ public sealed partial class PathTracer
     }
 
     /// <summary>Render-ready form of a <see cref="RenderMaterial"/>.</summary>
-    private readonly struct SurfaceData
+    private readonly record struct SurfaceData
     {
+        public Vector3 BaseColor { get; init; }
+        public float Metallic { get; init; }
+        public float Roughness { get; init; }
+        public RenderScalarMap? RoughnessMap { get; init; }
+        public RenderScalarMap? MetallicMap { get; init; }
         public Vector3 Diffuse { get; init; }
         public Vector3 F0 { get; init; }
         public Vector3 Emission { get; init; }
@@ -1518,6 +1559,29 @@ public sealed partial class PathTracer
         /// <summary>Whether direct light can be evaluated here (anything except a pure mirror or pure emitter).</summary>
         public bool HasLobes { get; init; }
 
+        /// <summary>Recomputes the local GGX/Fresnel lobes from map values, without altering shared material state.</summary>
+        public SurfaceData WithPbr(float roughness, float metallic)
+        {
+            roughness = float.IsFinite(roughness) ? Math.Clamp(roughness, 0.02f, 1f) : Roughness;
+            metallic = float.IsFinite(metallic) ? Math.Clamp(metallic, 0f, 1f) : Metallic;
+            var delta = roughness <= 0.05f;
+            var hasSpecular = metallic > 0.01f || roughness < 0.85f;
+            var diffuse = BaseColor * (1f - metallic);
+            return this with
+            {
+                Roughness = roughness,
+                Metallic = metallic,
+                Diffuse = diffuse,
+                F0 = Vector3.Lerp(new Vector3(DielectricF0), BaseColor, metallic),
+                Alpha = MathF.Max(roughness * roughness, 0.0025f),
+                Delta = delta,
+                HasSpecular = hasSpecular,
+                CacheEligible = !delta && metallic <= 0.05f && Transmission <= 0 &&
+                    Translucency <= 0 && !IsEmissive,
+                HasLobes = Sampling.Luminance(diffuse) > 1e-4f || (hasSpecular && !delta)
+            };
+        }
+
         public static SurfaceData From(RenderMaterial material)
         {
             var m = material.Sanitized();
@@ -1529,6 +1593,11 @@ public sealed partial class PathTracer
             var diffuse = m.BaseColor * (1 - m.Metallic);
             return new SurfaceData
             {
+                BaseColor = m.BaseColor,
+                Metallic = m.Metallic,
+                Roughness = m.Roughness,
+                RoughnessMap = m.RoughnessMap,
+                MetallicMap = m.MetallicMap,
                 Diffuse = diffuse,
                 F0 = f0,
                 Emission = m.Emission,
@@ -1547,7 +1616,7 @@ public sealed partial class PathTracer
                 PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
                 Texture = m.Texture,
                 UvMapped = m.UvMapped,
-                NormalMap = m.UvMapped ? m.NormalMap : null,
+                NormalMap = m.NormalMap,
                 TextureScale = 1 / m.TextureSize,
                 // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
                 TextureDepth = m.TextureRelief * m.TextureSize * 0.01f

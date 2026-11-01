@@ -92,6 +92,10 @@ public sealed record RenderMaterial
     /// a smooth surface.
     /// </summary>
     public NormalMap? NormalMap { get; init; }
+    /// <summary>Optional linear grayscale roughness, sampled in UV or projected world coordinates.</summary>
+    public RenderScalarMap? RoughnessMap { get; init; }
+    /// <summary>Optional linear grayscale metalness; black is dielectric and white is metal.</summary>
+    public RenderScalarMap? MetallicMap { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;

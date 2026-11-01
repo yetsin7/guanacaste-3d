@@ -42,8 +42,6 @@ public partial class MainWindow
             case "Floor": Floor_Click(this, eventArguments); return true;
             case "Level": AddLevel_Click(this, eventArguments); return true;
             case "Grid": BeginGridTool(); return true;
-            case "DetailLine": BeginDetailDrawing(false); return true;
-            case "FilledRegion": BeginDetailDrawing(true); return true;
             case "Text": BeginKindTool(StructuralElementKind.ModelText); return true;
             case "Viewer":
             case "Model3D": ShowModel_Click(this, eventArguments); return true;
