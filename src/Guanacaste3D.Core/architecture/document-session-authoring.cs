@@ -143,25 +143,8 @@ public sealed partial class DocumentSession
         return boundary.Count;
     }
 
-    /// <summary>Adds a room to every closed rectangular space bounded by walls that has none yet. Returns how many.</summary>
-    public int AddAutomaticRooms(Guid levelId)
-    {
-        var existing = Document.Rooms.Where(room => room.LevelId == levelId).ToArray();
-        var found = RoomDetection.Detect(Document, levelId)
-            .Where(space => existing.All(room => !RoomDetection.Overlaps(room, space.Min, space.Max))).ToArray();
-        if (found.Length == 0) return 0;
-        Commit("Transaction.AddAutomaticRooms", document =>
-        {
-            foreach (var (minimum, maximum) in found)
-            {
-                var number = (document.Rooms.Count + 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
-                while (document.Rooms.Any(room => room.Number == number))
-                    number = (int.Parse(number, System.Globalization.CultureInfo.InvariantCulture) + 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
-                document.Rooms.Add(new Room(Guid.NewGuid(), levelId, number, $"Room {number}", minimum, maximum));
-            }
-        });
-        return found.Length;
-    }
+    /// <summary>Discovers and refreshes rectangular automatic rooms without affecting manual ones.</summary>
+    public int AddAutomaticRooms(Guid levelId) => SynchronizeAutomaticRooms(levelId);
 
     /// <summary>Adds an area covering the bounding rectangle of every area boundary line on a level; null when there are none.</summary>
     public Guid? AddAreaFromBoundaries(Guid levelId, string name)
