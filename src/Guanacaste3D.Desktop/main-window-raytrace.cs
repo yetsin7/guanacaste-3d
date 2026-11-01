@@ -104,8 +104,8 @@ public partial class MainWindow
                 window.MarkSceneDirty();
             }
         }
-        public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
-            window.AssignRenderMaterial(category, texturePath, size, relief);
+        public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null) =>
+            window.AssignRenderMaterial(category, texturePath, size, relief, elementId);
 
         public event Action? SceneChanged
         {
@@ -149,12 +149,15 @@ public partial class MainWindow
     private bool _artificialLights = true;
 
     /// <summary>Assigns (or, with no path, clears) the render texture of a surface category as one undoable step.</summary>
-    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief)
+    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null)
     {
         try
         {
-            if (texturePath is null) _session.ClearRenderMaterial(category);
-            else _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath) { TextureSize = size, Relief = relief });
+            if (texturePath is null) _session.ClearRenderMaterial(category, elementId);
+            else _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath)
+            {
+                ElementId = elementId, TextureSize = size, Relief = relief
+            });
         }
         catch (InvalidDataException exception)
         {
@@ -195,7 +198,9 @@ public partial class MainWindow
         var task = Task.Run<RenderScene?>(() =>
         {
             var mesh = BuildingMesher.Build(document, includeGround: true, plants: PlantDetail.Render);
-            var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile, lightsOn));
+            var builder = new RenderSceneBuilder().AddBuilding(mesh,
+                RenderTextureLibrary.Resolver(materials, projectFile, lightsOn),
+                RenderTextureLibrary.ElementResolver(materials, projectFile, lightsOn));
             foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
             var scene = builder.Build();
             if (clay) scene = RenderSceneStyles.Clay(scene);
