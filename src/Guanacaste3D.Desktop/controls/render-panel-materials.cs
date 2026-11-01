@@ -228,7 +228,7 @@ public partial class RenderPanel
         if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
             !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
             picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
-        picker.Items.Add(new ComboBoxItem { Content = "Importar material PBR (.g3dpbr)…", Tag = PbrPackageTag });
+        picker.Items.Add(new ComboBoxItem { Content = "Importar material PBR (.g3dm)…", Tag = PbrPackageTag });
         picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
         picker.SelectedItem = picker.Items.OfType<ComboBoxItem>()
             .FirstOrDefault(item => item.Tag as string == (assignment?.TexturePath ?? StockTag)) ?? picker.Items[0];
@@ -267,7 +267,7 @@ public partial class RenderPanel
                 var pbrDialog = new OpenFileDialog
                 {
                     Title = "Importar material PBR de Guanacaste 3D",
-                    Filter = "Paquete de material PBR (*.g3dpbr)|*.g3dpbr"
+                    Filter = "Paquete de material PBR (*.g3dm)|*.g3dm"
                 };
                 if (pbrDialog.ShowDialog(Window.GetWindow(this)) == true)
                 {
