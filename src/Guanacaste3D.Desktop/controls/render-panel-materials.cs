@@ -18,6 +18,7 @@ public partial class RenderPanel
 {
     private const string StockTag = "stock";
     private const string CustomTag = "custom";
+    private const string PbrPackageTag = "pbr-package";
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
 
@@ -227,6 +228,7 @@ public partial class RenderPanel
         if (assignment is not null && !assignment.TexturePath.StartsWith(RenderTextureLibrary.BuiltInPrefix, StringComparison.Ordinal) &&
             !assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
             picker.Items.Add(new ComboBoxItem { Content = Path.GetFileName(assignment.TexturePath), Tag = assignment.TexturePath });
+        picker.Items.Add(new ComboBoxItem { Content = "Importar material PBR (.g3dpbr)…", Tag = PbrPackageTag });
         picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
         picker.SelectedItem = picker.Items.OfType<ComboBoxItem>()
             .FirstOrDefault(item => item.Tag as string == (assignment?.TexturePath ?? StockTag)) ?? picker.Items[0];
@@ -245,6 +247,11 @@ public partial class RenderPanel
                 ? "⚠ Textura no disponible: " + path[RenderTextureLibrary.BuiltInPrefix.Length..]
                 : Text(texture.LabelKey);
         }
+        if (PbrMaterialPackages.IsPackage(path))
+        {
+            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(path, null));
+            return imported?.Manifest.Name ?? "⚠ Paquete PBR no disponible: " + Path.GetFileName(path);
+        }
         return Path.GetFileName(path);
     }
 
@@ -256,6 +263,25 @@ public partial class RenderPanel
             case StockTag:
                 _source.AssignRenderMaterial(category, null, 1, 0);
                 break;
+            case PbrPackageTag:
+                var pbrDialog = new OpenFileDialog
+                {
+                    Title = "Importar material PBR de Guanacaste 3D",
+                    Filter = "Paquete de material PBR (*.g3dpbr)|*.g3dpbr"
+                };
+                if (pbrDialog.ShowDialog(Window.GetWindow(this)) == true)
+                {
+                    var package = PbrMaterialPackages.Read(pbrDialog.FileName);
+                    if (package is null)
+                        MessageBox.Show(Window.GetWindow(this),
+                            "El paquete no es válido. Comprueba los parámetros y que la imagen albedo esté junto al manifiesto.",
+                            "Importación PBR", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    else
+                        _source.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + pbrDialog.FileName,
+                            package.Value.Manifest.TextureSize, package.Value.Manifest.Relief);
+                }
+                RefreshMaterialRows();
+                return;
             case CustomTag:
                 var dialog = new OpenFileDialog
                 {
