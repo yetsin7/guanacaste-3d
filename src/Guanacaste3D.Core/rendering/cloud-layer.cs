@@ -107,12 +107,12 @@ public sealed class CloudLayer
             }
             case CloudStyle.Cumulonimbus:
             {
-                var warp = new Vector2(Fbm(point * 0.32f, 4), Fbm(point * 0.32f + new Vector2(12, 5), 4));
-                var tower = Fbm(point * 0.25f + warp * 3.5f, 6);
-                var threshold = 0.65f - 0.34f * _coverage;
-                var body = Math.Clamp((tower - threshold) / 0.13f, 0f, 1f);
-                var thickness = Math.Clamp((tower - threshold) / 0.23f, 0f, 1f);
-                return (body * (2 - body) * horizon, thickness);
+                var thunderWarp = new Vector2(Fbm(point * 0.32f, 4), Fbm(point * 0.32f + new Vector2(12, 5), 4));
+                var tower = Fbm(point * 0.25f + thunderWarp * 3.5f, 6);
+                var thunderThreshold = 0.65f - 0.34f * _coverage;
+                var body = Math.Clamp((tower - thunderThreshold) / 0.13f, 0f, 1f);
+                var thunderDepth = Math.Clamp((tower - thunderThreshold) / 0.23f, 0f, 1f);
+                return (body * (2 - body) * horizon, thunderDepth);
             }
             case CloudStyle.Cirrus:
             {
