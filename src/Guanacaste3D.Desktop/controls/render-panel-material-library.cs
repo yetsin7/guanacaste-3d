@@ -103,11 +103,22 @@ public partial class RenderPanel
             {
                 try
                 {
+                    // Bound the longest image axis, not just the width. A narrow,
+                    // extremely tall texture must not allocate an enormous preview.
+                    var uri = new Uri(imagePath);
+                    var decoder = BitmapDecoder.Create(uri, BitmapCreateOptions.DelayCreation,
+                        BitmapCacheOption.None);
+                    var frame = decoder.Frames[0];
+                    if (frame.PixelWidth < 1 || frame.PixelHeight < 1)
+                        throw new FileFormatException("Invalid PBR preview dimensions.");
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.DecodePixelWidth = 320;
-                    bitmap.UriSource = new Uri(imagePath);
+                    if (frame.PixelWidth >= frame.PixelHeight)
+                        bitmap.DecodePixelWidth = 320;
+                    else
+                        bitmap.DecodePixelHeight = 320;
+                    bitmap.UriSource = uri;
                     bitmap.EndInit();
                     bitmap.Freeze();
                     preview.Source = bitmap;
