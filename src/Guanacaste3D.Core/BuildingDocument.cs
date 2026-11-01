@@ -24,6 +24,9 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
     /// <summary>Optional reference datum; deleting either side never deletes the other.</summary>
     public Guid? GridAxisId { get; init; }
 
+    /// <summary>Explicit opt-out so a detached wall is never reattached by geometric legacy inference.</summary>
+    public bool GridAxisAssociationDisabled { get; init; }
+
     /// <summary>Level the wall top is tied to; null means the height is unconnected.</summary>
     public Guid? TopLevelId { get; init; }
 
