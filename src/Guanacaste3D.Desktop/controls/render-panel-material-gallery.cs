@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Rendering;
 
 namespace Guanacaste3D.Desktop.Controls;
 
@@ -22,6 +23,7 @@ public partial class RenderPanel
     private readonly Dictionary<string, BitmapSource> _galleryPreviews = new(StringComparer.Ordinal);
     private readonly Queue<string> _galleryPreviewOrder = new();
     private readonly SemaphoreSlim _galleryDecodeGate = new(2, 2);
+    private CancellationTokenSource _galleryLoadCancellation = new();
     private static readonly Brush GalleryNormalBorder = new SolidColorBrush(Color.FromRgb(65, 84, 102));
     private static readonly Brush GallerySelectedBorder = new SolidColorBrush(Color.FromRgb(107, 215, 197));
     private static readonly Brush GalleryTileBackground = new SolidColorBrush(Color.FromRgb(31, 47, 64));
@@ -64,7 +66,11 @@ public partial class RenderPanel
 
     private void GalleryCollapsed(object sender, RoutedEventArgs e)
     {
-        if (ReferenceEquals(sender, GalleryExpander)) _galleryRevision++;
+        if (ReferenceEquals(sender, GalleryExpander))
+        {
+            _galleryRevision++;
+            _galleryLoadCancellation.Cancel();
+        }
     }
 
     private void GalleryFilter_Changed(object sender, RoutedEventArgs e)
@@ -99,6 +105,9 @@ public partial class RenderPanel
     {
         if (!_galleryReady || GalleryExpander.IsExpanded != true) return;
         var revision = ++_galleryRevision;
+        _galleryLoadCancellation.Cancel();
+        _galleryLoadCancellation = new CancellationTokenSource();
+        var token = _galleryLoadCancellation.Token;
         var group = (GalleryGroupPicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "trees";
         var search = GallerySearch.Text.Trim();
         var matches = RenderTextureLibrary.BuiltIn
@@ -150,7 +159,7 @@ public partial class RenderPanel
                 picture.Source = cached;
                 placeholder.Visibility = Visibility.Collapsed;
             }
-            else _ = LoadGalleryThumbnailAsync(key, picture, placeholder, revision);
+            else _ = LoadGalleryThumbnailAsync(key, picture, placeholder, revision, token);
         }
         GalleryPageText.Text = pageCount == 0 ? "0 / 0" : $"{_galleryPage + 1} / {pageCount}";
         GalleryPreviousButton.IsEnabled = _galleryPage > 0;
@@ -183,24 +192,28 @@ public partial class RenderPanel
         var path = RenderTextureLibrary.BuiltInPrefix + texture.Key;
         var current = _source.RenderMaterials.FirstOrDefault(material =>
             material.Category == category && material.ElementId == _focusedElement);
-        if (current?.TexturePath == path &&
+        if (current is not null && current.TexturePath == path &&
             Math.Abs(current.TextureSize - texture.Size) < 1e-9 &&
             Math.Abs(current.Relief - texture.Relief) < 1e-9) return;
         _source.AssignRenderMaterial(category, path, texture.Size, texture.Relief, _focusedElement);
         RefreshMaterialRows();
     }
 
-    private async Task LoadGalleryThumbnailAsync(string key, Image view, TextBlock placeholder, int revision)
+    private async Task LoadGalleryThumbnailAsync(string key, Image view, TextBlock placeholder,
+        int revision, CancellationToken token)
     {
         try
         {
-            await _galleryDecodeGate.WaitAsync();
+            await _galleryDecodeGate.WaitAsync(token);
             BitmapSource? thumbnail;
             try
             {
+                token.ThrowIfCancellationRequested();
                 thumbnail = await Task.Run(() =>
                 {
+                    token.ThrowIfCancellationRequested();
                     var file = RenderTextureLibrary.Resolve(key, null);
+                    token.ThrowIfCancellationRequested();
                     if (file is null || !File.Exists(file)) return null;
                     using var stream = File.OpenRead(file);
                     var image = new BitmapImage();
@@ -211,10 +224,11 @@ public partial class RenderPanel
                     image.EndInit();
                     image.Freeze();
                     return (BitmapSource)image;
-                });
+                }, token);
             }
             finally { _galleryDecodeGate.Release(); }
-            if (revision != _galleryRevision || !IsLoaded || GalleryExpander.IsExpanded != true) return;
+            if (token.IsCancellationRequested || revision != _galleryRevision ||
+                !IsLoaded || GalleryExpander.IsExpanded != true) return;
             if (thumbnail is not null)
             {
                 if (!_galleryPreviews.ContainsKey(key))
@@ -229,6 +243,7 @@ public partial class RenderPanel
             }
             else placeholder.Text = "Sin vista previa";
         }
+        catch (OperationCanceledException) { /* A search or page change superseded this thumbnail. */ }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
                                             NotSupportedException or ArgumentException or
                                             InvalidOperationException or System.Runtime.InteropServices.COMException)
