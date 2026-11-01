@@ -43,7 +43,7 @@ internal interface IRenderSource
     IReadOnlyList<RenderMaterialAssignment> RenderMaterials { get; }
 
     /// <summary>Assigns a texture to a category, or returns it to its stock material when the path is null.</summary>
-    void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief);
+    void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null);
 
     /// <summary>Whether light fixtures are on; changing it rebuilds the scene.</summary>
     bool ArtificialLights { get; set; }

@@ -9,6 +9,7 @@ static class RenderDetailChecks
     public static void Run(Action<bool, string> check)
     {
         Trees(check);
+        ScopedMaterials(check);
         Translucency(check);
         WallFaces(check);
         Fixtures(check);
@@ -32,6 +33,45 @@ static class RenderDetailChecks
             check(again.Positions.Count == render.Positions.Count && again.Positions[^1] == render.Positions[^1],
                 $"The render-quality {preset.Style} regenerates identically");
         }
+    }
+
+    private static void ScopedMaterials(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Per-element appearance"));
+        var level = session.Document.Levels[0].Id;
+        session.AddWall(level, new Point2(0, 0), new Point2(3, 0));
+        session.AddWall(level, new Point2(0, 4), new Point2(3, 4));
+        var left = session.Document.Walls[0].Id;
+        var right = session.Document.Walls[1].Id;
+
+        var common = new RenderMaterialAssignment(SurfaceKind.Wall, "material:stone") { TextureSize = 1.0 };
+        var selected = new RenderMaterialAssignment(SurfaceKind.Wall, "material:oak") { ElementId = left, TextureSize = 0.4 };
+        session.SetRenderMaterial(common);
+        session.SetRenderMaterial(selected);
+        RenderMaterialRules.Validate(session.Document);
+        check(session.Document.RenderMaterials.Count == 2 &&
+              session.Document.RenderMaterials.Any(a => a.ElementId is null) &&
+              session.Document.RenderMaterials.Any(a => a.ElementId == left),
+            "Per-element and project-wide material assignments coexist and survive model validation");
+
+        var mesh = BuildingMesher.Build(session.Document);
+        var scene = new RenderSceneBuilder().AddBuilding(mesh,
+            _ => new RenderMaterial { Name = "Global", BaseColor = new Vector3(.2f) },
+            (id, _) => new RenderMaterial { Name = id == left ? "Selected" : "Global",
+                BaseColor = id == left ? new Vector3(.8f, .2f, .1f) : new Vector3(.2f) }).Build();
+        var l = mesh.ElementRanges.First(range => range.ElementId == left);
+        var r = mesh.ElementRanges.First(range => range.ElementId == right);
+        check(scene.Materials[scene.TriangleMaterial[l.First]].Name == "Selected" &&
+              scene.Materials[scene.TriangleMaterial[r.First]].Name == "Global",
+            "Two BIM walls with the same SurfaceKind can render independent finishes");
+
+        session.ClearRenderMaterial(SurfaceKind.Wall, left);
+        check(session.Document.RenderMaterials.Count == 1 &&
+              session.Document.RenderMaterials[0].ElementId is null,
+            "Restoring one selected wall does not delete the project-wide material");
+        session.Undo();
+        check(session.Document.RenderMaterials.Any(a => a.ElementId == left),
+            "Scoped material edits are undoable");
     }
 
     private static void Translucency(Action<bool, string> check)

@@ -139,6 +139,7 @@ internal static class RenderTextureLibrary
         var result = new Dictionary<SurfaceKind, (ImageSource, double)>();
         foreach (var assignment in assignments)
         {
+            if (assignment.ElementId is not null) continue;
             // Presets store a material: identifier, not a filesystem path. Resolve the
             // preset's bundled texture so the interactive 3D viewport matches the render.
             var preset = MaterialPresets.FromPath(assignment.TexturePath);
@@ -174,6 +175,25 @@ internal static class RenderTextureLibrary
     }
 
     /// <summary>
+    /// Resolves per-element overrides while retaining project-wide category fallbacks.
+    /// A scoped assignment affects only triangles owned by its BIM element.
+    /// </summary>
+    public static Func<Guid, SurfaceKind, RenderMaterial> ElementResolver(
+        IReadOnlyList<RenderMaterialAssignment> assignments, string? projectFile, bool lightsOn = true)
+    {
+        var global = Resolver(assignments, projectFile, lightsOn);
+        var scoped = new Dictionary<(Guid, SurfaceKind), RenderMaterial>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.ElementId is not Guid id) continue;
+            // Reuse the exact same loader for stock materials, library presets and local images.
+            var only = Resolver([assignment with { ElementId = null }], projectFile, lightsOn);
+            scoped[(id, assignment.Category)] = only(assignment.Category);
+        }
+        return (id, category) => scoped.TryGetValue((id, category), out var material) ? material : global(category);
+    }
+
+    /// <summary>
     /// The material of each surface category for the render: the project's texture where one is assigned and readable,
     /// the stock material everywhere else.
     /// </summary>
@@ -183,6 +203,7 @@ internal static class RenderTextureLibrary
         var textured = new Dictionary<SurfaceKind, RenderMaterial>();
         foreach (var assignment in assignments)
         {
+            if (assignment.ElementId is not null) continue;
             // A library preset brings its whole material (a shipped texture too, when it has one); glass may take one.
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
