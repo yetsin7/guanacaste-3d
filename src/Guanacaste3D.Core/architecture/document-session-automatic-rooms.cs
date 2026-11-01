@@ -45,6 +45,16 @@ public sealed partial class DocumentSession
               a.Holes.Zip(b.Holes).All(pair => pair.First.SequenceEqual(pair.Second)));
 
     /// <summary>
+    /// Called by all geometry-changing wall transactions. An automatic room follows its
+    /// wall boundaries; manually drawn rooms and older project annotations never move.
+    /// </summary>
+    private static void RefreshRoomBoundariesIfNeeded(BuildingDocument document, Guid levelId)
+    {
+        if (document.Rooms.Any(room => room.IsAutomatic && room.LevelId == levelId))
+            RebuildAutomaticRooms(document, levelId);
+    }
+
+    /// <summary>
     /// Reconciles automatic rooms directly within an already open atomic transaction, for changes
     /// to room separators and other enclosing elements. Never call Commit from this helper.
     /// </summary>
