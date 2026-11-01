@@ -31,6 +31,14 @@ public sealed class PlanWorkspace : Grid
     private EditTool _tool;
     private double _scale = 43;
     private Point _offset = new(0, 0);
+    private Point? _panPointer;
+    private bool _leftPanning;
+    private readonly TextBlock _viewInfo = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly ComboBox _levelPicker = new() { MinWidth = 170 };
+    private Guid? _activeLevelId;
+
+    public bool HasUnsavedChanges { get; private set; }
+    public void MarkSaved() => HasUnsavedChanges = false;
     private readonly StackPanel _sidebar = new() { Spacing = 10, Margin = new Thickness(8) };
 
     public event Action? ModelChanged;
@@ -43,6 +51,19 @@ public sealed class PlanWorkspace : Grid
         _sidebar.Children.Add(new TextBlock { Text = "NAVEGADOR BIM", FontWeight = FontWeight.Bold });
         _browser.Height = 230;
         _sidebar.Children.Add(_browser);
+        _sidebar.Children.Add(new TextBlock { Text = "NIVEL ACTIVO", FontWeight = FontWeight.Bold });
+        _sidebar.Children.Add(_levelPicker);
+        _sidebar.Children.Add(_viewInfo);
+        _levelPicker.SelectionChanged += (_, _) =>
+        {
+            if (_levelPicker.SelectedItem is LevelEntry level)
+            {
+                _activeLevelId = level.Id;
+                _selectedId = null;
+                ShowSelected();
+                FitToModel();
+            }
+        };
         _sidebar.Children.Add(new TextBlock { Text = "PROPIEDADES", FontWeight = FontWeight.Bold });
         _sidebar.Children.Add(_inspector);
         _sidebar.Children.Add(_axisName);
@@ -62,6 +83,15 @@ public sealed class PlanWorkspace : Grid
         Children.Add(_canvas);
 
         _canvas.PointerPressed += CanvasPressed;
+        _canvas.PointerMoved += CanvasMoved;
+        _canvas.PointerReleased += CanvasReleased;
+        _canvas.PointerWheelChanged += CanvasWheel;
+        _canvas.PointerCaptureLost += (_, _) => { _panPointer = null; _leftPanning = false; };
+        _canvas.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) { _firstPoint = null; SetTool(EditTool.Select); e.Handled = true; }
+        };
+        _canvas.Focusable = true;
         _canvas.SizeChanged += (_, _) => Redraw();
         _browser.SelectionChanged += (_, _) =>
         {
@@ -73,8 +103,8 @@ public sealed class PlanWorkspace : Grid
         };
         _rename.Click += (_, _) => RenameAxis();
         _delete.Click += (_, _) => DeleteSelected();
-        _undo.Click += (_, _) => { if (_session?.CanUndo == true) { _session.Undo(); Changed(); } };
-        _redo.Click += (_, _) => { if (_session?.CanRedo == true) { _session.Redo(); Changed(); } };
+        _undo.Click += (_, _) => { if (_session?.CanUndo == true) { _session.Undo(); Changed(true); } };
+        _redo.Click += (_, _) => { if (_session?.CanRedo == true) { _session.Redo(); Changed(true); } };
         SetTool(EditTool.Select);
     }
 
@@ -85,6 +115,12 @@ public sealed class PlanWorkspace : Grid
         _session = document is null ? null : new DocumentSession(document);
         _selectedId = null;
         _firstPoint = null;
+        HasUnsavedChanges = false;
+        _activeLevelId = _session?.Document.Levels.FirstOrDefault()?.Id;
+        _levelPicker.ItemsSource = _session?.Document.Levels
+            .Select(level => new LevelEntry(level.Id, level.Name, level.Elevation)).ToArray();
+        _levelPicker.SelectedItem = (_levelPicker.ItemsSource as LevelEntry[])?
+            .FirstOrDefault(level => level.Id == _activeLevelId);
         FitToModel();
         Changed();
     }
@@ -105,7 +141,7 @@ public sealed class PlanWorkspace : Grid
     public void FitToModel()
     {
         if (_session is null) { _scale = 43; _offset = new Point(0, 0); return; }
-        var points = _session.Document.Walls.SelectMany(w => new[] { w.Start, w.End })
+        var points = _session.Document.Walls.Where(w => w.LevelId == _activeLevelId).SelectMany(w => new[] { w.Start, w.End })
             .Concat(_session.Document.Grids.SelectMany(g => new[] { g.Start, g.End })).ToArray();
         if (points.Length == 0) { _scale = 43; _offset = new Point(0, 0); return; }
         var minX = points.Min(p => p.X); var maxX = points.Max(p => p.X);
@@ -128,7 +164,16 @@ public sealed class PlanWorkspace : Grid
     private void CanvasPressed(object? sender, PointerPressedEventArgs e)
     {
         if (_session is null) { Message?.Invoke("Crea o abre un proyecto primero."); return; }
-        if (!e.GetCurrentPoint(_canvas).Properties.IsLeftButtonPressed) return;
+        var properties = e.GetCurrentPoint(_canvas).Properties;
+        if (properties.IsMiddleButtonPressed || properties.IsRightButtonPressed)
+        {
+            _panPointer = e.GetPosition(_canvas);
+            e.Pointer.Capture(_canvas);
+            e.Handled = true;
+            return;
+        }
+        if (!properties.IsLeftButtonPressed) return;
+        _canvas.Focus();
         var point = e.GetPosition(_canvas);
         if (_tool == EditTool.Select)
         {
@@ -155,7 +200,7 @@ public sealed class PlanWorkspace : Grid
         {
             if (_tool == EditTool.Wall)
             {
-                _selectedId = _session.AddWall(_session.Document.Levels[0].Id, first, modelPoint);
+                _selectedId = _session.AddWall(_activeLevelId ?? _session.Document.Levels[0].Id, first, modelPoint);
                 Message?.Invoke("Muro creado en el modelo BIM.");
             }
             else
@@ -166,9 +211,40 @@ public sealed class PlanWorkspace : Grid
                 _selectedId = _session.AddGridAxis(next.ToString(), first, modelPoint);
                 Message?.Invoke("Eje creado en el modelo BIM.");
             }
-            Changed();
+            Changed(true);
         }
         catch (InvalidDataException ex) { Message?.Invoke(ex.Message); }
+    }
+
+    private void CanvasWheel(object? sender, PointerWheelEventArgs e)
+    {
+        var point = e.GetPosition(_canvas);
+        var before = ToWorld(point);
+        _scale = Math.Clamp(_scale * Math.Pow(1.12, e.Delta.Y), 6, 450);
+        _offset = new Point(
+            point.X - _canvas.Bounds.Width / 2 - before.X * _scale,
+            point.Y - _canvas.Bounds.Height / 2 + before.Y * _scale);
+        _viewInfo.Text = $"Escala: {_scale:0.#} píxeles/m · Rueda: zoom · botón central: desplazar";
+        Redraw();
+        e.Handled = true;
+    }
+
+    private void CanvasMoved(object? sender, PointerEventArgs e)
+    {
+        if (_panPointer is not Point last) return;
+        var current = e.GetPosition(_canvas);
+        _offset = new Point(_offset.X + current.X - last.X, _offset.Y + current.Y - last.Y);
+        _panPointer = current;
+        Redraw();
+        e.Handled = true;
+    }
+
+    private void CanvasReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_panPointer is null) return;
+        _panPointer = null;
+        e.Pointer.Capture(null);
+        e.Handled = true;
     }
 
     private Guid? HitTestGeometry(Point pointer)
@@ -176,7 +252,7 @@ public sealed class PlanWorkspace : Grid
         if (_session is null) return null;
         var bestDistance = 11.0;
         Guid? best = null;
-        foreach (var wall in _session.Document.Walls)
+        foreach (var wall in _session.Document.Walls.Where(w => w.LevelId == _activeLevelId))
         {
             var d = DistanceFromSegment(pointer, ToScreen(wall.Start), ToScreen(wall.End));
             if (d < bestDistance) { best = wall.Id; bestDistance = d; }
@@ -221,7 +297,7 @@ public sealed class PlanWorkspace : Grid
         try
         {
             _session.UpdateGridAxis(id, name, axis.Start, axis.End);
-            Changed();
+            Changed(true);
         }
         catch (InvalidDataException ex) { Message?.Invoke(ex.Message); }
     }
@@ -240,7 +316,7 @@ public sealed class PlanWorkspace : Grid
             Message?.Invoke("Muro eliminado. Los ejes permanecen intactos.");
         }
         _selectedId = null;
-        Changed();
+        Changed(true);
     }
 
     private void ShowSelected()
@@ -257,13 +333,15 @@ public sealed class PlanWorkspace : Grid
         _delete.IsEnabled = axis is not null || wall is not null;
     }
 
-    private void Changed()
+    private void Changed(bool modified = false)
     {
+        if (modified) HasUnsavedChanges = true;
+        _viewInfo.Text = $"Escala: {_scale:0.#} píxeles/m · Rueda: zoom · botón central: desplazar";
         _undo.IsEnabled = _session?.CanUndo == true;
         _redo.IsEnabled = _session?.CanRedo == true;
         var entries = _session is null ? Array.Empty<BrowserEntry>() :
             _session.Document.Grids.Select(g => new BrowserEntry(g.Id, "Eje " + g.Name))
-                .Concat(_session.Document.Walls.Select(w =>
+                .Concat(_session.Document.Walls.Where(w => w.LevelId == _activeLevelId).Select(w =>
                     new BrowserEntry(w.Id, $"Muro {w.Length:0.00} m")))
                 .ToArray();
         _browser.ItemsSource = entries;
@@ -288,7 +366,7 @@ public sealed class PlanWorkspace : Grid
             DrawSegment(new Point(0, y), new Point(bounds.Width, y), Brushes.Gainsboro, 0.7);
 
         if (_session is null) return;
-        foreach (var wall in _session.Document.Walls)
+        foreach (var wall in _session.Document.Walls.Where(w => w.LevelId == _activeLevelId))
             DrawSegment(ToScreen(wall.Start), ToScreen(wall.End),
                 wall.Id == _selectedId ? Brushes.DodgerBlue : Brushes.DarkSlateGray,
                 Math.Max(3, wall.Thickness * _scale));
@@ -320,6 +398,11 @@ public sealed class PlanWorkspace : Grid
             IsHitTestVisible = false
         };
         _canvas.Children.Add(segment);
+    }
+
+    private sealed record LevelEntry(Guid Id, string Name, double Elevation)
+    {
+        public override string ToString() => $"{Name} ({Elevation:0.##} m)";
     }
 
     private sealed record BrowserEntry(Guid Id, string Label)
