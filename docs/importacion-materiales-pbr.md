@@ -75,3 +75,71 @@ El archivo del proyecto guarda la ruta al manifiesto. Para compartir el proyecto
 7. Plywood y aluminio negro.
 
 Usa recursos descargados con licencias válidas. La aplicación no incluye fotografías de terceros nuevas en este cambio.
+
+## Biblioteca avanzada y diagnóstico (.g3dm)
+
+En **Render → Materiales → Explorar biblioteca de materiales .g3dm**, selecciona una carpeta.
+La ventana muestra los materiales disponibles, sus miniaturas de albedo, categoría, licencia,
+autor, etiquetas, dimensiones reales y mapas. Puedes buscar y asignar el resultado al elemento
+o categoría que estés editando. Los materiales incompletos aparecen con una advertencia, pero no
+pueden asignarse hasta corregir sus archivos.
+
+El auditor está en `Guanacaste3D.Core.Rendering.PbrMaterialAudit` y funciona sin WPF en
+Windows, Linux y macOS. Puedes usar `Inspect(path)` para revisar un material o `Scan(folder)`
+para obtener un catálogo de manifiestos válidos e inválidos. Valida mapas ausentes,
+parámetros PBR fuera de rango, rutas inseguras, enlaces simbólicos, archivos demasiado grandes
+y nombres JSON ambiguos. Los mapas admitidos en el render son albedo, normal OpenGL,
+rugosidad y metalicidad.
+
+Un manifiesto puede incluir datos opcionales para bibliotecas profesionales:
+
+```json
+{
+  "version": 1,
+  "name": "Concreto pulido gris",
+  "category": "Concreto",
+  "description": "Piso interior acabado pulido",
+  "author": "Equipo de arquitectura",
+  "license": "CC0",
+  "tags": ["interior", "piso", "gris"],
+  "albedo": "concreto-albedo.png",
+  "normal": "concreto-normal.png",
+  "roughnessMap": "concreto-roughness.png",
+  "metallicMap": "concreto-metallic.png",
+  "roughness": 0.35,
+  "metallic": 0,
+  "ior": 1.5,
+  "textureSize": 1.2,
+  "relief": 0.15
+}
+```
+
+Los paquetes anteriores que usan claves `Name`, `Albedo` y `Version` en mayúsculas
+siguen funcionando; no hace falta convertirlos.
+
+### Crear un paquete desde cualquier plataforma
+
+El motor incluye `PbrMaterialPackageWriter.Create`, que copia los canales de imagen
+originales sin recomprimirlos, guarda un manifiesto JSON portátil y se niega a sobrescribir
+un paquete existente. Ejemplo de uso desde C#:
+
+```csharp
+var path = PbrMaterialPackageWriter.Create(
+    "/mis-materiales/concreto.g3dm",
+    new PbrMaterialPackageWriter.Options(
+        "Concreto gris", Category: "Concreto", Roughness: 0.8, TextureSize: 1.5),
+    new Dictionary<string, string>
+    {
+        ["albedo"] = "/fotos/concreto-albedo.png",
+        ["normal"] = "/fotos/concreto-normal.png"
+    });
+```
+
+Esta API no requiere Windows. La creación comprueba existencia, tamaño y extensión de
+archivos, pero **no** sustituye la decodificación de imágenes del renderizador.
+
+Los campos `ao`, `heightMap`, `displacementMap`, `opacityMap` y `emissionMap`
+se detectan como información futura y generan una advertencia: **todavía no contribuyen
+al render**. Evita confundir una textura de color con mapas de alturas reales o prometer
+desplazamiento geométrico sin implementarlo.
+
