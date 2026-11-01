@@ -68,19 +68,27 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         alphaType = 0;
         if (_snapshot is null) throw new InvalidOperationException("The thumbnail provider has not been initialized.");
         if (size == 0) throw new ArgumentOutOfRangeException(nameof(size));
-        IntPtr rendered = IntPtr.Zero;
+        // Render on a dedicated STA, but only create the unmanaged HBITMAP after the
+        // bounded wait succeeds. A late worker cannot leak a bitmap into Explorer.
+        System.Windows.Media.Imaging.BitmapSource? image = null;
         Exception? failure = null;
         var snapshot = _snapshot;
         var thread = new Thread(() =>
         {
-            try { rendered = ThumbnailBitmap.Create(DocumentPreview.Render(snapshot, (int)Math.Min(size, 1024))); }
+            try { image = DocumentPreview.Render(snapshot, (int)Math.Min(size, 1024)); }
             catch (Exception exception) { failure = exception; }
-        });
+        })
+        {
+            IsBackground = true
+        };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        thread.Join();
+        if (!thread.Join(TimeSpan.FromSeconds(15)))
+            throw new COMException("The native document thumbnail exceeded the rendering time budget.",
+                unchecked((int)0x800705B4)); // HRESULT_FROM_WIN32(ERROR_TIMEOUT)
         if (failure is not null) throw new COMException("The native document thumbnail could not be generated.", failure);
-        bitmap = rendered;
+        if (image is null) throw new COMException("The native document thumbnail produced no image.");
+        bitmap = ThumbnailBitmap.Create(image);
         alphaType = 1;
     }
 }

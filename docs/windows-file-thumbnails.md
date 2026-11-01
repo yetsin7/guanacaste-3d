@@ -61,8 +61,12 @@ from that process. Moving to a native broker or a machine-wide isolated deployme
 Native containers retain SHA-256 verification and identity checks. Input is capped at the existing 256 MiB container
 limit (20 MiB for legacy text files), decompression stops at the declared payload length, and output is capped at
 1024 pixels per edge. Rendering requires parsing and meshing the document on the first uncached request; very large
-models can therefore take longer and consume substantial memory. Corrupt or unsupported files fail extraction so
-Windows can retain the ordinary file icon. The provider never changes thumbnail visibility settings.
+models can therefore take longer and consume substantial memory. Shell calls now wait at most 15 seconds
+for the dedicated STA renderer; the caller receives a timeout failure instead of waiting indefinitely.
+The HBITMAP is allocated only after a successful wait, so a late renderer cannot leak a GDI bitmap.
+This is **not** a hard CPU or memory limit: the background worker may continue after a timeout because
+the provider still runs in the requesting process. The isolation risk remains open in issue #23.
+Corrupt or unsupported files fail extraction so Windows can retain the ordinary file icon. The provider never changes thumbnail visibility settings.
 
 ## Verification
 
