@@ -86,8 +86,8 @@ public sealed record RenderMaterial
     /// </summary>
     public float AlphaCutoff { get; init; }
     /// <summary>
-    /// The relief of a <see cref="UvMapped"/> surface (bark furrows, leaf veins) as a tangent-space normal map; null for
-    /// a smooth surface.
+    /// Tangent-space normal map for either a UV-mapped mesh or a world-projected BIM surface.
+    /// For projected surfaces its coordinate scale follows <see cref="TextureSize"/>; null keeps height relief.
     /// </summary>
     public NormalMap? NormalMap { get; init; }
 
