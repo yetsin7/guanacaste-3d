@@ -226,6 +226,14 @@ public partial class MainWindow
     private void DeleteGridAxis_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: Guid id }) return;
+        var axis = _session.Document.Grids.FirstOrDefault(item => item.Id == id);
+        if (axis is null) return;
+        var linked = _session.Document.Walls.Count(w => w.GridAxisId == id);
+        var message = $"¿Eliminar el eje '{axis.Name}'?\n\n" +
+            $"Los {linked} muros vinculados, así como sus puertas y ventanas, permanecerán intactos. " +
+            "Solo se elimina el eje y se liberan sus referencias.";
+        if (MessageBox.Show(this, message, "Eliminar eje", MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         _session.RemoveGridAxis(id);
         _selectedGridId = null;
         RefreshAll();
