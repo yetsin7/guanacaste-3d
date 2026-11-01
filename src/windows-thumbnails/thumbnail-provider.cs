@@ -25,6 +25,9 @@ public interface IThumbnailProvider
 public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvider
 {
     public const string ClassId = "2175B67E-0798-4A06-B104-4F1B6E9C42D8";
+    // A timed-out STA worker may still be parsing or meshing. Admit at most one
+    // render per Shell process until that worker actually exits, not until Join times out.
+    private static int _renderInProgress;
     private byte[]? _snapshot;
 
     /// <summary>Allows COM activation without starting the desktop application.</summary>
@@ -38,20 +41,25 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         if (statistics.cbSize is < 1 or > 268435537)
             throw new InvalidDataException("The thumbnail input size is invalid.");
         stream.Seek(0, 0, IntPtr.Zero);
-        using var output = new MemoryStream();
+        // Allocate the bounded snapshot once. MemoryStream.ToArray previously copied up to
+        // 256 MiB a second time inside the Shell host during every thumbnail request.
+        // Publish only after the entire declared stream has been read successfully.
+        var snapshot = new byte[checked((int)statistics.cbSize)];
         var buffer = new byte[81920];
         var countPointer = Marshal.AllocCoTaskMem(sizeof(int));
         try
         {
-            while (output.Length < statistics.cbSize)
+            var offset = 0;
+            while (offset < snapshot.Length)
             {
-                var requested = (int)Math.Min(buffer.Length, statistics.cbSize - output.Length);
+                var requested = Math.Min(buffer.Length, snapshot.Length - offset);
                 stream.Read(buffer, requested, countPointer);
                 var count = Marshal.ReadInt32(countPointer);
                 if (count <= 0 || count > requested) throw new EndOfStreamException("The thumbnail stream is truncated.");
-                output.Write(buffer, 0, count);
+                Buffer.BlockCopy(buffer, 0, snapshot, offset, count);
+                offset += count;
             }
-            _snapshot = output.ToArray();
+            _snapshot = snapshot;
         }
         finally { Marshal.FreeCoTaskMem(countPointer); }
     }
@@ -63,19 +71,42 @@ public sealed class ThumbnailProvider : IInitializeWithStream, IThumbnailProvide
         alphaType = 0;
         if (_snapshot is null) throw new InvalidOperationException("The thumbnail provider has not been initialized.");
         if (size == 0) throw new ArgumentOutOfRangeException(nameof(size));
-        IntPtr rendered = IntPtr.Zero;
+        // Avoid overlapping untrusted model parsing/meshing in the same Shell process.
+        // A worker that outlives the 15-second caller wait retains this slot until exit.
+        if (Interlocked.CompareExchange(ref _renderInProgress, 1, 0) != 0)
+            throw new COMException("Another native document thumbnail is still rendering.",
+                unchecked((int)0x800700AA)); // HRESULT_FROM_WIN32(ERROR_BUSY)
+        // Render on a dedicated STA, but only create the unmanaged HBITMAP after the
+        // bounded wait succeeds. A late worker cannot leak a bitmap into Explorer.
+        System.Windows.Media.Imaging.BitmapSource? image = null;
         Exception? failure = null;
         var snapshot = _snapshot;
         var thread = new Thread(() =>
         {
-            try { rendered = ThumbnailBitmap.Create(DocumentPreview.Render(snapshot, (int)Math.Min(size, 1024))); }
+            try { image = DocumentPreview.Render(snapshot, (int)Math.Min(size, 1024)); }
             catch (Exception exception) { failure = exception; }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+            finally { Volatile.Write(ref _renderInProgress, 0); }
+        })
+        {
+            IsBackground = true
+        };
+        try
+        {
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+        }
+        catch
+        {
+            // No worker owns the slot if apartment setup or thread startup failed.
+            Volatile.Write(ref _renderInProgress, 0);
+            throw;
+        }
+        if (!thread.Join(TimeSpan.FromSeconds(15)))
+            throw new COMException("The native document thumbnail exceeded the rendering time budget.",
+                unchecked((int)0x800705B4)); // HRESULT_FROM_WIN32(ERROR_TIMEOUT)
         if (failure is not null) throw new COMException("The native document thumbnail could not be generated.", failure);
-        bitmap = rendered;
+        if (image is null) throw new COMException("The native document thumbnail produced no image.");
+        bitmap = ThumbnailBitmap.Create(image);
         alphaType = 1;
     }
 }

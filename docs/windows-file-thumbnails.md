@@ -1,6 +1,6 @@
 # Windows file thumbnails
 
-The Windows x64 package includes a per-user thumbnail provider for `.g3d`, `.g3dt`, `.g3df`, and `.g3dx`.
+The Windows x64 package includes an **optional, disabled-by-default** per-user thumbnail provider for `.g3d`, `.g3dt`, `.g3df`, and `.g3dx`. The provider currently executes in the requesting Windows Shell process, so only enable it if you accept the remaining availability risk described below.
 It works with existing files without saving them again, modifying their container format, or creating sidecar images.
 The standard Windows thumbnail cache handles reuse and refresh after a file changes.
 
@@ -15,8 +15,8 @@ The standard Windows thumbnail cache handles reuse and refresh after a file chan
 - Templates and empty projects: stored level elevations, since templates have no building geometry.
 - Revit/SketchUp exchange files: embedded PNG when present, otherwise a shaded view of the exported meshes, including instance translations and rotations.
 
-The Revit 1.0.1 exporter embeds a 512-pixel PNG without changing the version-1 geometry payload. Its installer also
-registers Windows thumbnails, including for older exchange files. Complete mesh surfaces are retained up to a
+The Revit 1.0.1 exporter embeds a 512-pixel PNG without changing the version-1 geometry payload. Its installer can
+optionally register Windows thumbnails with `-EnableThumbnails`, including for older exchange files. Complete mesh surfaces are retained up to a
 500,000-triangle preview budget; larger exchanges prioritize the building envelope and may omit detailed components.
 The shaded preview uses triangle depth sorting and is not a production renderer.
 
@@ -25,18 +25,18 @@ No external family paths, textures, or network references are opened.
 
 ## Build and registration
 
-`scripts/install-windows.ps1` publishes and registers the provider automatically.
+`scripts/install-windows.ps1` installs the application without registering the provider by default. To opt in, run `./scripts/install-windows.ps1 -EnableThumbnails`. Upgrading without this switch unregisters older in-process thumbnail associations for safety.
 The Desktop `PublishThumbnailProvider` target bundles it under `thumbnail-handler` for win-x64 publications.
 The provider requires the same .NET 10 Desktop runtime as the framework-dependent application.
 Downloadable desktop and Revit installer ZIPs include Microsoft's offline Desktop runtime installer, verified
-against the SHA-512 published in its release metadata. It runs only if the x64 .NET 10 Desktop runtime is missing.
-The desktop installer is built with `scripts/package-windows-installer.ps1`; users run `install.cmd` after extraction.
+against the SHA-512 published in its release metadata. It runs only when thumbnails are explicitly enabled and the x64 .NET 10 Desktop runtime is missing.
+The desktop installer is built with `scripts/package-windows-installer.ps1`; users run `install.cmd` after extraction for the safe default. To opt in to previews, they can run `./install.ps1 -EnableThumbnails` from PowerShell in the extracted installer directory.
 
 To install just the thumbnail component without closing the application:
 
 ```powershell
 dotnet publish src/windows-thumbnails/windows-thumbnails.csproj -c Release --self-contained false -o artifacts/thumbnail-provider
-./scripts/register-thumbnails.ps1 -ProviderDirectory ./artifacts/thumbnail-provider
+./scripts/register-thumbnails.ps1 -ProviderDirectory ./artifacts/thumbnail-provider -AllowInProcess
 ```
 
 Registration uses HKCU, including extension, application ProgID, and SystemFileAssociations entries.
@@ -52,7 +52,7 @@ Unregistration removes this provider's associations and COM registration without
 
 ## Hosting and limits
 
-The provider implements `IInitializeWithStream` and `IThumbnailProvider` through a .NET COM host.
+The provider implements `IInitializeWithStream` and `IThumbnailProvider` through a .NET COM host. Direct registration now requires the explicit `-AllowInProcess` switch; installers use it only when `-EnableThumbnails` was requested.
 The per-user registration sets `DisableProcessIsolation=1`: the restricted Windows thumbnail surrogate returned
 `REGDB_E_CLASSNOTREG` for per-user activation on the validation machine. Consequently the managed provider runs
 in the requesting Shell process, with WPF drawing on a dedicated STA thread. It does not have crash isolation
@@ -61,8 +61,15 @@ from that process. Moving to a native broker or a machine-wide isolated deployme
 Native containers retain SHA-256 verification and identity checks. Input is capped at the existing 256 MiB container
 limit (20 MiB for legacy text files), decompression stops at the declared payload length, and output is capped at
 1024 pixels per edge. Rendering requires parsing and meshing the document on the first uncached request; very large
-models can therefore take longer and consume substantial memory. Corrupt or unsupported files fail extraction so
-Windows can retain the ordinary file icon. The provider never changes thumbnail visibility settings.
+models can therefore take longer and consume substantial memory. Shell calls now wait at most 15 seconds
+for the dedicated STA renderer; the caller receives a timeout failure instead of waiting indefinitely.
+The HBITMAP is allocated only after a successful wait, so a late renderer cannot leak a GDI bitmap.
+Only one thumbnail render is admitted at a time per Shell process. If the caller times out, its STA worker
+keeps the render slot until it actually exits; overlapping requests fail with `ERROR_BUSY` rather than
+starting more expensive geometry jobs. This is a partial resource-exhaustion mitigation, not a cancellation mechanism.
+This is **not** a hard CPU or memory limit: the background worker may continue after a timeout because
+the provider still runs in the requesting process. The isolation risk remains open in issue #23.
+Corrupt or unsupported files fail extraction so Windows can retain the ordinary file icon. The provider never changes thumbnail visibility settings.
 
 ## Verification
 

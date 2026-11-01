@@ -30,8 +30,10 @@ Download the [Windows x64 installer ZIP](https://github.com/yetsin7/guanacaste-3
 [releases page](https://github.com/yetsin7/guanacaste-3d/releases).
 Extract the entire ZIP, close Guanacaste 3D after saving, and run `install.cmd`. The application includes
 the .NET runtime and does not require an application subscription or an SDK.
-File thumbnails support `.g3d`, `.g3dt`, `.g3df`, and Revit/SketchUp `.g3dx` exchanges. The installer bundles
-the official .NET 10 Desktop runtime needed by the thumbnail component and installs it only when missing.
+Optional Explorer file thumbnails support `.g3d`, `.g3dt`, `.g3df`, and Revit/SketchUp `.g3dx` exchanges.
+They are **disabled by default** because the current provider executes inside the Windows Shell process.
+To opt in after extracting the ZIP, run `./install.ps1 -EnableThumbnails` in PowerShell. The installer bundles
+the official .NET 10 Desktop runtime needed only by this optional component and installs it when missing.
 Windows 10 or 11 on a 64-bit PC is required. The package is an unsigned
 technical preview; Windows may display a reputation warning.
 
@@ -43,7 +45,7 @@ Bring Revit and SketchUp models into Guanacaste 3D as editable projects (native 
 everything else as `.g3df` families) — see [Opening Revit projects](docs/revit-import.md):
 
 - [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.1/Guanacaste3D-Revit.zip)
-  — Revit 2027 add-in 1.0.1 with embedded previews and Windows thumbnails. Unzip and run `install.cmd`, then restart Revit.
+  — Revit 2027 add-in 1.0.1 with embedded previews and optional Windows thumbnails (disabled by default). Unzip and run `install.cmd`, then restart Revit.
 - [Guanacaste3D-SketchUp.rbz](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-SketchUp.rbz)
   — SketchUp extension (preview). Install from Extensions → Extension Manager.
 

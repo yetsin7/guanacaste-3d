@@ -67,7 +67,9 @@ internal static class ThumbnailChecks
         Reject(oversized);
         Reject("not a native document"u8.ToArray());
         VerifyRepeatedExtraction(original);
-        Console.WriteLine("PASS: truncated, corrupt, forged-length, unknown input, repeated extraction and bitmap ownership checks");
+        VerifyBusyRenderRejected(original);
+        VerifyMtaExtraction(original);
+        Console.WriteLine("PASS: truncated, corrupt, forged-length, unknown input, STA/MTA extraction and bitmap ownership checks");
         if (arguments.Contains("--shell")) VerifyCacheRefresh(projectPath);
         ExchangeThumbnailChecks.Run(directory, arguments);
         return 0;
@@ -128,6 +130,73 @@ internal static class ThumbnailChecks
             throw new InvalidOperationException("Repeated stream initialization was accepted.");
         }
         finally { Marshal.ReleaseComObject(stream); }
+    }
+
+    /// <summary>Ensures a timed-out worker cannot be overlapped by another in-process render.</summary>
+    private static void VerifyBusyRenderRejected(byte[] snapshot)
+    {
+        var stream = SHCreateMemStream(snapshot, (uint)snapshot.Length);
+        try
+        {
+            var provider = new ThumbnailProvider();
+            provider.Initialize(stream, 0);
+            // Hold the admission slot deterministically instead of depending on CPU timing.
+            var slot = typeof(ThumbnailProvider).GetField("_renderInProgress",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("The render admission slot is missing.");
+            IntPtr bitmap = IntPtr.Zero;
+            uint alpha = 0;
+            try
+            {
+                slot.SetValue(null, 1);
+                try
+                {
+                    provider.GetThumbnail(96, out bitmap, out alpha);
+                    throw new InvalidOperationException("A second thumbnail render was admitted.");
+                }
+                catch (COMException exception) when (exception.HResult == unchecked((int)0x800700AA))
+                {
+                    Require(bitmap == IntPtr.Zero && alpha == 0, "Busy extraction allocated a bitmap.");
+                }
+            }
+            finally
+            {
+                if (bitmap != IntPtr.Zero) ShellExtraction.DeleteObject(bitmap);
+                slot.SetValue(null, 0);
+            }
+            provider.GetThumbnail(96, out bitmap, out alpha);
+            Require(bitmap != IntPtr.Zero && alpha == 1, "Extraction did not recover after the busy slot cleared.");
+            Require(ShellExtraction.DeleteObject(bitmap), "Recovered bitmap was not caller-owned.");
+            Console.WriteLine("PASS: overlapping thumbnail renders are rejected and recovery works");
+        }
+        finally { Marshal.ReleaseComObject(stream); }
+    }
+
+    /// <summary>Exercises the Shell's MTA calling pattern and cross-thread frozen bitmap transfer.</summary>
+    private static void VerifyMtaExtraction(byte[] snapshot)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var stream = SHCreateMemStream(snapshot, (uint)snapshot.Length);
+                try
+                {
+                    var provider = new ThumbnailProvider();
+                    provider.Initialize(stream, 0);
+                    provider.GetThumbnail(96, out var bitmap, out var alpha);
+                    Require(bitmap != IntPtr.Zero && alpha == 1, "MTA extraction did not return an opaque bitmap.");
+                    Require(ShellExtraction.DeleteObject(bitmap), "MTA extraction did not transfer bitmap ownership.");
+                }
+                finally { Marshal.ReleaseComObject(stream); }
+            }
+            catch (Exception exception) { failure = exception; }
+        });
+        thread.SetApartmentState(ApartmentState.MTA);
+        thread.Start();
+        if (!thread.Join(TimeSpan.FromSeconds(30))) throw new InvalidOperationException("MTA thumbnail extraction did not finish.");
+        if (failure is not null) throw new InvalidOperationException("MTA thumbnail extraction failed.", failure);
     }
 
     /// <summary>Creates an OS stream to exercise the same ABI used by Explorer.</summary>
