@@ -55,6 +55,7 @@ public partial class MainWindow
             UpdateMovePreview(PlanPosition(e));
             return;
         }
+        if (UpdateDetailDrawing(e)) return;
         if (TryUpdateStructuralPreview(e)) return;
         if (!_drawingWall) return;
         var pointer = CanvasToWorld(PlanPosition(e));
