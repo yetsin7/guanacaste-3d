@@ -980,11 +980,17 @@ public sealed partial class PathTracer
                 diffuse *= mapped.Sample(uv.X, 1 - uv.Y, footprint);
                 if (surface.NormalMap is { } relief)
                 {
-                    static Vector2 Up(Vector2 corner) => new(corner.X, 1 - corner.Y);
-                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y), _scene.Positions[_scene.Indices[i]],
-                        _scene.Positions[_scene.Indices[i + 1]], _scene.Positions[_scene.Indices[i + 2]], Up(uvs[i]), Up(uvs[i + 1]), Up(uvs[i + 2]));
-                    // A bend that would turn the surface away from the eye is dropped, as for image relief.
-                    if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                    // Fade high-frequency tangent detail that would shimmer when multiple texels fit in a pixel.
+                    var texelsPerPixel = footprint * Math.Max(relief.Width, relief.Height);
+                    var strength = Math.Clamp(2f - texelsPerPixel, 0f, 1f);
+                    if (strength > 0)
+                    {
+                        static Vector2 Up(Vector2 corner) => new(corner.X, 1 - corner.Y);
+                        var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y), _scene.Positions[_scene.Indices[i]],
+                            _scene.Positions[_scene.Indices[i + 1]], _scene.Positions[_scene.Indices[i + 2]],
+                            Up(uvs[i]), Up(uvs[i + 1]), Up(uvs[i + 2]), strength);
+                        if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                    }
                 }
             }
             else
@@ -1001,7 +1007,18 @@ public sealed partial class PathTracer
                 var tiles = surface.TextureScale;
                 var footprint = MathF.Max(hit.Distance * PixelAngle, 1e-5f) * tiles;
                 diffuse *= texture.Sample(u * tiles, v * tiles, footprint);
-                if (surface.TextureDepth > 0)
+                if (surface.NormalMap is { } normalMap)
+                {
+                    // UV-free BIM masonry uses the same metre-scale projection for albedo and normals.
+                    var texelsPerPixel = footprint * Math.Max(normalMap.Width, normalMap.Height);
+                    var strength = Math.Clamp(2f - texelsPerPixel, 0f, 1f);
+                    if (strength > 0)
+                    {
+                        var bent = NormalMap.PerturbProjected(normal, normalMap.Sample(u * tiles, v * tiles), strength);
+                        if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                    }
+                }
+                else if (surface.TextureDepth > 0)
                 {
                     var step = texture.TexelSize(footprint);
                     var dU = (texture.Luminance(u * tiles + step, v * tiles, footprint) -
@@ -1506,7 +1523,7 @@ public sealed partial class PathTracer
         public RenderTexture? Texture { get; init; }
         /// <summary>The texture is read with the mesh's coordinates rather than projected in world space.</summary>
         public bool UvMapped { get; init; }
-        /// <summary>Relief of a coordinate-mapped surface, or null.</summary>
+        /// <summary>UV-mapped or world-projected tangent-space normal detail, or null.</summary>
         public NormalMap? NormalMap { get; init; }
         /// <summary>Tiles per meter: the reciprocal of the texture size.</summary>
         public float TextureScale { get; init; }
@@ -1547,7 +1564,7 @@ public sealed partial class PathTracer
                 PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
                 Texture = m.Texture,
                 UvMapped = m.UvMapped,
-                NormalMap = m.UvMapped ? m.NormalMap : null,
+                NormalMap = m.NormalMap,
                 TextureScale = 1 / m.TextureSize,
                 // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
                 TextureDepth = m.TextureRelief * m.TextureSize * 0.01f
