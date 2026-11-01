@@ -22,6 +22,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Reject accidentally tracked local crash diagnostics
+        shell: bash
+        run: |
+          if git ls-files | grep -Ei '(^|/)(ErrorReports|CrashDumps)/|\.(log|dmp|mdmp|hdmp|wer)$'; then
+            echo "::error::Machine-local crash logs and dumps must not be committed."
+            exit 1
+          fi
       - name: Install .NET 10 SDK
         uses: actions/setup-dotnet@v5
         with:
