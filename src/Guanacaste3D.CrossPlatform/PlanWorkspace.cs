@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Shapes;
+using Avalonia.Controls.Shapes;
 using Guanacaste3D.Core;
 
 namespace Guanacaste3D.CrossPlatform;
