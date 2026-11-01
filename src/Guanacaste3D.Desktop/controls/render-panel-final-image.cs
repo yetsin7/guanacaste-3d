@@ -78,7 +78,6 @@ public partial class RenderPanel
         }
 
         var quality = Quality();
-        var profile = RenderPresets.Profile(quality);
         var (baseWidth, baseHeight) = SelectedBaseSize();
         var (width, height) = RenderPresets.OutputSize(baseWidth, baseHeight, quality);
         var fit = RenderSafety.FitToMemory(width, height, scene.TriangleCount, scene.EstimatedBytes, RenderSafety.ReadMemory());
@@ -89,8 +88,11 @@ public partial class RenderPanel
         }
         if (fit.Reduced) StatusText.Text = UiText.Format("RenderPanel.SizeReduced", fit.Width, fit.Height);
 
-        // The planner owns the hardware-aware choices (battery, radiance cache); the person's resource choice stays a cap.
-        var plan = QualityPlanner.Plan(quality, _hardware, fit.Width, fit.Height, scene.TriangleCount, scene.EstimatedBytes);
+        // Respect the machine's RAM and battery plan, then the requested CPU thread cap.
+        var plan = QualityPlanner.Plan(RequestedQuality(), _hardware, fit.Width, fit.Height, scene.TriangleCount, scene.EstimatedBytes);
+        quality = plan.Quality;
+        if (plan.OutputWidth != fit.Width || plan.OutputHeight != fit.Height)
+            StatusText.Text = UiText.Format("RenderPanel.SizeReduced", plan.OutputWidth, plan.OutputHeight);
         var settings = LightingFor(quality, ResourceUse());
         settings = settings with
         {
@@ -98,14 +100,18 @@ public partial class RenderPanel
             UseRadianceCache = plan.UsesRadianceCache
         };
         var camera = CurrentCamera();
-        var job = new RenderJob(fit.Width, fit.Height, profile.TargetSamples, null, true, CurrentFinish(), Buckets: true);
+        var job = new RenderJob(plan.OutputWidth, plan.OutputHeight, plan.TargetSamples, null, true,
+            CurrentFinish(), Buckets: true) { BucketSize = SelectedBucketSize() };
 
         // The preview stops and gives its memory back: the picture is frozen while the final render is made.
         _preview?.Suspend();
         _session?.Dispose();
         _session = new RenderSession(scene, camera, settings, job);
+        _lastFinal = null;
+        SaveButton.IsEnabled = CopyButton.IsEnabled = false;
         _cancel = new CancellationTokenSource();
         SetRendering(true);
+        StartRenderTelemetry();
         _showingFinal = true;
         var session = _session;
         session.PhaseChanged += phase => Dispatcher.BeginInvoke(() =>
@@ -116,10 +122,10 @@ public partial class RenderPanel
         {
             if (session != _session) return;
             Show(frame);
-            RenderProgress.Value = Math.Min(1, frame.Samples / (double)Math.Max(1, frame.TargetSamples));
+            RenderProgress.Value = Math.Clamp(frame.Progress, 0, 1);
+            _estimatedRemaining = frame.Remaining;
             if (!frame.IsFinal)
-                StatusText.Text = UiText.Format("RenderPanel.Rendering", frame.Samples, frame.TargetSamples, frame.Width, frame.Height,
-                    frame.Remaining is { } remaining ? UiText.Duration(remaining) : "…");
+                StatusText.Text = UiText.Get("RenderPanel.RenderingSimple");
         });
 
         RenderResult? result = null;
@@ -134,10 +140,14 @@ public partial class RenderPanel
         finally
         {
             SetRendering(false);
+            StopRenderTelemetry(result?.Elapsed);
         }
         if (result is null) return;
 
         _lastFinal = result.LastFrame;
+        RenderProgressPanel.Visibility = _lastFinal is not null ? Visibility.Visible : Visibility.Collapsed;
+        if (_lastFinal is not null) RenderProgress.Value = Math.Clamp(_lastFinal.Progress, 0, 1);
+        RenderRemainingText.Text = "—";
         SaveButton.IsEnabled = CopyButton.IsEnabled = _lastFinal is not null;
         if (result.StoppedForMemory)
             StatusText.Text = UiText.Format("RenderPanel.MemoryStop", result.Samples);
@@ -162,8 +172,11 @@ public partial class RenderPanel
         RenderButton.Content = UiText.Get(rendering ? "RenderPanel.Stop" : "RenderPanel.Render");
         PauseButton.IsEnabled = rendering;
         PauseButton.Content = UiText.Get("RenderPanel.Pause");
-        RenderProgress.Visibility = rendering ? Visibility.Visible : Visibility.Collapsed;
-        RenderProgress.Value = 0;
+        if (rendering)
+        {
+            RenderProgressPanel.Visibility = Visibility.Visible;
+            RenderProgress.Value = 0;
+        }
         PreviewToggle.IsEnabled = !rendering;
         RenderTourButton.IsEnabled = !rendering;
     }

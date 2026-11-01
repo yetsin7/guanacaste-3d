@@ -71,6 +71,15 @@ public partial class RenderPanel
     /// <summary>Resolves the worker resource budget from the selected preset.</summary>
     private ResourceMode ResourceUse() => Enum.TryParse<ResourceMode>(Mode(ResourcePicker), out var value) ? value : ResourceMode.Balanced;
 
+    /// <summary>Selects 16px tiles on low-resource machines unless the person overrides AUTO.</summary>
+    private int SelectedBucketSize()
+    {
+        if (int.TryParse(Mode(BucketSizePicker), out var selected) && selected is 8 or 16 or 32 or 64 or 128)
+            return selected;
+        var free = RenderSafety.ReadMemory().AvailableBytes;
+        return _hardware.LogicalCores <= 2 || free < 2L * 1024 * 1024 * 1024 ? 16 : 32;
+    }
+
     /// <summary>Parses the solar latitude while bounding invalid input to a usable default.</summary>
     private double Latitude()
     {
@@ -186,6 +195,8 @@ public partial class RenderPanel
         {
             // Moving again leaves the finished picture and returns to the live preview.
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (PreviewToggle.IsChecked == true) ResumePreview();
         }
         BeginInteractivePreview();
@@ -201,6 +212,8 @@ public partial class RenderPanel
         if (PreviewToggle.IsChecked == true)
         {
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (IsVisible) ResumePreview();
         }
         else

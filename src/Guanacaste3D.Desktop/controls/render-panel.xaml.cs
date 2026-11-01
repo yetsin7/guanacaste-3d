@@ -126,6 +126,7 @@ public partial class RenderPanel : UserControl
         // Invalidate asynchronous scene requests before disposing the preview.
         _sceneRefreshVersion++;
         _cancel?.Cancel();
+        StopRenderTelemetry();
         StopTour();
         _preview?.Dispose();
         _preview = null;

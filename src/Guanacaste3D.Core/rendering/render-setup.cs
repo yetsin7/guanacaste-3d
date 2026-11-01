@@ -42,6 +42,9 @@ public sealed record RenderSetup
     public int Width { get; init; }
     public int Height { get; init; }
 
+    /// <summary>Bucket edge in pixels; 0 selects AUTO based on the computer. Saved with the render view.</summary>
+    public int BucketSize { get; init; }
+
     public ToneMapper Look { get; init; } = ToneMapper.AgX;
 
     /// <summary>Exposure correction in stops, on top of the scenario's own.</summary>
@@ -88,7 +91,9 @@ public sealed record RenderSetup
             Math.Abs(CameraZ) > 1e6 || PitchDegrees is < -90 or > 90 || FieldOfViewDegrees is < 5 or > 150 ||
             !Enum.IsDefined(Scenario) || DayOfYear is < 1 or > 366 || SolarHour is < 0 or > 24 || Latitude is < -90 or > 90 ||
             CloudCover is < 0 or > 1 || (Quality is { } quality && !Enum.IsDefined(quality)) ||
-            Width is < 0 or > 16384 || Height is < 0 or > 16384 || (Width == 0) != (Height == 0) || !Enum.IsDefined(Look) ||
+            Width is < 0 or > 16384 || Height is < 0 or > 16384 || (Width == 0) != (Height == 0) ||
+            (BucketSize != 0 && (BucketSize < 8 || BucketSize > 256 || (BucketSize & (BucketSize - 1)) != 0)) ||
+            !Enum.IsDefined(Look) ||
             ExposureStops is < -3 or > 3 || Temperature is < -1 or > 1 || DepthOfField is < 0 or > 100 ||
             !Enum.IsDefined(Clouds) || StyleId is null || RenderLooks.Styles.All(style => style.Id != StyleId) ||
             new[] { Highlights, Shadows, Tint }.Any(value => value is < -1 or > 1) ||
