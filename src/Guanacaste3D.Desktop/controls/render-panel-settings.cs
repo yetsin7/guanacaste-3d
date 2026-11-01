@@ -195,6 +195,8 @@ public partial class RenderPanel
         {
             // Moving again leaves the finished picture and returns to the live preview.
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (PreviewToggle.IsChecked == true) ResumePreview();
         }
         BeginInteractivePreview();
