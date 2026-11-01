@@ -37,6 +37,8 @@ jobs:
         run: dotnet restore tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj
       - name: Restore BIM audit regression suite
         run: dotnet restore tests/model-audit-checks/model-audit-checks.csproj
+      - name: Restore foliage texture coverage regressions
+        run: dotnet restore tests/texture-coverage-checks/texture-coverage-checks.csproj
       - name: Build BIM audit regression suite
         run: dotnet build tests/model-audit-checks/model-audit-checks.csproj -c Release --no-restore
       - name: Run BIM audit and severity regression suite
@@ -45,6 +47,9 @@ jobs:
         run: dotnet build tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-restore
       - name: Run domain, persistence and interoperability regressions
         run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
+
+      - name: Run foliage alpha, filtering and texture-memory regressions
+        run: dotnet run --project tests/texture-coverage-checks/texture-coverage-checks.csproj -c Release --no-restore
 
   desktop:
     name: Windows WPF build and portable package
