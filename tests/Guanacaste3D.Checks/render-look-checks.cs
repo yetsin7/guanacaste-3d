@@ -29,6 +29,13 @@ static class RenderLookChecks
         check(RenderLooks.Styles.Select(style => style.Id).Distinct().Count() == RenderLooks.Styles.Count &&
               RenderLooks.Skies.All(sky => RenderLooks.Styles.Any(style => style.Id == sky.StyleId)),
             "Styles have unique identifiers and every sky names an existing style");
+        check(RenderLooks.Skies.Count >= 30 && RenderLooks.Skies.Select(sky => sky.Id).Distinct().Count() == RenderLooks.Skies.Count &&
+              Enum.GetValues<CloudStyle>().Length >= 8 && RenderLooks.Skies.All(sky =>
+                  sky.DayOfYear is >= 1 and <= 366 && sky.SolarHour is >= 5 and <= 19 &&
+                  sky.Turbidity is >= 1.7 and <= 10 && sky.CloudSeed <= 1023 &&
+                  sky.CloudDirectionDegrees is >= -180 and <= 180 &&
+                  sky.SunStrength is >= 0 and <= 2 && sky.SkyStrength is >= 0 and <= 2),
+            "Thirty ready-to-use skies cover multiple weather families with bounded reproducible parameters");
 
         var mono = ImageProcessor.ToBgra32(image, width, height, 1, plain with { Monochrome = true });
         check(Enumerable.Range(0, width * height).All(pixel => mono[pixel * 4] == mono[pixel * 4 + 1] && mono[pixel * 4 + 1] == mono[pixel * 4 + 2]),
@@ -67,6 +74,52 @@ static class RenderLookChecks
             if (style == CloudStyle.Cirrus) check(samples.Max(sample => sample.Thickness) <= 0.2f, "Cirrus stays thin");
             if (style == CloudStyle.Storm) check(samples.Max(sample => sample.Thickness) > 0.9f, "Storm clouds are deep");
         }
+
+        var variableClouds = new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30);
+        var direction = Vector3.Normalize(new Vector3(0.65f, 0.7f, 0.55f));
+        var first = variableClouds.Sample(direction);
+        check(first == new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30).Sample(direction),
+            "Cloud seeds and wind rotation reproduce the same cloud shape");
+        var samplesA = Enumerable.Range(0, 100).Select(i =>
+        {
+            var a = i * .33f;
+            return variableClouds.Sample(Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), .4f))).Opacity;
+        }).ToArray();
+        var samplesB = Enumerable.Range(0, 100).Select(i =>
+        {
+            var a = i * .33f;
+            return new CloudLayer(0.7f, 87, CloudStyle.Altocumulus, -50)
+                .Sample(Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), .4f))).Opacity;
+        }).ToArray();
+        check(samplesA.Zip(samplesB).Count(pair => Math.Abs(pair.First - pair.Second) > .001f) >= 10,
+            "Cloud seed and wind direction create distinct usable skies without downloading assets");
+
+        var atmosphereSetup = new RenderSetup
+        {
+            SkyPresetId = "tropical-dawn", Clouds = CloudStyle.Cumulonimbus,
+            CloudSeed = 73, CloudDirectionDegrees = -65, Turbidity = 5.3,
+            SunStrength = .45, SkyStrength = 1.5
+        };
+        atmosphereSetup.Validate();
+        var savedSkyPath = Path.Combine(Path.GetTempPath(), "guanacaste-sky-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            var skyProject = BuildingDocument.Create("Built-in atmosphere");
+            skyProject.RenderSetup = atmosphereSetup;
+            ProjectFile.Save(savedSkyPath, skyProject);
+            var restored = ProjectFile.Load(savedSkyPath).RenderSetup;
+            check(restored == atmosphereSetup,
+                "Sky preset ID, cloud shape/seed/rotation, turbidity and light ratios survive the .g3d round trip");
+        }
+        finally
+        {
+            if (File.Exists(savedSkyPath)) File.Delete(savedSkyPath);
+            if (File.Exists(savedSkyPath + ".bak")) File.Delete(savedSkyPath + ".bak");
+        }
+        var invalidSky = false;
+        try { (atmosphereSetup with { CloudDirectionDegrees = double.NaN }).Validate(); }
+        catch (InvalidDataException) { invalidSky = true; }
+        check(invalidSky, "Invalid atmospheric parameters are rejected before corrupting project files");
 
         // Picking a slab in the render editor must target the material that the
         // geometry builder actually used, not always the generic Floor category.
