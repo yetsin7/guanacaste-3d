@@ -108,17 +108,20 @@ public partial class StartScreen : UserControl
     {
         foreach (var recent in _host!.Recents.Load())
         {
-            var exists = File.Exists(recent.Path);
-            var modified = exists ? File.GetLastWriteTime(recent.Path) : recent.LastOpened;
+            // Recents are intentionally ordered by the last time the user opened the project, not by when Windows last
+            // modified the file. This keeps the projects the person actually worked on at the top of Home.
+            var lastOpened = recent.LastOpened;
             var item = new StartItem
             {
                 Title = System.IO.Path.GetFileNameWithoutExtension(recent.Path), Path = recent.Path,
                 Badge = System.IO.Path.GetExtension(recent.Path).TrimStart('.').ToUpperInvariant(),
-                Detail = exists ? modified.ToString("d/M/yy, H:mm", CultureInfo.CurrentCulture) : Text("Start.Missing"),
-                Location = System.IO.Path.GetDirectoryName(recent.Path) ?? string.Empty, ToolTip = recent.Path, Modified = modified
+                Detail = lastOpened.ToString("d/M/yy, H:mm", CultureInfo.CurrentCulture),
+                Location = System.IO.Path.GetDirectoryName(recent.Path) ?? string.Empty,
+                ToolTip = recent.Path,
+                Modified = lastOpened
             };
             item.Thumbnail = CachedThumbnail(_host.Recents.ThumbnailPath(recent.Path)) ?? Placeholder();
-            if (exists && !File.Exists(_host.Recents.ThumbnailPath(recent.Path)))
+            if (!File.Exists(_host.Recents.ThumbnailPath(recent.Path)))
                 _ = MakeThumbnailAsync(item, () => ProjectFile.Load(recent.Path), _host.Recents.ThumbnailPath(recent.Path));
             yield return item;
         }
@@ -149,7 +152,33 @@ public partial class StartScreen : UserControl
         return _thumbnails[path] = loaded;
     }
 
-    private ImageSource Placeholder() => (ImageSource)FindResource("Brand.Logo");
+    /// <summary>
+    /// Empty projects still get a meaningful architectural preview instead of a blank tile. The crosshair/grid also
+    /// communicates the model origin until real geometry is available for a generated thumbnail.
+    /// </summary>
+    private static ImageSource Placeholder()
+    {
+        var group = new DrawingGroup();
+        group.Children.Add(new GeometryDrawing(Brushes.White, null, new RectangleGeometry(new Rect(0, 0, 128, 128))));
+
+        var gridPen = new Pen(new SolidColorBrush(Color.FromRgb(232, 236, 240)), 1);
+        for (var p = 16d; p < 128; p += 16)
+        {
+            group.Children.Add(new GeometryDrawing(null, gridPen, new LineGeometry(new Point(p, 0), new Point(p, 128))));
+            group.Children.Add(new GeometryDrawing(null, gridPen, new LineGeometry(new Point(0, p), new Point(128, p))));
+        }
+
+        var xPen = new Pen(new SolidColorBrush(Color.FromRgb(72, 125, 190)), 1.6);
+        var yPen = new Pen(new SolidColorBrush(Color.FromRgb(86, 155, 92)), 1.6);
+        group.Children.Add(new GeometryDrawing(null, xPen, new LineGeometry(new Point(16, 64), new Point(112, 64))));
+        group.Children.Add(new GeometryDrawing(null, yPen, new LineGeometry(new Point(64, 112), new Point(64, 16))));
+        group.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(52, 52, 52)), null,
+            new EllipseGeometry(new Point(64, 64), 2.5, 2.5)));
+
+        var image = new DrawingImage(group);
+        image.Freeze();
+        return image;
+    }
 
     /// <summary>Draws a missing thumbnail: the model is read and projected off the UI thread, then drawn and cached.</summary>
     private async Task MakeThumbnailAsync(StartItem item, Func<BuildingDocument> load, string cache)
