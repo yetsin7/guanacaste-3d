@@ -17,76 +17,40 @@ public partial class MainWindow
 {
     private Guid _elevationViewId = BuiltInProjectViews.NorthElevationId;
 
-    /// <summary>Distance, in meters, between the building and its elevation symbols.</summary>
-    private const double ElevationSymbolDistance = 3.0;
-
     private static readonly Brush ElevationSymbolBrush = Frozen(Color.FromRgb(70, 70, 76));
     private static readonly Brush ElevationSelectedBrush = Frozen(Color.FromRgb(240, 130, 20));
+    private Point? _elevationPressCanvasPoint;
+    private Guid? _pressedElevationViewId;
+    private Point2? _elevationDragPreview;
+    private bool _draggingElevation;
 
     /// <summary>The elevation views, with the plan position and look direction of their symbols.</summary>
-    private IEnumerable<(ProjectView View, Point2 Position, Point2 Direction)> ElevationSymbols()
+    private IEnumerable<(ProjectView View, Point2 Position, Point2 Direction, ElevationMarker Marker)> ElevationSymbols()
     {
         var document = _session.Document;
-        var points = document.Walls.SelectMany(wall => new[] { wall.Start, wall.End })
-            .Concat(document.Floors.SelectMany(floor => floor.Boundary))
-            .Concat(document.Columns.Select(column => column.Position)).ToList();
-        if (_links.Bounds() is { } linked)
-        {
-            points.Add(new Point2(linked.Min.X, linked.Min.Y));
-            points.Add(new Point2(linked.Max.X, linked.Max.Y));
-        }
-        double minX = -5, maxX = 5, minY = -5, maxY = 5;
-        if (points.Count > 0)
-        {
-            minX = points.Min(point => point.X);
-            maxX = points.Max(point => point.X);
-            minY = points.Min(point => point.Y);
-            maxY = points.Max(point => point.Y);
-        }
-        var centerX = (minX + maxX) / 2;
-        var centerY = (minY + maxY) / 2;
         foreach (var view in document.Views.Where(view => view.Kind == ProjectViewKind.Elevation))
         {
-            yield return view.Orientation switch
-            {
-                ViewOrientation.North => (view, new Point2(centerX, minY - ElevationSymbolDistance), new Point2(0, 1)),
-                ViewOrientation.South => (view, new Point2(centerX, maxY + ElevationSymbolDistance), new Point2(0, -1)),
-                ViewOrientation.East => (view, new Point2(minX - ElevationSymbolDistance, centerY), new Point2(1, 0)),
-                _ => (view, new Point2(maxX + ElevationSymbolDistance, centerY), new Point2(-1, 0))
-            };
+            var marker = ElevationViewGeometry.Resolve(document, view);
+            if (_pressedElevationViewId == view.Id && _elevationDragPreview is Point2 preview)
+                marker = marker with { Position = preview };
+            yield return (view, marker.Position, ElevationViewGeometry.Direction(view.Orientation), marker);
         }
     }
 
     /// <summary>Draws every elevation symbol on the plan, the selected one in orange.</summary>
     private void RenderElevationSymbols()
     {
-        foreach (var (view, position, direction) in ElevationSymbols())
+        foreach (var (view, position, direction, marker) in ElevationSymbols())
         {
             var selected = _selectedViewId == view.Id;
             var brush = selected ? ElevationSelectedBrush : ElevationSymbolBrush;
+            if (selected) DrawElevationCoverage(view, marker);
             var center = WorldToCanvas(position);
-            const double radius = 13;
+            const double radius = 14;
             var along = new Vector(direction.X, -direction.Y);
-            var across = new Vector(-along.Y, along.X);
             var menu = CreateViewMenu(view.Id);
-
-            var circle = new Ellipse
-            {
-                Width = 2 * radius, Height = 2 * radius, Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.6,
-                Tag = view.Id, ContextMenu = menu, ToolTip = view.Name
-            };
-            Canvas.SetLeft(circle, center.X - radius);
-            Canvas.SetTop(circle, center.Y - radius);
-            PlanCanvas.Children.Add(circle);
-
-            var tip = center + along * (radius * 2.1);
-            var arrow = new Polygon
-            {
-                Points = [tip, center + along * (radius * 0.3) + across * (radius * 0.8),
-                    center + along * (radius * 0.3) - across * (radius * 0.8)],
-                Fill = brush, Stroke = brush, StrokeThickness = 1, Tag = view.Id, ContextMenu = menu, ToolTip = view.Name
-            };
-            PlanCanvas.Children.Add(arrow);
+            var code = GetText("Elevation." + view.Orientation);
+            DrawCircularViewMarker(center, along, view.Id, view.Name, code[..1].ToUpperInvariant(), brush, menu, hitTest: true);
 
             var label = new TextBlock
             {
@@ -103,15 +67,67 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Draws the selected elevation's transverse limit and translucent forward field.</summary>
+    private void DrawElevationCoverage(ProjectView view, ElevationMarker marker)
+    {
+        var corners = ElevationViewGeometry.Coverage(marker, view.Orientation).Select(WorldToCanvas).ToArray();
+        PlanCanvas.Children.Add(new Polygon
+        {
+            Points = new PointCollection(corners),
+            Fill = new SolidColorBrush(Color.FromArgb(34, 240, 130, 20)),
+            Stroke = new SolidColorBrush(Color.FromArgb(150, 240, 130, 20)),
+            StrokeThickness = 1,
+            StrokeDashArray = new DoubleCollection { 7, 4 },
+            IsHitTestVisible = false
+        });
+        PlanCanvas.Children.Add(new Line
+        {
+            X1 = corners[0].X, Y1 = corners[0].Y, X2 = corners[1].X, Y2 = corners[1].Y,
+            Stroke = ElevationSelectedBrush, StrokeThickness = 2, IsHitTestVisible = false
+        });
+    }
+
     private ContextMenu CreateViewMenu(Guid viewId)
     {
         var open = new MenuItem { Header = GetText("Elevation.Open") };
         open.Click += (_, _) => SelectProjectView(viewId);
         var rename = new MenuItem { Header = GetText("Elevation.Rename"), InputGestureText = "F2" };
         rename.Click += (_, _) => RenameView(viewId);
+        var remove = new MenuItem { Header = GetText("Elevation.Delete") };
+        remove.Click += (_, _) => RemoveElevationView(viewId);
         var apply = new MenuItem { Header = GetText("ViewTemplate.Apply") };
         AddTemplateItems(apply, [viewId]);
-        return new ContextMenu { Items = { open, rename, apply } };
+        var menu = new ContextMenu { Items = { open, rename, apply } };
+        if (_session.Document.Views.Any(view => view.Id == viewId && view.Kind == ProjectViewKind.Elevation))
+            menu.Items.Add(remove);
+        if (_session.Document.Views.FirstOrDefault(view => view.Id == viewId) is { Kind: ProjectViewKind.Section } section)
+        {
+            var structural = new MenuItem
+            {
+                Header = GetText("Section.StructuralMode"), IsCheckable = true,
+                IsChecked = section.SectionMode == SectionDisplayMode.Structural
+            };
+            structural.Click += (_, _) => SetStructuralSectionMode(viewId, structural.IsChecked);
+            menu.Items.Add(structural);
+        }
+        return menu;
+    }
+
+    /// <summary>Switches one section between coordinated and structural content from its marker or browser menu.</summary>
+    private void SetStructuralSectionMode(Guid viewId, bool structural)
+    {
+        try
+        {
+            _session.SetSectionDisplayMode(viewId,
+                structural ? SectionDisplayMode.Structural : SectionDisplayMode.Coordinated);
+            StatusText.Text = GetText(structural ? "Status.StructuralSection" : "Status.CoordinatedSection");
+            RefreshAll();
+            RenderOrthographicViews();
+        }
+        catch (InvalidDataException exception)
+        {
+            ShowViewError(exception, GetText("View.Section"));
+        }
     }
 
     /// <summary>Selects an elevation symbol clicked in the plan; a double-click opens its view.</summary>
@@ -125,12 +141,53 @@ public partial class MainWindow
             return true;
         }
         _elevationViewId = id;
+        _pressedElevationViewId = id;
+        _elevationPressCanvasPoint = e.GetPosition(PlanCanvas);
         _selectedViewId = id;
         _selectedWallId = null;
         _selectedOpeningId = null;
         _selectedFloorId = _selectedRoomId = _selectedColumnId = _selectedStructuralId = null;
         RefreshProperties();
         RenderPlan();
+        return true;
+    }
+
+    /// <summary>Starts and previews direct marker movement after the pointer crosses the drag threshold.</summary>
+    private bool TryUpdateElevationDrag(MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _pressedElevationViewId is null ||
+            _elevationPressCanvasPoint is not Point press) return false;
+        var current = e.GetPosition(PlanCanvas);
+        if (!_draggingElevation && (current - press).Length < DragThreshold) return false;
+        if (!_draggingElevation)
+        {
+            _draggingElevation = true;
+            PlanCanvas.CaptureMouse();
+        }
+        var preview = CanvasToWorld(current);
+        if (_elevationDragPreview == preview) return true;
+        _elevationDragPreview = preview;
+        RenderPlan();
+        return true;
+    }
+
+    /// <summary>Commits a dragged marker once, or clears press state when the gesture was only a click.</summary>
+    private bool FinishElevationDrag()
+    {
+        var wasDragging = _draggingElevation;
+        var id = _pressedElevationViewId;
+        var preview = _elevationDragPreview;
+        _draggingElevation = false;
+        _pressedElevationViewId = null;
+        _elevationPressCanvasPoint = null;
+        _elevationDragPreview = null;
+        if (!wasDragging || id is not Guid viewId || preview is not Point2 position) return false;
+        PlanCanvas.ReleaseMouseCapture();
+        var view = _session.Document.Views.First(candidate => candidate.Id == viewId);
+        var marker = ElevationViewGeometry.AtPosition(_session.Document, view.Orientation, position);
+        _session.UpdateElevationMarker(viewId, marker);
+        StatusText.Text = GetText("Status.ElevationMoved");
+        RefreshAll();
         return true;
     }
 

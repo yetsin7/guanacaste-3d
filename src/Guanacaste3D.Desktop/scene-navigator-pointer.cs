@@ -67,6 +67,15 @@ internal sealed partial class SceneNavigator
         if (IsLocked || wheelDelta == 0) return false;
         var (width, height) = Size();
         var ray = Camera.PixelRay((float)position.X, (float)position.Y, width, height);
+        if (FreeTravel)
+        {
+            _history.Record(Camera);
+            var speed = TravelSpeed ?? 2f;
+            var multiplier = modifiers.HasFlag(ModifierKeys.Alt) ? 0.2f : modifiers.HasFlag(ModifierKeys.Shift) ? 4f : 1f;
+            MoveCamera(ray * (wheelDelta / 120f) * speed * 0.25f * multiplier);
+            NotifyChanged();
+            return true;
+        }
         var step = NavigationZoom.DollyStep(PickDistance(ray), wheelDelta, SceneRadius(),
             modifiers.HasFlag(ModifierKeys.Shift));
         if (step == 0) return true;

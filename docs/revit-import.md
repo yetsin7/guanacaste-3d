@@ -20,8 +20,10 @@ therefore reads `.rvt` projects through the user's own Revit (2025 or later) wit
 
 `scripts/package-revit-addin.ps1` builds the add-in for every Revit version installed on the build machine and writes
 `src/Guanacaste3D.RevitBridge/bin/Release/package/Guanacaste3D-Revit.zip`. Users extract it, close Revit and run
-`Instalar.cmd` (no administrator rights): the add-in is copied to `%APPDATA%\Autodesk\Revit\Addins\<year>\Guanacaste3D`
-with its manifest beside it. `Desinstalar.cmd` removes it. Guanacaste 3D installs the same way when it opens a `.rvt`.
+`install.cmd`: the add-in is copied to a versioned folder under `%APPDATA%\Autodesk\Revit\Addins\<year>\Guanacaste3D`
+with its manifest beside it. `uninstall.cmd` removes it. Restart Revit to load an updated add-in.
+The 1.0.1 package also installs file thumbnails and bundles the official .NET 10 Desktop runtime prerequisite;
+Windows requests elevation only if that prerequisite is missing. The distributed build supports Revit 2027.
 
 The **Guanacaste 3D** ribbon tab has two buttons, each asking whether to export the whole model or only what the
 active 3D view shows:
@@ -62,6 +64,10 @@ together with its openings. The conversion report lists each case.
 ## Exchange file (.g3dx), version 1
 
 JSON, meters, Z up, Revit internal coordinates (the converter moves the plan center near the origin).
+
+Exporter 1.0.1 adds optional `exporterVersion` and `thumbnailPng` fields. The latter is a base64 PNG generated from
+the exported mesh set, so active-view exports preview only their exported elements. Existing importers ignore
+these additional fields. Files exported before this version still receive geometry-based Windows thumbnails.
 
 - `levels[]`: `id`, `name`, `elevation`.
 - `materials[]`: `name`, `class`, `category`, `color` (`#RRGGBB`), `transparency` and `shininess` (0–1), `ownerCategory`.

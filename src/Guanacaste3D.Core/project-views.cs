@@ -23,6 +23,42 @@ public enum ViewOrientation
     West
 }
 
+/// <summary>Controls whether a section coordinates the complete model or isolates its load-bearing construction.</summary>
+public enum SectionDisplayMode
+{
+    Coordinated,
+    Structural
+}
+
+/// <summary>
+/// Defines the vertical slice shown by a plan, measured from its associated level. The cut plane controls which hosted
+/// openings are drawn; the lower and upper limits keep the model context intentionally small and predictable.
+/// </summary>
+public sealed record PlanViewRange(double BottomOffset, double CutOffset, double TopOffset)
+{
+    /// <summary>The architectural default shows doors and windows without including the storey above.</summary>
+    public static PlanViewRange Architectural { get; } = new(0, 1.2, 2.3);
+
+    /// <summary>Returns whether all offsets are finite, ordered, and within the supported modelling range.</summary>
+    public bool IsValid => double.IsFinite(BottomOffset + CutOffset + TopOffset) &&
+        BottomOffset is >= -10 and <= 1000 && BottomOffset <= CutOffset && CutOffset <= TopOffset &&
+        TopOffset - BottomOffset is >= 0.1 and <= 1000;
+
+    /// <summary>Returns whether a vertical interval relative to the level intersects this view range.</summary>
+    public bool Intersects(double bottom, double top) => top >= BottomOffset && bottom <= TopOffset;
+}
+
+/// <summary>
+/// Stores the plan marker and horizontal field covered by an elevation. A null marker lets legacy views follow the
+/// building automatically until the user drags them for the first time.
+/// </summary>
+public sealed record ElevationMarker(Point2 Position, double Width, double Depth)
+{
+    /// <summary>Returns whether the marker and its field dimensions can be used safely.</summary>
+    public bool IsValid => double.IsFinite(Position.X + Position.Y + Width + Depth) &&
+        Width is >= 0.5 and <= 100000 && Depth is >= 0.5 and <= 100000;
+}
+
 /// <summary>Represents a persistent view generated from the shared building document.</summary>
 public sealed record ProjectView(
     Guid Id,
@@ -34,6 +70,15 @@ public sealed record ProjectView(
     /// <summary>Finite cutting line in model coordinates; null preserves the legacy centered section.</summary>
     public SectionCut? Cut { get; init; }
     public ViewGraphicsSettings? Graphics { get; init; }
+
+    /// <summary>Simple vertical visibility controls for plan views; null uses the architectural default.</summary>
+    public PlanViewRange? Range { get; init; }
+
+    /// <summary>Persistent plan marker and coverage for an elevation; null keeps automatic placement.</summary>
+    public ElevationMarker? ElevationMarker { get; init; }
+
+    /// <summary>Section discipline; structural mode retains walls, slabs, columns, foundations, beams, and connections.</summary>
+    public SectionDisplayMode SectionMode { get; init; }
 
     /// <summary>
     /// The part of the drawing, in meters, that a plan, elevation or section prints on a sheet (its crop region): plan X
@@ -147,5 +192,8 @@ public static class BuiltInProjectViews
         level.Name,
         ProjectViewKind.Plan,
         level.Id,
-        ViewOrientation.None);
+        ViewOrientation.None)
+    {
+        Range = PlanViewRange.Architectural
+    };
 }

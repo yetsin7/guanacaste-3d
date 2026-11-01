@@ -4,31 +4,50 @@ using Guanacaste3D.Core.Rendering;
 /// <summary>Renders the demonstration house and the daylit room at presentation size, for judging the look of the renderer.</summary>
 static class ShowcaseShot
 {
-    public static void Run(string folder, int width, int passes)
+    /// <summary>Renders only the requested scenes, avoiding the memory cost of unrelated detailed models.</summary>
+    public static void Run(string folder, int width, int height, int passes)
     {
         Directory.CreateDirectory(folder);
-        var height = width * 9 / 16;
-        var house = BenchmarkScenes.HouseExterior();
-        var (min, max) = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.SampleProjects.CreateDemonstrationHouse()).Bounds();
-        var eyeLevel = house with
+        /// <summary>Frames the house without the extended ground plane affecting the camera position.</summary>
+        BenchmarkScene EyeLevel()
         {
-            Name = "house-eye-level",
-            Camera = new RenderCamera(new Vector3(min.X - 6, min.Y - 9, 1.6f), new Vector3((min.X + max.X) / 2, (min.Y + max.Y) / 2, 1.4f), 55)
+            var house = BenchmarkScenes.HouseExterior();
+            var (min, max) = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.SampleProjects.CreateDemonstrationHouse()).Bounds();
+            return house with
             {
-                CorrectVerticals = true
-            }
-        };
-        var garden = GardenScene(min, max);
-        var all = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") == "night"
-            ? new[] { NightInterior() }
-            : new[] { house, eyeLevel, garden, BenchmarkScenes.DaylitRoom(), Villa(), Cobogo(), Cobogo() with { Name = "cobogo-garage", Camera = new RenderCamera(new Vector3(9.5f, -9, 1.5f), new Vector3(11.6f, 2.4f, 0.9f), 50) { CorrectVerticals = true } } };
-        // G3_SHOT_FAMILIES=<folder> adds "plant-lab": every mesh family of the folder in a row on a lawn, for judging them.
-        if (Environment.GetEnvironmentVariable("G3_SHOT_FAMILIES") is { } lab) all = [.. all, PlantLab(lab)];
-        var scenes = Environment.GetEnvironmentVariable("G3_SHOT_ONLY") is { } only
-            ? all.Where(scene => scene.Name == only).ToArray()
-            : all;
-        foreach (var scene in scenes)
+                Name = "house-eye-level",
+                Camera = new RenderCamera(new Vector3(min.X - 6, min.Y - 9, 1.6f), new Vector3((min.X + max.X) / 2, (min.Y + max.Y) / 2, 1.4f), 55)
+                { CorrectVerticals = true }
+            };
+        }
+        /// <summary>Constructs the garden only when it is selected for rendering.</summary>
+        BenchmarkScene Garden()
         {
+            var (min, max) = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Guanacaste3D.Core.SampleProjects.CreateDemonstrationHouse()).Bounds();
+            return GardenScene(min, max);
+        }
+        var factories = new Dictionary<string, Func<BenchmarkScene>>
+        {
+            ["house-exterior"] = BenchmarkScenes.HouseExterior,
+            ["house-eye-level"] = EyeLevel,
+            ["garden"] = Garden,
+            ["daylit-room"] = BenchmarkScenes.DaylitRoom,
+            ["villa"] = Villa,
+            ["cobogo"] = Cobogo,
+            ["cobogo-facade-detail"] = () => Cobogo() with { Name = "cobogo-facade-detail", Camera = new RenderCamera(new Vector3(4.6f, -10.5f, 2.3f), new Vector3(4.6f, 0, 2.5f), 48) { CorrectVerticals = true } },
+            ["cobogo-garage"] = () => Cobogo() with { Name = "cobogo-garage", Camera = new RenderCamera(new Vector3(9.5f, -9, 1.5f), new Vector3(11.6f, 2.4f, 0.9f), 50) { CorrectVerticals = true } },
+            ["night"] = NightInterior
+        };
+        // G3_SHOT_FAMILIES=<folder> adds "plant-lab": every mesh family of the folder in a row on a lawn, for judging them.
+        if (Environment.GetEnvironmentVariable("G3_SHOT_FAMILIES") is { } lab) factories["plant-lab"] = () => PlantLab(lab);
+        var only = Environment.GetEnvironmentVariable("G3_SHOT_ONLY");
+        foreach (var (name, create) in factories)
+        {
+            if (only is not null ? name != only : name == "night") continue;
+            var scene = create();
+            if (float.TryParse(Environment.GetEnvironmentVariable("G3_SHOT_FOV"), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fieldOfView) && fieldOfView is >= 5 and <= 150)
+                scene = scene with { Camera = scene.Camera with { VerticalFieldOfViewDegrees = fieldOfView } };
             var builder = new RenderSceneBuilder().AddBuilding(scene.Mesh, scene.Materials);
             foreach (var light in scene.Lights) builder.AddLight(light);
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -66,9 +85,12 @@ static class ShowcaseShot
             plants: Guanacaste3D.Core.Geometry.PlantDetail.Render);
         var (min, max) = mesh.Bounds();
         var height = Math.Max(1.2f, max.Z);
-        var target = new Vector3((float)x / 2, 0, height * 0.45f);
+        // G3_SHOT_LAB_ZOOM brings the camera closer (2 is half the distance, aimed lower, at trunks and leaves).
+        var zoom = float.TryParse(Environment.GetEnvironmentVariable("G3_SHOT_LAB_ZOOM"), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var factor) && factor > 0 ? factor : 1;
+        var target = new Vector3((float)x / 2, 0, height * 0.45f / MathF.Sqrt(zoom));
         return new BenchmarkScene("plant-lab", mesh,
-            new RenderCamera(target + new Vector3(0, -Math.Max(3, (float)x * 0.9f), height * 0.2f), target, 45) { CorrectVerticals = true },
+            new RenderCamera(target + new Vector3(0, -Math.Max(1.5f, (float)x * 0.9f) / zoom, height * 0.2f / zoom), target, 45) { CorrectVerticals = true },
             new RenderSettings { SunDirection = Vector3.Normalize(new Vector3(-0.5f, -0.6f, 0.65f)), MaxBounces = 5 });
     }
 

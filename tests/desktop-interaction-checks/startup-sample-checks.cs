@@ -39,14 +39,15 @@ internal static partial class InteractionChecks
             var session = (DocumentSession)typeof(MainWindow).GetField("_session", PrivateInstance)!.GetValue(opened)!;
             var camera = (NavigationCamera)typeof(MainWindow).GetField("_navigation", PrivateInstance)!.GetValue(opened)!;
             var tabs = (TabControl)opened.FindName("ViewTabs");
-            var setup = BreezeBlockHouseShowcase.StreetView;
+            var setup = session.Document.RenderSetup
+                ?? throw new InvalidOperationException("The breeze-block house sample has no saved render setup.");
             Check(home.Visibility == Visibility.Collapsed && session.Document.ComponentFamilies.Count >= 9 &&
-                  session.Document.Sheets.Count == 6 && session.Document.RenderSetup is not null &&
+                  session.Document.Sheets.Count == 6 &&
                   typeof(MainWindow).GetField("_filePath", PrivateInstance)!.GetValue(opened) is null,
                 "The breeze-block house opens from Home, with its families and sheets, as an untitled copy");
             Check(tabs.SelectedIndex == 6 && Math.Abs(camera.Position.Y - setup.CameraY) < 1e-3 &&
                   Math.Abs(camera.PitchDegrees - setup.PitchDegrees) < 1e-3,
-                "The sample shows the Render tab from its saved camera");
+                "The sample opens on the Render tab from its saved camera");
             var panel = (RenderPanel)opened.FindName("RenderPanelControl");
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&

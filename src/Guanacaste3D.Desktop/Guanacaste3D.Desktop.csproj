@@ -8,7 +8,7 @@
     <AssemblyName>Guanacaste3D.Desktop</AssemblyName>
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
-    <Version>0.23.0</Version>
+    <Version>0.23.2</Version>
     <!-- Embedded in the .exe so Explorer, the Start menu shortcut and the taskbar show the brand mark. -->
     <ApplicationIcon>resources\brand\guanacaste3d.ico</ApplicationIcon>
   </PropertyGroup>
@@ -24,6 +24,7 @@
   <ItemGroup>
     <!-- Window.Icon reads the same icon through a pack URI at run time. -->
     <Resource Include="resources\brand\guanacaste3d.ico" />
+    <Resource Include="resources\brand\guanacaste3d-logo.png" />
     <!-- Shipped render textures, loaded from disk next to the executable by RenderTextureLibrary. -->
     <Content Include="resources\textures\*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="resources\textures\*.jpg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
@@ -60,5 +61,9 @@
     <Copy SourceFiles="$(RevitBridgeOutput)Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll"
           DestinationFolder="$(PublishDir)revit-bridge\Revit%(RevitBridgeVersion.Identity)" SkipUnchangedFiles="true"
           Condition="Exists('$(RevitBridgeOutput)Revit%(RevitBridgeVersion.Identity)\Guanacaste3D.RevitBridge.dll')" />
+  </Target>
+  <Target Name="PublishThumbnailProvider" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <MSBuild Projects="../windows-thumbnails/windows-thumbnails.csproj" Targets="Restore;Publish"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=false;PublishSingleFile=false;PublishDir=$(PublishDir)thumbnail-handler/" />
   </Target>
 </Project>

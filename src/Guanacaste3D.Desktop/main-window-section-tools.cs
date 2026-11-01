@@ -62,7 +62,7 @@ public partial class MainWindow
         }
         var number = _session.Document.Views.Count(view => view.Kind == ProjectViewKind.Section) + 1;
         while (_session.Document.Views.Any(view => view.Name == FormatText("Documentation.SectionName", number))) number++;
-        var id = _session.AddSectionView(FormatText("Documentation.SectionName", number), cut);
+        var id = _session.AddSectionView(FormatText("Documentation.SectionName", number), cut, SectionDisplayMode.Structural);
         CancelSectionTool();
         PlanCanvas.Cursor = Cursors.Arrow;
         RefreshAll();
@@ -80,7 +80,7 @@ public partial class MainWindow
             DrawSectionSymbol(new(start, end), Guid.Empty, GetText("Documentation.SectionPreview"), preview: true);
     }
 
-    /// <summary>Draws a thin cut line, reference heads, and a localized view name in screen space.</summary>
+    /// <summary>Draws a section axis with conventional circular heads, contained look arrows, and a view identifier.</summary>
     private void DrawSectionSymbol(SectionCut cut, Guid id, string name, bool preview)
     {
         var start = WorldToCanvas(cut.Start);
@@ -88,20 +88,18 @@ public partial class MainWindow
         var brush = preview ? Brushes.RoyalBlue : id == _selectedViewId ? Brushes.DarkOrange : Brushes.DarkSlateGray;
         var menu = preview ? null : CreateViewMenu(id);
         PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
-            Stroke = brush, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 9, 3, 2, 3 },
+            Stroke = brush, StrokeThickness = preview ? 1.2 : 1.8, StrokeDashArray = new DoubleCollection { 12, 4, 2, 4 },
             Tag = id, ContextMenu = menu, ToolTip = name, IsHitTestVisible = !preview });
-        foreach (var point in new[] { start, end })
-        {
-            var head = new Ellipse { Width = 16, Height = 16, Fill = Brushes.White, Stroke = brush,
-                StrokeThickness = 1.5, Tag = id, ContextMenu = menu, IsHitTestVisible = !preview, ToolTip = name };
-            Canvas.SetLeft(head, point.X - 8);
-            Canvas.SetTop(head, point.Y - 8);
-            PlanCanvas.Children.Add(head);
-        }
+        var axis = end - start;
+        axis.Normalize();
+        var look = new Vector(-axis.Y, axis.X);
+        var code = ViewMarkerCode(name);
+        DrawCircularViewMarker(start, look, id, name, code, brush, menu, !preview);
+        DrawCircularViewMarker(end, look, id, name, code, brush, menu, !preview);
         var label = new TextBlock { Text = name, Foreground = brush, Background = Brushes.White,
             FontSize = 11, Tag = id, ContextMenu = menu, IsHitTestVisible = !preview };
-        Canvas.SetLeft(label, start.X + 12);
-        Canvas.SetTop(label, start.Y - 21);
+        Canvas.SetLeft(label, start.X + look.X * 20 + 8);
+        Canvas.SetTop(label, start.Y + look.Y * 20 - 8);
         PlanCanvas.Children.Add(label);
     }
 

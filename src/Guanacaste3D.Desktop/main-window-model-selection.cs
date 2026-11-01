@@ -45,6 +45,7 @@ public partial class MainWindow
         {
             renderNavigator.OrbitPivot = ResolveModelOrbitPivot;
             renderNavigator.Clicked += position => HandleViewClick(position, RenderPanelControl.Surface);
+            renderNavigator.Changed += UpdateRenderSelection;
             renderNavigator.DoubleClicked += _ => OpenSelectionEditor();
             renderNavigator.ContextRequested += _ => ShowViewContextMenu(RenderPanelControl.Surface);
         }
@@ -119,6 +120,8 @@ public partial class MainWindow
         if (hit is not { } picked)
         {
             SelectExtendedElement();
+            RefreshProperties();
+            RenderPlan();
             UpdateModelSelection(true);
             return;
         }
@@ -211,6 +214,7 @@ public partial class MainWindow
     private void UpdateModelSelection(bool rebuild)
     {
         if (ModelOverlay is null || _session is null) return;
+        UpdateRenderSelection();
         if (ViewTabs.SelectedIndex != Model3DTabIndex)
         {
             ClearModelSelectionVisuals();
@@ -241,7 +245,7 @@ public partial class MainWindow
         if (outline.Count == 0) return;
 
         var thickness = EdgeThickness();
-        AddSelectionVisual(ScenePresentation.ToWpfEdges(outline, Matrix4x4.Identity, thickness * 1.5f, Color.FromRgb(240, 130, 20)));
+        AddSelectionVisual(ScenePresentation.ToWpfEdges(outline, Matrix4x4.Identity, thickness * 1.5f, Color.FromRgb(0, 115, 230)));
         AddSelectionVisual(ScenePresentation.ToWpfEdges(dimensions.Select(line => new EdgeSegment(line.A, line.B)),
             Matrix4x4.Identity, thickness * 0.6f, Color.FromRgb(30, 110, 200)));
 

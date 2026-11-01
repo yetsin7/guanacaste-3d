@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Guanacaste3D.RevitBridge/exchange-preview-writer.cs" Link="exchange-preview-writer.cs" />
+    <Compile Include="../../src/shared/exchange-thumbnail.cs" Link="exchange-thumbnail.cs" />
+    <ProjectReference Include="../../src/windows-thumbnails/windows-thumbnails.csproj" />
+  </ItemGroup>
+</Project>

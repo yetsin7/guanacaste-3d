@@ -12,6 +12,7 @@ static class RenderEngineChecks
     public static void Run(Action<bool, string> check)
     {
         Materials(check);
+        CastConcrete(check);
         TextureInputValidation(check);
         Sky(check);
         BvhOnLargeScene(check);
@@ -45,6 +46,18 @@ static class RenderEngineChecks
         check(float.IsFinite(broken.BaseColor.X) && broken.BaseColor.Y == 1 && broken.BaseColor.Z == 0 && broken.Roughness <= 1 &&
               broken.Ior >= 1 && broken.Transmission == 1, "Materials with NaN or out-of-range values are sanitized before rendering");
         check(Math.Abs(new RenderMaterial { Ior = 1.5f }.DielectricF0 - 0.04f) < 1e-4f, "A glass index of 1.5 reflects 4 % at normal incidence");
+    }
+
+    /// <summary>Checks that exposed concrete varies across its surface while painted walls keep their own finish.</summary>
+    private static void CastConcrete(Action<bool, string> check)
+    {
+        var exposed = MaterialLibrary.ForKind(SurfaceKind.WallConcrete);
+        var painted = MaterialLibrary.ForKind(SurfaceKind.Wall);
+        var values = Enumerable.Range(0, 64).Select(index =>
+            SurfacePatterns.Modulate(exposed.Pattern, exposed.PatternScale, new Vector3(index * 0.037f, 0, index * 0.021f), -Vector3.UnitY).X).ToArray();
+        check(exposed.Pattern == SurfacePattern.PouredConcrete && painted.Pattern != exposed.Pattern &&
+              values.All(value => float.IsFinite(value) && value is > 0.5f and < 1.3f) && values.Max() - values.Min() > 0.05f,
+            "Exposed concrete has bounded surface variation without changing painted walls");
     }
 
     private static void TextureInputValidation(Action<bool, string> check)

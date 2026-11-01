@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Builds the downloadable Guanacaste 3D add-in for Revit: a folder and a .zip users install with Instalar.cmd.
+Builds the downloadable Guanacaste 3D add-in and thumbnail installer for Revit.
 
 .DESCRIPTION
 Compiles src/Guanacaste3D.RevitBridge once per Revit version installed on this machine (each version needs its own
@@ -18,7 +18,11 @@ $package = Join-Path $packageRoot 'Guanacaste3D-Revit'
 $caller = Get-Location
 try {
     Set-Location $bridge
-    if (Test-Path $package) { Remove-Item $package -Recurse -Force }
+    $resolvedPackage = [IO.Path]::GetFullPath($package)
+    if (-not $resolvedPackage.StartsWith([IO.Path]::GetFullPath($packageRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'The package directory is outside the expected build output.'
+    }
+    if (Test-Path -LiteralPath $resolvedPackage) { Remove-Item -LiteralPath $resolvedPackage -Recurse -Force }
     New-Item -ItemType Directory -Force $package | Out-Null
     $built = @()
     foreach ($year in $Versions) {
@@ -34,6 +38,10 @@ try {
     }
     if ($built.Count -eq 0) { throw 'No Revit version with its API was found on this machine.' }
     Copy-Item (Join-Path $bridge 'installer\*') $package
+    dotnet publish (Join-Path $projectRoot 'src\windows-thumbnails\windows-thumbnails.csproj') -c Release --self-contained false -o (Join-Path $package 'thumbnail-handler') -nologo
+    if ($LASTEXITCODE -ne 0) { throw 'The thumbnail provider did not publish.' }
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -Destination $package
+    & (Join-Path $PSScriptRoot 'package-runtime.ps1') -Destination $package
     $zip = Join-Path $packageRoot 'Guanacaste3D-Revit.zip'
     if (Test-Path $zip) { Remove-Item $zip -Force }
     # Forward-slash entry names, which every unzip tool reads (Compress-Archive in Windows PowerShell writes backslashes).

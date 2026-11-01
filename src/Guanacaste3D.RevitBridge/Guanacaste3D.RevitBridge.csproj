@@ -16,11 +16,13 @@
     <LangVersion>latest</LangVersion>
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>Guanacaste3D.RevitBridge</AssemblyName>
+    <Version>1.0.1</Version>
     <RootNamespace>Guanacaste3D.RevitBridge</RootNamespace>
     <OutputPath>bin\$(Configuration)\Revit$(RevitVersion)\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../shared/exchange-thumbnail.cs" Link="exchange-thumbnail.cs" />
     <!-- Revit owns its dependency graph; only its public API assemblies are compile references. -->
     <Reference Include="RevitAPI" ExternallyResolved="true"><HintPath>$(RevitInstallDir)\RevitAPI.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="RevitAPIUI" ExternallyResolved="true"><HintPath>$(RevitInstallDir)\RevitAPIUI.dll</HintPath><Private>false</Private></Reference>

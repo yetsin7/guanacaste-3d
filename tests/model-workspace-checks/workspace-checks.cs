@@ -20,7 +20,7 @@ internal static partial class WorkspaceChecks
 
     /// <summary>Runs navigation, movement, material-isolation, and compact-layout regressions on a WPF dispatcher.</summary>
     [STAThread]
-    private static int Main()
+    private static int Main(string[] arguments)
     {
         var application = new App();
         application.InitializeComponent();
@@ -31,10 +31,17 @@ internal static partial class WorkspaceChecks
         {
             _window.Show();
             Pump();
+            if (arguments.Contains("--flight-only"))
+            {
+                FlightNavigationChecks();
+                Console.WriteLine($"Flight workspace checks passed: {_count} assertions.");
+                return 0;
+            }
             ProjectionChecks();
             NavigationChecks();
             OrbitInteractionChecks();
             PointerGestureChecks();
+            FlightNavigationChecks();
             StairWorkspaceChecks();
             OpeningMovementChecks();
             GeneralMovementChecks();

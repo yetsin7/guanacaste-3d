@@ -188,6 +188,7 @@ public partial class RenderPanel
             _showingFinal = false;
             if (PreviewToggle.IsChecked == true) ResumePreview();
         }
+        BeginInteractivePreview();
         _preview?.SetCamera(CurrentCamera());
     }
 

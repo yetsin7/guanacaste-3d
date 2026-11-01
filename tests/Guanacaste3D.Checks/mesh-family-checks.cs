@@ -126,6 +126,17 @@ static class MeshFamilyChecks
         var rejected = false;
         try { broken.Validate(); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "A triangle that names a missing image is rejected");
+
+        // Normal maps: a flat texel leaves the normal alone; one leaning toward +u tips it along the image's u direction.
+        var up = Vector3.UnitZ;
+        Vector3 p0 = Vector3.Zero, p1 = Vector3.UnitX, p2 = Vector3.UnitY;
+        Vector2 t0 = Vector2.Zero, t1 = Vector2.UnitX, t2 = Vector2.UnitY;
+        var flat = Guanacaste3D.Core.Rendering.NormalMap.Perturb(up, Vector3.UnitZ, p0, p1, p2, t0, t1, t2);
+        var leaning = Guanacaste3D.Core.Rendering.NormalMap.Perturb(up, Vector3.Normalize(new Vector3(0.5f, 0, 1)), p0, p1, p2, t0, t1, t2);
+        var map = Guanacaste3D.Core.Rendering.NormalMap.FromRgb(1, 1, [128, 128, 255]);
+        check(Vector3.Distance(flat, up) < 1e-5f && leaning.X > 0.4f && leaning.Z > 0.8f && Math.Abs(leaning.Y) < 1e-5f &&
+              Vector3.Distance(map.Sample(0.3f, 0.7f), Vector3.UnitZ) < 0.02f,
+            "Normal maps tip the shading normal along the image's axes and leave flat texels alone");
     }
 
     /// <summary>The CC0 jacaranda and cars shipped as families, and the saved breeze-block house that uses them.</summary>
@@ -154,6 +165,14 @@ static class MeshFamilyChecks
         check(fern.Textures.Count == 1 && fern.Textures[0].AlphaCutoff > 0 && fern.Decode().Uvs is not null &&
               fern.Decode().TriangleTextures!.All(texture => texture == 0),
             "Leaf families carry their image, its cut-out mask and texture coordinates");
+        var jacaranda = families.Single(family => family.Name == BreezeBlockHouseShowcase.TreeFamily).Mesh!;
+        var barkTriangles = jacaranda.Decode().Kinds.Select((kind, index) => (kind, index)).Where(pair => pair.kind == SurfaceKind.Bark)
+            .Select(pair => pair.index).ToArray();
+        var trunk = jacaranda.Textures.Single(texture => texture.Name.Contains("trunk", StringComparison.OrdinalIgnoreCase));
+        check(jacaranda.Textures.Count == 3 && jacaranda.Textures.All(texture => texture.Normal() is not null && texture.Width >= 1024) &&
+              trunk.Width == 2048 && trunk.NormalWidth == 2048 && trunk.NormalHeight == 2048 &&
+              barkTriangles.All(triangle => jacaranda.Decode().TriangleTextures![triangle] != FamilyMesh.NoTexture),
+            "The jacaranda has a 2K trunk color and normal map and retains textured bark after reduction");
     }
 
     private static bool Throws(Action action)

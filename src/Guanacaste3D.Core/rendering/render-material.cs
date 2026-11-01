@@ -28,7 +28,11 @@ public enum SurfacePattern : byte
     /// <summary>Leaf-to-leaf color variation: fresh, mature and a few yellowing leaves.</summary>
     Leaves,
     /// <summary>Woven textile: a fine basket weave with a soft nap.</summary>
-    Fabric
+    Fabric,
+    /// <summary>Weathered asphalt with fine aggregate and irregular surface variation.</summary>
+    Asphalt,
+    /// <summary>Subtle mineral variation and pores on exposed cast concrete.</summary>
+    PouredConcrete
 }
 
 /// <summary>
@@ -81,6 +85,11 @@ public sealed record RenderMaterial
     /// for camera rays and shadows alike.
     /// </summary>
     public float AlphaCutoff { get; init; }
+    /// <summary>
+    /// The relief of a <see cref="UvMapped"/> surface (bark furrows, leaf veins) as a tangent-space normal map; null for
+    /// a smooth surface.
+    /// </summary>
+    public NormalMap? NormalMap { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;
@@ -159,7 +168,7 @@ public static class MaterialLibrary
         SurfaceKind.Asphalt => new RenderMaterial
         {
             Name = "Asfalto", BaseColor = new(0.11f, 0.11f, 0.11f), Roughness = 0.95f,
-            Pattern = SurfacePattern.Concrete, PatternScale = 0.5f
+            Pattern = SurfacePattern.Asphalt, PatternScale = 1f
         },
         SurfaceKind.Glass => new RenderMaterial
         {
@@ -202,7 +211,7 @@ public static class MaterialLibrary
         },
         SurfaceKind.WallConcrete => new RenderMaterial
         {
-            Name = "Concreto visto", BaseColor = new(0.52f, 0.51f, 0.49f), Roughness = 0.85f, Pattern = SurfacePattern.Concrete, PatternScale = 1.4f
+            Name = "Concreto visto", BaseColor = new(0.52f, 0.51f, 0.49f), Roughness = 0.85f, Pattern = SurfacePattern.PouredConcrete, PatternScale = 1f
         },
         SurfaceKind.WallStone => new RenderMaterial
         {

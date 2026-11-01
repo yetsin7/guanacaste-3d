@@ -235,8 +235,12 @@ public partial class MainWindow : Window
     private void AttachDocument(BuildingDocument document, string? filename)
     {
         _session.Changed -= OnDocumentChanged;
-        // Projects from before the four elevations were offered gain the missing ones.
-        BuiltInProjectViews.EnsureElevations(document.Views);
+        // The untouched single north view identifies projects from before cardinal elevations existed. A user who has
+        // deliberately removed views keeps that choice when the project is reopened.
+        var elevations = document.Views.Where(view => view.Kind == ProjectViewKind.Elevation).ToArray();
+        if (elevations.Length == 0 || elevations is [{ Id: var id, Name: "North Elevation" }] &&
+            id == BuiltInProjectViews.NorthElevationId)
+            BuiltInProjectViews.EnsureElevations(document.Views);
         BuiltInProjectViews.EnsureAreaSchedule(document.Views);
         BuiltInProjectViews.EnsureLocation(document.Views);
         _session = new DocumentSession(document);

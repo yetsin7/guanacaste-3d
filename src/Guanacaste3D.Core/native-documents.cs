@@ -148,6 +148,18 @@ public static class NativeDocumentStore
             throw new InvalidDataException("The native document container size is invalid.");
 
         using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return ReadPayload(stream);
+    }
+
+    /// <summary>
+    /// Reads and verifies a native container from a seekable stream without opening paths or resolving references.
+    /// Leaves the stream open. Shell thumbnail providers use this entry point without requiring a file path.
+    /// </summary>
+    public static (NativeDocumentInfo Info, byte[] Json) ReadPayload(Stream stream)
+    {
+        if (!stream.CanSeek || stream.Length < HeaderBytes || stream.Length > MaximumPayloadBytes + HeaderBytes)
+            throw new InvalidDataException("The native document container size is invalid.");
+        stream.Position = 0;
         using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 
         if (!reader.ReadBytes(8).SequenceEqual(Encoding.ASCII.GetBytes(Signature)))
@@ -212,7 +224,14 @@ public static class NativeDocumentStore
             using var input = new MemoryStream(compressed, writable: false);
             using var gzip = new GZipStream(input, CompressionMode.Decompress);
             using var output = new MemoryStream(checked((int)expectedLength));
-            gzip.CopyTo(output);
+            var buffer = new byte[81920];
+            int count;
+            while ((count = gzip.Read(buffer)) > 0)
+            {
+                if (output.Length + count > expectedLength)
+                    throw new InvalidDataException("The native document decompressed length does not match its header.");
+                output.Write(buffer, 0, count);
+            }
             if (output.Length != expectedLength || output.Length > MaximumPayloadBytes)
                 throw new InvalidDataException("The native document decompressed length does not match its header.");
             return output.ToArray();

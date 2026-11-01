@@ -180,7 +180,7 @@ public sealed class FamilyMesh
                 if (sceneTexture[index] < 0)
                 {
                     sceneTexture[index] = scene.Textures.Count;
-                    scene.Textures.Add(new SceneTexture(image, Textures[index].AlphaCutoff));
+                    scene.Textures.Add(new SceneTexture(image, Textures[index].AlphaCutoff, Textures[index].Normal()));
                 }
             }
         for (var triangle = 0; triangle < mesh.TriangleCount; triangle++)
@@ -210,12 +210,20 @@ public sealed class FamilyMeshTexture
     public const int MaximumSize = 2048;
 
     private Rendering.RenderTexture? _texture;
+    private Rendering.NormalMap? _normal;
 
     public string Name { get; set; } = string.Empty;
     public int Width { get; set; }
     public int Height { get; set; }
     public string Rgba { get; set; } = string.Empty;
     public float AlphaCutoff { get; set; }
+    /// <summary>Optional normal map, RGB (OpenGL convention), base64; relief needs less detail than colour.</summary>
+    public string? NormalRgb { get; set; }
+    /// <summary>Size of <see cref="NormalRgb"/>; zero means the size of the colour image.</summary>
+    public int NormalWidth { get; set; }
+    public int NormalHeight { get; set; }
+
+    private (int Width, int Height) NormalSize => NormalWidth > 0 ? (NormalWidth, NormalHeight) : (Width, Height);
 
     [JsonIgnore]
     public bool IsValid
@@ -224,14 +232,29 @@ public sealed class FamilyMeshTexture
         {
             if (Width is < 1 or > MaximumSize || Height is < 1 or > MaximumSize || !float.IsFinite(AlphaCutoff) ||
                 AlphaCutoff is < 0 or > 1 || Rgba is null || Name is null || Name.Length > 120) return false;
-            try { return Convert.FromBase64String(Rgba).Length == Width * Height * 4; }
+            try
+            {
+                var (normalWidth, normalHeight) = NormalSize;
+                return Convert.FromBase64String(Rgba).Length == Width * Height * 4 && NormalWidth is >= 0 and <= MaximumSize &&
+                       NormalHeight is >= 0 and <= MaximumSize && (NormalWidth == 0) == (NormalHeight == 0) &&
+                       (NormalRgb is null || Convert.FromBase64String(NormalRgb).Length == normalWidth * normalHeight * 3);
+            }
             catch (FormatException) { return false; }
         }
     }
 
     /// <summary>Packs RGBA pixels.</summary>
-    public static FamilyMeshTexture Create(string name, int width, int height, byte[] rgba, float alphaCutoff) =>
-        new() { Name = name, Width = width, Height = height, Rgba = Convert.ToBase64String(rgba), AlphaCutoff = alphaCutoff };
+    public static FamilyMeshTexture Create(string name, int width, int height, byte[] rgba, float alphaCutoff, byte[]? normalRgb = null,
+        int normalWidth = 0, int normalHeight = 0) =>
+        new()
+        {
+            Name = name, Width = width, Height = height, Rgba = Convert.ToBase64String(rgba), AlphaCutoff = alphaCutoff,
+            NormalRgb = normalRgb is null ? null : Convert.ToBase64String(normalRgb), NormalWidth = normalWidth, NormalHeight = normalHeight
+        };
+
+    /// <summary>The normal map, decoded once, or null when the image has none.</summary>
+    public Rendering.NormalMap? Normal() => NormalRgb is null ? null
+        : _normal ??= Rendering.NormalMap.FromRgb(NormalSize.Width, NormalSize.Height, Convert.FromBase64String(NormalRgb));
 
     /// <summary>The render texture, decoded once.</summary>
     public Rendering.RenderTexture Texture() =>

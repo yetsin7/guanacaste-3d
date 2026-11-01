@@ -73,6 +73,7 @@ public partial class RenderPanel : UserControl
             Bounds = source.SceneBounds,
             Pick = (origin, direction) => source.Query?.Pick(origin, direction)
         };
+        InitializeFlightControls();
         _navigator.Changed += OnCameraChanged;
         source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshScene);
         source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshMaterialRows);
@@ -100,6 +101,7 @@ public partial class RenderPanel : UserControl
     {
         if (!IsVisible)
         {
+            StopInteractivePreview();
             _preview?.Suspend();
             StopTour();
             return;
@@ -112,6 +114,7 @@ public partial class RenderPanel : UserControl
     /// <summary>Stops preview workers, camera playback, and outstanding render cancellation tokens.</summary>
     private void Shutdown()
     {
+        StopInteractivePreview();
         // Invalidate asynchronous scene requests before disposing the preview.
         _sceneRefreshVersion++;
         _cancel?.Cancel();
@@ -259,6 +262,7 @@ public partial class RenderPanel : UserControl
     {
         var aspect = ImageHost.ActualHeight > 0 ? ImageHost.ActualWidth / ImageHost.ActualHeight : 16.0 / 9;
         var height = QualityPlanner.PreviewHeight(_hardware, ResourceUse());
+        if (_interactivePreview) height = Math.Min(height, 144);
         return ((int)Math.Round(height * Math.Clamp(aspect, 0.5, 3)), height);
     }
 

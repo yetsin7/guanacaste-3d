@@ -302,6 +302,34 @@ static class NavigationChecks
         try { session.RenameView(BuiltInProjectViews.NorthElevationId, "   "); }
         catch (InvalidDataException) { empty = true; }
         check(duplicate && empty, "views: a name already in use, or an empty one, is refused");
+
+        var added = session.AddElevationView("Garden elevation", ViewOrientation.North);
+        check(session.Document.Views.Count(view => view.Kind == ProjectViewKind.Elevation) == 5 &&
+              session.Document.Views.Single(view => view.Id == added).Orientation == ViewOrientation.North,
+            "views: users can add another named elevation in an existing direction");
+        var ground = session.Document.Levels.Single(level => level.Role == LevelRole.BaseFloor);
+        session.AddWall(ground.Id, new Point2(-2, 0), new Point2(4, 0));
+        var addedView = session.Document.Views.Single(view => view.Id == added);
+        var marker = ElevationViewGeometry.AtPosition(session.Document, addedView.Orientation, new Point2(1, -4));
+        session.UpdateElevationMarker(added, marker);
+        check(ElevationViewGeometry.Resolve(session.Document, session.Document.Views.Single(view => view.Id == added)) == marker &&
+              ElevationViewGeometry.Coverage(marker, ViewOrientation.North).Count == 4,
+            "views: a manually positioned elevation remains fixed while its field covers the building");
+        session.AddWall(ground.Id, new Point2(20, 0), new Point2(24, 0));
+        check(ElevationViewGeometry.Resolve(session.Document, session.Document.Views.Single(view => view.Id == added)) != marker,
+            "views: an elevation automatically refits only after the building grows outside its field");
+
+        var plan = session.Document.Views.Single(view => view.Kind == ProjectViewKind.Plan && view.LevelId == ground.Id);
+        var range = new PlanViewRange(0.8, 1, 2.6);
+        session.UpdatePlanViewRange(plan.Id, range);
+        check(session.Document.Views.Single(view => view.Id == plan.Id).Range == range &&
+              range.Intersects(0.9, 2) && !range.Intersects(3, 4),
+            "views: a plan persists a simple ordered range and tests vertical visibility");
+        session.RemoveElevationView(added);
+        check(session.Document.Views.All(view => view.Id != added), "views: an added elevation can be deleted");
+        session.RemoveElevationView(BuiltInProjectViews.NorthElevationId);
+        check(session.Document.Views.All(view => view.Id != BuiltInProjectViews.NorthElevationId),
+            "views: a default cardinal elevation can be deleted while another elevation remains");
     }
 
     /// <summary>A chain of walls closes by itself when it ends on, or crosses, a wall that is already there.</summary>

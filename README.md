@@ -26,10 +26,12 @@ Optional third-party AI providers may charge for their own services.
 
 ## Download for Windows
 
-Download the Windows x64 portable package from the
+Download the [Windows x64 installer ZIP](https://github.com/yetsin7/guanacaste-3d/releases/download/v0.23.2/guanacaste-3d-0.23.2-win-x64-installer.zip) from the
 [releases page](https://github.com/yetsin7/guanacaste-3d/releases).
-Extract the ZIP and run `Guanacaste3D.Desktop.exe`. The portable package includes
+Extract the entire ZIP, close Guanacaste 3D after saving, and run `install.cmd`. The application includes
 the .NET runtime and does not require an application subscription or an SDK.
+File thumbnails support `.g3d`, `.g3dt`, `.g3df`, and Revit/SketchUp `.g3dx` exchanges. The installer bundles
+the official .NET 10 Desktop runtime needed by the thumbnail component and installs it only when missing.
 Windows 10 or 11 on a 64-bit PC is required. The package is an unsigned
 technical preview; Windows may display a reputation warning.
 
@@ -40,8 +42,8 @@ Current navigation and editing changes: [Modeling workspace](docs/model-workspac
 Bring Revit and SketchUp models into Guanacaste 3D as editable projects (native walls, doors, windows and slabs;
 everything else as `.g3df` families) — see [Opening Revit projects](docs/revit-import.md):
 
-- [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-Revit.zip)
-  — Revit 2027 add-in. Unzip, close Revit and run `Instalar.cmd`.
+- [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.1/Guanacaste3D-Revit.zip)
+  — Revit 2027 add-in 1.0.1 with embedded previews and Windows thumbnails. Unzip and run `install.cmd`, then restart Revit.
 - [Guanacaste3D-SketchUp.rbz](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-SketchUp.rbz)
   — SketchUp extension (preview). Install from Extensions → Extension Manager.
 
@@ -49,7 +51,7 @@ With Revit 2025 or later installed, Guanacaste 3D also opens `.rvt` files direct
 
 ## Status
 
-Version 0.23.0 is a working technical preview, not a complete professional BIM
+Version 0.23.2 is a working technical preview, not a complete professional BIM
 system. It must not be used for certified structural calculations or issued
 construction documents without independent professional review.
 

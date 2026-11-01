@@ -1,0 +1,87 @@
+using System.IO;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Guanacaste3D.Core.Import.Revit;
+using Guanacaste3D.ExchangePreview;
+using Guanacaste3D.RevitBridge;
+using Guanacaste3D.Thumbnails;
+
+namespace Guanacaste3D.ThumbnailChecks;
+
+/// <summary>Checks old exchange files, the exact export preview writer, and optional local customer files without publishing them.</summary>
+internal static class ExchangeThumbnailChecks
+{
+    /// <summary>Verifies preview generation, embedding, fallback, interoperability, and installed Shell extraction.</summary>
+    internal static void Run(string directory, string[] arguments)
+    {
+        var original = CreateExchange();
+        var legacyPath = Path.Combine(directory, "legacy-exchange.g3dx");
+        File.WriteAllText(legacyPath, original.ToJsonString());
+        Verify(legacyPath, directory, arguments.Contains("--shell"));
+        var embeddedPath = Path.Combine(directory, "embedded-exchange.g3dx");
+        File.Copy(legacyPath, embeddedPath + ".partial", true);
+        ExchangePreviewWriter.Complete(embeddedPath + ".partial", embeddedPath);
+        var embedded = JsonNode.Parse(File.ReadAllBytes(embeddedPath))!;
+        Require(embedded["thumbnailPng"]!.GetValue<string>().Length > 0, "The exporter did not embed a PNG.");
+        foreach (var property in original)
+            Require(JsonNode.DeepEquals(property.Value, embedded[property.Key]), "Preview embedding changed exchange content.");
+        Require(ExchangeFile.Read(embeddedPath).Elements.Count == 1, "The existing importer rejected the updated exchange.");
+        Verify(embeddedPath, directory, arguments.Contains("--shell"));
+        embedded["thumbnailPng"] = "broken preview";
+        DocumentPreview.Render(System.Text.Encoding.UTF8.GetBytes(embedded.ToJsonString()), 256);
+        original["meshes"]![0]!["indices"] = Convert.ToBase64String(MemoryMarshal.AsBytes(new[] { 99, 1, 2 }.AsSpan()));
+        try { DocumentPreview.Render(System.Text.Encoding.UTF8.GetBytes(original.ToJsonString()), 256); }
+        catch (InvalidDataException)
+        {
+            Console.WriteLine("PASS: exchange mesh bounds, optional preview fallback, unchanged BIM payload and importer compatibility");
+            foreach (var argument in arguments.Where(argument => argument.StartsWith("--exchange-file=")))
+                Verify(argument["--exchange-file=".Length..], directory, arguments.Contains("--shell"));
+            return;
+        }
+        throw new InvalidOperationException("Invalid exchange mesh indices were accepted.");
+    }
+
+    /// <summary>Renders a file read-only and optionally asks Windows for its actual cached thumbnail.</summary>
+    private static void Verify(string path, string directory, bool shell)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var image = DocumentPreview.Render(bytes, 512);
+        var pixels = new byte[512 * 512 * 4];
+        image.CopyPixels(pixels, 512 * 4, 0);
+        Require(pixels.Where((value, index) => index % 4 != 3).Count(value => value < 240) > 100, "The exchange preview is blank.");
+        File.WriteAllBytes(Path.Combine(directory, Path.GetFileNameWithoutExtension(path) + "-preview.png"), ExchangeThumbnail.EncodePng(image));
+        if (shell) ShellExtraction.Check(Path.GetFullPath(path));
+        Require(File.ReadAllBytes(path).SequenceEqual(bytes), "Previewing modified the exchange file.");
+        Console.WriteLine($"PASS: read-only exchange thumbnail {Path.GetFileName(path)}");
+    }
+
+    /// <summary>Builds a portable triangle fixture with an instance transform and a material color.</summary>
+    private static JsonObject CreateExchange()
+    {
+        var positions = new[] { new Vector3(0, 0, 0), new Vector3(2, 0, 0), new Vector3(0, 1, 3) };
+        return new JsonObject
+        {
+            ["format"] = "guanacaste-exchange", ["version"] = 1, ["projectName"] = "Exchange thumbnail test",
+            ["materials"] = new JsonArray(new JsonObject { ["color"] = "#4384A0" }),
+            ["levels"] = new JsonArray(),
+            ["meshes"] = new JsonArray(new JsonObject
+            {
+                ["positions"] = Convert.ToBase64String(MemoryMarshal.AsBytes(positions.AsSpan())),
+                ["indices"] = Convert.ToBase64String(MemoryMarshal.AsBytes(new[] { 0, 1, 2 }.AsSpan())),
+                ["materials"] = Convert.ToBase64String(MemoryMarshal.AsBytes(new[] { 0 }.AsSpan()))
+            }),
+            ["elements"] = new JsonArray(new JsonObject
+            {
+                ["id"] = 1, ["mesh"] = 0, ["origin"] = new JsonArray(10, 2, 1), ["rotation"] = 0.3
+            })
+        };
+    }
+
+    /// <summary>Fails the executable regression suite with a developer-facing invariant description.</summary>
+    private static void Require(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
+    }
+}

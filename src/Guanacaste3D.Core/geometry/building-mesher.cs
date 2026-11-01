@@ -79,7 +79,7 @@ public enum SurfaceKind : byte
 }
 
 /// <summary>A texture a mesh maps by coordinates, and the coverage below which its surface is cut away.</summary>
-public sealed record SceneTexture(Rendering.RenderTexture Texture, float AlphaCutoff);
+public sealed record SceneTexture(Rendering.RenderTexture Texture, float AlphaCutoff, Rendering.NormalMap? Normal = null);
 
 /// <summary>The texture coordinates of a triangle's three corners and the <see cref="SceneMesh.Textures"/> entry it uses.</summary>
 public readonly record struct TexturedTriangle(Vector2 A, Vector2 B, Vector2 C, int Texture);

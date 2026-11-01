@@ -970,9 +970,22 @@ public sealed partial class PathTracer
             {
                 var i = triangle * 3;
                 var uv = uvs[i] * (1 - hit.U - hit.V) + uvs[i + 1] * hit.U + uvs[i + 2] * hit.V;
-                // About half a metre of surface per image: enough to pick the mip level of a leaf or a bark tile.
-                var footprint = MathF.Max(hit.Distance * PixelAngle, 1e-5f) * 2;
+                // The detail level follows how much of the image a metre of this triangle covers: a trunk whose image
+                // wraps several metres needs a sharper level than a leaf card of a few centimetres.
+                var world = Vector3.Cross(_scene.Positions[_scene.Indices[i + 1]] - _scene.Positions[_scene.Indices[i]],
+                    _scene.Positions[_scene.Indices[i + 2]] - _scene.Positions[_scene.Indices[i]]).Length();
+                var (du1, du2) = (uvs[i + 1] - uvs[i], uvs[i + 2] - uvs[i]);
+                var imagePerMetre = world > 1e-12f ? MathF.Sqrt(MathF.Abs(du1.X * du2.Y - du2.X * du1.Y) / world) : 1;
+                var footprint = MathF.Max(hit.Distance * PixelAngle, 1e-5f) * imagePerMetre;
                 diffuse *= mapped.Sample(uv.X, 1 - uv.Y, footprint);
+                if (surface.NormalMap is { } relief)
+                {
+                    static Vector2 Up(Vector2 corner) => new(corner.X, 1 - corner.Y);
+                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y), _scene.Positions[_scene.Indices[i]],
+                        _scene.Positions[_scene.Indices[i + 1]], _scene.Positions[_scene.Indices[i + 2]], Up(uvs[i]), Up(uvs[i + 1]), Up(uvs[i + 2]));
+                    // A bend that would turn the surface away from the eye is dropped, as for image relief.
+                    if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                }
             }
             else
             {
@@ -1493,6 +1506,8 @@ public sealed partial class PathTracer
         public RenderTexture? Texture { get; init; }
         /// <summary>The texture is read with the mesh's coordinates rather than projected in world space.</summary>
         public bool UvMapped { get; init; }
+        /// <summary>Relief of a coordinate-mapped surface, or null.</summary>
+        public NormalMap? NormalMap { get; init; }
         /// <summary>Tiles per meter: the reciprocal of the texture size.</summary>
         public float TextureScale { get; init; }
         /// <summary>Relief height in meters of a full white-to-black step in the texture.</summary>
@@ -1532,6 +1547,7 @@ public sealed partial class PathTracer
                 PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
                 Texture = m.Texture,
                 UvMapped = m.UvMapped,
+                NormalMap = m.UvMapped ? m.NormalMap : null,
                 TextureScale = 1 / m.TextureSize,
                 // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
                 TextureDepth = m.TextureRelief * m.TextureSize * 0.01f

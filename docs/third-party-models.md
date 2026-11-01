@@ -26,10 +26,11 @@ The originals are not stored in the repository. Each family keeps its source and
 
 With `--textures`, the vegetation keeps its own images. Each material's base colour image is read from the glTF and,
 for cut-out materials (alpha mode MASK or BLEND), combined with the alpha map Poly Haven ships beside it
-(`*_alpha_1k.png`). Images are reduced to 512 texels a side and stored in the family with the texture coordinates.
-The renderer reads them by coordinate. Where the mask is transparent a leaf or grass card is a hole: camera rays and
-shadows pass through it, so foliage casts dappled shadows instead of squares. Parts reduced by clustering (trunks and
-branches of the large trees) lose their coordinates and take the bark material.
+(`*_alpha_1k.png`). The converter stores color and normal images at the requested texture size, up to 2048 pixels per
+side, along with their texture coordinates. The shipped jacaranda uses the Poly Haven 2K trunk color and OpenGL normal
+maps; its branches and leaves use 1K color maps and 512-pixel normal maps. The renderer reads them by coordinate.
+Where the mask is transparent a leaf or grass card is a hole: camera rays and shadows pass through it, so foliage casts
+dappled shadows instead of squares. Simplified bark retains texture coordinates in the current conversion.
 `--variant k` keeps one of the variants an asset lays side by side, and `--thin =name=1` keeps one material whole.
 
 `tools/mesh-family-converter` reads the model with the application's importer and writes a `.g3df` mesh family:

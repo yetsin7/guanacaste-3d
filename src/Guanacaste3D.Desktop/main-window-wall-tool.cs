@@ -37,6 +37,7 @@ public partial class MainWindow
     private void PlanCanvas_MouseMove(object sender, MouseEventArgs e)
     {
         if (TryPanPlan(e)) return;
+        if (TryUpdateElevationDrag(e)) return;
         // Redrawing the plan replaces the shapes under a resting pointer, so WPF raises a MouseMove at the same position;
         // answering it with another redraw would loop forever and starve the interface. Only real movement counts.
         var position = PlanPosition(e);

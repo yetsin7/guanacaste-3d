@@ -18,11 +18,15 @@ public partial class MainWindow
         var view = _session.Document.Views.FirstOrDefault(candidate => candidate.Id == _sectionViewId &&
             candidate.Kind == ProjectViewKind.Section) ?? _session.Document.Views.FirstOrDefault(view => view.Kind == ProjectViewKind.Section);
         if (view is null) return;
-        if (ViewTabs.Items[5] is TabItem tab) tab.Header = view.Name;
+        if (ViewTabs.Items[5] is TabItem tab) tab.Header = view.SectionMode == SectionDisplayMode.Structural
+            ? FormatText("Section.StructuralCaption", view.Name) : view.Name;
         var (minimum, maximum) = mesh.Bounds();
         var cut = view.Cut ?? new SectionCut(new((minimum.X + maximum.X) / 2, minimum.Y - 1),
             new((minimum.X + maximum.X) / 2, maximum.Y + 1));
         var contours = SectionGeometry.Build(mesh, cut);
+        if (view.SectionMode == SectionDisplayMode.Structural)
+            contours = contours.Where(contour => contour.Kind is SurfaceKind.Wall or SurfaceKind.InteriorWall or
+                SurfaceKind.Floor or SurfaceKind.Roof or SurfaceKind.Structure).ToArray();
         var minZ = Math.Min(minimum.Z, _session.Document.Levels.Min(level => level.Elevation)) - 0.5;
         var maxZ = Math.Max(maximum.Z, _session.Document.Levels.Max(level => level.Elevation)) + 0.5;
         var width = cut.Start.DistanceTo(cut.End);
@@ -46,12 +50,22 @@ public partial class MainWindow
             }
             closed.Freeze();
             canvas.Children.Add(new Path { Data = closed.GetOutlinedPathGeometry(0.1, ToleranceType.Absolute),
-                Stroke = Brushes.DarkSlateGray, StrokeThickness = 1.4,
-                Fill = group.Key == SurfaceKind.Glass ? Brushes.AliceBlue : Brushes.LightGray, Tag = view.Id });
+                Stroke = Brushes.DarkSlateGray, StrokeThickness = group.Key == SurfaceKind.Structure ? 1.8 : 1.4,
+                Fill = SectionFill(group.Key, view.SectionMode), Tag = view.Id });
             foreach (var contour in group.Where(contour => !contour.Closed))
                 canvas.Children.Add(new Polyline { Points = new PointCollection(contour.Points.Select(point =>
                     new Point(left + point.X * scale, ProjectElevation(canvas, point.Y, minZ, scale)))),
                     Stroke = Brushes.DarkSlateGray, StrokeThickness = 1.4 });
         }
     }
+
+    /// <summary>Uses stronger structural poche while retaining distinct glass and coordinated-model fills.</summary>
+    private static Brush SectionFill(SurfaceKind kind, SectionDisplayMode mode) => kind switch
+    {
+        SurfaceKind.Glass => Brushes.AliceBlue,
+        SurfaceKind.Structure when mode == SectionDisplayMode.Structural => Brushes.SlateGray,
+        SurfaceKind.Wall or SurfaceKind.InteriorWall when mode == SectionDisplayMode.Structural => Brushes.DarkGray,
+        SurfaceKind.Floor when mode == SectionDisplayMode.Structural => Brushes.Gray,
+        _ => Brushes.LightGray
+    };
 }

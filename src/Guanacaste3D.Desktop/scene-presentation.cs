@@ -287,7 +287,7 @@ internal static class ScenePresentation
         var up = ToWpf(camera.Up);
         converted.UpDirection = new Vector3D(up.X, up.Y, up.Z);
         // Flying through rooms needs a close near plane; a long far plane keeps the horizon visible from outside.
-        converted.NearPlaneDistance = Math.Max(0.02, sceneRadius * 0.0005);
+        converted.NearPlaneDistance = 0.02;
         converted.FarPlaneDistance = Math.Max(500, sceneRadius * 40);
         return converted;
     }

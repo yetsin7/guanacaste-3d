@@ -9,6 +9,11 @@ public sealed class ProxyMesh
     public int[] Indices { get; init; } = [];
     /// <summary>Index into the source model's materials for each triangle.</summary>
     public int[] TriangleMaterial { get; init; } = [];
+    /// <summary>
+    /// For a reduced mesh, the source triangle each triangle was collapsed from, so per-corner data such as texture
+    /// coordinates can be carried over; empty when the mesh was not reduced.
+    /// </summary>
+    public int[] SourceTriangle { get; init; } = [];
     public int TriangleCount => Indices.Length / 3;
     /// <summary>Triangles in the full-detail source.</summary>
     public int SourceTriangles { get; init; }
@@ -93,6 +98,7 @@ public static class MeshProxy
 
         var indices = new List<int>(Math.Min(model.Indices.Length, 600_000));
         var materials = new List<int>(indices.Capacity / 3);
+        var sources = new List<int>(indices.Capacity / 3);
         var seen = new HashSet<(int, int, int)>();
         for (var t = 0; t < model.TriangleCount; t++)
         {
@@ -107,10 +113,12 @@ public static class MeshProxy
             indices.Add(b);
             indices.Add(c);
             materials.Add(t < model.TriangleMaterial.Length ? model.TriangleMaterial[t] : 0);
+            sources.Add(t);
         }
         return new ProxyMesh
         {
-            Positions = positions, Indices = [.. indices], TriangleMaterial = [.. materials], SourceTriangles = model.TriangleCount
+            Positions = positions, Indices = [.. indices], TriangleMaterial = [.. materials], SourceTriangles = model.TriangleCount,
+            SourceTriangle = [.. sources]
         };
     }
 }

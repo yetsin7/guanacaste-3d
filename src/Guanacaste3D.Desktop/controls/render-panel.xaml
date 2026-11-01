@@ -472,6 +472,7 @@
         <Border.Effect><DropShadowEffect Color="#475569" BlurRadius="24" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
+      <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
       <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,66" Padding="14,7" CornerRadius="16"
               Background="#B31E293B" IsHitTestVisible="False">
         <TextBlock x:Name="HintText" Text="{DynamicResource RenderPanel.Controls}" Foreground="White" FontSize="12"

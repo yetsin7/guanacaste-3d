@@ -71,13 +71,20 @@ internal static partial class DocumentationChecks
             Check(session.Document.Views.All(view => view.Cut is null), "The first cut click does not create a section prematurely");
             ClickAt(new(1, 5));
             var section = session.Document.Views.Single(view => view.Cut is not null);
-            Check(((TabControl)_window.FindName("ViewTabs")).SelectedIndex == 5,
-                "The second cut click opens the new coordinated section view");
+            Check(((TabControl)_window.FindName("ViewTabs")).SelectedIndex == 5 &&
+                  section.SectionMode == SectionDisplayMode.Structural,
+                "The second cut click opens a structural section through the selected axis");
             Pump();
             var sectionCanvas = (Canvas)_window.FindName("SectionCanvas");
             Check(sectionCanvas.Children.OfType<System.Windows.Shapes.Path>().Any(), "The section canvas renders mesh intersection profiles");
-            Check(((TextBlock)_window.FindName("PropertiesActiveViewText")).Text == section.Name && _window.Title.Contains(section.Name),
-                "The section tab, properties caption, and window title use the same saved view name");
+            var planHeads = ((Canvas)_window.FindName("PlanCanvas")).Children.OfType<System.Windows.Shapes.Ellipse>()
+                .Count(head => head.Tag is Guid id && id == section.Id && Math.Abs(head.Width - 28) < 0.1);
+            Check(planHeads == 2, "The structural section axis uses two conventional circular reference heads");
+            Check(((TabItem)((TabControl)_window.FindName("ViewTabs")).Items[5]).Header.ToString()!.Contains(section.Name),
+                "The structural section tab retains the saved view name");
+            Check(((TextBlock)_window.FindName("PropertiesActiveViewText")).Text.Contains(section.Name),
+                "The structural section properties retain the saved view name");
+            Check(_window.Title.Contains(section.Name), "The structural section window title retains the saved view name");
             var coordinates = Field<List<TextBox>>("_documentationCoordinateInputs");
             Check(coordinates.Count == 4 && ((TextBlock)_window.FindName("PropertiesText")).Text.Contains(
                 (string)application.FindResource("Documentation.ViewKind.Section")),

@@ -40,6 +40,7 @@ public partial class MainWindow
         if (view.LevelId is Guid levelId) _activeLevelId = levelId;
         ViewTabs.SelectedIndex = GetViewTabIndex(view.Kind);
         RefreshLevelPicker();
+        RefreshViewShortcuts();
         RefreshProperties();
         RenderOrthographicViews();
     }
@@ -65,7 +66,11 @@ public partial class MainWindow
         // Each generated view draws what its own visibility shows: hidden or isolated elements are left out per view.
         var elevationDocument = ViewVisibility.Apply(_session.Document, ProjectViewById(_elevationViewId));
         RenderProjectedView(ElevationCanvas, elevation, BuildingMesher.Build(elevationDocument), elevationDocument);
-        RenderSectionView(BuildingMesher.Build(ViewVisibility.Apply(_session.Document, ProjectViewById(_sectionViewId))));
+        var sectionView = ProjectViewById(_sectionViewId);
+        var sectionDocument = ViewVisibility.Apply(_session.Document, sectionView);
+        if (sectionView?.SectionMode == SectionDisplayMode.Structural)
+            sectionDocument = StructuralSectionDocument.Create(sectionDocument);
+        RenderSectionView(BuildingMesher.Build(sectionDocument));
         UpdateDocumentationCaption();
     }
 

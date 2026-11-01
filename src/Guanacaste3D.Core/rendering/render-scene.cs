@@ -137,7 +137,7 @@ public sealed class RenderSceneBuilder
                     textured[(kind, corners.Texture)] = material = MaterialIndex(materialFor(kind) with
                     {
                         BaseColor = Vector3.One, Pattern = SurfacePattern.None, Texture = image.Texture, TextureSize = 1,
-                        TextureRelief = 0, UvMapped = true, AlphaCutoff = image.AlphaCutoff
+                        TextureRelief = 0, UvMapped = true, AlphaCutoff = image.AlphaCutoff, NormalMap = image.Normal
                     });
                 }
                 _uvs.Add((_triangleMaterial.Count, corners));

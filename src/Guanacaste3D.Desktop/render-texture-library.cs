@@ -72,13 +72,15 @@ internal static class RenderTextureLibrary
 
     private static readonly ConcurrentDictionary<string, (DateTime Stamp, RenderTexture Texture)> Cache = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Full path of a stored texture path: a shipped texture, an absolute path, or one relative to the project.</summary>
+    /// <summary>Resolves a preset or shipped texture, an absolute path, or a path relative to the project.</summary>
     public static string? Resolve(string texturePath, string? projectFile)
     {
-        // Library identifiers are not file paths. Unknown material: IDs from older
-        // projects must not reach Path.GetFullPath (invalid colon on Windows).
+        // Library identifiers are not file paths. Presets resolve to their shipped texture key when available.
         if (texturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
-            return null;
+        {
+            var preset = MaterialPresets.FromPath(texturePath);
+            return preset?.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null;
+        }
         if (texturePath.StartsWith(BuiltInPrefix, StringComparison.Ordinal))
         {
             var key = texturePath[BuiltInPrefix.Length..];

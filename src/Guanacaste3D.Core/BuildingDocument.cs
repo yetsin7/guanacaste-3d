@@ -309,6 +309,11 @@ public sealed class BuildingDocument
         if (Views.Count < 1 || Views.Any(view => view.Id == Guid.Empty ||
                 string.IsNullOrWhiteSpace(view.Name) || view.Name.Length > 120 ||
                 !Enum.IsDefined(view.Kind) || !Enum.IsDefined(view.Orientation) ||
+                !Enum.IsDefined(view.SectionMode) ||
+                (view.Kind != ProjectViewKind.Section && view.SectionMode != SectionDisplayMode.Coordinated) ||
+                (view.Range is not null && (view.Kind != ProjectViewKind.Plan || !view.Range.IsValid)) ||
+                (view.ElevationMarker is not null &&
+                    (view.Kind != ProjectViewKind.Elevation || !view.ElevationMarker.IsValid)) ||
                 (view.Cut is not null && (view.Kind != ProjectViewKind.Section || !view.Cut.IsValid)) ||
                 (view.Kind == ProjectViewKind.Plan &&
                     (view.LevelId is not Guid levelId || !levelIds.Contains(levelId))) ||

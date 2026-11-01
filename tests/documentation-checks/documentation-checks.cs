@@ -84,6 +84,27 @@ internal static partial class DocumentationChecks
         var overlapContours = SectionGeometry.Build(BuildingMesher.Build(overlap.Document), new(new(0, -1), new(0, 1)));
         Check(overlapContours.All(contour => contour.Closed) && overlapContours.Sum(contour => WindingAt(contour, new(1.1, 1))) == 2,
             "Overlapping solids preserve a nonzero interior instead of creating an artificial void");
+
+        var structural = new DocumentSession(BuildingDocument.Create("Structural section verification"));
+        var structuralLevel = structural.Document.Levels[0].Id;
+        structural.AddWall(structuralLevel, new(0, 0), new(4, 0));
+        structural.AddColumn(structuralLevel, new(2, 0));
+        structural.AddStructuralElement(structuralLevel, StructuralElementKind.IsolatedFoundation, "F1", new(2, 0), new(2, 0));
+        structural.AddStructuralElement(structuralLevel, StructuralElementKind.Beam, "B1", new(0, 0), new(4, 0));
+        structural.AddStructuralElement(structuralLevel, StructuralElementKind.Component, "Cabinet", new(1, 1), new(1, 1));
+        structural.AddElectricalDevice(structuralLevel, ElectricalDeviceKind.Switch, "S1", new(1, 0));
+        var structuralView = structural.AddSectionView("Structural axis", new(new(2, -1), new(2, 1)), SectionDisplayMode.Structural);
+        var structuralDocument = StructuralSectionDocument.Create(structural.Document);
+        Check(structuralDocument.Walls.Count == 1 && structuralDocument.Columns.Count == 1 &&
+              structuralDocument.ElectricalDevices.Count == 0 && structuralDocument.StructuralElements.All(element =>
+                  element.Kind is StructuralElementKind.Beam or StructuralElementKind.IsolatedFoundation),
+            "A structural section keeps walls, columns, beams and foundations while hiding equipment and components");
+        Check(SectionGeometry.Build(BuildingMesher.Build(structuralDocument), new(new(2, -1), new(2, 1)))
+                .Any(contour => contour.Kind == SurfaceKind.Structure),
+            "A structural section axis cuts through the interior of modeled structural elements");
+        structural.SetSectionDisplayMode(structuralView, SectionDisplayMode.Coordinated);
+        Check(structural.Document.Views.Single(view => view.Id == structuralView).SectionMode == SectionDisplayMode.Coordinated,
+            "A section can return to the complete coordinated model");
     }
 
     /// <summary>Verifies editable dimensions against shared axes and safe deletion with history.</summary>

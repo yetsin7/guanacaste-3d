@@ -83,8 +83,8 @@ internal sealed partial class SceneNavigator
     public bool CollisionEnabled { get; set; }
 
     /// <summary>Whether keys currently belong to navigation (the pointer is over the surface and no text box has focus).</summary>
-    public bool IsActive => _surface.IsVisible && (_surface.IsMouseOver || _surface.IsKeyboardFocusWithin) &&
-                            Keyboard.FocusedElement is not TextBox;
+    public bool IsActive => Window.GetWindow(_surface)?.IsActive == true && _surface.IsVisible && (_surface.IsMouseOver || _surface.IsKeyboardFocusWithin) &&
+                            Keyboard.FocusedElement is not TextBox && Keyboard.FocusedElement is not System.Windows.Controls.Primitives.Selector;
 
     /// <summary>Whether a key press is a navigation key that the window must not treat as a command shortcut.</summary>
     public bool OwnsKey(Key key) => IsActive && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && key is Key.W or Key.A or Key.S or Key.D or Key.Q or Key.E or Key.Up or Key.Down
@@ -203,6 +203,7 @@ internal sealed partial class SceneNavigator
     /// <summary>Releases the rendering subscription when its surface is hidden or unloaded.</summary>
     private void StopTicking()
     {
+        EndFlight();
         if (!_ticking) return;
         _ticking = false;
         CompositionTarget.Rendering -= OnFrame;
@@ -214,20 +215,19 @@ internal sealed partial class SceneNavigator
         var now = (e as RenderingEventArgs)?.RenderingTime ?? TimeSpan.Zero;
         var dt = _lastTick == TimeSpan.Zero ? 0 : Math.Min(0.1, (now - _lastTick).TotalSeconds);
         _lastTick = now;
-        if (dt <= 0 || IsLocked || !IsActive || EditingActive?.Invoke() == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
+        if (dt <= 0 || IsLocked || !IsActive || EditingActive?.Invoke() == true || Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            EndFlight();
+            return;
+        }
 
         /// <summary>Samples one navigation key as a normalized movement contribution.</summary>
         float Key(Key key) => Keyboard.IsKeyDown(key) ? 1 : 0;
         var forward = Key(System.Windows.Input.Key.W) + Key(System.Windows.Input.Key.Up) - Key(System.Windows.Input.Key.S) - Key(System.Windows.Input.Key.Down);
         var right = Key(System.Windows.Input.Key.D) + Key(System.Windows.Input.Key.Right) - Key(System.Windows.Input.Key.A) - Key(System.Windows.Input.Key.Left);
         var up = Key(System.Windows.Input.Key.E) - Key(System.Windows.Input.Key.Q);
-        if (forward == 0 && right == 0 && up == 0) return;
-
-        var speed = Math.Clamp(SceneRadius() * 0.25f, 1.5f, 60f);
-        if (Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift) || Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift)) speed *= 3;
-        if (Keyboard.IsKeyDown(System.Windows.Input.Key.LeftCtrl) || Keyboard.IsKeyDown(System.Windows.Input.Key.RightCtrl)) speed *= 0.25f;
-        MoveCamera(Camera.FlyDelta(new Vector3(forward, right, up), speed * (float)dt));
-        NotifyChanged();
+        ApplyFlight(new Vector3(forward, right, up), (float)dt,
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
     }
 
     /// <summary>Applies a displacement, stopping at surfaces when collisions are on.</summary>

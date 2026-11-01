@@ -58,6 +58,10 @@
   <sys:String x:Key="RenderPanel.MaterialFromFile">Imagen del disco…</sys:String>
   <sys:String x:Key="RenderPanel.TextureFilter">Imágenes (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif</sys:String>
   <sys:String x:Key="RenderPanel.TextureSizeHint">Metros que cubre una copia de la imagen (por ejemplo 1 para un paño de ladrillo de 1 m).</sys:String>
+  <sys:String x:Key="RenderPanel.TextureReliefHint">Relieve de la textura: 0 es plano y 1 es el máximo.</sys:String>
+  <sys:String x:Key="RenderPanel.MaterialFieldLegend">En cada fila: material, relieve (0–1) y escala (m).</sys:String>
+  <sys:String x:Key="RenderPanel.TextureSizeName">Escala de textura en metros</sys:String>
+  <sys:String x:Key="RenderPanel.TextureReliefName">Relieve de textura</sys:String>
   <sys:String x:Key="Material.Walls">Muros (cara exterior)</sys:String>
   <sys:String x:Key="Material.InteriorWalls">Muros (cara interior)</sys:String>
   <sys:String x:Key="Material.Floors">Pisos y losas</sys:String>
@@ -265,4 +269,8 @@
 
   <!-- Unsaved changes -->
   <sys:String x:Key="Dialog.UnsavedChanges">Hay cambios sin guardar. ¿Quieres guardarlos antes de continuar?</sys:String>
+  <sys:String x:Key="RenderPanel.TravelSpeed">Velocidad de recorrido (m/s)</sys:String>
+  <sys:String x:Key="RenderPanel.TravelSpeedHint">De 0,2 a 10 m/s. Mayús acelera; Alt permite movimientos precisos.</sys:String>
+  <sys:String x:Key="RenderPanel.HorizontalTravel">Mantener altura al avanzar</sys:String>
+  <sys:String x:Key="RenderPanel.FlightHint">Clic en la vista para navegar. W/A/S/D o flechas: desplazarse. Q/E: bajar/subir. Botón derecho: mirar. Rueda: avanzar/retroceder. Desactiva las colisiones para atravesar paredes.</sys:String>
 </ResourceDictionary>

@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="src/windows-thumbnails/windows-thumbnails.csproj" />
+  <Project Path="tests/thumbnail-checks/thumbnail-checks.csproj" />
   <Project Path="tests/documentation-checks/documentation-checks.csproj" />
   <Folder Name="/src/" />
   <Folder Name="/tests/">

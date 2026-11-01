@@ -71,6 +71,7 @@ try {
     $nativeFileTypes = @(
         @{ Extension = '.g3d'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
         @{ Extension = '.g3df'; Type = 'Guanacaste3D.Family'; Description = 'Guanacaste 3D Family' },
+        @{ Extension = '.g3dx'; Type = 'Guanacaste3D.Exchange'; Description = 'Guanacaste 3D Exchange' },
         @{ Extension = '.g3'; Type = 'Guanacaste3D.Project'; Description = 'Guanacaste 3D Project' },
         @{ Extension = '.g3dt'; Type = 'Guanacaste3D.Template'; Description = 'Guanacaste 3D Template' }
     )
@@ -86,6 +87,8 @@ try {
         New-Item -Path "$documentTypeKey\shell\open\command" -Force | Out-Null
         Set-Item -Path "$documentTypeKey\shell\open\command" -Value "`"$installedExecutable`" `"%1`""
     }
+
+    & (Join-Path $scriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $publishRoot 'thumbnail-handler')
 
     Write-Output "Installed Guanacaste 3D at $installedExecutable"
     Write-Output 'Registered .g3d projects, .g3df families, and .g3dt templates.'

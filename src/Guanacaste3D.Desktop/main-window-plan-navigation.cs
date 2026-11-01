@@ -98,6 +98,9 @@ public partial class MainWindow
     private void PlanCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         _pressCanvasPoint = null;
+        if (FinishElevationDrag()) return;
+        _pressedElevationViewId = null;
+        _elevationPressCanvasPoint = null;
         if (!_dragMove) return;
         _dragMove = false;
         PlanCanvas.ReleaseMouseCapture();

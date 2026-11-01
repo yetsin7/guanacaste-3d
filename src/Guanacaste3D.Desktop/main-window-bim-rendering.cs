@@ -10,9 +10,10 @@ namespace Guanacaste3D.Desktop;
 public partial class MainWindow
 {
     /// <summary>Renders floor and room overlays behind wall geometry in plan.</summary>
-    private void RenderExtendedPlanElements(BuildingDocument document)
+    private void RenderExtendedPlanElements(BuildingDocument document, PlanViewRange range)
     {
-        foreach (var floor in document.Floors.Where(floor => floor.LevelId == _activeLevelId))
+        foreach (var floor in document.Floors.Where(floor => floor.LevelId == _activeLevelId &&
+            range.Intersects(floor.ElevationOffset - floor.Thickness, floor.ElevationOffset)))
         {
             if (floor.IsToposolid)
             {
@@ -50,7 +51,8 @@ public partial class MainWindow
                 });
             }
         }
-        foreach (var column in document.Columns.Where(column => column.LevelId == _activeLevelId))
+        foreach (var column in document.Columns.Where(column => column.LevelId == _activeLevelId &&
+            range.Intersects(0, column.Height)))
         {
             PlanCanvas.Children.Add(new Polygon
             {

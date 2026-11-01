@@ -64,15 +64,35 @@ internal static class Program
         var outMaterials = new List<int>();
         var solid = Subset(source, triangle => thinned.GetValueOrDefault(source.TriangleMaterial[triangle]) == 0);
         var reduced = MeshProxy.Build(solid, Math.Max(1000, budget));
-        outPositions.AddRange(reduced.Positions);
-        // A part small enough to keep whole keeps its texture coordinates; clustering merges vertices and loses them.
-        var whole = !reduced.IsReduced && solid.Uvs is not null;
-        outUvs.AddRange(reduced.Positions.Select((_, vertex) => whole ? solid.Uvs![vertex] : (Vector2?)null));
-        outIndices.AddRange(reduced.Indices);
-        outMaterials.AddRange(reduced.TriangleMaterial);
+        if (reduced.IsReduced && solid.Uvs is { } solidUvs)
+        {
+            // Clustering merges vertices from different parts of the image, so each reduced triangle gets its own three
+            // corners with the coordinates of the source triangle it was collapsed from: bark keeps its texture.
+            for (var triangle = 0; triangle < reduced.TriangleCount; triangle++)
+            {
+                var origin = reduced.SourceTriangle[triangle];
+                for (var corner = 0; corner < 3; corner++)
+                {
+                    outIndices.Add(outPositions.Count);
+                    outPositions.Add(reduced.Positions[reduced.Indices[triangle * 3 + corner]]);
+                    outUvs.Add(solidUvs[solid.Indices[origin * 3 + corner]]);
+                }
+                outMaterials.Add(reduced.TriangleMaterial[triangle]);
+            }
+        }
+        else
+        {
+            outPositions.AddRange(reduced.Positions);
+            outUvs.AddRange(reduced.Positions.Select((_, vertex) => solid.Uvs is { } uvs ? uvs[vertex] : (Vector2?)null));
+            outIndices.AddRange(reduced.Indices);
+            outMaterials.AddRange(reduced.TriangleMaterial);
+        }
         foreach (var (material, keep) in thinned.Where(pair => pair.Value > 0))
             Thin(source, material, keep, outPositions, outUvs, outIndices, outMaterials);
         // --textures reads each material's base colour image (and its alpha map) from the glTF.
+        if (Single(options, "--texture-size") is { } side) MaterialImages.MaximumSide = int.Parse(side, CultureInfo.InvariantCulture);
+        foreach (var rule in options.GetValueOrDefault("--saturation", []))
+            MaterialImages.Saturation.Add((rule[..rule.LastIndexOf('=')], float.Parse(rule[(rule.LastIndexOf('=') + 1)..], CultureInfo.InvariantCulture)));
         var images = options.ContainsKey("--textures") ? MaterialImages.Read(arguments[1], source.Materials) : [];
         var proxy = new ProxyMesh
         {
@@ -293,19 +313,24 @@ internal static class Program
     private static ImportedModel Load(string path) =>
         ModelImporter.Import(path, new ModelImportOptions { MetersPerUnit = 1, MaximumTriangles = 40_000_000 }).Model;
 
-    /// <summary>Area-weighted vertex normals over shared vertices.</summary>
+    /// <summary>
+    /// Area-weighted vertex normals. Vertices at the same position are smoothed together, so a mesh split at texture
+    /// seams (or into separate corners per triangle) still shades round instead of faceted.
+    /// </summary>
     private static Vector3[] SmoothNormals(Vector3[] positions, List<int> indices)
     {
-        var normals = new Vector3[positions.Length];
+        var weld = new Dictionary<Vector3, int>();
+        var group = positions.Select(position => weld.TryGetValue(position, out var index) ? index : weld[position] = weld.Count).ToArray();
+        var sums = new Vector3[weld.Count];
         for (var index = 0; index < indices.Count; index += 3)
         {
             var (a, b, c) = (indices[index], indices[index + 1], indices[index + 2]);
             var face = Vector3.Cross(positions[b] - positions[a], positions[c] - positions[a]);
-            normals[a] += face;
-            normals[b] += face;
-            normals[c] += face;
+            sums[group[a]] += face;
+            sums[group[b]] += face;
+            sums[group[c]] += face;
         }
-        return normals.Select(normal => normal.LengthSquared() > 0 ? Vector3.Normalize(normal) : Vector3.UnitZ).ToArray();
+        return group.Select(index => sums[index].LengthSquared() > 0 ? Vector3.Normalize(sums[index]) : Vector3.UnitZ).ToArray();
     }
 
     private static string? Single(Dictionary<string, List<string>> options, string key) =>

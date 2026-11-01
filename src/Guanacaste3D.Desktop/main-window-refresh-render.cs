@@ -23,6 +23,7 @@ public partial class MainWindow
         if (!_session.Document.Walls.Any(wall => wall.Id == _selectedWallId)) _selectedWallId = null;
         if (!_session.Document.Openings.Any(opening => opening.Id == _selectedOpeningId)) _selectedOpeningId = null;
         RefreshLevelPicker();
+        RefreshViewShortcuts();
         RefreshTree();
         RefreshProperties();
         RenderPlan();

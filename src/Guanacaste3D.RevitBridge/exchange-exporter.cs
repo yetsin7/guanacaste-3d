@@ -12,7 +12,7 @@ namespace Guanacaste3D.RevitBridge;
 /// Identical family geometry is written once: an instance refers to a mesh in its own frame (origin plus a turn about Z).
 /// The format is documented in docs/revit-import.md.
 /// </summary>
-internal sealed class ExchangeExporter
+internal sealed partial class ExchangeExporter
 {
     public const int FormatVersion = 1;
     private const double Meters = 0.3048;
@@ -84,6 +84,7 @@ internal sealed class ExchangeExporter
         return true;
     }
 
+    /// <summary>Creates an exchange element while sharing repeated meshes and preserving host metadata.</summary>
     private void Visit(Element element)
     {
         var record = new JsonObject
@@ -178,6 +179,7 @@ internal sealed class ExchangeExporter
         }
     }
 
+    /// <summary>Appends a tessellated Revit face with indices offset to the shared mesh vertex buffer.</summary>
     private static void AddMesh(Mesh mesh, MeshBuilder builder, int material)
     {
         var start = builder.VertexCount;
@@ -220,234 +222,5 @@ internal sealed class ExchangeExporter
         if (_meshByHash.TryGetValue(hash, out var existing)) return existing;
         _meshes.Add(builder);
         return _meshByHash[hash] = _meshes.Count - 1;
-    }
-
-    private JsonObject DescribeWall(Wall wall)
-    {
-        var data = new JsonObject
-        {
-            ["wallKind"] = wall.WallType.Kind.ToString(),
-            ["width"] = wall.Width * Meters,
-            ["function"] = wall.WallType.Function.ToString()
-        };
-        if (wall.Location is LocationCurve { Curve: { } curve })
-        {
-            // Revit places the wall on its location line (a face or the core); Guanacaste walls run on the centerline.
-            var structure = wall.WallType.GetCompoundStructure();
-            var key = (WallLocationLine)(wall.get_Parameter(BuiltInParameter.WALL_KEY_REF_PARAM)?.AsInteger() ?? 0);
-            var offset = structure?.GetOffsetForLocationLine(key) ?? 0;
-            var shift = wall.Orientation.Multiply(-offset);
-            var start = curve.GetEndPoint(0) + shift;
-            var end = curve.GetEndPoint(1) + shift;
-            data["start"] = new JsonArray(start.X * Meters, start.Y * Meters);
-            data["end"] = new JsonArray(end.X * Meters, end.Y * Meters);
-            data["curved"] = curve is not Line;
-            data["locationLine"] = key.ToString();
-            data["locationOffset"] = offset * Meters;
-            data["orientation"] = new JsonArray(wall.Orientation.X, wall.Orientation.Y);
-            if (curve is Arc arc)
-            {
-                data["center"] = new JsonArray((arc.Center.X + shift.X) * Meters, (arc.Center.Y + shift.Y) * Meters);
-                data["radius"] = arc.Radius * Meters;
-            }
-        }
-        var baseLevel = _document.GetElement(wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)?.AsElementId()
-                                             ?? ElementId.InvalidElementId) as Level;
-        var baseOffset = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
-        if (baseLevel is not null)
-        {
-            data["baseLevel"] = baseLevel.Id.Value;
-            data["baseZ"] = (baseLevel.ProjectElevation + baseOffset) * Meters;
-        }
-        data["height"] = (wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0) * Meters;
-        if (wall.get_BoundingBox(null) is { } box)
-        {
-            data["bottomZ"] = box.Min.Z * Meters;
-            data["topZ"] = box.Max.Z * Meters;
-        }
-        var topLevel = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)?.AsElementId();
-        if (topLevel is not null && topLevel != ElementId.InvalidElementId) data["topLevel"] = topLevel.Value;
-        data["topOffset"] = (wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0) * Meters;
-        data["profileEdited"] = wall.SketchId != ElementId.InvalidElementId;
-        data["topAttached"] = wall.get_Parameter(BuiltInParameter.WALL_TOP_IS_ATTACHED)?.AsInteger() == 1;
-        data["baseAttached"] = wall.get_Parameter(BuiltInParameter.WALL_BOTTOM_IS_ATTACHED)?.AsInteger() == 1;
-        var layers = new JsonArray();
-        if (wall.WallType.GetCompoundStructure() is { } compound)
-            foreach (var layer in compound.GetLayers())
-            {
-                var material = _document.GetElement(layer.MaterialId) as Material;
-                layers.Add(new JsonObject
-                {
-                    ["function"] = layer.Function.ToString(),
-                    ["width"] = layer.Width * Meters,
-                    ["material"] = material?.Name ?? "",
-                    ["class"] = material?.MaterialClass ?? ""
-                });
-            }
-        data["layers"] = layers;
-        return data;
-    }
-
-    private JsonObject DescribeOpening(FamilyInstance instance, Wall host)
-    {
-        var point = (instance.Location as LocationPoint)?.Point ?? instance.GetTotalTransform().Origin;
-        var door = instance.Category?.Id.Value == (long)BuiltInCategory.OST_Doors;
-        var width = Length(instance, door ? BuiltInParameter.DOOR_WIDTH : BuiltInParameter.WINDOW_WIDTH,
-            BuiltInParameter.FAMILY_WIDTH_PARAM, BuiltInParameter.FAMILY_ROUGH_WIDTH_PARAM);
-        var height = Length(instance, door ? BuiltInParameter.DOOR_HEIGHT : BuiltInParameter.WINDOW_HEIGHT,
-            BuiltInParameter.FAMILY_HEIGHT_PARAM, BuiltInParameter.FAMILY_ROUGH_HEIGHT_PARAM);
-        var roughWidth = Length(instance, BuiltInParameter.FAMILY_ROUGH_WIDTH_PARAM);
-        var roughHeight = Length(instance, BuiltInParameter.FAMILY_ROUGH_HEIGHT_PARAM);
-        var sill = instance.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM)?.AsDouble();
-        var levelZ = _document.GetElement(instance.LevelId) is Level level ? level.ProjectElevation : (double?)null;
-        var data = new JsonObject
-        {
-            ["host"] = host.Id.Value,
-            ["point"] = new JsonArray(point.X * Meters, point.Y * Meters, point.Z * Meters),
-            ["facing"] = new JsonArray(instance.FacingOrientation.X, instance.FacingOrientation.Y),
-            ["hand"] = new JsonArray(instance.HandOrientation.X, instance.HandOrientation.Y),
-            ["facingFlipped"] = instance.FacingFlipped,
-            ["handFlipped"] = instance.HandFlipped,
-            ["mirrored"] = instance.Mirrored
-        };
-        if (width is { } w) data["width"] = w * Meters;
-        if (height is { } h) data["height"] = h * Meters;
-        if (roughWidth is { } rw) data["roughWidth"] = rw * Meters;
-        if (roughHeight is { } rh) data["roughHeight"] = rh * Meters;
-        if (sill is { } s && levelZ is { } z) data["sillZ"] = (z + s) * Meters;
-        return data;
-    }
-
-    /// <summary>The first length found on the instance, then on its type, among the given parameters.</summary>
-    private static double? Length(FamilyInstance instance, params BuiltInParameter[] parameters)
-    {
-        foreach (var parameter in parameters)
-        {
-            foreach (var owner in new Element[] { instance, instance.Symbol })
-                if (owner.get_Parameter(parameter) is { HasValue: true, StorageType: StorageType.Double } value &&
-                    value.AsDouble() > 1e-6)
-                    return value.AsDouble();
-        }
-        return null;
-    }
-
-    /// <summary>Outline loops, top elevation and thickness of a floor, ceiling or roof; flat when it has one level top.</summary>
-    private JsonObject? DescribeSlab(HostObject host)
-    {
-        var references = host is Ceiling ? HostObjectUtils.GetBottomFaces(host) : HostObjectUtils.GetTopFaces(host);
-        var faces = references.Select(reference => host.GetGeometryObjectFromReference(reference)).OfType<Face>().ToList();
-        if (faces.Count == 0) return null;
-        var flat = faces.Count == 1 && faces[0] is PlanarFace { FaceNormal.Z: var nz } && Math.Abs(nz) > 0.9995;
-        var data = new JsonObject { ["flat"] = flat };
-        if (faces[0] is PlanarFace planar)
-        {
-            var loops = new JsonArray();
-            foreach (var loop in planar.GetEdgesAsCurveLoops())
-            {
-                var points = new JsonArray();
-                foreach (var curve in loop)
-                {
-                    var tessellated = curve.Tessellate();
-                    for (var index = 0; index < tessellated.Count - 1; index++)
-                        points.Add(new JsonArray(tessellated[index].X * Meters, tessellated[index].Y * Meters));
-                }
-                loops.Add(points);
-            }
-            data["loops"] = loops;
-            data["z"] = planar.Origin.Z * Meters;
-        }
-        var thickness = host switch
-        {
-            Floor => host.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM)?.AsDouble(),
-            RoofBase => host.get_Parameter(BuiltInParameter.ROOF_ATTR_THICKNESS_PARAM)?.AsDouble(),
-            _ => host.get_Parameter(BuiltInParameter.CEILING_THICKNESS)?.AsDouble()
-        };
-        if (thickness is > 0) data["thickness"] = thickness.Value * Meters;
-        if (host is RoofBase) data["roofClass"] = host.GetType().Name;
-        return data;
-    }
-
-    private void VisitRoom(SpatialElement room)
-    {
-        if (room.Area <= 0) return;
-        var loops = new JsonArray();
-        foreach (var segments in room.GetBoundarySegments(new SpatialElementBoundaryOptions()))
-        {
-            var points = new JsonArray();
-            foreach (var segment in segments)
-            {
-                var tessellated = segment.GetCurve().Tessellate();
-                for (var index = 0; index < tessellated.Count - 1; index++)
-                    points.Add(new JsonArray(tessellated[index].X * Meters, tessellated[index].Y * Meters));
-            }
-            loops.Add(points);
-        }
-        _elements.Add(new JsonObject
-        {
-            ["id"] = room.Id.Value,
-            ["uniqueId"] = room.UniqueId,
-            ["category"] = nameof(BuiltInCategory.OST_Rooms),
-            ["categoryName"] = room.Category?.Name ?? "",
-            ["kind"] = "room",
-            ["name"] = room.get_Parameter(BuiltInParameter.ROOM_NAME)?.AsString() ?? room.Name,
-            ["number"] = room.get_Parameter(BuiltInParameter.ROOM_NUMBER)?.AsString() ?? "",
-            ["level"] = room.LevelId.Value,
-            ["area"] = room.Area * Meters * Meters,
-            ["loops"] = loops
-        });
-    }
-
-    /// <summary>The level an element belongs to: its own, its host's, or its schedule level.</summary>
-    private static ElementId? LevelOf(Element element)
-    {
-        if (element.LevelId != ElementId.InvalidElementId) return element.LevelId;
-        foreach (var parameter in new[] { BuiltInParameter.FAMILY_LEVEL_PARAM, BuiltInParameter.SCHEDULE_LEVEL_PARAM,
-                     BuiltInParameter.WALL_BASE_CONSTRAINT, BuiltInParameter.STAIRS_BASE_LEVEL_PARAM })
-            if (element.get_Parameter(parameter)?.AsElementId() is { } id && id != ElementId.InvalidElementId) return id;
-        return element is FamilyInstance { Host: { } host } ? LevelOf(host) : null;
-    }
-
-    private void Count(string key) => _skipped[key] = _skipped.GetValueOrDefault(key) + 1;
-
-    private void Write(string path, IReadOnlyList<Level> levels)
-    {
-        var temporary = path + ".partial";
-        using (var stream = File.Create(temporary))
-        using (var writer = new Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("format", "guanacaste-exchange");
-            writer.WriteNumber("version", FormatVersion);
-            writer.WriteString("source", "Revit " + _document.Application.VersionNumber);
-            writer.WriteString("sourcePath", _document.PathName);
-            // The file name, not Project Information: templates leave sample names such as "Snowdon Towers" there.
-            writer.WriteString("projectName", _document.Title);
-            writer.WriteString("units", "m");
-            writer.WritePropertyName("levels");
-            writer.WriteStartArray();
-            foreach (var level in levels)
-            {
-                writer.WriteStartObject();
-                writer.WriteNumber("id", level.Id.Value);
-                writer.WriteString("name", level.Name);
-                writer.WriteNumber("elevation", level.ProjectElevation * Meters);
-                writer.WriteEndObject();
-            }
-            writer.WriteEndArray();
-            writer.WritePropertyName("materials");
-            new JsonArray([.. _materials.Select(material => (JsonNode)material)]).WriteTo(writer);
-            writer.WritePropertyName("meshes");
-            writer.WriteStartArray();
-            foreach (var mesh in _meshes) mesh.WriteTo(writer);
-            writer.WriteEndArray();
-            writer.WritePropertyName("elements");
-            _elements.WriteTo(writer);
-            writer.WritePropertyName("skipped");
-            writer.WriteStartObject();
-            foreach (var (key, count) in _skipped) writer.WriteNumber(key, count);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
-        File.Move(temporary, path, overwrite: true);
     }
 }

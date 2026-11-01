@@ -66,6 +66,8 @@ jobs:
         run: dotnet run --project tests/Guanacaste3D.Checks/Guanacaste3D.Checks.csproj -c Release --no-build --no-restore
       - name: Documentation model and WPF interaction checks
         run: dotnet run --project tests/documentation-checks/documentation-checks.csproj -c Release --no-build --no-restore
+      - name: Native and exchange thumbnail regression checks
+        run: dotnet run --project tests/thumbnail-checks/thumbnail-checks.csproj -c Release --no-build --no-restore -- artifacts/thumbnail-checks
       - name: Model workspace 3D and material regressions
         timeout-minutes: 12
         run: dotnet run --project tests/model-workspace-checks/model-workspace-checks.csproj -c Release --no-build --no-restore

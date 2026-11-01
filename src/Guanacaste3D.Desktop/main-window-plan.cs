@@ -281,12 +281,15 @@ public partial class MainWindow
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
         // The plan draws what its own view shows; hidden or isolated elements are left out of this plan only.
-        var planDocument = ViewVisibility.Apply(_session.Document, _session.Document.Views.FirstOrDefault(view =>
-            view.Kind == ProjectViewKind.Plan && view.LevelId == _activeLevelId));
-        RenderExtendedPlanElements(planDocument);
+        var planView = _session.Document.Views.FirstOrDefault(view =>
+            view.Kind == ProjectViewKind.Plan && view.LevelId == _activeLevelId);
+        var range = planView?.Range ?? PlanViewRange.Architectural;
+        var planDocument = ViewVisibility.Apply(_session.Document, planView);
+        RenderExtendedPlanElements(planDocument, range);
         RenderInPlaceFamilies();
         var joins = WallJoinIndex.Build(planDocument.Walls);
-        var levelWalls = planDocument.Walls.Where(candidate => candidate.LevelId == _activeLevelId).ToArray();
+        var levelWalls = planDocument.Walls.Where(candidate => candidate.LevelId == _activeLevelId &&
+            range.Intersects(0, candidate.Height)).ToArray();
         // Every outline sits beneath every fill, so a neighbour covers the shared faces and miter seams.
         var wallLayer = PlanCanvas.Children.Count;
         foreach (var wall in levelWalls) AddWallBody(wall, joins);
@@ -296,6 +299,7 @@ public partial class MainWindow
             foreach (var opening in planDocument.Openings.Where(candidate => candidate.WallId == wall.Id))
             {
                 if (IsOpeningInMotion(opening)) continue;
+                if (range.CutOffset < opening.Sill || range.CutOffset > opening.Sill + opening.Height) continue;
                 RenderOpeningSymbol(wall, opening);
             }
         }

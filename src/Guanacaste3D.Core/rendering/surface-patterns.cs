@@ -9,7 +9,7 @@ namespace Guanacaste3D.Core.Rendering;
 /// meshes that have no texture coordinates. Patterns are sampled once per path vertex, so the jittered samples
 /// of a pixel antialias them naturally.
 /// </summary>
-internal static class SurfacePatterns
+internal static partial class SurfacePatterns
 {
     /// <summary>Returns the diffuse multiplier at <paramref name="position"/> on a face with the given normal.</summary>
     public static Vector3 Modulate(SurfacePattern pattern, float scale, Vector3 position, Vector3 normal)
@@ -88,6 +88,14 @@ internal static class SurfacePatterns
                 var blotch = ValueNoise(u * 0.9f, v * 0.9f);
                 var grain = ValueNoise(u * 22f, v * 22f);
                 return new Vector3(0.94f + 0.07f * blotch + 0.04f * grain);
+            }
+            case SurfacePattern.PouredConcrete:
+                return PouredConcreteColor(u, v);
+            case SurfacePattern.Asphalt:
+            {
+                var wear = ValueNoise(u * 0.7f, v * 0.7f);
+                var aggregate = ValueNoise(u * 32f + 17, v * 32f - 8);
+                return new Vector3(0.78f + 0.26f * wear + 0.28f * aggregate);
             }
             case SurfacePattern.Foliage:
             {
@@ -249,6 +257,13 @@ internal static class SurfacePatterns
                 var trowel = ValueNoise(worldU * 9f, worldV * 9f) * 0.0006f;
                 var sand = (ValueNoise(worldU * 140f, worldV * 140f) - 0.5f) * 0.00012f;
                 return (trowel + sand) * fade;
+            }
+            case SurfacePattern.PouredConcrete:
+                return PouredConcreteHeight(worldU, worldV, fade);
+            case SurfacePattern.Asphalt:
+            {
+                var aggregate = ValueNoise(worldU * 32f + 17, worldV * 32f - 8);
+                return (aggregate - 0.5f) * 0.0008f * fade;
             }
             case SurfacePattern.Foliage:
             {
