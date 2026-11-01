@@ -139,12 +139,15 @@ public sealed partial class DocumentSession
                 return new(start.X + along * nux - across * nuy,
                     start.Y + along * nuy + across * nux);
             }
+            var levels = new HashSet<Guid>();
             for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
             {
                 var wall = document.Walls[wallIndex];
-                if (wall.GridAxisId == id)
-                    document.Walls[wallIndex] = wall with { Start = Transform(wall.Start), End = Transform(wall.End) };
+                if (wall.GridAxisId != id) continue;
+                levels.Add(wall.LevelId);
+                document.Walls[wallIndex] = wall with { Start = Transform(wall.Start), End = Transform(wall.End) };
             }
+            foreach (var level in levels) RefreshRoomBoundariesIfNeeded(document, level);
         });
     }
 
