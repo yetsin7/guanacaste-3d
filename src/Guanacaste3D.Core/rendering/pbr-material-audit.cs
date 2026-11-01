@@ -117,7 +117,7 @@ public static class PbrMaterialAudit
             if (maps.Count == 1)
                 warnings.Add("Only albedo supplied: normal, roughness and metallic values are uniform or procedural.");
             foreach (var field in new[] { "ao", "heightMap", "displacementMap", "opacityMap", "emissionMap" })
-                if (root.TryGetProperty(field, out var unsupported) &&
+                if (TryGet(root, field, out var unsupported) &&
                     unsupported.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
                     warnings.Add(field + " is reserved metadata and is not connected to the renderer.");
 
@@ -134,7 +134,7 @@ public static class PbrMaterialAudit
 
     private static IReadOnlyList<string> ReadTags(JsonElement root, List<string> errors)
     {
-        if (!root.TryGetProperty("tags", out var raw) || raw.ValueKind == JsonValueKind.Null) return [];
+        if (!TryGet(root, "tags", out var raw) || raw.ValueKind == JsonValueKind.Null) return [];
         if (raw.ValueKind != JsonValueKind.Array || raw.GetArrayLength() > 24)
         {
             errors.Add("Tags must be an array containing at most 24 strings.");
@@ -152,9 +152,23 @@ public static class PbrMaterialAudit
         return result;
     }
 
+    // Version 1 packages created by the original WPF wizard use PascalCase JSON properties.
+    // Hand-authored .g3dm manifests normally use camelCase. Both are native v1.
+    private static bool TryGet(JsonElement root, string key, out JsonElement value)
+    {
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, key, StringComparison.OrdinalIgnoreCase)) continue;
+            value = property.Value;
+            return true;
+        }
+        value = default;
+        return false;
+    }
+
     private static string? GetString(JsonElement root, string key)
     {
-        if (!root.TryGetProperty(key, out var value) || value.ValueKind == JsonValueKind.Null)
+        if (!TryGet(root, key, out var value) || value.ValueKind == JsonValueKind.Null)
             return null;
         if (value.ValueKind != JsonValueKind.String)
             throw new JsonException("Expected a string for " + key);
@@ -163,7 +177,7 @@ public static class PbrMaterialAudit
 
     private static double GetNumber(JsonElement root, string key, double fallback)
     {
-        if (!root.TryGetProperty(key, out var value)) return fallback;
+        if (!TryGet(root, key, out var value)) return fallback;
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out var number))
             throw new JsonException("Expected a number for " + key);
         return number;
