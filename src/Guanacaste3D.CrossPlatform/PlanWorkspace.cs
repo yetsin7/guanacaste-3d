@@ -115,7 +115,7 @@ public sealed class PlanWorkspace : Grid
             }
         };
         _rename.Click += (_, _) => RenameAxis();
-        _delete.Click += (_, _) => DeleteSelected();
+        _delete.Click += async (_, _) => await DeleteSelectedAsync();
         _undo.Click += (_, _) => Undo();
         _redo.Click += (_, _) => Redo();
         SetTool(EditTool.Select);
@@ -354,18 +354,49 @@ public sealed class PlanWorkspace : Grid
         catch (InvalidDataException ex) { Message?.Invoke(ex.Message); }
     }
 
-    private void DeleteSelected()
+    private async Task DeleteSelectedAsync()
     {
         if (_session is null || _selectedId is not Guid id) return;
-        if (_session.Document.Grids.Any(g => g.Id == id))
+        var axis = _session.Document.Grids.FirstOrDefault(g => g.Id == id);
+        var wall = _session.Document.Walls.FirstOrDefault(w => w.Id == id);
+        if (axis is null && wall is null) return;
+
+        var details = axis is not null
+            ? $"¿Eliminar el eje '{axis.Name}'? Los muros, puertas y ventanas permanecerán intactos."
+            : "¿Eliminar el muro seleccionado? Los ejes permanecerán intactos. Las puertas o ventanas alojadas en este muro pueden eliminarse con su anfitrión.";
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+        var dialog = new Window
         {
-            _session.RemoveGridAxis(id); // Never delete walls when deleting datums.
-            Message?.Invoke("Eje eliminado. Los muros permanecen intactos.");
+            Title = "Confirmar eliminación BIM",
+            Width = 440,
+            Height = 200,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        var content = new StackPanel { Spacing = 20, Margin = new Thickness(20) };
+        content.Children.Add(new TextBlock { Text = details, TextWrapping = TextWrapping.Wrap });
+        var actions = new StackPanel { Orientation = Orientation.Horizontal,
+            Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right };
+        var cancel = new Button { Content = "Cancelar", MinWidth = 90 };
+        var confirm = new Button { Content = axis is not null ? "Eliminar solo eje" : "Eliminar muro", MinWidth = 120 };
+        cancel.Click += (_, _) => dialog.Close(false);
+        confirm.Click += (_, _) => dialog.Close(true);
+        actions.Children.Add(cancel);
+        actions.Children.Add(confirm);
+        content.Children.Add(actions);
+        dialog.Content = content;
+        if (!await dialog.ShowDialog<bool>(owner)) return;
+
+        // Reselecting a different element while the dialog is open must never alter the deletion target.
+        if (axis is not null && _session.Document.Grids.Any(g => g.Id == id))
+        {
+            _session.RemoveGridAxis(id);
+            Message?.Invoke("Eje eliminado; no se han eliminado muros.");
         }
-        else if (_session.Document.Walls.Any(w => w.Id == id))
+        else if (wall is not null && _session.Document.Walls.Any(w => w.Id == id))
         {
-            _session.RemoveWall(id); // Never delete datums when deleting walls.
-            Message?.Invoke("Muro eliminado. Los ejes permanecen intactos.");
+            _session.RemoveWall(id);
+            Message?.Invoke("Muro eliminado; no se han eliminado ejes.");
         }
         _selectedId = null;
         Changed(true);
