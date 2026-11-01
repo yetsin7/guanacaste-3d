@@ -3,7 +3,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:controls="clr-namespace:Guanacaste3D.Desktop.Controls"
   Title="{DynamicResource App.Name}" Icon="pack://application:,,,/Guanacaste3D.Desktop;component/resources/brand/guanacaste3d.ico"
-  Width="1680" Height="960"
+  Width="1688" Height="900"
   MinWidth="960" MinHeight="640" FontFamily="Segoe UI" FontSize="12"
   Background="{DynamicResource ChromeBrush}" Foreground="{DynamicResource PrimaryTextBrush}"
   WindowStartupLocation="CenterScreen"
@@ -92,25 +92,25 @@
       </DockPanel>
     </Border>
     <Grid Background="{DynamicResource PanelBorderBrush}">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="320" MinWidth="250" MaxWidth="470"/><ColumnDefinition Width="3"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="350" MinWidth="290" MaxWidth="480"/><ColumnDefinition Width="3"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid x:Name="StandardSidebar" Grid.Column="0">
-        <Grid.RowDefinitions><RowDefinition Height="1*" MinHeight="250"/><RowDefinition Height="3"/><RowDefinition Height="1*" MinHeight="200"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="1*" MinHeight="260"/><RowDefinition Height="4"/><RowDefinition Height="1*" MinHeight="220"/></Grid.RowDefinitions>
         <!-- Properties palette -->
         <DockPanel Background="{DynamicResource PanelBrush}">
           <Border DockPanel.Dock="Top" Style="{StaticResource PaletteHeaderBorderStyle}">
             <TextBlock Text="{DynamicResource Properties.Title}" Style="{StaticResource PanelHeaderStyle}"/>
           </Border>
           <Border DockPanel.Dock="Top" Margin="3,3,3,0" Background="{DynamicResource RibbonBrush}"
-                  BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Height="64">
+                  BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Height="74">
             <DockPanel>
-              <Border DockPanel.Dock="Left" Width="56" Height="56" Margin="3" Background="#EFEFEF"
+              <Border DockPanel.Dock="Left" Width="64" Height="64" Margin="3" Background="#EFEFEF"
                       BorderBrush="#D0D0D0" BorderThickness="1">
                 <Image Source="{StaticResource Icon.Plan}" Margin="11" Stretch="Uniform"/>
               </Border>
               <TextBlock DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource GlyphFont}" FontSize="9"
                          Foreground="#3C3C3C" VerticalAlignment="Center" Margin="6,0,8,0"/>
               <StackPanel VerticalAlignment="Center" Margin="4,0,0,0">
-                <TextBlock Text="{DynamicResource Properties.ActiveView}" Visibility="Collapsed"/>
+                <TextBlock Text="{DynamicResource Properties.ActiveView}" Visibility="Visible" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11"/>
                 <TextBlock x:Name="PropertiesActiveViewText" Text="{DynamicResource View.Plan}" FontSize="13"
                            TextTrimming="CharacterEllipsis"/>
               </StackPanel>
