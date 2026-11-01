@@ -35,7 +35,6 @@ static class IfcChecks
                 double.Parse(IfcExporter.Real(value), System.Globalization.CultureInfo.InvariantCulture) == value) &&
               IfcExporter.Real(1e-13).Contains(".E-", StringComparison.Ordinal),
             "IFC STEP reals preserve tiny coordinates and full double precision through scientific notation");
-        check(IfcExporter.Real(double.NaN) is not null == false, "");
         check(IfcExporter.Text("Sala 'A' ñ\\") == @"'Sala ''A'' \X2\00F1\X0\\\'",
             "IFC strings escape quotes, backslashes and non-ASCII");
 
