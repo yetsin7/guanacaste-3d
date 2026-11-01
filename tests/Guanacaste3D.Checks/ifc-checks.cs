@@ -37,6 +37,14 @@ static class IfcChecks
             "IFC STEP reals preserve tiny coordinates and full double precision through scientific notation");
         check(IfcExporter.Text("Sala 'A' ñ\\") == @"'Sala ''A'' \X2\00F1\X0\\\'",
             "IFC strings escape quotes, backslashes and non-ASCII");
+        check(IfcExporter.Text("Árbol 🌳") ==
+              @"'\X2\00C1\X0\rbol \X4\0001F333\X0\'",
+            "IFC strings encode supplementary Unicode scalars with STEP X4, not surrogate halves");
+        var rejectedSurrogate = false;
+        try { IfcExporter.Text("\uD83C"); }
+        catch (ArgumentException) { rejectedSurrogate = true; }
+        check(rejectedSurrogate, "IFC strings reject invalid unpaired UTF-16 surrogates");
+
 
         var house = SampleProjects.CreateDemonstrationHouse();
         var stamp = new DateTimeOffset(2026, 10, 23, 12, 0, 0, TimeSpan.Zero);
