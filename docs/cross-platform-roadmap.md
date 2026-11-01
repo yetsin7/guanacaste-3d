@@ -51,3 +51,14 @@ La ventana `PlanWorkspace` añade una cuadrícula de metros y dibujo de muros y 
 - La vista de planta sigue siendo un prototipo, no un renderizador 3D ni un sustituto completo de la versión WPF.
 
 Se requiere comprobar manualmente la precisión del puntero, la accesibilidad del teclado, el desempeño con modelos grandes y el guardado/recuperación en sistemas reales.
+
+## Cuarto hito: precisión de dibujo y eliminación segura
+
+- Resolver geométricamente referencias a extremos de muros del nivel activo y a los extremos de los ejes globales.
+- Cuadrícula de referencia de 0,25 m con opciones independientes para activar o desactivar los ajustes.
+- `Shift` restringe el trazado al eje horizontal o vertical; un ajuste cercano no puede romper la dirección bloqueada.
+- Referencias con tolerancia expresada en píxeles y convertida a metros según el zoom. Indicador visual al trazar.
+- Eliminar un muro o un eje requiere confirmación explícita; los dos son entidades independientes, y el diálogo explica el destino de los elementos hospedados.
+- Pruebas automáticas de referencia geométrica, separación de niveles, cuadrícula, ortogonalidad e inmutabilidad del documento ejecutadas en Windows, Linux y macOS.
+
+Todavía se requieren pruebas visuales y de interacción reales en máquinas de usuario; las compilaciones y regresiones sin pantalla no demuestran paridad de la interfaz.
