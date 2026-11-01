@@ -29,6 +29,11 @@ public partial class MainWindow
             StandardWorkspace.Background = new SolidColorBrush(color);
         }
         catch (FormatException) { }
+        ViewNavigation.SetCubeVisible(options.ShowViewCube);
+        ViewNavigation.HorizontalAlignment = options.ViewCubePosition.Contains("izquierda", StringComparison.OrdinalIgnoreCase)
+            ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        ViewNavigation.VerticalAlignment = options.ViewCubePosition.Contains("Inferior", StringComparison.OrdinalIgnoreCase)
+            ? VerticalAlignment.Bottom : VerticalAlignment.Top;
         if (StartScreenControl.Visibility == Visibility.Visible) StartScreenControl.Refresh();
     }
 
