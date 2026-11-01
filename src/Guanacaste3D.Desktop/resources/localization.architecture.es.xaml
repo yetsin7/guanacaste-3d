@@ -302,6 +302,7 @@
   <sys:String x:Key="Status.RailingsCreated">Se colocaron {0} barandillas.</sys:String>
   <sys:String x:Key="Status.NoRoomsFound">No hay espacios rectangulares cerrados por muros sin habitación.</sys:String>
   <sys:String x:Key="Status.RoomsCreated">Se crearon {0} habitaciones.</sys:String>
+  <sys:String x:Key="Status.RoomsSynchronized">Las habitaciones automáticas están actualizadas con sus límites actuales.</sys:String>
   <sys:String x:Key="Status.NoAreaBoundaries">Dibuja primero líneas de contorno de área.</sys:String>
   <sys:String x:Key="Status.AllRoomsTagged">Las {0} habitaciones del nivel ya están etiquetadas.</sys:String>
   <sys:String x:Key="Status.AllAreasTagged">Las {0} áreas del nivel ya están etiquetadas.</sys:String>
@@ -316,4 +317,12 @@
   <sys:String x:Key="Status.SketchRectangle">Haz clic en dos esquinas opuestas.</sys:String>
   <sys:String x:Key="Status.SketchNext">Siguiente punto. Doble clic o clic derecho para terminar.</sys:String>
   <sys:String x:Key="Status.SketchCancelled">Se necesitan al menos tres puntos; se canceló el boceto.</sys:String>
+  <sys:String x:Key="Arch.RoomSeparatorStraight">Separador recto</sys:String>
+  <sys:String x:Key="Arch.RoomSeparatorCurved">Separador curvo o circular</sys:String>
+  <sys:String x:Key="Arch.EditCurvedRoomSeparator">Editar radio y ángulos</sys:String>
+  <sys:String x:Key="Arch.DeleteCurvedRoomSeparator">Eliminar separador curvo</sys:String>
+  <sys:String x:Key="Dialog.CurvedRoomSeparatorParameters">Separador curvo: radio (m);ángulo inicial (°);barrido (°), separados por punto y coma. Un barrido de 360° genera un círculo.</sys:String>
+  <sys:String x:Key="Status.CurvedRoomSeparatorPickCenter">Selecciona el centro del arco o círculo en la planta.</sys:String>
+  <sys:String x:Key="Status.CurvedRoomSeparatorInvalid">Parámetros inválidos: radio de 0,1 a 10 000 m y barrido de 1° a 360°.</sys:String>
+  <sys:String x:Key="Status.CurvedRoomSeparatorCreated">Separador curvo creado, sin geometría sólida 3D.</sys:String>
 </ResourceDictionary>

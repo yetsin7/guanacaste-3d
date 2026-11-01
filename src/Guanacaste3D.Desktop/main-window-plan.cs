@@ -74,9 +74,11 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
-        if (!PlanToolArmed() && (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
+        if (!_movingElement && !PlanToolArmed() &&
+            (TrySelectGridAxis(e) || TrySelectElevationSymbol(e) || TrySelectSectionSymbol(e))) return;
         if (TryHandleGridPlacement(e)) return;
         if (TryHandleSectionPlacement(e)) return;
+        if (TryHandleCurvedRoomSeparatorClick(e)) return;
         if (TryPlaceOpening(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
@@ -143,6 +145,11 @@ public partial class MainWindow
         if (CancelElectricalTools() | CancelPlumbingTools())
         {
             StatusText.Text = GetText("Status.SelectionMode");
+            e.Handled = true;
+            return;
+        }
+        if (CancelCurvedRoomSeparatorTool())
+        {
             e.Handled = true;
             return;
         }
@@ -286,6 +293,7 @@ public partial class MainWindow
         var range = planView?.Range ?? PlanViewRange.Architectural;
         var planDocument = ViewVisibility.Apply(_session.Document, planView);
         RenderExtendedPlanElements(planDocument, range);
+        RenderCurvedRoomSeparators();
         RenderInPlaceFamilies();
         var joins = WallJoinIndex.Build(planDocument.Walls);
         var levelWalls = planDocument.Walls.Where(candidate => candidate.LevelId == _activeLevelId &&

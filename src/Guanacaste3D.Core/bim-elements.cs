@@ -102,14 +102,31 @@ public sealed record Room(
     Point2 FirstCorner,
     Point2 SecondCorner)
 {
-    [JsonIgnore]
-    public double Area => Math.Abs(
-        (SecondCorner.X - FirstCorner.X) * (SecondCorner.Y - FirstCorner.Y));
+    /// <summary>
+    /// True only for rooms discovered from enclosure geometry. Hand-placed rooms and existing
+    /// legacy room records remain independent of automatic boundary synchronization.
+    /// </summary>
+    public bool IsAutomatic { get; init; }
+
+    /// <summary>
+    /// Optional actual footprint in project coordinates. Null preserves the legacy rectangle;
+    /// a concave orthogonal room stores a polygon instead of its bounding-box area.
+    /// </summary>
+    public List<Point2>? Boundary { get; init; }
+
+    /// <summary>Interior rings excluded from the footprint (e.g. an unroofed courtyard).</summary>
+    public List<List<Point2>>? Holes { get; init; }
 
     [JsonIgnore]
-    public Point2 Center => new(
-        (FirstCorner.X + SecondCorner.X) / 2,
-        (FirstCorner.Y + SecondCorner.Y) / 2);
+    public double Area => Boundary is { Count: >= 3 } outline
+        ? RoomRegionGeometry.Area(outline) - (Holes?.Sum(RoomRegionGeometry.Area) ?? 0)
+        : Math.Abs((SecondCorner.X - FirstCorner.X) * (SecondCorner.Y - FirstCorner.Y));
+
+    [JsonIgnore]
+    public Point2 Center => Boundary is { Count: >= 3 } outline
+        ? RoomRegionGeometry.LabelPoint(outline,
+            Holes?.Select(hole => (IReadOnlyList<Point2>)hole).ToArray() ?? [])
+        : new((FirstCorner.X + SecondCorner.X) / 2, (FirstCorner.Y + SecondCorner.Y) / 2);
 }
 
 /// <summary>Classifies a horizontal slab by the building role it plays.</summary>

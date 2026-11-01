@@ -57,6 +57,8 @@ public sealed class BuildingDocument
     public List<WallType> WallTypes { get; set; } = [];
     public List<OpeningType> OpeningTypes { get; set; } = [];
     public List<Room> Rooms { get; set; } = [];
+    /// <summary>Non-solid curved separators participating in room enclosure detection.</summary>
+    public List<CurvedRoomSeparator> CurvedRoomSeparators { get; set; } = [];
     public List<FloorSlab> Floors { get; set; } = [];
     public List<Column> Columns { get; set; } = [];
     public List<StructuralElement> StructuralElements { get; set; } = [];
@@ -113,7 +115,12 @@ public sealed class BuildingDocument
         Openings = [.. Openings],
         WallTypes = [.. WallTypes],
         OpeningTypes = [.. OpeningTypes],
-        Rooms = [.. Rooms],
+        Rooms = Rooms.Select(room => room with
+        {
+            Boundary = room.Boundary is null ? null : [.. room.Boundary],
+            Holes = room.Holes is null ? null : room.Holes.Select(ring => ring.ToList()).ToList()
+        }).ToList(),
+        CurvedRoomSeparators = [.. CurvedRoomSeparators],
         Floors = Floors.Select(floor => floor with
         {
             Boundary = [.. floor.Boundary], TopoPoints = floor.TopoPoints is null ? null : [.. floor.TopoPoints]
@@ -155,10 +162,11 @@ public sealed class BuildingDocument
         if (Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) || Name.Length > 120)
             throw new InvalidDataException("The project identity or name is invalid.");
         if (Dimensions is null || Levels is null || Grids is null || Walls is null || Openings is null || WallTypes is null ||
-            Rooms is null || Floors is null || Columns is null || StructuralElements is null ||
+            Rooms is null || CurvedRoomSeparators is null || Floors is null || Columns is null || StructuralElements is null ||
             Sheets is null || Views is null ||
             Levels.Count is < 1 or > 200 || Walls.Count > 100000 || Openings.Count > 200000 ||
-            Rooms.Count > 100000 || Floors.Count > 100000 || Columns.Count > 100000 ||
+            Rooms.Count > 100000 || CurvedRoomSeparators.Count > 10000 ||
+            Floors.Count > 100000 || Columns.Count > 100000 ||
             StructuralElements.Count > 100000 ||
             Sheets.Count > 10000 || Views.Count > 10000)
             throw new InvalidDataException("The document exceeds the supported element limits.");
@@ -197,6 +205,7 @@ public sealed class BuildingDocument
             if (wall.GridAxisId is Guid linkedAxis && !Grids.Any(axis => axis.Id == linkedAxis))
                 throw new InvalidDataException("A wall references a missing grid axis.");
             if (wall.Id == Guid.Empty || !levelIds.Contains(wall.LevelId) || !wallTypeIds.Contains(wall.WallTypeId) ||
+                (wall.GridAxisId is Guid axisId && !Grids.Any(axis => axis.Id == axisId)) ||
                 !double.IsFinite(wall.Start.X) || !double.IsFinite(wall.Start.Y) ||
                 !double.IsFinite(wall.End.X) || !double.IsFinite(wall.End.Y) ||
                 !double.IsFinite(wall.Thickness) || !double.IsFinite(wall.Height) ||
@@ -206,6 +215,8 @@ public sealed class BuildingDocument
                 throw new InvalidDataException("A wall is invalid or has no associated level.");
         }
         ValidateRooms(levelIds);
+        if (CurvedRoomSeparators.Any(arc => arc is null || !arc.IsValid || !levelIds.Contains(arc.LevelId)))
+            throw new InvalidDataException("Invalid curved room separators.");
         ValidateFloors(levelIds);
         ValidateColumns(levelIds);
         ValidateSheets();
@@ -219,6 +230,7 @@ public sealed class BuildingDocument
             .Concat(Openings.Select(opening => opening.Id))
             .Concat(WallTypes.Select(type => type.Id))
             .Concat(Rooms.Select(room => room.Id))
+            .Concat(CurvedRoomSeparators.Select(arc => arc.Id))
             .Concat(Floors.Select(floor => floor.Id))
             .Concat(Columns.Select(column => column.Id))
             .Concat(Dimensions.Select(dimension => dimension.Id))
@@ -265,6 +277,9 @@ public sealed class BuildingDocument
                 string.IsNullOrWhiteSpace(room.Name) || room.Name.Length > 120 ||
                 !double.IsFinite(room.FirstCorner.X) || !double.IsFinite(room.FirstCorner.Y) ||
                 !double.IsFinite(room.SecondCorner.X) || !double.IsFinite(room.SecondCorner.Y) ||
+                (room.Boundary is { } outline && !RoomRegionGeometry.ValidRegion(
+                    outline, room.Holes?.Select(hole => (IReadOnlyList<Point2>)hole).ToArray() ?? [])) ||
+                (room.Boundary is null && room.Holes is { Count: > 0 }) ||
                 room.Area is < 0.1 or > 100000000) ||
             Rooms.Select(room => room.Number).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Rooms.Count)
             throw new InvalidDataException("Invalid room definitions.");

@@ -100,11 +100,7 @@ public partial class MainWindow
     {
         var room = _session.Document.Rooms.FirstOrDefault(candidate => candidate.Id == _selectedRoomId);
         if (room is not null)
-        {
-            var (x0, x1) = (Math.Min(room.FirstCorner.X, room.SecondCorner.X), Math.Max(room.FirstCorner.X, room.SecondCorner.X));
-            var (y0, y1) = (Math.Min(room.FirstCorner.Y, room.SecondCorner.Y), Math.Max(room.FirstCorner.Y, room.SecondCorner.Y));
-            return (room.LevelId, [new(x0, y0), new(x1, y0), new(x1, y1), new(x0, y1)]);
-        }
+            return (room.LevelId, RoomRegionGeometry.Outline(room));
         var floor = _session.Document.Floors.FirstOrDefault(candidate => candidate.Id == _selectedFloorId);
         return floor is null ? null : (floor.LevelId, floor.Boundary);
     }
@@ -160,7 +156,11 @@ public partial class MainWindow
     private void AutomaticRooms()
     {
         var count = _session.AddAutomaticRooms(_activeLevelId);
-        StatusText.Text = count == 0 ? GetText("Status.NoRoomsFound") : FormatText("Status.RoomsCreated", count);
+        StatusText.Text = count > 0
+            ? FormatText("Status.RoomsCreated", count)
+            : _session.Document.Rooms.Any(room => room.LevelId == _activeLevelId && room.IsAutomatic)
+                ? GetText("Status.RoomsSynchronized")
+                : GetText("Status.NoRoomsFound");
         RefreshAll();
     }
 

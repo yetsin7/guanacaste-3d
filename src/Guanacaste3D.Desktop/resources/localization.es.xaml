@@ -492,4 +492,21 @@
   <sys:String x:Key="Error.The opening cannot move across its host wall.">La abertura solo puede desplazarse a lo largo de su muro.</sys:String>
   <sys:String x:Key="Error.The dimension reference moved with the selected element.">La referencia se mueve junto al objeto. Utiliza otra referencia.</sys:String>
   <sys:String x:Key="Error.Invalid stair or railing geometry.">El tramo de escalera o barandal no tiene una geometría válida.</sys:String>
+  <sys:String x:Key="Transaction.AttachWallToGrid">Vincular muro al eje</sys:String>
+  <sys:String x:Key="Transaction.DetachWallFromGrid">Desvincular muro del eje</sys:String>
+  <sys:String x:Key="Error.The wall centerline is not aligned with the selected grid.">El centro del muro no está alineado con el eje seleccionado.</sys:String>
+  <sys:String x:Key="Error.The grid axis is too short.">El eje es demasiado corto.</sys:String>
+  <sys:String x:Key="Error.The grid movement must be finite.">El desplazamiento del eje debe tener valores numéricos válidos.</sys:String>
+  <sys:String x:Key="Transaction.SyncAutomaticRooms">Recalcular habitaciones automáticas</sys:String>
+  <sys:String x:Key="Error.The room level does not exist.">El nivel de la habitación no existe.</sys:String>
+  <sys:String x:Key="Error.The room boundary grid is too large.">El plano contiene demasiadas divisiones para detectar habitaciones automáticamente. Simplifica los límites o divide el proyecto por zonas.</sys:String>
+  <sys:String x:Key="Error.The room outline cannot be offset.">No se puede ampliar este contorno de habitación con la distancia solicitada. Reduce el margen o revisa las esquinas.</sys:String>
+  <sys:String x:Key="Transaction.AddCurvedRoomSeparator">Crear separador curvo</sys:String>
+  <sys:String x:Key="Transaction.UpdateCurvedRoomSeparator">Editar separador curvo</sys:String>
+  <sys:String x:Key="Transaction.RemoveCurvedRoomSeparator">Eliminar separador curvo</sys:String>
+  <sys:String x:Key="Error.The curved room separator is invalid.">El separador curvo tiene parámetros inválidos.</sys:String>
+  <sys:String x:Key="Error.The curved room separator does not exist.">El separador curvo no existe.</sys:String>
+  <sys:String x:Key="Error.Invalid curved room separators.">Existen separadores curvos inválidos en el proyecto.</sys:String>
+  <sys:String x:Key="Error.The room boundary graph is too complex.">Hay demasiados límites de habitación para detectar los recintos. Divide el plano en zonas.</sys:String>
+  <sys:String x:Key="Error.The room polygon cannot be triangulated.">El perímetro no se puede triangular; revisa sus cruces y esquinas.</sys:String>
 </ResourceDictionary>

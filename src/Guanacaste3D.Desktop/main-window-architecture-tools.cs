@@ -174,11 +174,9 @@ public partial class MainWindow
         string current;
         if (target == TagTarget.Room)
         {
-            var room = _session.Document.Rooms.LastOrDefault(candidate => candidate.LevelId == _activeLevelId &&
-                Math.Min(candidate.FirstCorner.X, candidate.SecondCorner.X) <= point.X &&
-                point.X <= Math.Max(candidate.FirstCorner.X, candidate.SecondCorner.X) &&
-                Math.Min(candidate.FirstCorner.Y, candidate.SecondCorner.Y) <= point.Y &&
-                point.Y <= Math.Max(candidate.FirstCorner.Y, candidate.SecondCorner.Y));
+            var room = _session.Document.Rooms.LastOrDefault(candidate =>
+                candidate.LevelId == _activeLevelId &&
+                RoomRegionGeometry.Contains(candidate, point));
             id = room?.Id;
             current = room?.Name ?? string.Empty;
         }

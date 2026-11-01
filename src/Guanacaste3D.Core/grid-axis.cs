@@ -1,9 +1,8 @@
 namespace Guanacaste3D.Core;
 
-/// <summary>A named building axis shared by every level; unlike the drafting grid, it is part of the project.</summary>
+/// <summary>A named building datum shared by every level, independent of the drawing background grid.</summary>
 public sealed record GridAxis(Guid Id, string Name, Point2 Start, Point2 End)
 {
-    /// <summary>Validates finite metric endpoints and a usable, bounded reference label.</summary>
     public bool IsValid => Id != Guid.Empty && !string.IsNullOrWhiteSpace(Name) && Name.Length <= 32 &&
         new SectionCut(Start, End).IsValid;
 }
@@ -45,13 +44,21 @@ public sealed partial class DocumentSession
         name = NormalizeAxisName(name);
         CheckGridAxisName(name);
         var axis = new GridAxis(Guid.NewGuid(), name, start, end);
-        Commit("Transaction.AddGridAxis", document => document.Grids.Add(axis));
+        Commit("Transaction.AddGridAxis", document =>
+        {
+            document.Grids.Add(axis);
+            for (var i = 0; i < document.Walls.Count; i++)
+            {
+                var wall = document.Walls[i];
+                if (wall.GridAxisId is null && !wall.GridAxisAssociationDisabled && IsAligned(axis, wall.Start, wall.End))
+                    document.Walls[i] = wall with { GridAxisId = axis.Id };
+            }
+        });
         return axis.Id;
     }
 
     /// <summary>
-    /// Renames or edits an axis. A pure translation also moves collinear walls whose centre lines are aligned
-    /// with and overlap the datum. Rotation/reshaping does not silently alter wall geometry.
+    /// Renames or edits an axis, moving linked walls rigidly and refreshing affected automatic rooms.
     /// </summary>
     public void UpdateGridAxis(Guid id, string name, Point2 start, Point2 end)
     {
@@ -59,16 +66,28 @@ public sealed partial class DocumentSession
             ?? throw new InvalidDataException("The grid axis does not exist.");
         name = NormalizeAxisName(name);
         CheckGridAxisName(name, id);
-        var dx = start.X - old.Start.X;
-        var dy = start.Y - old.Start.Y;
-        var translation = Math.Abs((old.End.X + dx) - end.X) < 1e-7 &&
-                          Math.Abs((old.End.Y + dy) - end.Y) < 1e-7;
         Commit("Transaction.EditGridAxis", document =>
         {
             var index = document.Grids.FindIndex(axis => axis.Id == id);
             document.Grids[index] = new GridAxis(id, name, start, end);
-            if (translation && (Math.Abs(dx) > 1e-9 || Math.Abs(dy) > 1e-9))
-                TranslateAxisAlignedWalls(document, old, dx, dy);
+            if (old.Start == start && old.End == end) return;
+            var oldAngle = Math.Atan2(old.End.Y - old.Start.Y, old.End.X - old.Start.X);
+            var newAngle = Math.Atan2(end.Y - start.Y, end.X - start.X);
+            var cosine = Math.Cos(newAngle - oldAngle);
+            var sine = Math.Sin(newAngle - oldAngle);
+            Point2 Transform(Point2 point) => new(
+                start.X + (point.X - old.Start.X) * cosine - (point.Y - old.Start.Y) * sine,
+                start.Y + (point.X - old.Start.X) * sine + (point.Y - old.Start.Y) * cosine);
+            var affectedLevels = new HashSet<Guid>();
+            for (var wallIndex = 0; wallIndex < document.Walls.Count; wallIndex++)
+            {
+                var wall = document.Walls[wallIndex];
+                if (wall.GridAxisId != id && (wall.GridAxisAssociationDisabled || wall.GridAxisId is not null ||
+                    !IsAligned(old, wall.Start, wall.End))) continue;
+                affectedLevels.Add(wall.LevelId);
+                document.Walls[wallIndex] = wall with { Start = Transform(wall.Start), End = Transform(wall.End), GridAxisId = id };
+            }
+            foreach (var level in affectedLevels) RefreshRoomBoundariesIfNeeded(document, level);
         });
     }
 
@@ -125,6 +144,9 @@ public sealed partial class DocumentSession
             };
         });
     }
+
+    /// <summary>Associates a wall with a collinear grid axis without moving either element.</summary>
+    public void AttachWallToGridAxis(Guid wallId, Guid axisId) => SetWallGridAxis(wallId, axisId);
 
     /// <summary>Moves only linked walls, plus legacy aligned walls not linked to another axis.</summary>
     private static void TranslateAxisAlignedWalls(BuildingDocument document, GridAxis axis, double dx, double dy)
