@@ -21,6 +21,8 @@ internal interface IRenderSource
     NavigationCamera Camera { get; }
 
     string ProjectName { get; }
+    /// <summary>Current project's path for resolving relative .g3dm references; null for new projects.</summary>
+    string? ProjectFilePath { get; }
 
     (Vector3 Min, Vector3 Max) SceneBounds();
 
