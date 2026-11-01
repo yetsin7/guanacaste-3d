@@ -198,7 +198,7 @@ public sealed partial class DocumentSession
     }
 }
 
-/// <summary>Finds the closed rectangular spaces that axis-aligned walls enclose.</summary>
+/// <summary>Finds closed rectangular spaces bounded by orthogonal walls and non-solid room separators.</summary>
 public static class RoomDetection
 {
     private const double Tolerance = 1e-3;
@@ -221,17 +221,37 @@ public static class RoomDetection
         var walls = document.Walls.Where(wall => wall.LevelId == levelId &&
             (Math.Abs(wall.Start.X - wall.End.X) < Tolerance || Math.Abs(wall.Start.Y - wall.End.Y) < Tolerance)).ToArray();
         if (walls.Length < 4) return [];
-        var xs = Distinct(walls.SelectMany(wall => new[] { wall.Start.X, wall.End.X }));
-        var ys = Distinct(walls.SelectMany(wall => new[] { wall.Start.Y, wall.End.Y }));
+        // Room separators are drafting/reference boundaries, never solids. Include their ends as
+        // partition coordinates so the flood-fill can detect distinct adjacent rooms.
+        var separators = document.StructuralElements.Where(element =>
+            element.LevelId == levelId && element.Kind == StructuralElementKind.RoomSeparator &&
+            (Math.Abs(element.Start.X - element.End.X) < Tolerance ||
+             Math.Abs(element.Start.Y - element.End.Y) < Tolerance)).ToArray();
+        var xs = Distinct(walls.SelectMany(wall => new[] { wall.Start.X, wall.End.X })
+            .Concat(separators.SelectMany(separator => new[] { separator.Start.X, separator.End.X })));
+        var ys = Distinct(walls.SelectMany(wall => new[] { wall.Start.Y, wall.End.Y })
+            .Concat(separators.SelectMany(separator => new[] { separator.Start.Y, separator.End.Y })));
         if (xs.Count < 2 || ys.Count < 2) return [];
         var (nx, ny) = (xs.Count - 1, ys.Count - 1);
 
-        bool VerticalWallCovers(double x, double y0, double y1) => walls.Any(wall =>
-            Math.Abs(wall.Start.X - wall.End.X) < Tolerance && Math.Abs(wall.Start.X - x) < Tolerance &&
-            Math.Min(wall.Start.Y, wall.End.Y) <= y0 + Tolerance && Math.Max(wall.Start.Y, wall.End.Y) >= y1 - Tolerance);
-        bool HorizontalWallCovers(double y, double x0, double x1) => walls.Any(wall =>
-            Math.Abs(wall.Start.Y - wall.End.Y) < Tolerance && Math.Abs(wall.Start.Y - y) < Tolerance &&
-            Math.Min(wall.Start.X, wall.End.X) <= x0 + Tolerance && Math.Max(wall.Start.X, wall.End.X) >= x1 - Tolerance);
+        bool VerticalWallCovers(double x, double y0, double y1) =>
+            walls.Any(wall => Math.Abs(wall.Start.X - wall.End.X) < Tolerance &&
+                Math.Abs(wall.Start.X - x) < Tolerance &&
+                Math.Min(wall.Start.Y, wall.End.Y) <= y0 + Tolerance &&
+                Math.Max(wall.Start.Y, wall.End.Y) >= y1 - Tolerance) ||
+            separators.Any(separator => Math.Abs(separator.Start.X - separator.End.X) < Tolerance &&
+                Math.Abs(separator.Start.X - x) < Tolerance &&
+                Math.Min(separator.Start.Y, separator.End.Y) <= y0 + Tolerance &&
+                Math.Max(separator.Start.Y, separator.End.Y) >= y1 - Tolerance);
+        bool HorizontalWallCovers(double y, double x0, double x1) =>
+            walls.Any(wall => Math.Abs(wall.Start.Y - wall.End.Y) < Tolerance &&
+                Math.Abs(wall.Start.Y - y) < Tolerance &&
+                Math.Min(wall.Start.X, wall.End.X) <= x0 + Tolerance &&
+                Math.Max(wall.Start.X, wall.End.X) >= x1 - Tolerance) ||
+            separators.Any(separator => Math.Abs(separator.Start.Y - separator.End.Y) < Tolerance &&
+                Math.Abs(separator.Start.Y - y) < Tolerance &&
+                Math.Min(separator.Start.X, separator.End.X) <= x0 + Tolerance &&
+                Math.Max(separator.Start.X, separator.End.X) >= x1 - Tolerance);
 
         var cluster = new int[nx, ny];
         var clusters = new List<(bool Outside, List<(int I, int J)> Cells)>();

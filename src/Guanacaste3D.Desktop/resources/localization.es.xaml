@@ -491,4 +491,9 @@
   <sys:String x:Key="Error.The opening cannot move across its host wall.">La abertura solo puede desplazarse a lo largo de su muro.</sys:String>
   <sys:String x:Key="Error.The dimension reference moved with the selected element.">La referencia se mueve junto al objeto. Utiliza otra referencia.</sys:String>
   <sys:String x:Key="Error.Invalid stair or railing geometry.">El tramo de escalera o barandal no tiene una geometría válida.</sys:String>
+  <sys:String x:Key="Transaction.AttachWallToGrid">Vincular muro al eje</sys:String>
+  <sys:String x:Key="Transaction.DetachWallFromGrid">Desvincular muro del eje</sys:String>
+  <sys:String x:Key="Error.The wall centerline is not aligned with the selected grid.">El centro del muro no está alineado con el eje seleccionado.</sys:String>
+  <sys:String x:Key="Error.The grid axis is too short.">El eje es demasiado corto.</sys:String>
+  <sys:String x:Key="Error.The grid movement must be finite.">El desplazamiento del eje debe tener valores numéricos válidos.</sys:String>
 </ResourceDictionary>

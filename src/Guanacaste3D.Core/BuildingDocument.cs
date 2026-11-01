@@ -21,6 +21,9 @@ public sealed record Wall(Guid Id, Guid LevelId, Point2 Start, Point2 End, doubl
 {
     public Guid WallTypeId { get; init; } = BuiltInWallTypes.Basic200Id;
 
+    /// <summary>Optional centered project datum; the wall survives deletion of this datum.</summary>
+    public Guid? GridAxisId { get; init; }
+
     /// <summary>Level the wall top is tied to; null means the height is unconnected.</summary>
     public Guid? TopLevelId { get; init; }
 
@@ -182,6 +185,7 @@ public sealed class BuildingDocument
         foreach (var wall in Walls)
         {
             if (wall.Id == Guid.Empty || !levelIds.Contains(wall.LevelId) || !wallTypeIds.Contains(wall.WallTypeId) ||
+                (wall.GridAxisId is Guid axisId && !Grids.Any(axis => axis.Id == axisId)) ||
                 !double.IsFinite(wall.Start.X) || !double.IsFinite(wall.Start.Y) ||
                 !double.IsFinite(wall.End.X) || !double.IsFinite(wall.End.Y) ||
                 !double.IsFinite(wall.Thickness) || !double.IsFinite(wall.Height) ||
