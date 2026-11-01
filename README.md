@@ -80,17 +80,6 @@ sections, associative annotation, placed sheet views, IFC and DXF exchange,
 collaboration, structural and MEP authoring, physical rendering, and large-model
 performance engineering.
 
-## 2D architectural drafting (proposed in PR #38)
-
-The **Annotate** ribbon now has real drawing workflows for **Detail Line** and **Filled Region** in the plan viewport. These annotations are attached to a specific plan view ID; they do not generate 3D surfaces or alter any wall, slab, or structural element.
-
-- **Detail Line:** draw connected segments between two mouse clicks; choose solid, dashed, dotted, or centerline style.
-- **Filled Region:** choose solid, diagonal, crosshatch, dotted, or herringbone hatch, then click opposite corners.
-- Annotation geometry is saved as part of the native project, supports undo/redo and can explicitly be copied to another plan with a new view ID.
-- Right click exits the current drawing tool. Construction hatch graphics are clipped to their region outline.
-
-**Development status:** These changes are under review and must be tested on Windows before release. Additional work is planned for editing arbitrary polygon vertices, hatch density controls, line-weight palettes, view-specific clipboard commands and printing/export of the new annotation objects.
-
 ## Requirements
 
 - Windows 10 or 11, x64.

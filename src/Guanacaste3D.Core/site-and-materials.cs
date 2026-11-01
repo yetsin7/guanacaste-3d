@@ -11,6 +11,12 @@ public sealed record RenderMaterialAssignment(SurfaceKind Category, string Textu
 {
     /// <summary>Null selects the project-wide category; an id selects only the matching faces of one BIM element.</summary>
     public Guid? ElementId { get; init; }
+    /// <summary>Optional tangent-space normal map (OpenGL +Y), relative to the project file.</summary>
+    public string? NormalPath { get; init; }
+    /// <summary>Optional linear roughness map, relative to the project file.</summary>
+    public string? RoughnessPath { get; init; }
+    /// <summary>Optional linear metalness map, relative to the project file.</summary>
+    public string? MetallicPath { get; init; }
 
     /// <summary>Meters covered by one tile of the image, along both directions.</summary>
     public double TextureSize { get; init; } = 1.0;
@@ -78,12 +84,18 @@ public sealed partial class DocumentSession
 /// <summary>Rules for render material assignments.</summary>
 public static class RenderMaterialRules
 {
+    private static bool ValidOptionalMapPath(string? path) =>
+        path is null || (!string.IsNullOrWhiteSpace(path) && path.Length <= 1024);
+
     public static void Validate(BuildingDocument document)
     {
         if (document.RenderMaterials is null) throw new InvalidDataException("Invalid render material.");
         if (document.RenderMaterials.Count > 512 ||
             document.RenderMaterials.GroupBy(material => (material.Category, material.ElementId)).Any(group => group.Count() > 1) ||
             document.RenderMaterials.Any(material => !Enum.IsDefined(material.Category) || material.ElementId == Guid.Empty ||
+                !ValidOptionalMapPath(material.NormalPath) ||
+                !ValidOptionalMapPath(material.RoughnessPath) ||
+                !ValidOptionalMapPath(material.MetallicPath) ||
                 string.IsNullOrWhiteSpace(material.TexturePath) || material.TexturePath.Length > 1024 ||
                 !double.IsFinite(material.TextureSize) || material.TextureSize is < 0.01 or > 1000 ||
                 !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1))

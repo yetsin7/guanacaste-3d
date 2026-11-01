@@ -160,6 +160,13 @@ public partial class RenderPanel
             details.Children.Add(duplicate);
             details.Children.Add(restore);
             row.Children.Add(details);
+
+            // Maps are separate: the picture gives albedo, the optional maps control surface microstructure.
+            var maps = new WrapPanel { Margin = new Thickness(0, 3, 0, 7) };
+            AddPbrMapButton(maps, "Normal", assignment?.NormalPath, category, scope, 0);
+            AddPbrMapButton(maps, "Rugosidad", assignment?.RoughnessPath, category, scope, 1);
+            AddPbrMapButton(maps, "Metálico", assignment?.MetallicPath, category, scope, 2);
+            row.Children.Add(maps);
             MaterialRows.Children.Add(row);
         }
         _refreshingMaterials = false;
@@ -252,6 +259,7 @@ public partial class RenderPanel
 
     private static string MaterialDisplayName(string path)
     {
+        if (path == "stock:") return "Material original + mapas PBR";
         if (MaterialPresets.FromPath(path) is { } preset) return preset.Name;
         if (path.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
             return "⚠ Material no disponible: " + path[MaterialPresets.Prefix.Length..];
@@ -317,6 +325,56 @@ public partial class RenderPanel
             && double.IsFinite(parsed) && parsed is >= 0 and <= 1 ? parsed : assignment.Relief;
         if (Math.Abs(value - assignment.Relief) < 1e-9) return;
         _source.AssignRenderMaterial(category, assignment.TexturePath, assignment.TextureSize, value, scope);
+    }
+
+    /// <summary>Each map has a load control and an independent remove action.</summary>
+    private void AddPbrMapButton(WrapPanel panel, string label, string? selectedPath,
+        SurfaceKind category, Guid? scope, int channel)
+    {
+        var button = new Button
+        {
+            Content = selectedPath is null ? label + " +" : label + " ✓",
+            ToolTip = selectedPath is null ? "Cargar mapa PBR de " + label.ToLowerInvariant()
+                : "Mapa cargado: " + Path.GetFileName(selectedPath),
+            Padding = new Thickness(6, 2, 6, 2),
+            Margin = new Thickness(0, 3, 5, 0)
+        };
+        button.Click += (_, _) => ChoosePbrMap(category, scope, channel);
+        panel.Children.Add(button);
+        if (selectedPath is not null)
+        {
+            var remove = new Button
+            {
+                Content = "×", ToolTip = "Quitar mapa de " + label.ToLowerInvariant(),
+                Padding = new Thickness(5, 2, 5, 2),
+                Margin = new Thickness(0, 3, 8, 0)
+            };
+            remove.Click += (_, _) => ChangePbrMap(category, scope, channel, null);
+            panel.Children.Add(remove);
+        }
+    }
+
+    private void ChoosePbrMap(SurfaceKind category, Guid? scope, int channel)
+    {
+        if (_source is null) return;
+        var dialog = new OpenFileDialog
+        {
+            Title = channel switch { 0 => "Elegir mapa normal OpenGL (+Y)", 1 => "Elegir mapa de rugosidad", _ => "Elegir mapa de metalicidad" },
+            Filter = "Imágenes (PNG, JPEG, BMP, TIFF)|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|Todos los archivos|*.*"
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+            ChangePbrMap(category, scope, channel, dialog.FileName);
+    }
+
+    private void ChangePbrMap(SurfaceKind category, Guid? scope, int channel, string? value)
+    {
+        if (_source is null) return;
+        var current = _source.RenderMaterials.FirstOrDefault(a => a.Category == category && a.ElementId == scope);
+        var normal = channel == 0 ? value : current?.NormalPath;
+        var rough = channel == 1 ? value : current?.RoughnessPath;
+        var metal = channel == 2 ? value : current?.MetallicPath;
+        _source.SetRenderMaterialMaps(category, scope, normal, rough, metal);
+        RefreshMaterialRows();
     }
 
     private static double ReadSize(TextBox box, double fallback) =>

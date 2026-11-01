@@ -12,6 +12,7 @@ static class RenderEngineChecks
     public static void Run(Action<bool, string> check)
     {
         Materials(check);
+        PbrScalarMaps(check);
         CastConcrete(check);
         NaturalStone(check);
         NormalMapFiltering(check);
@@ -48,6 +49,26 @@ static class RenderEngineChecks
         check(float.IsFinite(broken.BaseColor.X) && broken.BaseColor.Y == 1 && broken.BaseColor.Z == 0 && broken.Roughness <= 1 &&
               broken.Ior >= 1 && broken.Transmission == 1, "Materials with NaN or out-of-range values are sanitized before rendering");
         check(Math.Abs(new RenderMaterial { Ior = 1.5f }.DielectricF0 - 0.04f) < 1e-4f, "A glass index of 1.5 reflects 4 % at normal incidence");
+    }
+
+    private static void PbrScalarMaps(Action<bool, string> check)
+    {
+        var source = new byte[] { 0, 255, 255, 0 };
+        var map = RenderScalarMap.FromGray(2, 2, source);
+        source[0] = 255;
+        check(map.LevelCount == 2 && map.Sample(.25f, .75f, 0) < .01f &&
+              map.Sample(.75f, .75f, 0) > .99f &&
+              MathF.Abs(map.Sample(.25f, .75f, 2) - .5f) < .01f,
+            "Linear roughness/metallic maps preserve texels, filter distant values and own their buffers");
+        bool Invalid(Func<RenderScalarMap> create)
+        {
+            try { create(); return false; } catch (ArgumentException) { return true; }
+        }
+        var odd = RenderScalarMap.FromGray(3, 1, [0, 255, 0]);
+        check(Invalid(() => RenderScalarMap.FromGray(65536, 65536, [])) &&
+              Invalid(() => RenderScalarMap.FromGray(2, 2, [1, 2])) &&
+              odd.LevelCount == 3 && float.IsFinite(odd.Sample(.2f, .3f, 10)),
+            "PBR scalar maps reject malformed images and downsample odd dimensions safely");
     }
 
     /// <summary>Checks that exposed concrete varies across its surface while painted walls keep their own finish.</summary>

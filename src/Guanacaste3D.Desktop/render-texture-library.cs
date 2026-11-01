@@ -127,6 +127,67 @@ internal static class RenderTextureLibrary
         }
     }
 
+    private static readonly ConcurrentDictionary<string, (DateTime Stamp, NormalMap Map)> NormalMaps = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, (DateTime Stamp, RenderScalarMap Map)> ScalarMaps = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Decode linear RGB/gray map pixels, limited in size to protect CPU-only machines.</summary>
+    private static (int Width, int Height, byte[] Bgra)? DecodePbrMap(string? path)
+    {
+        if (path is null || !File.Exists(path)) return null;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            BitmapSource frame = decoder.Frames[0];
+            if (frame.PixelWidth > 2048 || frame.PixelHeight > 2048)
+            {
+                var factor = 2048.0 / Math.Max(frame.PixelWidth, frame.PixelHeight);
+                frame = new TransformedBitmap(frame, new ScaleTransform(factor, factor));
+            }
+            var converted = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[converted.PixelWidth * converted.PixelHeight * 4];
+            converted.CopyPixels(pixels, converted.PixelWidth * 4, 0);
+            return (converted.PixelWidth, converted.PixelHeight, pixels);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException
+                                              or FileFormatException or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    public static NormalMap? LoadNormal(string? path)
+    {
+        if (path is null || !File.Exists(path)) return null;
+        var stamp = File.GetLastWriteTimeUtc(path);
+        if (NormalMaps.TryGetValue(path, out var cached) && cached.Stamp == stamp) return cached.Map;
+        if (DecodePbrMap(path) is not { } image) return null;
+        var rgb = new byte[image.Width * image.Height * 3];
+        for (var index = 0; index < image.Width * image.Height; index++)
+        {
+            rgb[index * 3] = image.Bgra[index * 4 + 2];
+            rgb[index * 3 + 1] = image.Bgra[index * 4 + 1];
+            rgb[index * 3 + 2] = image.Bgra[index * 4];
+        }
+        var map = NormalMap.FromRgb(image.Width, image.Height, rgb);
+        NormalMaps[path] = (stamp, map);
+        return map;
+    }
+
+    /// <summary>Reads the red channel as raw linear grayscale, without converting sRGB; suitable for separate R/M maps.</summary>
+    public static RenderScalarMap? LoadScalar(string? path)
+    {
+        if (path is null || !File.Exists(path)) return null;
+        var stamp = File.GetLastWriteTimeUtc(path);
+        if (ScalarMaps.TryGetValue(path, out var cached) && cached.Stamp == stamp) return cached.Map;
+        if (DecodePbrMap(path) is not { } image) return null;
+        var gray = new byte[image.Width * image.Height];
+        for (var index = 0; index < gray.Length; index++) gray[index] = image.Bgra[index * 4 + 2];
+        var map = RenderScalarMap.FromGray(image.Width, image.Height, gray);
+        ScalarMaps[path] = (stamp, map);
+        return map;
+    }
+
     private static readonly ConcurrentDictionary<string, (DateTime Stamp, BitmapSource Image)> Previews = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -204,23 +265,36 @@ internal static class RenderTextureLibrary
         foreach (var assignment in assignments)
         {
             if (assignment.ElementId is not null) continue;
-            // A library preset brings its whole material (a shipped texture too, when it has one); glass may take one.
+            RenderMaterial? material = null;
             if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
                 var image = preset.TextureKey is { } key ? Load(Resolve(BuiltInPrefix + key, projectFile)) : null;
-                // Preserve the preset's PBR values while honoring the project's editable
-                // tiling and relief. Previously these edits were saved but ignored by rendering.
-                textured[assignment.Category] = MaterialPresets.Build(preset, image) with
+                material = MaterialPresets.Build(preset, image) with
                 {
                     TextureSize = (float)assignment.TextureSize,
                     TextureRelief = (float)assignment.Relief
                 };
-                continue;
             }
-            if (assignment.Category == SurfaceKind.Glass) continue;
-            if (Load(Resolve(assignment.TexturePath, projectFile)) is not { } texture) continue;
-            textured[assignment.Category] = MaterialLibrary.Textured(assignment.Category, texture,
-                assignment.TextureSize, assignment.Relief);
+            else if (assignment.TexturePath == "stock:")
+            {
+                material = MaterialLibrary.ForKind(assignment.Category) with
+                {
+                    TextureSize = (float)assignment.TextureSize,
+                    TextureRelief = (float)assignment.Relief
+                };
+            }
+            else if (assignment.Category != SurfaceKind.Glass &&
+                     Load(Resolve(assignment.TexturePath, projectFile)) is { } texture)
+            {
+                material = MaterialLibrary.Textured(assignment.Category, texture, assignment.TextureSize, assignment.Relief);
+            }
+            if (material is null) continue;
+            textured[assignment.Category] = material with
+            {
+                NormalMap = LoadNormal(assignment.NormalPath is null ? null : Resolve(assignment.NormalPath, projectFile)),
+                RoughnessMap = LoadScalar(assignment.RoughnessPath is null ? null : Resolve(assignment.RoughnessPath, projectFile)),
+                MetallicMap = LoadScalar(assignment.MetallicPath is null ? null : Resolve(assignment.MetallicPath, projectFile))
+            };
         }
         // With the lights off a fixture is just its white diffuser.
         if (!lightsOn)

@@ -45,6 +45,10 @@ internal interface IRenderSource
     /// <summary>Assigns a texture to a category, or returns it to its stock material when the path is null.</summary>
     void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null);
 
+    /// <summary>Set or remove independently loaded PBR maps, preserving the selected base material and undo history.</summary>
+    void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
+        string? normalPath, string? roughnessPath, string? metallicPath);
+
     /// <summary>Whether light fixtures are on; changing it rebuilds the scene.</summary>
     bool ArtificialLights { get; set; }
 
