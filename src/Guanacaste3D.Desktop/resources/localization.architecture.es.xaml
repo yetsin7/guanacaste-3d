@@ -302,6 +302,7 @@
   <sys:String x:Key="Status.RailingsCreated">Se colocaron {0} barandillas.</sys:String>
   <sys:String x:Key="Status.NoRoomsFound">No hay espacios rectangulares cerrados por muros sin habitación.</sys:String>
   <sys:String x:Key="Status.RoomsCreated">Se crearon {0} habitaciones.</sys:String>
+  <sys:String x:Key="Status.RoomsSynchronized">Las habitaciones automáticas están actualizadas con sus límites actuales.</sys:String>
   <sys:String x:Key="Status.NoAreaBoundaries">Dibuja primero líneas de contorno de área.</sys:String>
   <sys:String x:Key="Status.AllRoomsTagged">Las {0} habitaciones del nivel ya están etiquetadas.</sys:String>
   <sys:String x:Key="Status.AllAreasTagged">Las {0} áreas del nivel ya están etiquetadas.</sys:String>
