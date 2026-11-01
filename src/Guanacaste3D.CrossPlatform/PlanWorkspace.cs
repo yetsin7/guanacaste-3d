@@ -105,12 +105,26 @@ public sealed class PlanWorkspace : Grid
         };
         _rename.Click += (_, _) => RenameAxis();
         _delete.Click += (_, _) => DeleteSelected();
-        _undo.Click += (_, _) => { if (_session?.CanUndo == true) { _session.Undo(); Changed(true); } };
-        _redo.Click += (_, _) => { if (_session?.CanRedo == true) { _session.Redo(); Changed(true); } };
+        _undo.Click += (_, _) => Undo();
+        _redo.Click += (_, _) => Redo();
         SetTool(EditTool.Select);
     }
 
     public DocumentSession? Session => _session;
+
+    public void Undo()
+    {
+        if (_session?.CanUndo != true) return;
+        _session.Undo();
+        Changed(true);
+    }
+
+    public void Redo()
+    {
+        if (_session?.CanRedo != true) return;
+        _session.Redo();
+        Changed(true);
+    }
 
     public void LoadDocument(BuildingDocument? document)
     {
