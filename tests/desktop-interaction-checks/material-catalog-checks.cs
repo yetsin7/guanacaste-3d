@@ -182,6 +182,23 @@ internal static partial class InteractionChecks
               spherePixels[middle + 2] != spherePixels[2],
             "A shaded sphere is visibly distinct from the background");
         var renderPanel = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.Controls.RenderPanel")!;
+        var boundedDecode = renderPanel.GetMethod("DecodeGalleryImage", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var tallImagePath = Path.Combine(Path.GetTempPath(), "guanacaste-tall-" + Guid.NewGuid().ToString("N") + ".png");
+        try
+        {
+            // An extremely narrow/tall texture must never decode at a huge height
+            // simply because the thumbnail requests a fixed pixel width.
+            var tallPixels = new byte[2 * 2048 * 4];
+            var tallBitmap = BitmapSource.Create(2, 2048, 96, 96, PixelFormats.Bgra32, null, tallPixels, 8);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(tallBitmap));
+            using (var output = File.Create(tallImagePath)) encoder.Save(output);
+            var bounded = (BitmapSource)boundedDecode.Invoke(null, [tallImagePath, 192])!;
+            Check(Math.Max(bounded.PixelWidth, bounded.PixelHeight) <= 192 &&
+                  bounded.PixelHeight >= bounded.PixelWidth && bounded.IsFrozen,
+                "Gallery decodes tall material images within the longest-edge budget");
+        }
+        finally { File.Delete(tallImagePath); }
         var resolveHdri = renderPanel.GetMethod("ResolveSavedHdri",
             BindingFlags.NonPublic | BindingFlags.Static)!;
         var file = Path.Combine(Path.GetTempPath(), "render-asset-test", "example.g3d");
