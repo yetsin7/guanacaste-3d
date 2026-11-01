@@ -30,6 +30,12 @@ static class IfcChecks
             "IFC GlobalId round-trips through the base-64 decoder");
         check(IfcExporter.Real(2) == "2." && IfcExporter.Real(-0.2) == "-0.2" && IfcExporter.Real(0) == "0.",
             "IFC reals always carry a decimal point");
+        var preciseValues = new[] { 1e-13, -1e-13, 0.00000000000042, 1.2345678901234567, 1234567890123.125 };
+        check(preciseValues.All(value =>
+                double.Parse(IfcExporter.Real(value), System.Globalization.CultureInfo.InvariantCulture) == value) &&
+              IfcExporter.Real(1e-13).Contains(".E-", StringComparison.Ordinal),
+            "IFC STEP reals preserve tiny coordinates and full double precision through scientific notation");
+        check(IfcExporter.Real(double.NaN) is not null == false, "");
         check(IfcExporter.Text("Sala 'A' ñ\\") == @"'Sala ''A'' \X2\00F1\X0\\\'",
             "IFC strings escape quotes, backslashes and non-ASCII");
 
