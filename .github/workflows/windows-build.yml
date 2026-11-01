@@ -63,6 +63,18 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
+      - name: Verify unsafe thumbnail COM registration is opt-in
+        shell: pwsh
+        run: |
+          $blocked = $false
+          try {
+            & ./scripts/register-thumbnails.ps1 -ProviderDirectory ./artifacts/not-present
+          }
+          catch {
+            if ($_.Exception.Message -like '*-AllowInProcess*') { $blocked = $true }
+            else { throw }
+          }
+          if (-not $blocked) { throw 'In-process COM thumbnail registration must reject missing opt-in.' }
       - name: Restore
         run: dotnet restore Guanacaste3D.slnx
       - name: Compile
