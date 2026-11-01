@@ -142,6 +142,12 @@
             <StackPanel><TextBlock Text="&#xE9E9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="20" HorizontalAlignment="Center"/>
               <TextBlock Text="Calidad" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/></StackPanel>
           </Button>
+          <Button x:Name="RenderRailAi" Click="AiRender_Click" Style="{StaticResource RenderRailButton}" ToolTip="Render con IA: prepara prompt e imagen para servicios externos">
+            <StackPanel>
+              <TextBlock Text="&#xE753;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="20" HorizontalAlignment="Center"/>
+              <TextBlock Text="Render IA" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+          </Button>
         </StackPanel>
       </Border>
       <DockPanel Grid.Column="1" Background="#151F2D">
@@ -552,6 +558,12 @@
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
+      <!-- Always available while inside Render, including for live preview frames. -->
+      <Button x:Name="CopyCurrentViewButton" Content="Copiar vista para IA" Click="CopyCurrentView_Click"
+              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,110"
+              Padding="14,9" MinHeight="38" FontWeight="SemiBold"
+              Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
+              ToolTip="Copia los píxeles de la vista actual, sin incluir controles de la interfaz."/>
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
       <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
               Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="10" Padding="12,10"
