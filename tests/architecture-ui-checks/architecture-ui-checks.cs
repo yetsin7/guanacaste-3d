@@ -153,9 +153,12 @@ internal static class ArchitectureUiChecks
     /// <summary>Every command in the enum must act: none may end on the "will be added later" message.</summary>
     private static void CheckEveryCommandResponds()
     {
-        // Commands that open a modal dialog would block the check; they are covered by their own windows.
+        // Commands that open modal dialogs must not run in this non-interactive sweep.
+        // RoomSeparatorCurve calls PromptWindow.Ask for radius/start/sweep and otherwise blocks CI.
         var modal = new[] { ArchitectureCommand.Levels, ArchitectureCommand.SetWorkPlane, ArchitectureCommand.WorkPlaneByLevel,
-            ArchitectureCommand.OpeningTypes, ArchitectureCommand.ApplyWallType };
+            ArchitectureCommand.OpeningTypes, ArchitectureCommand.ApplyWallType, ArchitectureCommand.RoomSeparatorCurve };
+        Check(typeof(MainWindow).GetMethod("BeginCurvedRoomSeparatorTool", PrivateInstance) is not null,
+            "Curved room separators have a dedicated parameter-dialog entry point");
         var route = typeof(MainWindow).GetMethod("ArchitectureRibbon_CommandInvoked", PrivateInstance)!;
         var unanswered = new List<ArchitectureCommand>();
         foreach (var command in Enum.GetValues<ArchitectureCommand>().Except(modal))
@@ -182,17 +185,22 @@ internal static class ArchitectureUiChecks
         Execute(ArchitectureCommand.RoomAutomatic);
         Check(session.Document.Rooms.Count == 1, "Automatic rooms create the room enclosed by the walls");
 
+        // Test the original room face before WallByFace adds a second boundary and triggers
+        // automatic-room topology regeneration; a stale selection is not a valid roof host.
         SetField("_selectedRoomId", (Guid?)session.Document.Rooms.Single().Id);
-        var before = session.Document.Walls.Count;
-        Execute(ArchitectureCommand.WallByFace);
-        Check(session.Document.Walls.Count == before + 4, "Wall by face builds walls around the selected room");
         Invoke("SlabByFace", ArchitecturalLibrary.SlabPresets.First(preset => preset.Name == "Hip Roof 25°"), 0.5);
-        Check(session.Document.Floors.Any(floor => floor.Shape == RoofShape.Hip), "Roof by face creates a hip roof over the room");
+        Check(session.Document.Floors.Any(floor => floor.Shape == RoofShape.Hip),
+            "Roof by face creates a hip roof over the room (status: " + Status() + ")");
 
         SetField("_selectedFloorId", (Guid?)session.Document.Floors.Single().Id);
         Execute(ArchitectureCommand.SlabEdge);
         Check(session.Document.StructuralElements.Count(element => element.Kind == StructuralElementKind.SlabEdge) == 4,
             "Slab edge runs along the selected slab");
+
+        SetField("_selectedRoomId", (Guid?)session.Document.Rooms.Single().Id);
+        var before = session.Document.Walls.Count;
+        Execute(ArchitectureCommand.WallByFace);
+        Check(session.Document.Walls.Count == before + 4, "Wall by face builds walls around the selected room");
 
         var stair = session.AddStructuralElement(level, StructuralElementKind.Stair, "Stair", new(1, 1), new(1, 5));
         SetField("_selectedStructuralId", (Guid?)stair);
