@@ -18,6 +18,8 @@ public partial class RenderPanel
 {
     private const string StockTag = "stock";
     private const string CustomTag = "custom";
+    private const string PbrPackageTag = "pbr-package";
+    private const string CreatePbrTag = "create-pbr";
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
     private Guid? _focusedElement;
@@ -75,7 +77,9 @@ public partial class RenderPanel
                 {
                     Content = MaterialDisplayName(assignment.TexturePath), Tag = assignment.TexturePath
                 });
-            picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
+            picker.Items.Add(new ComboBoxItem { Content = "Importar material PBR (.g3dm)…", Tag = PbrPackageTag });
+        picker.Items.Add(new ComboBoxItem { Content = "Crear material .g3dm desde imagen…", Tag = CreatePbrTag });
+        picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
             picker.SelectedIndex = assignment is null ? 0 : 1;
             var loadingOptions = false;
             picker.DropDownOpened += (_, _) =>
@@ -271,6 +275,11 @@ public partial class RenderPanel
                 ? "⚠ Textura no disponible: " + path[RenderTextureLibrary.BuiltInPrefix.Length..]
                 : Text(texture.LabelKey);
         }
+        if (PbrMaterialPackages.IsPackage(path))
+        {
+            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(path, null));
+            return imported?.Manifest.Name ?? "⚠ Paquete PBR no disponible: " + Path.GetFileName(path);
+        }
         return Path.GetFileName(path);
     }
 
@@ -282,6 +291,29 @@ public partial class RenderPanel
             case StockTag:
                 _source.AssignRenderMaterial(category, null, 1, 0, scope);
                 break;
+            case CreatePbrTag:
+                CreatePbrMaterialFromImage(category);
+                RefreshMaterialRows();
+                return;
+            case PbrPackageTag:
+                var pbrDialog = new OpenFileDialog
+                {
+                    Title = "Importar material PBR de Guanacaste 3D",
+                    Filter = "Paquete de material PBR (*.g3dm)|*.g3dm"
+                };
+                if (pbrDialog.ShowDialog(Window.GetWindow(this)) == true)
+                {
+                    var package = PbrMaterialPackages.Read(pbrDialog.FileName);
+                    if (package is null)
+                        MessageBox.Show(Window.GetWindow(this),
+                            "El paquete no es válido. Comprueba los parámetros y que la imagen albedo esté junto al manifiesto.",
+                            "Importación PBR", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    else
+                        _source.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + pbrDialog.FileName,
+                            package.Value.Manifest.TextureSize, package.Value.Manifest.Relief);
+                }
+                RefreshMaterialRows();
+                return;
             case CustomTag:
                 var dialog = new OpenFileDialog
                 {
@@ -303,6 +335,85 @@ public partial class RenderPanel
                 break;
         }
         RefreshMaterialRows();
+    }
+
+    /// <summary>Creates an editable standalone material package and immediately assigns it.</summary>
+    private void CreatePbrMaterialFromImage(SurfaceKind category)
+    {
+        var owner = Window.GetWindow(this);
+        var chooseImage = new OpenFileDialog
+        {
+            Title = "Elegir imagen de color (albedo)",
+            Filter = "Imágenes (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff)|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff"
+        };
+        if (chooseImage.ShowDialog(owner) != true) return;
+
+        var dialog = new Window
+        {
+            Title = "Nuevo material PBR · Guanacaste 3D",
+            Owner = owner, Width = 380, Height = 370,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        TextBox AddField(string label, string initial)
+        {
+            panel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 6, 0, 3) });
+            var input = new TextBox { Text = initial };
+            panel.Children.Add(input);
+            return input;
+        }
+        var nameInput = AddField("Nombre del material", Path.GetFileNameWithoutExtension(chooseImage.FileName));
+        var roughnessInput = AddField("Rugosidad (0.02 a 1)", "0.75");
+        var metalInput = AddField("Metalicidad (0 a 1)", "0");
+        var sizeInput = AddField("Escala de textura (metros)", "1");
+        var reliefInput = AddField("Relieve (0 a 1)", "0.2");
+        var create = new Button
+        {
+            Content = "Crear material .g3dm", Margin = new Thickness(0, 14, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(15, 6, 15, 6),
+            IsDefault = true
+        };
+        create.Click += (_, _) => dialog.DialogResult = true;
+        panel.Children.Add(create);
+        dialog.Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        if (dialog.ShowDialog() != true) return;
+        static bool ReadUnit(TextBox input, double minimum, double maximum, out double value) =>
+            double.TryParse(input.Text.Trim().Replace(',', '.'), NumberStyles.Float,
+                CultureInfo.InvariantCulture, out value) &&
+            double.IsFinite(value) && value >= minimum && value <= maximum;
+        if (string.IsNullOrWhiteSpace(nameInput.Text) ||
+            !ReadUnit(roughnessInput, 0.02, 1, out var roughness) ||
+            !ReadUnit(metalInput, 0, 1, out var metallic) ||
+            !ReadUnit(sizeInput, 0.01, 1000, out var size) ||
+            !ReadUnit(reliefInput, 0, 1, out var relief))
+        {
+            MessageBox.Show(owner, "Revisa el nombre y los valores PBR.", "Material inválido",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var save = new SaveFileDialog
+        {
+            Title = "Guardar material de Guanacaste 3D",
+            Filter = "Material Guanacaste 3D (*.g3dm)|*.g3dm",
+            DefaultExt = ".g3dm", AddExtension = true,
+            FileName = Path.GetFileNameWithoutExtension(chooseImage.FileName) + ".g3dm",
+            OverwritePrompt = true
+        };
+        if (save.ShowDialog(owner) != true) return;
+        try
+        {
+            // No silent overwrite: protect both the manifest and its companion image.
+            var destination = PbrMaterialPackages.CreateFromImage(chooseImage.FileName,
+                save.FileName, nameInput.Text, roughness, metallic, size, relief);
+            _source?.AssignRenderMaterial(category, PbrMaterialPackages.Prefix + destination, size, relief);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                                            ArgumentException or NotSupportedException)
+        {
+            MessageBox.Show(owner, exception.Message, "No se pudo crear el material",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void MaterialSizeChanged(SurfaceKind category, TextBox size, Guid? scope)

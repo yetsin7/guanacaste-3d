@@ -82,6 +82,11 @@ internal static class RenderTextureLibrary
     public static string? Resolve(string texturePath, string? projectFile)
     {
         // Library identifiers are not file paths. Presets resolve to their shipped texture key when available.
+        if (PbrMaterialPackages.IsPackage(texturePath))
+        {
+            var imported = PbrMaterialPackages.Read(PbrMaterialPackages.ResolveManifest(texturePath, projectFile));
+            return imported?.AlbedoPath;
+        }
         if (texturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal))
         {
             var preset = MaterialPresets.FromPath(texturePath);
@@ -211,7 +216,9 @@ internal static class RenderTextureLibrary
             // Presets store a material: identifier, not a filesystem path. Resolve the
             // preset's bundled texture so the interactive 3D viewport matches the render.
             var preset = MaterialPresets.FromPath(assignment.TexturePath);
-            var path = preset is not null
+            var path = PbrMaterialPackages.IsPackage(assignment.TexturePath)
+                ? Resolve(assignment.TexturePath, projectFile)
+                : preset is not null
                 ? preset.TextureKey is { } key ? Resolve(BuiltInPrefix + key, projectFile) : null
                 : assignment.TexturePath.StartsWith(MaterialPresets.Prefix, StringComparison.Ordinal)
                     ? null : Resolve(assignment.TexturePath, projectFile);
@@ -273,7 +280,10 @@ internal static class RenderTextureLibrary
         {
             if (assignment.ElementId is not null) continue;
             RenderMaterial? material = null;
-            if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
+            if (PbrMaterialPackages.IsPackage(assignment.TexturePath))
+                material = PbrMaterialPackages.Build(assignment.TexturePath, projectFile,
+                    assignment.TextureSize, assignment.Relief);
+            else if (MaterialPresets.FromPath(assignment.TexturePath) is { } preset)
             {
                 var image = preset.TextureKey is { } key ? Load(Resolve(BuiltInPrefix + key, projectFile)) : null;
                 material = MaterialPresets.Build(preset, image) with
@@ -298,9 +308,12 @@ internal static class RenderTextureLibrary
             if (material is null) continue;
             textured[assignment.Category] = material with
             {
-                NormalMap = LoadNormal(assignment.NormalPath is null ? null : Resolve(assignment.NormalPath, projectFile)),
-                RoughnessMap = LoadScalar(assignment.RoughnessPath is null ? null : Resolve(assignment.RoughnessPath, projectFile)),
-                MetallicMap = LoadScalar(assignment.MetallicPath is null ? null : Resolve(assignment.MetallicPath, projectFile))
+                NormalMap = assignment.NormalPath is null ? material.NormalMap :
+                    LoadNormal(Resolve(assignment.NormalPath, projectFile)),
+                RoughnessMap = assignment.RoughnessPath is null ? material.RoughnessMap :
+                    LoadScalar(Resolve(assignment.RoughnessPath, projectFile)),
+                MetallicMap = assignment.MetallicPath is null ? material.MetallicMap :
+                    LoadScalar(Resolve(assignment.MetallicPath, projectFile))
             };
         }
         // With the lights off a fixture is just its white diffuser.
