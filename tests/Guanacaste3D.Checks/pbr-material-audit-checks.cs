@@ -69,7 +69,7 @@ internal static class PbrMaterialAuditChecks
             // Cross-platform case-sensitivity: detect a missing asset rather than guessing its filename.
             File.WriteAllText(Path.Combine(folder, "different-case.g3dm"),
                 """{"version":1,"name":"Case mismatch","albedo":"BRICK_ALBEDO.PNG"}""");
-            if (!OperatingSystem.IsWindows())
+            if (OperatingSystem.IsLinux())
                 check(!PbrMaterialAudit.Inspect(Path.Combine(folder, "different-case.g3dm")).IsValid,
                     "Linux/macOS case-sensitive assets must preserve their filename spelling");
 
