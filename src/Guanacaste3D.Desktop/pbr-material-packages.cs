@@ -21,7 +21,7 @@ internal sealed record PbrMaterialManifest
 }
 
 /// <summary>
-/// Safe local importer for .g3dpbr JSON sidecars. Rejects paths escaping the manifest directory;
+/// Safe local importer for .g3dm JSON sidecars. Rejects paths escaping the manifest directory;
 /// projects retain the manifest path so a material can be changed without embedding large images.
 /// </summary>
 internal static class PbrMaterialPackages
@@ -57,7 +57,7 @@ internal static class PbrMaterialPackages
     public static (PbrMaterialManifest Manifest, string AlbedoPath)? Read(string? path)
     {
         if (path is null || !File.Exists(path) ||
-            !string.Equals(Path.GetExtension(path), ".g3dpbr", StringComparison.OrdinalIgnoreCase))
+            !string.Equals(Path.GetExtension(path), ".g3dm", StringComparison.OrdinalIgnoreCase))
             return null;
         try
         {
