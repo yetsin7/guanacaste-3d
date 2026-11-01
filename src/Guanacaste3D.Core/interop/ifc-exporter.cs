@@ -214,12 +214,22 @@ public static class IfcExporter
 
     private static string Refs(params int[] entities) => string.Join(",", entities.Select(Ref));
 
-    /// <summary>Formats a STEP REAL, which must always contain a decimal point.</summary>
+    /// <summary>Formats a STEP REAL with round-trip precision and a decimal point in its mantissa.</summary>
     public static string Real(double value)
     {
         if (!double.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
-        if (Math.Abs(value) < 1e-12) return "0.";
-        var text = value.ToString("0.##########", Invariant);
+        if (value == 0) return "0.";
+
+        // Fixed 10-place formatting silently rounded small nonzero coordinates to zero and
+        // truncated more precise measurements. "R" preserves the original double value.
+        var text = value.ToString("R", Invariant);
+        var exponent = text.IndexOf('E');
+        if (exponent >= 0)
+        {
+            // STEP REAL syntax requires a decimal point even in scientific notation.
+            var mantissa = text[..exponent];
+            return (mantissa.Contains('.') ? mantissa : mantissa + ".") + text[exponent..];
+        }
         return text.Contains('.') ? text : text + ".";
     }
 
