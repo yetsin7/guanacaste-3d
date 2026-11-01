@@ -32,7 +32,9 @@ public enum SurfacePattern : byte
     /// <summary>Weathered asphalt with fine aggregate and irregular surface variation.</summary>
     Asphalt,
     /// <summary>Subtle mineral variation and pores on exposed cast concrete.</summary>
-    PouredConcrete
+    PouredConcrete,
+    /// <summary>Irregular coursed natural-stone masonry with individually toned stones, recessed mortar and mineral relief.</summary>
+    StoneMasonry
 }
 
 /// <summary>
@@ -90,6 +92,12 @@ public sealed record RenderMaterial
     /// a smooth surface.
     /// </summary>
     public NormalMap? NormalMap { get; init; }
+    /// <summary>Optional linear grayscale roughness, sampled in UV or projected world coordinates.</summary>
+    public RenderScalarMap? RoughnessMap { get; init; }
+    /// <summary>Optional linear grayscale metalness; black is dielectric and white is metal.</summary>
+    public RenderScalarMap? MetallicMap { get; init; }
+    /// <summary>Optional linear height channel; bumps shading normals without moving BIM geometry.</summary>
+    public RenderScalarMap? HeightMap { get; init; }
 
     public bool IsEmissive => Emission.X > 0 || Emission.Y > 0 || Emission.Z > 0;
     public bool IsTransmissive => Transmission > 0.001f;
@@ -215,7 +223,7 @@ public static class MaterialLibrary
         },
         SurfaceKind.WallStone => new RenderMaterial
         {
-            Name = "Piedra", BaseColor = new(0.46f, 0.43f, 0.38f), Roughness = 0.9f, Pattern = SurfacePattern.Blocks, PatternScale = 1.5f
+            Name = "Piedra natural", BaseColor = new(0.55f, 0.50f, 0.43f), Roughness = 0.92f, Pattern = SurfacePattern.StoneMasonry, PatternScale = 1f
         },
         SurfaceKind.WallWood => new RenderMaterial
         {

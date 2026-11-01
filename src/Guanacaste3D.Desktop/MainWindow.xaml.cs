@@ -34,7 +34,9 @@ public partial class MainWindow : Window
     public MainWindow(string? projectPath = null, bool showStartScreen = false)
     {
         InitializeComponent();
+        ConfigureApplicationFileMenu();
         InitializeGridAxisInteraction();
+        ApplyDesktopOptions(DesktopOptions.Load());
         InitializeCommandCustomization();
         _session = new DocumentSession(ArchitecturalLibrary.CreateProject(GetText("Project.Untitled")));
         _activeLevelId = _session.Document.Levels[0].Id;
@@ -214,11 +216,12 @@ public partial class MainWindow : Window
         try
         {
             // The render view travels with the project, so reopening it shows the same camera, sun and filters.
-            try { _session.StoreRenderSetup(RenderPanelControl.CaptureSetup(_navigation)); }
+            try { _session.StoreRenderSetup(RenderPanelControl.CaptureSetupForProject(_navigation, path!)); }
             catch (InvalidDataException) { }
             ProjectFile.Save(path!, _session.Document);
             _links.Save(path!);
             _filePath = path;
+            RenderPanelControl.SetProjectFilePath(_filePath);
             _dirty = false;
             RememberRecent(path!, _session.Document);
             UpdateWindowTitle();
@@ -259,6 +262,10 @@ public partial class MainWindow : Window
         _selectedSheetId = null;
         _selectedViewId = null;
         _filePath = filename;
+        RenderPanelControl.SetProjectFilePath(_filePath);
+        // Prevent an async sky load from a previous document from leaking into the new project.
+        RenderPanelControl.ClearHdriForDocument();
+        RenderPanelControl.ClearLutForDocument();
         _dirty = false;
         _projectChosen = true;
         HideStartScreen();
@@ -278,7 +285,7 @@ public partial class MainWindow : Window
         _navigation.YawDegrees = (float)setup.YawDegrees;
         _navigation.PitchDegrees = (float)setup.PitchDegrees;
         _navigation.FieldOfViewDegrees = (float)setup.FieldOfViewDegrees;
-        RenderPanelControl.ApplySetup(setup);
+        RenderPanelControl.ApplySetupForProject(setup, _filePath);
         UpdateModelCamera();
     }
 

@@ -169,7 +169,7 @@ public sealed partial class PathTracer
             ? sunColor * (MathF.PI * settings.SunIntensity / solidAngle)
             : Vector3.Zero;
         _skyScale = new Vector3(Math.Max(0, settings.SkyIntensity));
-        _clouds = settings.Sky == SkyKind.Clear && settings.CloudCover > 0.001f ? new CloudLayer(settings.CloudCover, 7, settings.Clouds) : null;
+        _clouds = settings.Sky == SkyKind.Clear && settings.CloudCover > 0.001f ? new CloudLayer(settings.CloudCover, settings.CloudSeed, settings.Clouds, settings.CloudDirectionDegrees) : null;
         _cloudSunlight = settings.SunIntensity > 0 ? sunColor * settings.SunIntensity : Vector3.Zero;
         _cloudSkylight = _sky.Radiance(Vector3.UnitZ) * _skyScale;
         // Koschmieder: visibility V gives 2 % contrast left, so the extinction is 3.912 / V. Clear air (turbidity 2.5)
@@ -934,7 +934,7 @@ public sealed partial class PathTracer
 
     /// <summary>The state of a path vertex that shading needs.</summary>
     private readonly record struct ShadePoint(Vector3 Position, Vector3 Geometric, Vector3 Normal, Vector3 Diffuse,
-        int Material);
+        int Material, SurfaceData Surface);
 
     /// <summary>Computes facing normals and the pattern-modulated diffuse color at a hit; <paramref name="detailed"/> evaluates the pattern exactly.</summary>
     private ShadePoint Shade(in RayHit hit, Bvh bvh, Vector3 position, Vector3 direction, bool detailed)
@@ -960,7 +960,35 @@ public sealed partial class PathTracer
             normal = -normal;
         }
         ref readonly var surface = ref _surfaces[material];
-        var diffuse = surface.Diffuse;
+        var materialAtPoint = surface;
+        if (surface.RoughnessMap is not null || surface.MetallicMap is not null)
+        {
+            float u, v, footprint;
+            if (surface.UvMapped && _scene.TriangleUvs is { } mapUvs)
+            {
+                var i = triangle * 3;
+                var uv = mapUvs[i] * (1 - hit.U - hit.V) + mapUvs[i + 1] * hit.U + mapUvs[i + 2] * hit.V;
+                var area2 = Vector3.Cross(_scene.Positions[_scene.Indices[i + 1]] - _scene.Positions[_scene.Indices[i]],
+                    _scene.Positions[_scene.Indices[i + 2]] - _scene.Positions[_scene.Indices[i]]).Length();
+                var uv1 = mapUvs[i + 1] - mapUvs[i];
+                var uv2 = mapUvs[i + 2] - mapUvs[i];
+                var density = area2 > 1e-12f ? MathF.Sqrt(MathF.Abs(uv1.X * uv2.Y - uv2.X * uv1.Y) / area2) : 1;
+                u = uv.X;
+                v = 1 - uv.Y;
+                footprint = MathF.Max(hit.Distance * PixelAngle * density, 1e-5f);
+            }
+            else
+            {
+                (u, v) = SurfacePatterns.PlaneUv(position, geometric);
+                u *= surface.TextureScale;
+                v *= surface.TextureScale;
+                footprint = MathF.Max(hit.Distance * PixelAngle * surface.TextureScale, 1e-5f);
+            }
+            var roughness = surface.RoughnessMap?.Sample(u, v, footprint) ?? surface.Roughness;
+            var metallic = surface.MetallicMap?.Sample(u, v, footprint) ?? surface.Metallic;
+            materialAtPoint = surface.WithPbr(roughness, metallic);
+        }
+        var diffuse = materialAtPoint.Diffuse;
         // Pattern detail only shows where the surface is seen sharply; after a diffuse bounce the light is blurred
         // anyway, so the pattern's mean value is used and the noise function is skipped (about 40 % of render time).
         if (surface.Texture is { } mapped && surface.UvMapped && _scene.TriangleUvs is { } uvs)
@@ -981,9 +1009,27 @@ public sealed partial class PathTracer
                 if (surface.NormalMap is { } relief)
                 {
                     static Vector2 Up(Vector2 corner) => new(corner.X, 1 - corner.Y);
-                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y), _scene.Positions[_scene.Indices[i]],
+                    var bent = NormalMap.Perturb(normal, relief.Sample(uv.X, 1 - uv.Y, footprint), _scene.Positions[_scene.Indices[i]],
                         _scene.Positions[_scene.Indices[i + 1]], _scene.Positions[_scene.Indices[i + 2]], Up(uvs[i]), Up(uvs[i + 1]), Up(uvs[i + 2]));
                     // A bend that would turn the surface away from the eye is dropped, as for image relief.
+                    if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                }
+                // A real grayscale height map is not inferred from albedo. UV meshes also receive
+                // bump shading, so imported stone, timber and tiles can show fine depth at close range.
+                if (surface.HeightMap is { } height && surface.TextureDepth > 0)
+                {
+                    static Vector2 UpHeight(Vector2 point) => new(point.X, 1 - point.Y);
+                    var v = 1 - uv.Y;
+                    var step = height.TexelSize(footprint);
+                    var dU = (height.Sample(uv.X + step, v, footprint) -
+                              height.Sample(uv.X - step, v, footprint)) / (2 * step);
+                    var dV = (height.Sample(uv.X, v + step, footprint) -
+                              height.Sample(uv.X, v - step, footprint)) / (2 * step);
+                    var tangentNormal = Vector3.Normalize(new Vector3(-dU * surface.TextureDepth * imagePerMetre,
+                        -dV * surface.TextureDepth * imagePerMetre, 1));
+                    var bent = NormalMap.Perturb(normal, tangentNormal,
+                        _scene.Positions[_scene.Indices[i]], _scene.Positions[_scene.Indices[i + 1]],
+                        _scene.Positions[_scene.Indices[i + 2]], UpHeight(uvs[i]), UpHeight(uvs[i + 1]), UpHeight(uvs[i + 2]));
                     if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
                 }
             }
@@ -1003,11 +1049,13 @@ public sealed partial class PathTracer
                 diffuse *= texture.Sample(u * tiles, v * tiles, footprint);
                 if (surface.TextureDepth > 0)
                 {
-                    var step = texture.TexelSize(footprint);
-                    var dU = (texture.Luminance(u * tiles + step, v * tiles, footprint) -
-                              texture.Luminance(u * tiles - step, v * tiles, footprint)) / (2 * step) * tiles;
-                    var dV = (texture.Luminance(u * tiles, v * tiles + step, footprint) -
-                              texture.Luminance(u * tiles, v * tiles - step, footprint)) / (2 * step) * tiles;
+                    var height = surface.HeightMap;
+                    var step = height?.TexelSize(footprint) ?? texture.TexelSize(footprint);
+                    float SampleHeight(float x, float y) => height?.Sample(x, y, footprint) ?? texture.Luminance(x, y, footprint);
+                    var dU = (SampleHeight(u * tiles + step, v * tiles) -
+                              SampleHeight(u * tiles - step, v * tiles)) / (2 * step) * tiles;
+                    var dV = (SampleHeight(u * tiles, v * tiles + step) -
+                              SampleHeight(u * tiles, v * tiles - step)) / (2 * step) * tiles;
                     var bent = SurfacePatterns.Bend(normal, dU * surface.TextureDepth, dV * surface.TextureDepth);
                     if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
                 }
@@ -1032,7 +1080,15 @@ public sealed partial class PathTracer
                 diffuse *= new Vector3(surface.PatternMean);
             }
         }
-        return new ShadePoint(position, geometric, normal, diffuse, material);
+        if (detailed && !surface.UvMapped && surface.NormalMap is { } worldNormal)
+        {
+            var (u, v) = SurfacePatterns.PlaneUv(position, geometric);
+            var footprint = MathF.Max(hit.Distance * PixelAngle * surface.TextureScale, 1e-5f);
+            var sample = worldNormal.Sample(u * surface.TextureScale, v * surface.TextureScale, footprint);
+            var bent = SurfacePatterns.MapNormal(normal, sample);
+            if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+        }
+        return new ShadePoint(position, geometric, normal, diffuse, material, materialAtPoint);
     }
 
     /// <summary>
@@ -1081,7 +1137,9 @@ public sealed partial class PathTracer
                 {
                     var weight = previousDelta ? 1f : Sampling.PowerHeuristic(previousPdf, _sunPdf);
                     var visible = Vector3.Min(_sunRadiance, new Vector3(CameraSunRadianceLimit));
-                    radiance += visible * weight;
+                    // Clouds can obscure the disk, instead of the former artificial clear circle around it.
+                    radiance += visible * weight *
+                        (_clouds?.SunTransmittance(origin, direction) ?? 1f);
                 }
                 if (cache is not null && vertexCount > 0)
                 {
@@ -1109,7 +1167,7 @@ public sealed partial class PathTracer
                 }
             }
             var point = Shade(hit, bvh, position, direction, detailed: previousDelta);
-            ref readonly var surface = ref _surfaces[point.Material];
+            var surface = point.Surface;
 
             // Thin glass or a perforated film: a share of rays pass through, optionally reflecting at grazing angles.
             if (surface.Transmission > 0 && (surface.Transmission >= 1 || sampler.NextFloat() < surface.Transmission))
@@ -1255,12 +1313,12 @@ public sealed partial class PathTracer
     /// <summary>Radiance of the sky dome (no sun disk) in a direction.</summary>
     private Vector3 SkyRadiance(Vector3 direction)
     {
+        if (_settings.Environment is { } environment)
+            return environment.Sample(direction, _settings.EnvironmentYawDegrees) * _skyScale;
         var sky = _sky.Radiance(direction) * _skyScale;
         if (_clouds is null || direction.Z <= 0.015f) return sky;
         var (opacity, thickness) = _clouds.Sample(direction);
-        // Clouds part around the sun's disk, so the sun that lights the scene and casts its shadows is never hidden.
-        var clearOfSun = 1 - MathF.Pow(Math.Clamp((Vector3.Dot(direction, _sunDirection) - 0.985f) / 0.0145f, 0f, 1f), 0.5f);
-        opacity *= _sunRadiance == Vector3.Zero ? 1 : clearOfSun;
+        // The sun disk is attenuated separately in Trace(), allowing clouds to pass in front of it.
         if (opacity <= 0.001f) return sky;
         var cloud = _clouds.ShadeFor(direction, thickness, _sunDirection, _cloudSunlight, _cloudSkylight);
         return Vector3.Lerp(sky, cloud, opacity);
@@ -1285,8 +1343,10 @@ public sealed partial class PathTracer
                 if (transmittance != Vector3.Zero)
                 {
                     var f = Evaluate(in surface, point.Diffuse, point.Normal, view, light, nDotV, nDotL, out var pdf);
+                    // Keep sunlit roofs and ground consistent with the visible cloud layer.
+                    var cloudTransmission = _clouds?.SunTransmittance(point.Position, light) ?? 1f;
                     total += transmittance * _sunRadiance * f *
-                             (cosine / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf));
+                             (cosine / _sunPdf * Sampling.PowerHeuristic(_sunPdf, pdf) * cloudTransmission);
                 }
             }
         }
@@ -1486,8 +1546,14 @@ public sealed partial class PathTracer
     }
 
     /// <summary>Render-ready form of a <see cref="RenderMaterial"/>.</summary>
-    private readonly struct SurfaceData
+    private readonly record struct SurfaceData
     {
+        public Vector3 BaseColor { get; init; }
+        public float Metallic { get; init; }
+        public float Roughness { get; init; }
+        public RenderScalarMap? RoughnessMap { get; init; }
+        public RenderScalarMap? MetallicMap { get; init; }
+        public RenderScalarMap? HeightMap { get; init; }
         public Vector3 Diffuse { get; init; }
         public Vector3 F0 { get; init; }
         public Vector3 Emission { get; init; }
@@ -1518,6 +1584,29 @@ public sealed partial class PathTracer
         /// <summary>Whether direct light can be evaluated here (anything except a pure mirror or pure emitter).</summary>
         public bool HasLobes { get; init; }
 
+        /// <summary>Recomputes the local GGX/Fresnel lobes from map values, without altering shared material state.</summary>
+        public SurfaceData WithPbr(float roughness, float metallic)
+        {
+            roughness = float.IsFinite(roughness) ? Math.Clamp(roughness, 0.02f, 1f) : Roughness;
+            metallic = float.IsFinite(metallic) ? Math.Clamp(metallic, 0f, 1f) : Metallic;
+            var delta = roughness <= 0.05f;
+            var hasSpecular = metallic > 0.01f || roughness < 0.85f;
+            var diffuse = BaseColor * (1f - metallic);
+            return this with
+            {
+                Roughness = roughness,
+                Metallic = metallic,
+                Diffuse = diffuse,
+                F0 = Vector3.Lerp(new Vector3(DielectricF0), BaseColor, metallic),
+                Alpha = MathF.Max(roughness * roughness, 0.0025f),
+                Delta = delta,
+                HasSpecular = hasSpecular,
+                CacheEligible = !delta && metallic <= 0.05f && Transmission <= 0 &&
+                    Translucency <= 0 && !IsEmissive,
+                HasLobes = Sampling.Luminance(diffuse) > 1e-4f || (hasSpecular && !delta)
+            };
+        }
+
         public static SurfaceData From(RenderMaterial material)
         {
             var m = material.Sanitized();
@@ -1529,6 +1618,12 @@ public sealed partial class PathTracer
             var diffuse = m.BaseColor * (1 - m.Metallic);
             return new SurfaceData
             {
+                BaseColor = m.BaseColor,
+                Metallic = m.Metallic,
+                Roughness = m.Roughness,
+                RoughnessMap = m.RoughnessMap,
+                MetallicMap = m.MetallicMap,
+                HeightMap = m.HeightMap,
                 Diffuse = diffuse,
                 F0 = f0,
                 Emission = m.Emission,
@@ -1547,7 +1642,7 @@ public sealed partial class PathTracer
                 PatternMean = SurfacePatterns.Average(m.Pattern, m.PatternScale),
                 Texture = m.Texture,
                 UvMapped = m.UvMapped,
-                NormalMap = m.UvMapped ? m.NormalMap : null,
+                NormalMap = m.NormalMap,
                 TextureScale = 1 / m.TextureSize,
                 // A full relief is a hundredth of the tile: about 1 cm of joint depth on a one-meter brick image.
                 TextureDepth = m.TextureRelief * m.TextureSize * 0.01f

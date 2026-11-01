@@ -7,11 +7,19 @@ namespace Guanacaste3D.Core.Rendering;
 /// its full sample count, and squares not reached yet are shown dark, as in V-Ray.
 /// </summary>
 public sealed record RenderJob(int Width, int Height, int TargetSamples, TimeSpan? TimeLimit = null,
-    bool Denoise = true, ImageFinish? Finish = null, bool Buckets = false);
+    bool Denoise = true, ImageFinish? Finish = null, bool Buckets = false)
+{
+    /// <summary>Square bucket edge in pixels (8–256, power of two). The image size is unchanged.</summary>
+    public int BucketSize { get; init; } = 32;
+}
 
 /// <summary>A displayable snapshot of a render in progress.</summary>
 public sealed record RenderFrame(byte[] Bgra, int Width, int Height, int Samples, int TargetSamples, TimeSpan Elapsed,
-    TimeSpan? Remaining, float ActiveFraction, bool IsFinal);
+    TimeSpan? Remaining, float ActiveFraction, bool IsFinal)
+{
+    /// <summary>Actual fraction of work completed, not a percentage inferred from rounded sample counters.</summary>
+    public double Progress { get; init; }
+}
 
 /// <summary>Summary of a finished, stopped or failed render.</summary>
 public sealed record RenderResult(RenderFrame? LastFrame, int Samples, TimeSpan Elapsed, long Rays, int Triangles,
@@ -33,6 +41,8 @@ public sealed class RenderSession : IDisposable
     private readonly RenderSettings _settings;
     private readonly RenderJob _job;
     private readonly ManualResetEventSlim _running = new(true);
+    // Monotonic wall time of the current render, excluding scene/BVH preparation. Pauses are included.
+    private readonly Stopwatch _renderClock = new();
     private PathTracer? _tracer;
 
     public RenderSession(RenderScene scene, RenderCamera camera, RenderSettings settings, RenderJob job)
@@ -41,6 +51,8 @@ public sealed class RenderSession : IDisposable
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(job);
         if (job.TargetSamples < 1) throw new ArgumentOutOfRangeException(nameof(job), "At least one sample is required.");
+        if (job.BucketSize < 8 || job.BucketSize > 256 || (job.BucketSize & (job.BucketSize - 1)) != 0)
+            throw new ArgumentOutOfRangeException(nameof(job), "Bucket size must be a power of two from 8 to 256.");
         _scene = scene;
         _camera = camera;
         _settings = settings;
@@ -54,6 +66,9 @@ public sealed class RenderSession : IDisposable
     public event Action<string>? PhaseChanged;
 
     public bool IsPaused => !_running.IsSet;
+
+    /// <summary>Measured render wall time from a monotonic clock; excludes scene preparation, includes pauses.</summary>
+    public TimeSpan RenderElapsed => _renderClock.Elapsed;
 
     /// <summary>The tracer once preparation has finished; null before that.</summary>
     public PathTracer? Tracer => _tracer;
@@ -99,7 +114,8 @@ public sealed class RenderSession : IDisposable
 
     private RenderResult Run(CancellationToken cancellation)
     {
-        var clock = Stopwatch.StartNew();
+        var clock = _renderClock;
+        clock.Reset();
         RenderFrame? last = null;
         try
         {
@@ -172,9 +188,11 @@ public sealed class RenderSession : IDisposable
             return new RenderResult(last, tracer?.SampleCount ?? 0, clock.Elapsed, tracer?.RayCount ?? 0,
                 tracer?.TriangleCount ?? _scene.TriangleCount, false, true);
         }
+        finally
+        {
+            clock.Stop();
+        }
     }
-
-    private const int BucketSize = 64;
 
     /// <summary>
     /// Bucket render: squares are taken from the centre outwards by as many workers as there are threads, each rendered to
@@ -183,9 +201,10 @@ public sealed class RenderSession : IDisposable
     private RenderFrame RunBuckets(PathTracer tracer, Stopwatch clock, ImageFinish finish, CancellationToken cancellation)
     {
         var buckets = new List<(int X, int Y, int W, int H)>();
-        for (var y = 0; y < tracer.Height; y += BucketSize)
-        for (var x = 0; x < tracer.Width; x += BucketSize)
-            buckets.Add((x, y, Math.Min(BucketSize, tracer.Width - x), Math.Min(BucketSize, tracer.Height - y)));
+        var bucketSize = _job.BucketSize;
+        for (var y = 0; y < tracer.Height; y += bucketSize)
+        for (var x = 0; x < tracer.Width; x += bucketSize)
+            buckets.Add((x, y, Math.Min(bucketSize, tracer.Width - x), Math.Min(bucketSize, tracer.Height - y)));
         var centreX = tracer.Width / 2.0;
         var centreY = tracer.Height / 2.0;
         buckets.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
@@ -197,14 +216,17 @@ public sealed class RenderSession : IDisposable
         var completed = 0;
         var next = -1;
         var lastFrameAt = TimeSpan.Zero;
+        var frameCost = TimeSpan.FromMilliseconds(60);
         RenderFrame? last = null;
 
         void Publish(bool force)
         {
             lock (gate)
             {
-                if (!force && clock.Elapsed - lastFrameAt < TimeSpan.FromMilliseconds(400)) return;
-                lastFrameAt = clock.Elapsed;
+                // Expensive 4K frame snapshots must not consume most CPU time on small machines.
+                var interval = TimeSpan.FromMilliseconds(Math.Max(500, frameCost.TotalMilliseconds * 4));
+                if (!force && clock.Elapsed - lastFrameAt < interval) return;
+                var frameStart = clock.Elapsed;
                 tracer.ReportBucketedSamples(1, false);
                 var bytes = ImageProcessor.ToBgra32(tracer.LinearImage(false), tracer.Width, tracer.Height,
                     tracer.BaseExposure, finish, tracer.CaptureFeatures);
@@ -218,7 +240,10 @@ public sealed class RenderSession : IDisposable
                 var progress = Math.Clamp(completed / (double)buckets.Count, 0, 1);
                 TimeSpan? remaining = completed >= 4 ? clock.Elapsed * ((1 - progress) / progress) : null;
                 last = _lastFrame = new RenderFrame(bytes, tracer.Width, tracer.Height,
-                    (int)(_job.TargetSamples * progress), _job.TargetSamples, clock.Elapsed, remaining, 1, false);
+                    (int)(_job.TargetSamples * progress), _job.TargetSamples, clock.Elapsed, remaining, 1, false)
+                { Progress = progress };
+                frameCost = clock.Elapsed - frameStart;
+                lastFrameAt = clock.Elapsed;
                 FrameReady?.Invoke(last);
             }
         }
@@ -267,20 +292,29 @@ public sealed class RenderSession : IDisposable
     /// <summary>Marks the corners of a square being rendered, so the user sees where the work is going.</summary>
     private static void Brackets(byte[] bgra, int stride, int x, int y, int width, int height)
     {
-        const int Arm = 10;
-        const int Thick = 2;
+        // The 8px bucket must keep a visible centre, rather than becoming one solid bracket.
+        var arm = Math.Max(2, Math.Min(10, Math.Min(width, height) / 4));
+        var thick = Math.Max(1, Math.Min(2, Math.Min(width, height) / 8));
         void Set(int column, int row)
         {
+            // The final bucket on each edge can be only one pixel wide/high.
+            // Never paint bracket pixels outside that bucket or the image buffer.
+            if (column < x || column >= x + width || row < y || row >= y + height)
+                return;
             var offset = (row * stride + column) * 4;
             bgra[offset] = 60; bgra[offset + 1] = 170; bgra[offset + 2] = 255;
         }
-        for (var i = 0; i < Arm; i++)
-        for (var t = 0; t < Thick; t++)
+        for (var i = 0; i < arm; i++)
+        for (var t = 0; t < thick; t++)
         {
-            foreach (var column in new[] { x + i, x + width - 1 - i })
-            foreach (var row in new[] { y + t, y + height - 1 - t }) if (i < width && t < height) Set(column, row);
-            foreach (var row in new[] { y + i, y + height - 1 - i })
-            foreach (var column in new[] { x + t, x + width - 1 - t }) if (i < height && t < width) Set(column, row);
+            Set(x + i, y + t);
+            Set(x + width - 1 - i, y + t);
+            Set(x + i, y + height - 1 - t);
+            Set(x + width - 1 - i, y + height - 1 - t);
+            Set(x + t, y + i);
+            Set(x + width - 1 - t, y + i);
+            Set(x + t, y + height - 1 - i);
+            Set(x + width - 1 - t, y + height - 1 - i);
         }
     }
 
@@ -295,8 +329,10 @@ public sealed class RenderSession : IDisposable
             remaining = perPass * Math.Max(0, _job.TargetSamples - tracer.SampleCount);
             if (_job.TimeLimit is { } limit) remaining = TimeSpan.FromTicks(Math.Min(remaining.Value.Ticks, Math.Max(0, (limit - elapsed).Ticks)));
         }
+        var progress = Math.Clamp((double)tracer.SampleCount / _job.TargetSamples, 0, 1);
+        if (isFinal && tracer.SampleCount >= _job.TargetSamples) progress = 1;
         return new RenderFrame(bytes, tracer.Width, tracer.Height, tracer.SampleCount, _job.TargetSamples, elapsed,
-            remaining, tracer.ActiveFraction, isFinal);
+            remaining, tracer.ActiveFraction, isFinal) { Progress = progress };
     }
 
     /// <summary>

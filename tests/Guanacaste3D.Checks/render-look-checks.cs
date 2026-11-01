@@ -30,6 +30,63 @@ static class RenderLookChecks
               RenderLooks.Skies.All(sky => RenderLooks.Styles.Any(style => style.Id == sky.StyleId)),
             "Styles have unique identifiers and every sky names an existing style");
 
+        check(RenderLooks.Skies.Count >= 30 && RenderLooks.Skies.Select(sky => sky.Id).Distinct().Count() == RenderLooks.Skies.Count &&
+              Enum.GetValues<CloudStyle>().Length >= 8 && RenderLooks.Skies.All(sky =>
+                  sky.DayOfYear is >= 1 and <= 366 && sky.SolarHour is >= 5 and <= 19 &&
+                  sky.Turbidity is >= 1.7 and <= 10 && sky.CloudSeed <= 1023 &&
+                  sky.CloudDirectionDegrees is >= -180 and <= 180 &&
+                  sky.SunStrength is >= 0 and <= 2 && sky.SkyStrength is >= 0 and <= 2),
+            "Thirty ready-to-use skies cover multiple weather families with bounded reproducible parameters");
+
+        // A neutral .cube is the identity at full intensity; reversing its channels is a true color effect.
+        var cube = "TITLE \"Identity\"\\nLUT_3D_SIZE 2\\nDOMAIN_MIN 0 0 0\\nDOMAIN_MAX 1 1 1\\n" +
+            "0 0 0\\n1 0 0\\n0 1 0\\n1 1 0\\n0 0 1\\n1 0 1\\n0 1 1\\n1 1 1\\n";
+        var lookup = ColorLookupTable.FromCube(cube.Replace("\\n", "\n"));
+        check(lookup.Size == 2 && Vector3.Distance(lookup.Sample(new Vector3(.35f,.6f,.7f)),
+              new Vector3(.35f,.6f,.7f)) < .0001f,
+            "A standard .cube file interpolates RGB with red varying fastest");
+        var sample = ColorLutPresets.Find("warm")!;
+        var colorLut = ImageProcessor.ToBgra32(image, width, height, 1, plain with
+        { Lut = sample, LutStrength = 1 });
+        var colorLutOff = ImageProcessor.ToBgra32(image, width, height, 1, plain with
+        { Lut = sample, LutStrength = 0 });
+        check(!colorLut.SequenceEqual(neutral) && colorLutOff.SequenceEqual(neutral),
+            "3D LUT filters modify the final photo and are exactly removable without rerendering");
+        check(ColorLutPresets.All.Count >= 14 &&
+              ColorLutPresets.All.Select(preset => preset.Id).Distinct().Count() == ColorLutPresets.All.Count &&
+              ColorLutPresets.All.All(preset => preset.Map.Size == 17),
+            "Offline LUT library contains 14 named presets with deterministic lookup tables");
+        var badCube = false;
+        try { _ = ColorLookupTable.FromCube("LUT_3D_SIZE 64\\n0 0 0".Replace("\\n", "\n")); }
+        catch (InvalidDataException) { badCube = true; }
+        check(badCube, "Malformed LUTs cannot allocate an unbounded 3D cube");
+
+        var lutProject = BuildingDocument.Create("Color filters");
+        lutProject.RenderSetup = new RenderSetup
+        {
+            LutPresetId = "custom", LutPath = "assets/film-look.cube", LutStrength = .65
+        };
+        var lutFile = Path.Combine(Path.GetTempPath(), "guanacaste-lut-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            ProjectFile.Save(lutFile, lutProject);
+            var reopened = ProjectFile.Load(lutFile).RenderSetup;
+            check(reopened?.LutPresetId == "custom" &&
+                  reopened.LutPath == "assets/film-look.cube" &&
+                  reopened.LutStrength == .65,
+                "Imported .cube references and LUT intensity survive native .g3d save/reopen");
+        }
+        finally
+        {
+            if (File.Exists(lutFile)) File.Delete(lutFile);
+            if (File.Exists(lutFile + ".bak")) File.Delete(lutFile + ".bak");
+        }
+
+        check(RenderSetup.SelectedCustomLutPath("custom", "assets/film-look.cube") == "assets/film-look.cube" &&
+              RenderSetup.SelectedCustomLutPath("warm", "assets/film-look.cube") is null &&
+              RenderSetup.SelectedCustomLutPath("none", "assets/film-look.cube") is null,
+            "Switching from a custom LUT to a built-in filter never reloads or stores the old .cube path");
+
         var mono = ImageProcessor.ToBgra32(image, width, height, 1, plain with { Monochrome = true });
         check(Enumerable.Range(0, width * height).All(pixel => mono[pixel * 4] == mono[pixel * 4 + 1] && mono[pixel * 4 + 1] == mono[pixel * 4 + 2]),
             "Black and white has equal channels");
@@ -67,6 +124,85 @@ static class RenderLookChecks
             if (style == CloudStyle.Cirrus) check(samples.Max(sample => sample.Thickness) <= 0.2f, "Cirrus stays thin");
             if (style == CloudStyle.Storm) check(samples.Max(sample => sample.Thickness) > 0.9f, "Storm clouds are deep");
         }
+
+        var variableClouds = new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30);
+        var direction = Vector3.Normalize(new Vector3(0.65f, 0.7f, 0.55f));
+        var first = variableClouds.Sample(direction);
+        var invalidDirections = new[]
+        {
+            new Vector3(float.NaN, 0, 1),
+            new Vector3(0, float.PositiveInfinity, 1),
+            new Vector3(0, 0, float.NaN),
+            new Vector3(0, 0, float.PositiveInfinity),
+            new Vector3(float.NegativeInfinity, 0, 1),
+            // Finite, but not valid sky rays: projection can overflow or leave the noise grid.
+            new Vector3(float.MaxValue, 0, 1),
+            new Vector3(1e20f, -1e20f, 1),
+            new Vector3(1e7f, 0, 1)
+        };
+        check(invalidDirections.All(ray => variableClouds.Sample(ray) == (0f, 0f)) &&
+              variableClouds.Sample(new Vector3(0, 0, -1)) == (0f, 0f) &&
+              float.IsFinite(first.Opacity) && float.IsFinite(first.Thickness),
+            "Cloud sampling rejects invalid sky rays without propagating NaN into rendered pixels");
+        check(first == new CloudLayer(0.7f, 39, CloudStyle.Altocumulus, 30).Sample(direction),
+            "Cloud seeds and wind rotation reproduce the same cloud shape");
+        var samplesA = Enumerable.Range(0, 100).Select(i =>
+        {
+            var a = i * .33f;
+            return variableClouds.Sample(Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), .4f))).Opacity;
+        }).ToArray();
+        var samplesB = Enumerable.Range(0, 100).Select(i =>
+        {
+            var a = i * .33f;
+            return new CloudLayer(0.7f, 87, CloudStyle.Altocumulus, -50)
+                .Sample(Vector3.Normalize(new Vector3(MathF.Cos(a), MathF.Sin(a), .4f))).Opacity;
+        }).ToArray();
+        check(samplesA.Zip(samplesB).Count(pair => Math.Abs(pair.First - pair.Second) > .001f) >= 10,
+            "Cloud seed and wind direction create distinct usable skies without downloading assets");
+
+        var clearSun = new CloudLayer(0, 7, CloudStyle.Cumulus);
+        var shadowSun = Vector3.Normalize(new Vector3(.3f, .2f, .9f));
+        check(clearSun.SunTransmittance(Vector3.Zero, shadowSun) == 1f &&
+              new CloudLayer(.8f, 7, CloudStyle.Storm)
+                  .SunTransmittance(new Vector3(0, 0, 1500), shadowSun) == 1f,
+            "Clear skies and positions above the clouds do not lose sunlight");
+        var castClouds = new CloudLayer(.65f, 39, CloudStyle.Cumulonimbus, -50);
+        var cloudShadows = Enumerable.Range(0, 625).Select(i =>
+            castClouds.SunTransmittance(new Vector3((i % 25 - 12) * 350, (i / 25 - 12) * 350, 0), shadowSun)).ToArray();
+        check(cloudShadows.All(t => float.IsFinite(t) && t is >= .05f and <= 1f) &&
+              cloudShadows.Min() < .97f && cloudShadows.Max() - cloudShadows.Min() > .04f,
+            "Procedural clouds cast spatially varying, bounded shadows on the model and site");
+        var shadowPoint = new Vector3(280, -90, 0);
+        check(castClouds.SunTransmittance(shadowPoint, shadowSun) ==
+              new CloudLayer(.65f, 39, CloudStyle.Cumulonimbus, -50).SunTransmittance(shadowPoint, shadowSun),
+            "Cloud shadow positions reproduce exactly for the same seed and wind");
+
+        var atmosphereSetup = new RenderSetup
+        {
+            SkyPresetId = "tropical-dawn", Clouds = CloudStyle.Cumulonimbus,
+            CloudSeed = 73, CloudDirectionDegrees = -65, Turbidity = 5.3,
+            SunStrength = .45, SkyStrength = 1.5
+        };
+        atmosphereSetup.Validate();
+        var savedSkyPath = Path.Combine(Path.GetTempPath(), "guanacaste-sky-" + Guid.NewGuid().ToString("N") + ".g3d");
+        try
+        {
+            var skyProject = BuildingDocument.Create("Built-in atmosphere");
+            skyProject.RenderSetup = atmosphereSetup;
+            ProjectFile.Save(savedSkyPath, skyProject);
+            var restored = ProjectFile.Load(savedSkyPath).RenderSetup;
+            check(restored == atmosphereSetup,
+                "Sky preset ID, cloud shape/seed/rotation, turbidity and light ratios survive the .g3d round trip");
+        }
+        finally
+        {
+            if (File.Exists(savedSkyPath)) File.Delete(savedSkyPath);
+            if (File.Exists(savedSkyPath + ".bak")) File.Delete(savedSkyPath + ".bak");
+        }
+        var invalidSky = false;
+        try { (atmosphereSetup with { CloudDirectionDegrees = double.NaN }).Validate(); }
+        catch (InvalidDataException) { invalidSky = true; }
+        check(invalidSky, "Invalid atmospheric parameters are rejected before corrupting project files");
 
         // Picking a slab in the render editor must target the material that the
         // geometry builder actually used, not always the generic Floor category.

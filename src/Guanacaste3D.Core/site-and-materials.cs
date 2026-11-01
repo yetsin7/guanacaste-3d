@@ -9,11 +9,24 @@ namespace Guanacaste3D.Core;
 /// </summary>
 public sealed record RenderMaterialAssignment(SurfaceKind Category, string TexturePath)
 {
+    /// <summary>Null selects the project-wide category; an id selects only the matching faces of one BIM element.</summary>
+    public Guid? ElementId { get; init; }
+    /// <summary>Optional tangent-space normal map (OpenGL +Y), relative to the project file.</summary>
+    public string? NormalPath { get; init; }
+    /// <summary>Optional linear roughness map, relative to the project file.</summary>
+    public string? RoughnessPath { get; init; }
+    /// <summary>Optional linear metalness map, relative to the project file.</summary>
+    public string? MetallicPath { get; init; }
+
     /// <summary>Meters covered by one tile of the image, along both directions.</summary>
     public double TextureSize { get; init; } = 1.0;
 
     /// <summary>0 for a flat image, 1 for a strong relief taken from the image's brightness.</summary>
     public double Relief { get; init; } = 0.3;
+    /// <summary>Per-category or per-element roughness; null inherits the selected material/preset.</summary>
+    public double? RoughnessOverride { get; init; }
+    /// <summary>Per-category or per-element metalness; null inherits the selected material/preset.</summary>
+    public double? MetallicOverride { get; init; }
 }
 
 /// <summary>Site terrain points and render materials; each public method is one undoable transaction.</summary>
@@ -55,35 +68,43 @@ public sealed partial class DocumentSession
         // Re-selecting an unchanged material must not rebuild the BIM document,
         // invalidate the live render, or consume an undo step.
         if (Document.RenderMaterials.Any(existing =>
-            existing.Category == assignment.Category && existing == assignment)) return;
+            existing.Category == assignment.Category && existing.ElementId == assignment.ElementId && existing == assignment)) return;
         Commit("Transaction.SetRenderMaterial", document =>
         {
-            document.RenderMaterials.RemoveAll(existing => existing.Category == assignment.Category);
+            document.RenderMaterials.RemoveAll(existing => existing.Category == assignment.Category && existing.ElementId == assignment.ElementId);
             document.RenderMaterials.Add(assignment);
         });
     }
 
     /// <summary>Returns a surface category to its stock render material.</summary>
-    public void ClearRenderMaterial(SurfaceKind category)
+    public void ClearRenderMaterial(SurfaceKind category, Guid? elementId = null)
     {
-        if (Document.RenderMaterials.All(existing => existing.Category != category)) return;
+        if (Document.RenderMaterials.All(existing => existing.Category != category || existing.ElementId != elementId)) return;
         Commit("Transaction.ClearRenderMaterial", document =>
-            document.RenderMaterials.RemoveAll(existing => existing.Category == category));
+            document.RenderMaterials.RemoveAll(existing => existing.Category == category && existing.ElementId == elementId));
     }
 }
 
 /// <summary>Rules for render material assignments.</summary>
 public static class RenderMaterialRules
 {
+    private static bool ValidOptionalMapPath(string? path) =>
+        path is null || (!string.IsNullOrWhiteSpace(path) && path.Length <= 1024);
+
     public static void Validate(BuildingDocument document)
     {
         if (document.RenderMaterials is null) throw new InvalidDataException("Invalid render material.");
-        if (document.RenderMaterials.Count > 64 ||
-            document.RenderMaterials.GroupBy(material => material.Category).Any(group => group.Count() > 1) ||
-            document.RenderMaterials.Any(material => !Enum.IsDefined(material.Category) ||
+        if (document.RenderMaterials.Count > 512 ||
+            document.RenderMaterials.GroupBy(material => (material.Category, material.ElementId)).Any(group => group.Count() > 1) ||
+            document.RenderMaterials.Any(material => !Enum.IsDefined(material.Category) || material.ElementId == Guid.Empty ||
+                !ValidOptionalMapPath(material.NormalPath) ||
+                !ValidOptionalMapPath(material.RoughnessPath) ||
+                !ValidOptionalMapPath(material.MetallicPath) ||
                 string.IsNullOrWhiteSpace(material.TexturePath) || material.TexturePath.Length > 1024 ||
                 !double.IsFinite(material.TextureSize) || material.TextureSize is < 0.01 or > 1000 ||
-                !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1))
+                !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1 ||
+                (material.RoughnessOverride is { } rough && (!double.IsFinite(rough) || rough is < 0.02 or > 1)) ||
+                (material.MetallicOverride is { } metal && (!double.IsFinite(metal) || metal is < 0 or > 1))))
             throw new InvalidDataException("Invalid render material.");
     }
 }

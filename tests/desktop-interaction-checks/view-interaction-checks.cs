@@ -153,12 +153,113 @@ internal static partial class InteractionChecks
             var status = (TextBlock)panel.FindName("StatusText");
             var image = (Image)panel.FindName("PreviewImage");
             var imageHost = (FrameworkElement)panel.FindName("ImageHost");
-            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed,
-                "The Render workspace replaces the standard properties and project-browser sidebar");
-            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 425) < 2,
-                "The Render controls occupy a 420-pixel resizable sidebar beside a divider");
-            Check(panel.Background is SolidColorBrush { Color: { R: > 240, G: > 240, B: > 240 } },
-                "The Render workspace uses the application's light theme");
+            var titleBar = (FrameworkElement)_window.FindName("MainTitleBar");
+            var ribbon = (FrameworkElement)_window.FindName("RibbonTabControl");
+            var globalStatus = (FrameworkElement)_window.FindName("MainStatusStrip");
+            var return3D = (Button)_window.FindName("RenderReturn3DButton");
+            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed &&
+                  titleBar.Visibility == Visibility.Collapsed && ribbon.Visibility == Visibility.Collapsed &&
+                  globalStatus.Visibility == Visibility.Collapsed && return3D.Visibility == Visibility.Visible,
+                "Immersive Render hides the BIM chrome and palettes while leaving a visible 3D return");
+            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 475) < 4,
+                "The Render studio has its own resizable 470px sidebar and a separate mode rail");
+            Check(panel.Background is SolidColorBrush { Color: { R: < 60, G: < 60, B: < 70 } },
+                "The independent Render studio uses a dark photographic theme");
+            var sectionTabs = (TabControl)panel.FindName("SectionTabs");
+            var materialsButton = (Button)panel.FindName("RenderRailMaterials");
+            materialsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(sectionTabs.SelectedIndex == 3, "The dedicated Render rail opens the materials panel");
+            var gallery = (Expander)panel.FindName("GalleryExpander");
+            gallery.IsExpanded = true;
+            Pump();
+            var tiles = (WrapPanel)panel.FindName("GalleryTiles");
+            var filter = (ComboBox)panel.FindName("GalleryGroupPicker");
+            var target = (ComboBox)panel.FindName("GalleryTargetPicker");
+            var search = (TextBox)panel.FindName("GallerySearch");
+            Check(tiles.Children.OfType<Button>().Count() == 8 &&
+                  ((TextBlock)panel.FindName("GalleryPageText")).Text == "1 / 3",
+                "The optional nature gallery shows only eight thumbnail cards per page");
+            Check(target.SelectedItem is ComboBoxItem { Tag: SurfaceKind.Bark },
+                "The gallery initially targets tree bark instead of an unrelated BIM surface");
+            ((Button)panel.FindName("GalleryNextButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(((TextBlock)panel.FindName("GalleryPageText")).Text == "2 / 3" &&
+                  tiles.Children.OfType<Button>().Count() == 8,
+                "Next page reveals another eight thumbnails without mounting the entire texture collection");
+            ((Button)panel.FindName("GalleryPreviousButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            search.Text = "guanacaste";
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 2,
+                "Accent-insensitive gallery search filters tree bark and foliage simultaneously");
+            filter.SelectedIndex = 1;
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 1,
+                "Bark filter narrows the gallery without decoding all image previews");
+            tiles.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(Field<DocumentSession>("_session").Document.RenderMaterials.Any(material =>
+                    material.Category == SurfaceKind.Bark &&
+                    material.TexturePath == "builtin:tree-bark-guanacaste"),
+                "Clicking a thumbnail assigns its stable built-in texture key through the real project material transaction");
+
+            // A referenced .g3dm appears as a picture in the same gallery, without a filesystem scan.
+            var libraryType = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.RenderTextureLibrary")!;
+            var sourceImage = (string)libraryType.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)!
+                .Invoke(null, ["builtin:brick-red", null])!;
+            var pbrApi = typeof(MainWindow).Assembly.GetType("Guanacaste3D.Desktop.PbrMaterialPackages")!;
+            var createPackage = pbrApi.GetMethod("CreateFromImage", BindingFlags.Public | BindingFlags.Static)!;
+            var packagePath = Path.Combine(folder, "galeria-pbr.g3dm");
+            createPackage.Invoke(null, [
+                sourceImage, packagePath, "Piedra Galería PBR", 0.76, 0.08, 1.5, 0.3
+            ]);
+            Field<DocumentSession>("_session").SetRenderMaterial(
+                new RenderMaterialAssignment(SurfaceKind.Bark, "pbr:" + packagePath)
+                { TextureSize = 1.5, Relief = 0.3 });
+            Invoke("RefreshAll");
+            Pump();
+            filter.SelectedIndex = 4;
+            search.Text = "Piedra Galeria PBR";
+            Pump();
+            Check(tiles.Children.OfType<Button>().Count() == 1 &&
+                  tiles.Children.OfType<Button>().Single().Tag is string cardKey &&
+                  cardKey.StartsWith("pbr:", StringComparison.Ordinal),
+                "Project-referenced .g3dm materials have a searchable image card and are not treated as raw file paths");
+            Check(((WrapPanel)panel.FindName("GalleryPbrMapCards")).Children.Count == 4,
+                "PBR inspector displays editable normal, roughness and metallic maps plus read-only package height");
+            var roughnessControl = (Slider)panel.FindName("GalleryRoughnessSlider");
+            var metallicControl = (Slider)panel.FindName("GalleryMetallicSlider");
+            var reliefControl = (Slider)panel.FindName("GalleryReliefSlider");
+            Check(Math.Abs(roughnessControl.Value - 0.76) < 0.001 &&
+                  Math.Abs(metallicControl.Value - 0.08) < 0.001,
+                "The inspector reads the physical defaults from the imported .g3dm manifest");
+            roughnessControl.Value = 0.28;
+            metallicControl.Value = 0.47;
+            reliefControl.Value = 0.63;
+            ((Button)panel.FindName("GalleryApplyAppearanceButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var pbrApplied = Field<DocumentSession>("_session").Document.RenderMaterials.Single(material =>
+                material.Category == SurfaceKind.Bark && material.ElementId is null);
+            Check(pbrApplied.RoughnessOverride is { } rr && Math.Abs(rr - 0.28) < 0.001 &&
+                  pbrApplied.MetallicOverride is { } mm && Math.Abs(mm - 0.47) < 0.001 &&
+                  Math.Abs(pbrApplied.Relief - 0.63) < 0.001,
+                "Sliders commit one non-destructive, project-scoped material appearance edit");
+            var persistenceFile = Path.Combine(folder, "apariencia-pbr.g3d");
+            ProjectFile.Save(persistenceFile, Field<DocumentSession>("_session").Document);
+            Check(ProjectFile.Load(persistenceFile).RenderMaterials.Any(material =>
+                    material.Category == SurfaceKind.Bark && material.RoughnessOverride is > 0.27 and < 0.29),
+                "The material appearance sliders survive native save and reload");
+            Check(File.ReadAllText(packagePath).Contains("0.76") && !File.ReadAllText(packagePath).Contains("0.28"),
+                "Editing one surface leaves the shared original .g3dm material unchanged");
+            ((Button)panel.FindName("GalleryResetAppearanceButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            var restored = Field<DocumentSession>("_session").Document.RenderMaterials.Single(material =>
+                material.Category == SurfaceKind.Bark && material.ElementId is null);
+            Check(restored.RoughnessOverride is null && restored.MetallicOverride is null &&
+                  Math.Abs(restored.Relief - 0.3) < 0.001,
+                "Reset removes only per-project overrides and restores the package relief");
+            gallery.IsExpanded = false;
+            ((Button)panel.FindName("RenderRailScene")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(sectionTabs.SelectedIndex == 0, "The Render rail can return to the environment panel");
             Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
             Check(WaitFor(() => status.Text.Contains("muestra") || status.Text.Contains("lista"), 20), "The preview reports its progress in Spanish");
 
@@ -170,7 +271,7 @@ internal static partial class InteractionChecks
                 return pixels;
             }
             WaitFor(() => status.Text.Contains("lista"), 40);
-            SaveBitmap("artifacts/interaction-evidence/render-workspace-light.png");
+            SaveBitmap("artifacts/interaction-evidence/render-workspace-dark.png");
             var before = Snapshot();
             var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
             camera.Position = new System.Numerics.Vector3(-8, 8, 3);
@@ -194,9 +295,13 @@ internal static partial class InteractionChecks
                 }
             };
             accept.Start();
-            tabs.SelectedIndex = 1;
-            Check(standardSidebar.Visibility == Visibility.Visible && panel.Visibility == Visibility.Collapsed,
-                "Leaving Render restores the standard application sidebar");
+            return3D.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Pump();
+            Check(tabs.SelectedIndex == 1 &&
+                  standardSidebar.Visibility == Visibility.Visible && panel.Visibility == Visibility.Collapsed &&
+                  titleBar.Visibility == Visibility.Visible && ribbon.Visibility == Visibility.Visible &&
+                  globalStatus.Visibility == Visibility.Visible && return3D.Visibility == Visibility.Collapsed,
+                "The 3D button restores the coordinated model with every BIM control, without recreating the document");
             var import = (Task)Invoke("ImportFilesAsync", (object)new[] { model })!;
             Check(WaitFor(() => import.IsCompleted, 60), "Importing a dropped file finishes");
             accept.Stop();

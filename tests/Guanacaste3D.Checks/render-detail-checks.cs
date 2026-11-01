@@ -9,6 +9,9 @@ static class RenderDetailChecks
     public static void Run(Action<bool, string> check)
     {
         Trees(check);
+        StoneGeometry(check);
+        HeightMaps(check);
+        ScopedMaterials(check);
         Translucency(check);
         WallFaces(check);
         Fixtures(check);
@@ -32,6 +35,86 @@ static class RenderDetailChecks
             check(again.Positions.Count == render.Positions.Count && again.Positions[^1] == render.Positions[^1],
                 $"The render-quality {preset.Style} regenerates identically");
         }
+    }
+
+    private static void StoneGeometry(Action<bool, string> check)
+    {
+        var mesh = new SceneMesh();
+        var wallOwner = Guid.NewGuid();
+        mesh.AddQuad(new(0, 0, 0), new(2, 0, 0), new(2, 0, 2), new(0, 0, 2), SurfaceKind.WallStone);
+        mesh.MarkElement(wallOwner, 0);
+        var original = mesh.Positions.ToArray();
+        var triangles = mesh.TriangleCount;
+        var added = RenderStoneDisplacement.Append(mesh, triangleBudget: 256, targetEdgeMeters: 0.1f);
+        var raised = mesh.Positions.Skip(original.Length).ToArray();
+        check(added is > 10 and <= 256 && mesh.TriangleCount == triangles + added &&
+              mesh.Positions.Take(original.Length).SequenceEqual(original) &&
+              mesh.ElementRanges.Last().ElementId == wallOwner,
+            "Optional render-only stone microgeometry has a strict budget and does not mutate original BIM triangles");
+        check(raised.Length > 0 && raised.All(p => p.Y < -0.001f && p.Y > -0.029f) &&
+              raised.Select(p => p.Y).Max() - raised.Select(p => p.Y).Min() > 0.002f,
+            "Raised stone faces have real varied silhouettes and remain within 2.8 cm of the source wall");
+        var plain = new SceneMesh();
+        plain.AddQuad(new(0, 0, 0), new(2, 0, 0), new(2, 0, 2), new(0, 0, 2), SurfaceKind.WallStone);
+        check(RenderStoneDisplacement.Append(plain, triangleBudget: 0) == 0 && plain.TriangleCount == 2,
+            "Disabled displacement adds no geometry or cost on low-power machines");
+    }
+
+    private static void HeightMaps(Action<bool, string> check)
+    {
+        // Mip levels and border wrapping must be stable on distant building surfaces.
+        var height = RenderScalarMap.FromGray(2, 2, [0, 255, 0, 255]);
+        check(Math.Abs(height.Sample(.25f, .75f, 0)) < .001f &&
+              Math.Abs(height.Sample(.75f, .75f, 0) - 1) < .001f &&
+              Math.Abs(height.Sample(.25f, .75f, 2) - .5f) < .01f,
+            "Height maps sample linear data and produce the expected distant mip");
+        check(Math.Abs(height.TexelSize(0) - .5f) < .001f &&
+              Math.Abs(height.TexelSize(2) - 1f) < .001f,
+            "Bump-map derivatives use the actual filtered texel size");
+        check(Math.Abs(height.TexelSize(float.MaxValue) - 1f) < .001f &&
+              Math.Abs(height.Sample(.25f, .75f, float.MaxValue) - .5f) < .01f,
+            "Finite extreme footprints select the coarsest mip without overflow");
+        check(ReferenceEquals((new RenderMaterial { HeightMap = height, TextureRelief = .7f }).Sanitized().HeightMap, height),
+            "Sanitization retains the height channel");
+    }
+
+    private static void ScopedMaterials(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Per-element appearance"));
+        var level = session.Document.Levels[0].Id;
+        session.AddWall(level, new Point2(0, 0), new Point2(3, 0));
+        session.AddWall(level, new Point2(0, 4), new Point2(3, 4));
+        var left = session.Document.Walls[0].Id;
+        var right = session.Document.Walls[1].Id;
+
+        var common = new RenderMaterialAssignment(SurfaceKind.Wall, "material:stone") { TextureSize = 1.0 };
+        var selected = new RenderMaterialAssignment(SurfaceKind.Wall, "material:oak") { ElementId = left, TextureSize = 0.4 };
+        session.SetRenderMaterial(common);
+        session.SetRenderMaterial(selected);
+        RenderMaterialRules.Validate(session.Document);
+        check(session.Document.RenderMaterials.Count == 2 &&
+              session.Document.RenderMaterials.Any(a => a.ElementId is null) &&
+              session.Document.RenderMaterials.Any(a => a.ElementId == left),
+            "Per-element and project-wide material assignments coexist and survive model validation");
+
+        var mesh = BuildingMesher.Build(session.Document);
+        var scene = new RenderSceneBuilder().AddBuilding(mesh,
+            _ => new RenderMaterial { Name = "Global", BaseColor = new Vector3(.2f) },
+            (id, _) => new RenderMaterial { Name = id == left ? "Selected" : "Global",
+                BaseColor = id == left ? new Vector3(.8f, .2f, .1f) : new Vector3(.2f) }).Build();
+        var l = mesh.ElementRanges.First(range => range.ElementId == left);
+        var r = mesh.ElementRanges.First(range => range.ElementId == right);
+        check(scene.Materials[scene.TriangleMaterial[l.First]].Name == "Selected" &&
+              scene.Materials[scene.TriangleMaterial[r.First]].Name == "Global",
+            "Two BIM walls with the same SurfaceKind can render independent finishes");
+
+        session.ClearRenderMaterial(SurfaceKind.Wall, left);
+        check(session.Document.RenderMaterials.Count == 1 &&
+              session.Document.RenderMaterials[0].ElementId is null,
+            "Restoring one selected wall does not delete the project-wide material");
+        session.Undo();
+        check(session.Document.RenderMaterials.Any(a => a.ElementId == left),
+            "Scoped material edits are undoable");
     }
 
     private static void Translucency(Action<bool, string> check)

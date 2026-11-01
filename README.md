@@ -80,6 +80,17 @@ sections, associative annotation, placed sheet views, IFC and DXF exchange,
 collaboration, structural and MEP authoring, physical rendering, and large-model
 performance engineering.
 
+## Materiales PBR .g3dm
+
+Desde **Render → Materiales** puedes importar un paquete `.g3dm` o crear uno a partir de
+una fotografía de albedo con un asistente. El material conserva su nombre, escala real,
+rugosidad, metalicidad y parámetros ópticos. Los paquetes también pueden referenciar mapas
+independientes de normales, rugosidad y metalicidad, aprovechando el renderizador PBR de la
+aplicación. Se incluyen quince nuevos acabados arquitectónicos.
+
+Los paquetes referencian imágenes externas; comparte también esos archivos.
+[Guía de importación y creación de materiales](docs/importacion-materiales-pbr.md).
+
 ## Requirements
 
 - Windows 10 or 11, x64.

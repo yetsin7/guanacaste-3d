@@ -94,6 +94,7 @@
   <sys:String x:Key="Start.About">Acerca de Guanacaste 3D</sys:String>
   <sys:String x:Key="Start.BackToProject">Volver al proyecto abierto</sys:String>
   <sys:String x:Key="Start.SortBy">Ordenar por</sys:String>
+  <sys:String x:Key="Start.SortOpened">Última apertura</sys:String>
   <sys:String x:Key="Start.SortDate">Fecha de modificación</sys:String>
   <sys:String x:Key="Start.SortName">Nombre</sys:String>
   <sys:String x:Key="Start.SortDirection">Invertir el orden</sys:String>
