@@ -21,14 +21,14 @@ static class GridAxisAssociationChecks
 
         bool conflict = false;
         try { session.AddGridAxis(" a ", new(0, 4), new(8, 4)); }
-        catch (GridAxisNameConflictException exception) { conflict = exception.ExistingAxisId == gridA; }
+        catch (InvalidDataException exception) { conflict = exception.Data["ExistingAxisId"] is Guid id && id == gridA; }
         check(conflict && session.Document.Grids.Count == 1,
             "Case-insensitive duplicate axis names reveal the existing datum without mutating the project");
 
         var gridEight = session.AddGridAxis("8", new(0, 5), new(10, 5));
         conflict = false;
         try { session.UpdateGridAxis(gridEight, "A", new(0, 5), new(10, 5)); }
-        catch (GridAxisNameConflictException exception) { conflict = exception.ExistingAxisId == gridA; }
+        catch (InvalidDataException exception) { conflict = exception.Data["ExistingAxisId"] is Guid id && id == gridA; }
         check(conflict && session.Document.Grids.Single(g => g.Id == gridEight).Name == "8",
             "Renaming a numeric axis to an existing letter fails atomically");
 
