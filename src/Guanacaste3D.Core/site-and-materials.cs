@@ -23,6 +23,10 @@ public sealed record RenderMaterialAssignment(SurfaceKind Category, string Textu
 
     /// <summary>0 for a flat image, 1 for a strong relief taken from the image's brightness.</summary>
     public double Relief { get; init; } = 0.3;
+    /// <summary>Per-category or per-element roughness; null inherits the selected material/preset.</summary>
+    public double? RoughnessOverride { get; init; }
+    /// <summary>Per-category or per-element metalness; null inherits the selected material/preset.</summary>
+    public double? MetallicOverride { get; init; }
 }
 
 /// <summary>Site terrain points and render materials; each public method is one undoable transaction.</summary>
@@ -98,7 +102,9 @@ public static class RenderMaterialRules
                 !ValidOptionalMapPath(material.MetallicPath) ||
                 string.IsNullOrWhiteSpace(material.TexturePath) || material.TexturePath.Length > 1024 ||
                 !double.IsFinite(material.TextureSize) || material.TextureSize is < 0.01 or > 1000 ||
-                !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1))
+                !double.IsFinite(material.Relief) || material.Relief is < 0 or > 1 ||
+                (material.RoughnessOverride is { } rough && (!double.IsFinite(rough) || rough is < 0.02 or > 1)) ||
+                (material.MetallicOverride is { } metal && (!double.IsFinite(metal) || metal is < 0 or > 1)))
             throw new InvalidDataException("Invalid render material.");
     }
 }
