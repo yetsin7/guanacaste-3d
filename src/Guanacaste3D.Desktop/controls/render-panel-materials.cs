@@ -20,6 +20,7 @@ public partial class RenderPanel
     private const string CustomTag = "custom";
     private const string PbrPackageTag = "pbr-package";
     private const string CreatePbrTag = "create-pbr";
+    private const string BrowsePbrTag = "browse-pbr";
     private bool _refreshingMaterials;
     private SurfaceKind? _focusedMaterial;
     private Guid? _focusedElement;
@@ -78,6 +79,7 @@ public partial class RenderPanel
                     Content = MaterialDisplayName(assignment.TexturePath), Tag = assignment.TexturePath
                 });
             picker.Items.Add(new ComboBoxItem { Content = "Importar material PBR (.g3dm)…", Tag = PbrPackageTag });
+            picker.Items.Add(new ComboBoxItem { Content = "Explorar biblioteca de materiales .g3dm…", Tag = BrowsePbrTag });
         picker.Items.Add(new ComboBoxItem { Content = "Crear material .g3dm desde imagen…", Tag = CreatePbrTag });
         picker.Items.Add(new ComboBoxItem { Content = Text("RenderPanel.MaterialFromFile"), Tag = CustomTag });
             picker.SelectedIndex = assignment is null ? 0 : 1;
@@ -293,6 +295,10 @@ public partial class RenderPanel
                 break;
             case CreatePbrTag:
                 CreatePbrMaterialFromImage(category, scope);
+                RefreshMaterialRows();
+                return;
+            case BrowsePbrTag:
+                BrowsePbrMaterialLibrary(category, scope);
                 RefreshMaterialRows();
                 return;
             case PbrPackageTag:
