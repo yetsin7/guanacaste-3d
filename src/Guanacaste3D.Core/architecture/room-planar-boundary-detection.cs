@@ -21,6 +21,13 @@ public static class RoomPlanarBoundaryDetection
             .Concat(document.StructuralElements.Where(element =>
                 element.LevelId == levelId && element.Kind == StructuralElementKind.RoomSeparator)
                 .Select(element => new Segment(element.Start, element.End, 0)))
+            .Concat(document.CurvedRoomSeparators.Where(arc => arc.LevelId == levelId)
+                .SelectMany(arc =>
+                {
+                    var samples = arc.SamplePoints();
+                    return Enumerable.Range(0, samples.Count - 1)
+                        .Select(i => new Segment(samples[i], samples[i + 1], 0));
+                }))
             .Where(segment => segment.Start.DistanceTo(segment.End) > Tolerance)
             .ToList();
         if (segments.Count < 3) return [];
