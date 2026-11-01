@@ -498,4 +498,5 @@
   <sys:String x:Key="Error.The grid movement must be finite.">El desplazamiento del eje debe tener valores numéricos válidos.</sys:String>
   <sys:String x:Key="Transaction.SyncAutomaticRooms">Recalcular habitaciones automáticas</sys:String>
   <sys:String x:Key="Error.The room level does not exist.">El nivel de la habitación no existe.</sys:String>
+  <sys:String x:Key="Error.The room boundary grid is too large.">El plano contiene demasiadas divisiones para detectar habitaciones automáticamente. Simplifica los límites o divide el proyecto por zonas.</sys:String>
 </ResourceDictionary>
