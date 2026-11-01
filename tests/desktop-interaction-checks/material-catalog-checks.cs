@@ -68,7 +68,7 @@ internal static partial class InteractionChecks
         {
             var sourceImage = (string)resolve.Invoke(null, ["builtin:brick-red", null])!;
             File.Copy(sourceImage, Path.Combine(pbrDirectory, "albedo.png"));
-            var manifestFile = Path.Combine(pbrDirectory, "test.g3dpbr");
+            var manifestFile = Path.Combine(pbrDirectory, "test.g3dm");
             File.WriteAllText(manifestFile,
                 "{\"version\":1,\"name\":\"Ladrillo PBR importado\",\"albedo\":\"albedo.png\"," +
                 "\"roughness\":0.87,\"metallic\":0.05,\"textureSize\":0.4,\"relief\":0.2}");
