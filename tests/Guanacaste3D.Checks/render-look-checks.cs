@@ -129,7 +129,11 @@ static class RenderLookChecks
             new Vector3(0, float.PositiveInfinity, 1),
             new Vector3(0, 0, float.NaN),
             new Vector3(0, 0, float.PositiveInfinity),
-            new Vector3(float.NegativeInfinity, 0, 1)
+            new Vector3(float.NegativeInfinity, 0, 1),
+            // Finite, but not valid sky rays: projection can overflow or leave the noise grid.
+            new Vector3(float.MaxValue, 0, 1),
+            new Vector3(1e20f, -1e20f, 1),
+            new Vector3(1e7f, 0, 1)
         };
         check(invalidDirections.All(ray => variableClouds.Sample(ray) == (0f, 0f)) &&
               variableClouds.Sample(new Vector3(0, 0, -1)) == (0f, 0f) &&
