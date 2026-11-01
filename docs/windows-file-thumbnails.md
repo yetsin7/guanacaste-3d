@@ -15,8 +15,8 @@ The standard Windows thumbnail cache handles reuse and refresh after a file chan
 - Templates and empty projects: stored level elevations, since templates have no building geometry.
 - Revit/SketchUp exchange files: embedded PNG when present, otherwise a shaded view of the exported meshes, including instance translations and rotations.
 
-The Revit 1.0.1 exporter embeds a 512-pixel PNG without changing the version-1 geometry payload. Its installer also
-registers Windows thumbnails, including for older exchange files. Complete mesh surfaces are retained up to a
+The Revit 1.0.1 exporter embeds a 512-pixel PNG without changing the version-1 geometry payload. Its installer can
+optionally register Windows thumbnails with `-EnableThumbnails`, including for older exchange files. Complete mesh surfaces are retained up to a
 500,000-triangle preview budget; larger exchanges prioritize the building envelope and may omit detailed components.
 The shaded preview uses triangle depth sorting and is not a production renderer.
 
@@ -29,7 +29,7 @@ No external family paths, textures, or network references are opened.
 The Desktop `PublishThumbnailProvider` target bundles it under `thumbnail-handler` for win-x64 publications.
 The provider requires the same .NET 10 Desktop runtime as the framework-dependent application.
 Downloadable desktop and Revit installer ZIPs include Microsoft's offline Desktop runtime installer, verified
-against the SHA-512 published in its release metadata. It runs only if the x64 .NET 10 Desktop runtime is missing.
+against the SHA-512 published in its release metadata. It runs only when thumbnails are explicitly enabled and the x64 .NET 10 Desktop runtime is missing.
 The desktop installer is built with `scripts/package-windows-installer.ps1`; users run `install.cmd` after extraction for the safe default. To opt in to previews, they can run `./install.ps1 -EnableThumbnails` from PowerShell in the extracted installer directory.
 
 To install just the thumbnail component without closing the application:
