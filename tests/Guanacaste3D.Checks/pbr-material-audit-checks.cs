@@ -34,6 +34,13 @@ internal static class PbrMaterialAuditChecks
                   valid.Material.Tags.Contains("exterior") && valid.Material.TextureSize == 0.4,
                 "Portable PBR manifest retains real-world dimensions, categories and optional map metadata");
 
+            File.WriteAllText(Path.Combine(folder, "wizard-v1.g3dm"),
+                """{"Version":1,"Name":"From Windows Wizard","Albedo":"brick_albedo.png","Roughness":0.75,"TextureSize":1.2}""");
+            var wizard = PbrMaterialAudit.Inspect(Path.Combine(folder, "wizard-v1.g3dm"));
+            check(wizard.IsValid && wizard.Material?.Name == "From Windows Wizard" &&
+                  wizard.Material.TextureSize == 1.2,
+                "Existing PascalCase .g3dm wizard files remain readable");
+
             File.WriteAllText(Path.Combine(folder, "bad-traversal.g3dm"),
                 """{"version":1,"name":"Unsafe","albedo":"../secret.png"}""");
             var traversal = PbrMaterialAudit.Inspect(Path.Combine(folder, "bad-traversal.g3dm"));
@@ -62,7 +69,7 @@ internal static class PbrMaterialAuditChecks
                 "Future PBR channels are reported without pretending the renderer supports them");
 
             var scanned = PbrMaterialAudit.Scan(folder);
-            check(scanned.Count == 6 && scanned.Count(entry => entry.IsValid) == 2 &&
+            check(scanned.Count == 7 && scanned.Count(entry => entry.IsValid) == 3 &&
                   scanned.Count(entry => !entry.IsValid) == 4,
                 "Material catalog shows both valid materials and broken packages for repair");
 
