@@ -19,6 +19,13 @@ public partial class RenderPanel
     private void Lut_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (!_ready) return;
+        // A previous asynchronous .cube import must not reactivate after switching to an integrated filter.
+        if (Mode(LutPicker) != "custom")
+        {
+            _lutLoadVersion++;
+            _customLut = null;
+            _lutFilePath = null;
+        }
         LutNameText.Text = Mode(LutPicker) switch
         {
             "none" => "LUT desactivado",
@@ -85,6 +92,7 @@ public partial class RenderPanel
         _lutLoadVersion++;
         _customLut = null;
         _lutFilePath = null;
+        if (LutPicker is not null) Select(LutPicker, "none");
         if (LutNameText is not null) LutNameText.Text = "LUT desactivado";
     }
 

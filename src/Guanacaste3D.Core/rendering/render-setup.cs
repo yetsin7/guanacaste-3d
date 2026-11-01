@@ -104,6 +104,13 @@ public sealed record RenderSetup
     public string? LutPath { get; init; }
     public double LutStrength { get; init; } = 0.7;
 
+    /// <summary>
+    /// Only a selected custom .cube may be loaded or serialized as an active LUT reference.
+    /// Older projects can still contain a stale path alongside a built-in filter; ignore it.
+    /// </summary>
+    public static string? SelectedCustomLutPath(string? presetId, string? path) =>
+        presetId == "custom" ? path : null;
+
     /// <summary>Rejects values the Render panel cannot show.</summary>
     public void Validate()
     {
