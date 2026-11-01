@@ -340,6 +340,7 @@ public partial class MainWindow
             SnapsToDevicePixels = true,
             Tag = wall.Id
         });
+        RenderWallAssemblyPlan(wall, wallType, footprint.Points);
     }
 
     /// <summary>Strokes the union boundary, hiding interior seams at corners, tees and crossings.</summary>
