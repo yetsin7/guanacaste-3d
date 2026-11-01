@@ -118,7 +118,11 @@ public sealed partial class DocumentSession
         Commit("Transaction.BindWallGridAxis", doc =>
         {
             var index = doc.Walls.FindIndex(w => w.Id == wallId);
-            doc.Walls[index] = doc.Walls[index] with { GridAxisId = axisId };
+            doc.Walls[index] = doc.Walls[index] with
+            {
+                GridAxisId = axisId,
+                GridAxisAssociationDisabled = axisId is null
+            };
         });
     }
 
@@ -129,12 +133,14 @@ public sealed partial class DocumentSession
         {
             var wall = document.Walls[i];
             if (wall.GridAxisId != axis.Id &&
-                (wall.GridAxisId is not null || !IsAligned(axis, wall.Start, wall.End))) continue;
+                (wall.GridAxisAssociationDisabled || wall.GridAxisId is not null ||
+                 !IsAligned(axis, wall.Start, wall.End))) continue;
             document.Walls[i] = wall with
             {
                 Start = new Point2(wall.Start.X + dx, wall.Start.Y + dy),
                 End = new Point2(wall.End.X + dx, wall.End.Y + dy),
-                GridAxisId = axis.Id
+                GridAxisId = axis.Id,
+                GridAxisAssociationDisabled = false
             };
         }
     }
@@ -146,7 +152,11 @@ public sealed partial class DocumentSession
             document.Grids.RemoveAll(axis => axis.Id == id);
             for (var i = 0; i < document.Walls.Count; i++)
                 if (document.Walls[i].GridAxisId == id)
-                    document.Walls[i] = document.Walls[i] with { GridAxisId = null };
+                    document.Walls[i] = document.Walls[i] with
+                    {
+                        GridAxisId = null,
+                        GridAxisAssociationDisabled = true
+                    };
             // Existing walls and their hosted openings are deliberately retained.
         });
 }
