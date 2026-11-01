@@ -73,11 +73,23 @@ public sealed class CloudLayer
     /// </summary>
     public (float Opacity, float Thickness) Sample(Vector3 direction)
     {
-        if (IsClear || direction.Z <= 0.015f) return (0, 0);
+        // Reject invalid ray directions before projection/noise: NaN and infinity otherwise
+        // propagate through the cloud opacity into the path tracer's radiance buffer.
+        if (IsClear || !float.IsFinite(direction.X) || !float.IsFinite(direction.Y) ||
+            !float.IsFinite(direction.Z) || direction.Z <= 0.015f) return (0, 0);
         var distance = _altitudeKm / direction.Z;
         var plane = new Vector2(direction.X, direction.Y) * distance;
+        // Finite input components can still overflow during projection. A real unit sky ray
+        // intersects this layer within about 534 km; farther coordinates are not meaningful
+        // for the float-based noise grid and can produce NaN during integer-cell lookup.
+        if (!float.IsFinite(plane.X) || !float.IsFinite(plane.Y) ||
+            MathF.Abs(plane.X) > 1_000_000f || MathF.Abs(plane.Y) > 1_000_000f)
+            return (0, 0);
         var point = new Vector2(plane.X * _cosWind - plane.Y * _sinWind,
             plane.X * _sinWind + plane.Y * _cosWind) + _offset;
+        if (!float.IsFinite(point.X) || !float.IsFinite(point.Y) ||
+            MathF.Abs(point.X) > 1_000_000f || MathF.Abs(point.Y) > 1_000_000f)
+            return (0, 0);
         var horizon = SmoothStep(0.015f, 0.16f, direction.Z);
         switch (_style)
         {
