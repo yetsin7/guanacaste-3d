@@ -212,6 +212,8 @@ public partial class RenderPanel
         if (PreviewToggle.IsChecked == true)
         {
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (IsVisible) ResumePreview();
         }
         else
