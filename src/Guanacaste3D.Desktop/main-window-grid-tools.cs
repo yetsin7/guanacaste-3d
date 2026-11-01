@@ -63,6 +63,9 @@ public partial class MainWindow
         ViewTabs.SelectedIndex = 0;
         _selectedGridId = id;
         _selectedWallId = _selectedOpeningId = null;
+        // Bring the existing datum into view before highlighting it, including axes outside the current viewport.
+        var center = new Point2((axis.Start.X + axis.End.X) / 2, (axis.Start.Y + axis.End.Y) / 2);
+        _panOffset = new Point(-center.X * _scale, center.Y * _scale);
         RefreshProperties();
         RenderPlan();
         StatusText.Text = $"Eje existente seleccionado: {axis.Name}. Puedes editarlo o eliminarlo con el botón derecho.";
