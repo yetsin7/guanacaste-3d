@@ -1,6 +1,6 @@
 # Windows file thumbnails
 
-The Windows x64 package includes a per-user thumbnail provider for `.g3d`, `.g3dt`, `.g3df`, and `.g3dx`.
+The Windows x64 package includes an **optional, disabled-by-default** per-user thumbnail provider for `.g3d`, `.g3dt`, `.g3df`, and `.g3dx`. The provider currently executes in the requesting Windows Shell process, so only enable it if you accept the remaining availability risk described below.
 It works with existing files without saving them again, modifying their container format, or creating sidecar images.
 The standard Windows thumbnail cache handles reuse and refresh after a file changes.
 
@@ -25,18 +25,18 @@ No external family paths, textures, or network references are opened.
 
 ## Build and registration
 
-`scripts/install-windows.ps1` publishes and registers the provider automatically.
+`scripts/install-windows.ps1` installs the application without registering the provider by default. To opt in, run `./scripts/install-windows.ps1 -EnableThumbnails`. Upgrading without this switch unregisters older in-process thumbnail associations for safety.
 The Desktop `PublishThumbnailProvider` target bundles it under `thumbnail-handler` for win-x64 publications.
 The provider requires the same .NET 10 Desktop runtime as the framework-dependent application.
 Downloadable desktop and Revit installer ZIPs include Microsoft's offline Desktop runtime installer, verified
 against the SHA-512 published in its release metadata. It runs only if the x64 .NET 10 Desktop runtime is missing.
-The desktop installer is built with `scripts/package-windows-installer.ps1`; users run `install.cmd` after extraction.
+The desktop installer is built with `scripts/package-windows-installer.ps1`; users run `install.cmd` after extraction for the safe default. To opt in to previews, they can run `./install.ps1 -EnableThumbnails` from PowerShell in the extracted installer directory.
 
 To install just the thumbnail component without closing the application:
 
 ```powershell
 dotnet publish src/windows-thumbnails/windows-thumbnails.csproj -c Release --self-contained false -o artifacts/thumbnail-provider
-./scripts/register-thumbnails.ps1 -ProviderDirectory ./artifacts/thumbnail-provider
+./scripts/register-thumbnails.ps1 -ProviderDirectory ./artifacts/thumbnail-provider -AllowInProcess
 ```
 
 Registration uses HKCU, including extension, application ProgID, and SystemFileAssociations entries.
@@ -52,7 +52,7 @@ Unregistration removes this provider's associations and COM registration without
 
 ## Hosting and limits
 
-The provider implements `IInitializeWithStream` and `IThumbnailProvider` through a .NET COM host.
+The provider implements `IInitializeWithStream` and `IThumbnailProvider` through a .NET COM host. Direct registration now requires the explicit `-AllowInProcess` switch; installers use it only when `-EnableThumbnails` was requested.
 The per-user registration sets `DisableProcessIsolation=1`: the restricted Windows thumbnail surrogate returned
 `REGDB_E_CLASSNOTREG` for per-user activation on the validation machine. Consequently the managed provider runs
 in the requesting Shell process, with WPF drawing on a dedicated STA thread. It does not have crash isolation
