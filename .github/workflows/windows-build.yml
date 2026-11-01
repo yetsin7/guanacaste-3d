@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Reject accidentally tracked local crash diagnostics
         shell: bash
         run: |
@@ -29,8 +29,26 @@ jobs:
             echo "::error::Machine-local crash logs and dumps must not be committed."
             exit 1
           fi
+      - name: Enforce immutable third-party GitHub Actions references
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          for workflow in Path(".github/workflows").glob("*.yml"):
+              for number, line in enumerate(workflow.read_text(encoding="utf-8").splitlines(), 1):
+                  match = re.match(r"\s*(?:-\s*)?uses:\s*([^\s#]+)", line)
+                  if not match:
+                      continue
+                  action = match.group(1)
+                  if action.startswith("./"):
+                      continue
+                  if not re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", action):
+                      raise SystemExit(f"{workflow}:{number}: unpinned action: {action}")
+          PY
       - name: Install .NET 10 SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: '10.0.x'
       - name: Restore core checks
@@ -58,9 +76,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Install .NET 10 SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: '10.0.x'
       - name: Verify unsafe thumbnail COM registration is opt-in
@@ -103,7 +121,7 @@ jobs:
         run: dotnet run --project tests/desktop-interaction-checks/desktop-interaction-checks.csproj -c Release --no-build --no-restore
       - name: Upload Architecture ribbon UI evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Guanacaste3D-architecture-ui-evidence
           path: artifacts/interaction-evidence/
@@ -111,7 +129,7 @@ jobs:
           retention-days: 7
       - name: Upload model workspace interaction evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Guanacaste3D-model-workspace-evidence
           path: artifacts/model-workspace-evidence/
@@ -127,7 +145,7 @@ jobs:
           $hash = (Get-FileHash -Path $exe -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  Guanacaste3D.Desktop.exe" | Set-Content -Path 'artifacts/portable-win-x64/SHA256SUMS.txt' -Encoding ascii
       - name: Upload Windows portable app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Guanacaste3D-win-x64
           path: artifacts/portable-win-x64/
