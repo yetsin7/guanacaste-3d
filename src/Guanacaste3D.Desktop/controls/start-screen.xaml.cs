@@ -45,6 +45,7 @@ public sealed class StartItem : INotifyPropertyChanged
     public string? Path { get; init; }
     public StartSample? Sample { get; init; }
     public DateTime Modified { get; init; }
+    public DateTime FileModified { get; init; }
 
     public ImageSource? Thumbnail
     {
@@ -66,6 +67,7 @@ public sealed class StartItem : INotifyPropertyChanged
 public partial class StartScreen : UserControl
 {
     private IStartScreenHost? _host;
+    private string _fileFilter = "All";
     private readonly Dictionary<string, ImageSource> _thumbnails = new(StringComparer.OrdinalIgnoreCase);
 
     public StartScreen()
@@ -87,17 +89,27 @@ public partial class StartScreen : UserControl
         var samples = SamplesTab.IsChecked == true;
         PageTitle.Text = Text(samples ? "Start.Samples" : "Start.Recent");
         SearchHint.Text = Text(samples ? "Start.SearchSamples" : "Start.Search");
-        var items = samples ? SampleItems() : RecentItems();
+        IEnumerable<StartItem> items = samples ? SampleItems() : RecentItems();
+        if (!samples && _fileFilter != "All")
+            items = items.Where(item => string.Equals(item.Badge, _fileFilter, StringComparison.OrdinalIgnoreCase));
         var query = SearchBox.Text.Trim();
         if (query.Length > 0)
             items = items.Where(item => item.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                                         item.Location.Contains(query, StringComparison.CurrentCultureIgnoreCase));
-        var byName = (SortPicker.SelectedItem as ComboBoxItem)?.Tag as string == "Name";
+        var sortMode = (SortPicker.SelectedItem as ComboBoxItem)?.Tag as string;
         var descending = DescendingButton.IsChecked == true;
-        items = byName
-            ? descending ? items.OrderByDescending(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
-                : items.OrderBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
-            : descending ? items.OrderByDescending(item => item.Modified) : items.OrderBy(item => item.Modified);
+        items = sortMode switch
+        {
+            "Name" => descending
+                ? items.OrderByDescending(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
+                : items.OrderBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase),
+            "Modified" => descending
+                ? items.OrderByDescending(item => item.FileModified)
+                : items.OrderBy(item => item.FileModified),
+            _ => descending
+                ? items.OrderByDescending(item => item.Modified)
+                : items.OrderBy(item => item.Modified)
+        };
         var list = items.ToList();
         Items.ItemsSource = list;
         EmptyText.Text = Text(query.Length > 0 ? "Start.NoMatches" : "Start.Empty");
@@ -106,19 +118,24 @@ public partial class StartScreen : UserControl
 
     private IEnumerable<StartItem> RecentItems()
     {
+        if (!DesktopOptions.Load().ShowRecentFiles) yield break;
         foreach (var recent in _host!.Recents.Load())
         {
-            var exists = File.Exists(recent.Path);
-            var modified = exists ? File.GetLastWriteTime(recent.Path) : recent.LastOpened;
+            // Recents are intentionally ordered by the last time the user opened the project, not by when Windows last
+            // modified the file. This keeps the projects the person actually worked on at the top of Home.
+            var lastOpened = recent.LastOpened;
             var item = new StartItem
             {
                 Title = System.IO.Path.GetFileNameWithoutExtension(recent.Path), Path = recent.Path,
                 Badge = System.IO.Path.GetExtension(recent.Path).TrimStart('.').ToUpperInvariant(),
-                Detail = exists ? modified.ToString("d/M/yy, H:mm", CultureInfo.CurrentCulture) : Text("Start.Missing"),
-                Location = System.IO.Path.GetDirectoryName(recent.Path) ?? string.Empty, ToolTip = recent.Path, Modified = modified
+                Detail = lastOpened.ToString("d/M/yy, H:mm", CultureInfo.CurrentCulture),
+                Location = System.IO.Path.GetDirectoryName(recent.Path) ?? string.Empty,
+                ToolTip = recent.Path,
+                Modified = lastOpened,
+                FileModified = File.GetLastWriteTime(recent.Path)
             };
             item.Thumbnail = CachedThumbnail(_host.Recents.ThumbnailPath(recent.Path)) ?? Placeholder();
-            if (exists && !File.Exists(_host.Recents.ThumbnailPath(recent.Path)))
+            if (!File.Exists(_host.Recents.ThumbnailPath(recent.Path)))
                 _ = MakeThumbnailAsync(item, () => ProjectFile.Load(recent.Path), _host.Recents.ThumbnailPath(recent.Path));
             yield return item;
         }
@@ -133,7 +150,8 @@ public partial class StartScreen : UserControl
                 Title = Text(sample.TitleKey), Detail = Text(sample.DetailKey), Badge = Text("Start.SampleBadge"),
                 Sample = sample, ToolTip = Text(sample.DetailKey),
                 // Samples keep the order the application lists them in when sorted "by date".
-                Modified = DateTime.MaxValue.AddDays(-order)
+                Modified = DateTime.MaxValue.AddDays(-order),
+                FileModified = DateTime.MaxValue.AddDays(-order)
             };
             var cached = System.IO.Path.Combine(_host.Recents.ThumbnailFolder, $"sample-{sample.Id}.png");
             item.Thumbnail = CachedThumbnail(sample.Thumbnail ?? cached) ?? Placeholder();
@@ -149,7 +167,33 @@ public partial class StartScreen : UserControl
         return _thumbnails[path] = loaded;
     }
 
-    private ImageSource Placeholder() => (ImageSource)FindResource("Brand.Logo");
+    /// <summary>
+    /// Empty projects still get a meaningful architectural preview instead of a blank tile. The crosshair/grid also
+    /// communicates the model origin until real geometry is available for a generated thumbnail.
+    /// </summary>
+    private static ImageSource Placeholder()
+    {
+        var group = new DrawingGroup();
+        group.Children.Add(new GeometryDrawing(Brushes.White, null, new RectangleGeometry(new Rect(0, 0, 128, 128))));
+
+        var gridPen = new Pen(new SolidColorBrush(Color.FromRgb(232, 236, 240)), 1);
+        for (var p = 16d; p < 128; p += 16)
+        {
+            group.Children.Add(new GeometryDrawing(null, gridPen, new LineGeometry(new Point(p, 0), new Point(p, 128))));
+            group.Children.Add(new GeometryDrawing(null, gridPen, new LineGeometry(new Point(0, p), new Point(128, p))));
+        }
+
+        var xPen = new Pen(new SolidColorBrush(Color.FromRgb(72, 125, 190)), 1.6);
+        var yPen = new Pen(new SolidColorBrush(Color.FromRgb(86, 155, 92)), 1.6);
+        group.Children.Add(new GeometryDrawing(null, xPen, new LineGeometry(new Point(16, 64), new Point(112, 64))));
+        group.Children.Add(new GeometryDrawing(null, yPen, new LineGeometry(new Point(64, 112), new Point(64, 16))));
+        group.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(52, 52, 52)), null,
+            new EllipseGeometry(new Point(64, 64), 2.5, 2.5)));
+
+        var image = new DrawingImage(group);
+        image.Freeze();
+        return image;
+    }
 
     /// <summary>Draws a missing thumbnail: the model is read and projected off the UI thread, then drawn and cached.</summary>
     private async Task MakeThumbnailAsync(StartItem item, Func<BuildingDocument> load, string cache)
@@ -206,6 +250,22 @@ public partial class StartScreen : UserControl
     private void Search_Changed(object sender, TextChangedEventArgs e)
     {
         SearchHint.Visibility = SearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Refresh();
+    }
+
+    private void Filter_Click(object sender, RoutedEventArgs e)
+    {
+        FilterMenu.PlacementTarget = FilterButton;
+        FilterMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        FilterMenu.IsOpen = true;
+    }
+
+    private void FilterOption_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string filter }) return;
+        _fileFilter = filter;
+        foreach (var menuItem in FilterMenu.Items.OfType<MenuItem>())
+            menuItem.IsChecked = string.Equals(menuItem.Tag as string, filter, StringComparison.OrdinalIgnoreCase);
         Refresh();
     }
 

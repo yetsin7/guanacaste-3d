@@ -4,11 +4,11 @@
              Background="White">
   <UserControl.Resources>
     <Style x:Key="StartActionButton" TargetType="Button">
-      <Setter Property="Height" Value="40"/>
+      <Setter Property="Height" Value="39"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
       <Setter Property="FontSize" Value="14"/>
-      <Setter Property="Background" Value="White"/>
-      <Setter Property="BorderBrush" Value="#B9B9B9"/>
+      <Setter Property="Background" Value="#F4F4F4"/>
+      <Setter Property="BorderBrush" Value="#C1C1C1"/>
       <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
@@ -35,7 +35,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="RadioButton">
-            <Border x:Name="Row" Background="Transparent" Padding="40,13">
+            <Border x:Name="Row" Background="Transparent" Padding="36,12">
               <ContentPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -71,8 +71,8 @@
       </Setter>
     </Style>
     <Style x:Key="ToolToggle" TargetType="ToggleButton">
-      <Setter Property="Width" Value="30"/>
-      <Setter Property="Height" Value="30"/>
+      <Setter Property="Width" Value="26"/>
+      <Setter Property="Height" Value="28"/>
       <Setter Property="Margin" Value="0,0,6,0"/>
       <Setter Property="FontFamily" Value="{StaticResource GlyphFont}"/>
       <Setter Property="FontSize" Value="15"/>
@@ -99,11 +99,13 @@
 
     <!-- A file tile: the picture on white inside a grey card, a badge for the file type, the name and the date. -->
     <DataTemplate x:Key="TileTemplate">
-      <Border Width="210" Height="296" Margin="0,0,18,18" Background="#EDEDED" ToolTip="{Binding ToolTip}">
+      <Border Width="185" Height="262" Margin="0,0,15,15" Background="#ECECEC" BorderBrush="#DDDDDD"
+              BorderThickness="1" ToolTip="{Binding ToolTip}">
         <DockPanel>
-          <Grid DockPanel.Dock="Top" Height="158">
-            <Border Width="128" Height="128" Background="White" HorizontalAlignment="Center" VerticalAlignment="Center">
-              <Image Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+          <Grid DockPanel.Dock="Top" Height="139" Background="#ECECEC">
+            <Border Width="113" Height="113" Background="White"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
             </Border>
             <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8" Background="{DynamicResource FileTabBrush}"
                     Padding="4,1" CornerRadius="2">
@@ -111,11 +113,12 @@
             </Border>
           </Grid>
           <Border DockPanel.Dock="Top" Height="1" Background="#DADADA"/>
-          <StackPanel Margin="14,12,14,0">
-            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="42"
+          <StackPanel Margin="12,12,12,0">
+            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="43"
                        TextTrimming="CharacterEllipsis" Foreground="{DynamicResource PrimaryTextBrush}"/>
-            <TextBlock Text="{Binding Detail}" FontSize="12" Margin="0,12,0,0" Foreground="#555555" TextWrapping="Wrap"
-                       MaxHeight="48" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Detail}" FontSize="12" Margin="0,12,0,0" Foreground="#4C5661"
+                       TextTrimming="CharacterEllipsis"/>
+            
           </StackPanel>
         </DockPanel>
       </Border>
@@ -139,16 +142,16 @@
 
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="300"/>
+      <ColumnDefinition Width="262"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
     <!-- Left: what to do. -->
     <DockPanel Background="#F0F0F0">
-      <StackPanel DockPanel.Dock="Top" Margin="40,56,40,0">
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,34">
-          <Image Source="{StaticResource Brand.Logo}" Width="34" Height="34" Margin="0,0,10,0"/>
-          <TextBlock Text="{DynamicResource App.Name}" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"
+      <StackPanel DockPanel.Dock="Top" Margin="35,64,55,0">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,32">
+          <Image Source="{StaticResource Brand.Logo}" Width="26" Height="26" Margin="0,0,7,0"/>
+          <TextBlock Text="{DynamicResource App.Name}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"
                      Foreground="{DynamicResource PrimaryTextBrush}"/>
         </StackPanel>
         <TextBlock Text="{DynamicResource Start.Projects}" FontSize="13" Foreground="#555555" Margin="0,0,0,10"/>
@@ -160,13 +163,13 @@
         <Button Content="{DynamicResource Start.Open}" Style="{StaticResource StartActionButton}" Click="OpenFamily_Click"/>
         <Button Content="{DynamicResource Start.New}" Style="{StaticResource StartActionButton}" Click="NewFamily_Click"/>
       </StackPanel>
-      <StackPanel DockPanel.Dock="Bottom" Margin="40,0,40,36">
+      <StackPanel DockPanel.Dock="Bottom" Margin="35,0,35,34">
         <Border Height="1" Background="#D4D4D4" Margin="0,0,0,26"/>
         <Button Content="{DynamicResource Start.About}" Style="{StaticResource StartLink}" Click="About_Click"/>
         <Button x:Name="BackToProjectLink" Content="{DynamicResource Start.BackToProject}" Style="{StaticResource StartLink}"
                 Click="BackToProject_Click" Visibility="Collapsed"/>
       </StackPanel>
-      <StackPanel Margin="0,40,0,0">
+      <StackPanel Margin="0,42,0,0">
         <RadioButton x:Name="RecentTab" Content="{DynamicResource Start.Recent}" Style="{StaticResource StartNavButton}"
                      GroupName="StartPages" IsChecked="True" Checked="Page_Checked"/>
         <RadioButton x:Name="SamplesTab" Content="{DynamicResource Start.Samples}" Style="{StaticResource StartNavButton}"
@@ -175,12 +178,12 @@
     </DockPanel>
 
     <!-- Right: the files. -->
-    <DockPanel Grid.Column="1" Margin="20,56,24,0">
-      <TextBlock x:Name="PageTitle" DockPanel.Dock="Top" FontSize="26" Margin="0,0,0,26"
+    <DockPanel Grid.Column="1" Margin="18,68,18,0">
+      <TextBlock x:Name="PageTitle" DockPanel.Dock="Top" FontSize="24" FontWeight="Normal" Margin="0,0,0,24"
                  Foreground="{DynamicResource PrimaryTextBrush}"/>
-      <Grid DockPanel.Dock="Top" Margin="0,0,0,18">
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="440"/>
         </Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <ToggleButton x:Name="ListModeButton" Content="&#xE8FD;" Style="{StaticResource ToolToggle}"
@@ -189,20 +192,39 @@
                         ToolTip="{DynamicResource Start.GridView}" Click="GridMode_Click"/>
           <TextBlock Text="{DynamicResource Start.SortBy}" FontSize="14" Margin="10,0,14,0" VerticalAlignment="Center"
                      Foreground="{DynamicResource PrimaryTextBrush}"/>
-          <ComboBox x:Name="SortPicker" Width="200" FontSize="14" SelectionChanged="Sort_Changed">
-            <ComboBoxItem Content="{DynamicResource Start.SortDate}" Tag="Date" IsSelected="True"/>
+          <ComboBox x:Name="SortPicker" Width="196" FontSize="14" SelectionChanged="Sort_Changed">
+            <ComboBoxItem Content="{DynamicResource Start.SortOpened}" Tag="Date" IsSelected="True"/>
+            <ComboBoxItem Content="{DynamicResource Start.SortDate}" Tag="Modified"/>
             <ComboBoxItem Content="{DynamicResource Start.SortName}" Tag="Name"/>
           </ComboBox>
           <ToggleButton x:Name="DescendingButton" Content="&#xE74B;" Style="{StaticResource ToolToggle}" IsChecked="True"
                         Margin="6,0,0,0" ToolTip="{DynamicResource Start.SortDirection}" Click="Direction_Click"/>
         </StackPanel>
         <Grid Grid.Column="2">
-          <TextBox x:Name="SearchBox" FontSize="14" Padding="8,5,30,5" TextChanged="Search_Changed"
-                   AutomationProperties.Name="{DynamicResource Start.Search}"/>
-          <TextBlock x:Name="SearchHint" Text="{DynamicResource Start.Search}" FontSize="14" Foreground="#9A9A9A"
-                     Margin="11,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-          <TextBlock Text="&#xE721;" FontFamily="{StaticResource GlyphFont}" FontSize="14" HorizontalAlignment="Right"
-                     VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False" Foreground="#555555"/>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="32"/>
+          </Grid.ColumnDefinitions>
+          <Grid Grid.Column="0">
+            <TextBox x:Name="SearchBox" FontSize="14" Height="30" Padding="9,4,33,4" TextChanged="Search_Changed"
+                     BorderBrush="#C8C8C8" AutomationProperties.Name="{DynamicResource Start.Search}"/>
+            <TextBlock x:Name="SearchHint" Text="{DynamicResource Start.Search}" FontSize="14" Foreground="#A4A4A4"
+                       Margin="11,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+            <TextBlock Text="&#xE721;" FontFamily="{StaticResource GlyphFont}" FontSize="14" HorizontalAlignment="Right"
+                       VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False" Foreground="#696969"/>
+          </Grid>
+          <Button Grid.Column="1" x:Name="FilterButton" Width="30" Height="30" Background="Transparent"
+                  BorderThickness="0" Cursor="Hand" Click="Filter_Click"
+                  ToolTip="Filtrar archivos recientes" AutomationProperties.Name="Filtrar archivos recientes">
+            <TextBlock Text="&#xE71C;" FontFamily="{StaticResource GlyphFont}" FontSize="15" Foreground="#6D6D6D"/>
+            <Button.ContextMenu>
+              <ContextMenu x:Name="FilterMenu">
+                <MenuItem Header="Todos los archivos" Tag="All" Click="FilterOption_Click" IsCheckable="True" IsChecked="True"/>
+                <MenuItem Header="Proyectos (.g3d)" Tag="G3D" Click="FilterOption_Click" IsCheckable="True"/>
+                <MenuItem Header="Familias (.g3df)" Tag="G3DF" Click="FilterOption_Click" IsCheckable="True"/>
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
         </Grid>
       </Grid>
       <Grid>

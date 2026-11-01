@@ -87,13 +87,16 @@ public sealed class RenderSceneBuilder
 
     /// <summary>Adds the BIM scene mesh, mapping each surface category to its stock material.</summary>
     public RenderSceneBuilder AddBuilding(SceneMesh mesh,
-        Func<SurfaceKind, RenderMaterial>? materialFor = null)
+        Func<SurfaceKind, RenderMaterial>? materialFor = null,
+        Func<Guid, SurfaceKind, RenderMaterial>? materialForElement = null)
     {
         ArgumentNullException.ThrowIfNull(mesh);
         materialFor ??= MaterialLibrary.ForKind;
-        var kinds = new Dictionary<SurfaceKind, int>();
-        var dimmed = new Dictionary<(SurfaceKind, int), int>();
-        var textured = new Dictionary<(SurfaceKind, int), int>();
+        var kinds = new Dictionary<(SurfaceKind, Guid?), int>();
+        var dimmed = new Dictionary<(SurfaceKind, int, Guid?), int>();
+        var textured = new Dictionary<(SurfaceKind, int, Guid?), int>();
+        var rangeCursor = 0;
+        var ranges = mesh.ElementRanges;
         var start = _positions.Count;
         var meshPositions = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(mesh.Positions);
         _positions.AddRange(meshPositions);
@@ -116,25 +119,30 @@ public sealed class RenderSceneBuilder
                 continue;
             }
             var kind = mesh.TriangleKinds[triangle];
+            while (rangeCursor < ranges.Count && ranges[rangeCursor].End <= triangle) rangeCursor++;
+            Guid? owner = rangeCursor < ranges.Count && ranges[rangeCursor].First <= triangle
+                ? ranges[rangeCursor].ElementId : null;
+            RenderMaterial Resolve() => owner is Guid id && materialForElement is not null
+                ? materialForElement(id, kind) : materialFor(kind);
             int material;
             var output = mesh.EmissionOf(triangle);
             if (output < 1)
             {
                 // A light on a dimmer: its own copy of the material with the emission scaled, one per dimmer step.
                 var step = (int)MathF.Round(output * 64);
-                if (!dimmed.TryGetValue((kind, step), out material))
+                if (!dimmed.TryGetValue((kind, step, owner), out material))
                 {
-                    var full = materialFor(kind);
-                    dimmed[(kind, step)] = material = MaterialIndex(full with { Emission = full.Emission * (step / 64f) });
+                    var full = Resolve();
+                    dimmed[(kind, step, owner)] = material = MaterialIndex(full with { Emission = full.Emission * (step / 64f) });
                 }
             }
             else if (mesh.TexturedTriangles.TryGetValue(triangle, out var corners) && (uint)corners.Texture < (uint)mesh.Textures.Count)
             {
                 // A detailed family's own image: the category keeps its roughness and translucency, the image its colour.
-                if (!textured.TryGetValue((kind, corners.Texture), out material))
+                if (!textured.TryGetValue((kind, corners.Texture, owner), out material))
                 {
                     var image = mesh.Textures[corners.Texture];
-                    textured[(kind, corners.Texture)] = material = MaterialIndex(materialFor(kind) with
+                    textured[(kind, corners.Texture, owner)] = material = MaterialIndex(Resolve() with
                     {
                         BaseColor = Vector3.One, Pattern = SurfacePattern.None, Texture = image.Texture, TextureSize = 1,
                         TextureRelief = 0, UvMapped = true, AlphaCutoff = image.AlphaCutoff, NormalMap = image.Normal
@@ -142,7 +150,7 @@ public sealed class RenderSceneBuilder
                 }
                 _uvs.Add((_triangleMaterial.Count, corners));
             }
-            else if (!kinds.TryGetValue(kind, out material)) kinds[kind] = material = MaterialIndex(materialFor(kind));
+            else if (!kinds.TryGetValue((kind, owner), out material)) kinds[(kind, owner)] = material = MaterialIndex(Resolve());
             _indices.Add(start + a);
             _indices.Add(start + b);
             _indices.Add(start + c);

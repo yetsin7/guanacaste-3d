@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows.Controls;
 using Guanacaste3D.Core.Navigation;
 using Guanacaste3D.Core.Rendering;
@@ -7,9 +8,14 @@ namespace Guanacaste3D.Desktop.Controls;
 
 public partial class RenderPanel
 {
-    /// <summary>Shows a project's saved render setup in the panel's controls (the window sets the camera itself).</summary>
-    public void ApplySetup(RenderSetup setup)
+    /// <summary>Loads an existing setup without an associated file (e.g., an in-memory project).</summary>
+    public void ApplySetup(RenderSetup setup) => ApplySetupForProject(setup, null);
+
+    /// <summary>Restores project render controls, including a saved and safely resolved HDRI reference.</summary>
+    public void ApplySetupForProject(RenderSetup setup, string? projectFile)
     {
+        ClearHdriForDocument();
+        ClearLutForDocument();
         // First the style, which sets the look, white balance, bloom, vignette and effects; the saved values follow.
         Select(StylePicker, setup.StyleId);
         Select(ScenarioPicker, setup.Scenario.ToString());
@@ -18,8 +24,14 @@ public partial class RenderPanel
         CloudSlider.Value = setup.CloudCover * 100;
         LatitudeInput.Text = setup.Latitude.ToString("0.###", CultureInfo.InvariantCulture);
         HazeCheck.IsChecked = setup.Haze;
+        TurbiditySlider.Value = setup.Turbidity;
+        CloudSeedSlider.Value = setup.CloudSeed;
+        CloudDirectionSlider.Value = setup.CloudDirectionDegrees;
+        SunStrengthSlider.Value = setup.SunStrength;
+        SkyStrengthSlider.Value = setup.SkyStrength;
         Select(QualityPicker, setup.Quality?.ToString() ?? "Auto");
         Select(SizePicker, $"{setup.Width}x{setup.Height}");
+        Select(BucketSizePicker, setup.BucketSize.ToString(CultureInfo.InvariantCulture));
         Select(LookPicker, setup.Look switch { ToneMapper.Aces => "Aces", ToneMapper.Soft => "Soft", _ => "AgX" });
         ExposureSlider.Value = setup.ExposureStops;
         TemperatureSlider.Value = setup.Temperature;
@@ -29,6 +41,9 @@ public partial class RenderPanel
         VerticalsCheck.IsChecked = setup.CorrectVerticals;
         DepthOfFieldSlider.Value = setup.DepthOfField;
         ArtificialLightsCheck.IsChecked = setup.ArtificialLights;
+        StoneDetailCheck.IsChecked = setup.StoneMicrogeometry;
+        HdriYawSlider.Value = setup.EnvironmentYawDegrees;
+        HdriExposureSlider.Value = setup.EnvironmentExposureStops;
         Select(CloudStylePicker, setup.Clouds.ToString());
         // The saved sliders win over the style's own values, set when the style was selected first.
         HighlightsSlider.Value = setup.Highlights;
@@ -41,7 +56,14 @@ public partial class RenderPanel
         AberrationSlider.Value = setup.ChromaticAberration;
         GrainSlider.Value = setup.FilmGrain;
         MonochromeCheck.IsChecked = setup.Monochrome;
-        Select(SkyPicker, string.Empty);
+        Select(LutPicker, setup.LutPresetId);
+        LutStrengthSlider.Value = setup.LutStrength;
+        RestoreLutForProject(RenderSetup.SelectedCustomLutPath(setup.LutPresetId, setup.LutPath), projectFile);
+        // Selecting a saved library ID is a label restore, not a reapplication of its defaults.
+        _applyingLook = true;
+        try { Select(SkyPicker, setup.SkyPresetId ?? string.Empty); }
+        finally { _applyingLook = false; }
+        RestoreHdriForProject(setup.EnvironmentPath, projectFile);
         OnCameraChanged();
     }
 
@@ -59,16 +81,56 @@ public partial class RenderPanel
             Scenario = Scenario(), DayOfYear = (SunDatePicker.SelectedDate ?? DateTime.Today).DayOfYear,
             SolarHour = HourSlider.Value, Latitude = Latitude(), CloudCover = CloudSlider.Value / 100,
             Haze = HazeCheck.IsChecked == true, Quality = RequestedQuality(),
+            SkyPresetId = string.IsNullOrEmpty(Mode(SkyPicker)) ? null : Mode(SkyPicker),
+            Turbidity = TurbiditySlider.Value, CloudSeed = (uint)CloudSeedSlider.Value,
+            CloudDirectionDegrees = CloudDirectionSlider.Value,
+            SunStrength = SunStrengthSlider.Value, SkyStrength = SkyStrengthSlider.Value,
             Width = width > 0 && height > 0 ? width : 0, Height = width > 0 && height > 0 ? height : 0,
+            BucketSize = int.TryParse(Mode(BucketSizePicker), out var bucketSize) ? bucketSize : 0,
             Look = CurrentFinish().ToneMapper, ExposureStops = ExposureSlider.Value, Temperature = TemperatureSlider.Value,
             AutoExposure = AutoExposureCheck.IsChecked == true, Bloom = BloomCheck.IsChecked == true,
             Vignette = VignetteCheck.IsChecked == true, CorrectVerticals = VerticalsCheck.IsChecked == true,
             DepthOfField = DepthOfFieldSlider.Value, ArtificialLights = ArtificialLightsCheck.IsChecked == true,
+            StoneMicrogeometry = StoneDetailCheck.IsChecked == true,
+            EnvironmentPath = _hdriFilePath,
+            EnvironmentYawDegrees = HdriYawSlider.Value,
+            EnvironmentExposureStops = HdriExposureSlider.Value,
             Clouds = SelectedClouds(), StyleId = SelectedStyle(), Highlights = HighlightsSlider.Value, Shadows = ShadowsSlider.Value,
             Vibrance = VibranceSlider.Value, Tint = TintSlider.Value, Glare = GlareSlider.Value, Fog = FogSlider.Value,
             Sharpen = SharpenSlider.Value, ChromaticAberration = AberrationSlider.Value, FilmGrain = GrainSlider.Value,
-            Monochrome = MonochromeCheck.IsChecked == true
+            Monochrome = MonochromeCheck.IsChecked == true,
+            LutPresetId = Mode(LutPicker) is { Length: > 0 } lutId ? lutId : "none",
+            LutPath = RenderSetup.SelectedCustomLutPath(Mode(LutPicker), _lutFilePath),
+            LutStrength = LutStrengthSlider.Value
         };
+    }
+
+    /// <summary>Save As uses the target filename, keeping HDRIs inside the project folder portable.</summary>
+    public RenderSetup CaptureSetupForProject(NavigationCamera camera, string projectFile)
+    {
+        var setup = CaptureSetup(camera);
+        var absolute = setup.EnvironmentPath;
+        if (absolute is null && setup.LutPath is null) return setup;
+        try
+        {
+            var folder = Path.GetDirectoryName(Path.GetFullPath(projectFile));
+            if (folder is null) return setup;
+            string? Portable(string? resource)
+            {
+                if (resource is null || !Path.IsPathRooted(resource)) return resource;
+                var local = Path.GetRelativePath(folder, resource);
+                return !Path.IsPathRooted(local) && local != ".." &&
+                    !local.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                    !IsNetworkHdriPath(local) ? local : resource;
+            }
+            return setup with
+            {
+                EnvironmentPath = Portable(setup.EnvironmentPath),
+                LutPath = Portable(setup.LutPath)
+            };
+        }
+        catch (Exception error) when (error is IOException or ArgumentException or NotSupportedException) { }
+        return setup;
     }
 
     /// <summary>Selects the entry whose tag matches, leaving the picker unchanged when none does.</summary>

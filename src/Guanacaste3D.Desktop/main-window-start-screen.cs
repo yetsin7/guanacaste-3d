@@ -114,4 +114,16 @@ public partial class MainWindow : IStartScreenHost
     void IStartScreenHost.ReturnToProject() => HideStartScreen();
 
     private void Home_Click(object sender, RoutedEventArgs e) => ShowStartScreen();
+
+    /// <summary>Second quick-access button toggles between Home and the current modeling workspace.</summary>
+    private void ToggleHome_Click(object sender, RoutedEventArgs e)
+    {
+        if (StartScreenControl.Visibility == Visibility.Visible)
+        {
+            if (_projectChosen) HideStartScreen();
+            else MessageBox.Show(this, "Abre o crea un proyecto para entrar al espacio de diseño.",
+                "Guanacaste 3D", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else ShowStartScreen();
+    }
 }

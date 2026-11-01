@@ -21,4 +21,5 @@
   <sys:String x:Key="Error.The PNG file has no image data.">El archivo PNG no contiene datos de imagen.</sys:String>
   <sys:String x:Key="Error.The PNG image data is incomplete.">Los datos de imagen del PNG están incompletos.</sys:String>
   <sys:String x:Key="Error.The PNG uses an unknown scanline filter.">El PNG usa un filtro de líneas desconocido.</sys:String>
+  <sys:String x:Key="Error.Invalid color LUT.">El filtro LUT no es válido. Elige un archivo .cube 3D con resolución de 2 a 64 y valores correctos.</sys:String>
 </ResourceDictionary>

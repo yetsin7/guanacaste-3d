@@ -14,6 +14,71 @@ public partial class MainWindow
     private Point2? _gridStart;
     private Point2? _gridPointer;
     private Guid? _selectedGridId;
+    private Point2? _axisDragStart;
+    private bool _axisDragged;
+
+    private void InitializeGridAxisInteraction()
+    {
+        PlanCanvas.MouseMove += GridAxis_MouseMove;
+        PlanCanvas.MouseLeftButtonUp += GridAxis_MouseUp;
+        PlanCanvas.LostMouseCapture += (_, _) => { _axisDragStart = null; _axisDragged = false; };
+    }
+
+    private void GridAxis_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_axisDragStart is null || _selectedGridId is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var current = CanvasToWorld(PlanPosition(e));
+        if (_axisDragStart.Value.DistanceTo(current) > 0.02) _axisDragged = true;
+        if (_axisDragged) StatusText.Text = "Suelta para mover el eje y sus muros alineados.";
+    }
+
+    private void GridAxis_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_axisDragStart is not Point2 start || _selectedGridId is not Guid id) return;
+        var end = CanvasToWorld(PlanPosition(e));
+        var shouldMove = _axisDragged && start.DistanceTo(end) > 0.02;
+        _axisDragStart = null;
+        _axisDragged = false;
+        PlanCanvas.ReleaseMouseCapture();
+        if (!shouldMove) return;
+        try
+        {
+            _session.MoveGridAxis(id, end.X - start.X, end.Y - start.Y);
+            RefreshAll();
+            StatusText.Text = "Eje y muros alineados desplazados.";
+        }
+        catch (InvalidDataException ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo mover el eje",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        e.Handled = true;
+    }
+
+    private void NavigateToGridAxis(Guid id)
+    {
+        var axis = _session.Document.Grids.FirstOrDefault(item => item.Id == id);
+        if (axis is null) return;
+        if (StartScreenControl.Visibility == Visibility.Visible) HideStartScreen();
+        ViewTabs.SelectedIndex = 0;
+        _selectedGridId = id;
+        _selectedWallId = _selectedOpeningId = null;
+        // Bring the existing datum into view before highlighting it, including axes outside the current viewport.
+        var center = new Point2((axis.Start.X + axis.End.X) / 2, (axis.Start.Y + axis.End.Y) / 2);
+        _panOffset = new Point(-center.X * _scale, center.Y * _scale);
+        RefreshProperties();
+        RenderPlan();
+        StatusText.Text = $"Eje existente seleccionado: {axis.Name}. Puedes editarlo o eliminarlo con el botón derecho.";
+    }
+
+    private void ShowDuplicateAxis(DuplicateGridAxisNameException ex)
+    {
+        var response = MessageBox.Show(this,
+            $"Ya existe un eje llamado '{ex.AxisName}'. No se ha realizado ningún cambio.\n\n" +
+            "¿Deseas localizar y seleccionar el eje existente?",
+            "Nombre de eje duplicado", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (response == MessageBoxResult.Yes) NavigateToGridAxis(ex.ExistingAxisId);
+    }
 
     /// <summary>Starts a project datum rather than toggling the unrelated background snap grid.</summary>
     private void BeginGridTool()
@@ -33,6 +98,8 @@ public partial class MainWindow
         _creatingGrid = false;
         _gridStart = _gridPointer = null;
         _selectedGridId = null;
+        _axisDragStart = null;
+        _axisDragged = false;
     }
 
     /// <summary>Updates the full axis preview from snapped model coordinates.</summary>
@@ -62,7 +129,7 @@ public partial class MainWindow
             return true;
         }
         var number = 1;
-        while (_session.Document.Grids.Any(axis => axis.Name == number.ToString())) number++;
+        while (_session.Document.Grids.Any(axis => string.Equals(axis.Name.Trim(), number.ToString(), StringComparison.OrdinalIgnoreCase))) number++;
         _selectedGridId = _session.AddGridAxis(number.ToString(), start, point);
         _gridStart = _gridPointer = null;
         RefreshAll();
@@ -122,7 +189,14 @@ public partial class MainWindow
         _selectedViewId = _selectedWallId = _selectedOpeningId = _selectedColumnId = _selectedStructuralId = null;
         _selectedRoomId = _selectedFloorId = null;
         if (e.ClickCount > 1) RenameGridAxis(id);
-        else { RefreshProperties(); RenderPlan(); }
+        else
+        {
+            RefreshProperties();
+            _axisDragStart = CanvasToWorld(PlanPosition(e));
+            _axisDragged = false;
+            RenderPlan();
+            PlanCanvas.CaptureMouse();
+        }
         e.Handled = true;
         return true;
     }
@@ -140,13 +214,26 @@ public partial class MainWindow
         var name = PromptWindow.Ask(this, GetText("Documentation.RenameAxis"), axis.Name);
         if (name is null) return;
         try { _session.UpdateGridAxis(id, name, axis.Start, axis.End); RefreshAll(); }
-        catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
+        catch (DuplicateGridAxisNameException exception) { ShowDuplicateAxis(exception); }
+        catch (InvalidDataException exception)
+        {
+            MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), "Nombre de eje inválido",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     /// <summary>Deletes one datum and its annotations as an undoable operation.</summary>
     private void DeleteGridAxis_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: Guid id }) return;
+        var axis = _session.Document.Grids.FirstOrDefault(item => item.Id == id);
+        if (axis is null) return;
+        var linked = _session.Document.Walls.Count(w => w.GridAxisId == id);
+        var message = $"¿Eliminar el eje '{axis.Name}'?\n\n" +
+            $"Los {linked} muros vinculados, así como sus puertas y ventanas, permanecerán intactos. " +
+            "Solo se elimina el eje y se liberan sus referencias.";
+        if (MessageBox.Show(this, message, "Eliminar eje", MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         _session.RemoveGridAxis(id);
         _selectedGridId = null;
         RefreshAll();

@@ -12,10 +12,13 @@ static class RenderEngineChecks
     public static void Run(Action<bool, string> check)
     {
         Materials(check);
-        ProjectedNormalMaps(check);
+        PbrScalarMaps(check);
         CastConcrete(check);
+        NaturalStone(check);
+        NormalMapFiltering(check);
         TextureInputValidation(check);
         Sky(check);
+        Hdri(check);
         BvhOnLargeScene(check);
         GlassShadows(check);
         EmissiveLight(check);
@@ -49,22 +52,24 @@ static class RenderEngineChecks
         check(Math.Abs(new RenderMaterial { Ior = 1.5f }.DielectricF0 - 0.04f) < 1e-4f, "A glass index of 1.5 reflects 4 % at normal incidence");
     }
 
-    /// <summary>A scanned normal map bends a BIM floor or wall without altering its mesh.</summary>
-    private static void ProjectedNormalMaps(Action<bool, string> check)
+    private static void PbrScalarMaps(Action<bool, string> check)
     {
-        var tilted = NormalMap.FromRgb(1, 1, [218, 128, 218]);
-        var neutral = NormalMap.FromRgb(1, 1, [128, 128, 255]);
-        var sample = tilted.Sample(0.3f, 0.7f);
-        var floor = NormalMap.PerturbProjected(Vector3.UnitZ, sample);
-        var half = NormalMap.PerturbProjected(Vector3.UnitZ, sample, 0.5f);
-        var wall = NormalMap.PerturbProjected(-Vector3.UnitY, sample);
-        var flat = NormalMap.PerturbProjected(Vector3.UnitZ, neutral.Sample(0.3f, 0.7f));
-        check(floor.X > 0.3f && floor.Z > 0.3f && half.X > 0 && half.X < floor.X &&
-              Vector3.Distance(flat, Vector3.UnitZ) < 0.01f &&
-              wall.X > 0.3f && Vector3.Dot(wall, -Vector3.UnitY) > 0.3f,
-            "Normal maps tilt stone and masonry in world projection, preserve flat maps and fade with strength");
-        check(Vector3.Distance(NormalMap.PerturbProjected(Vector3.UnitZ, sample, 0), Vector3.UnitZ) < 1e-6f,
-            "Distant projected normal detail fades completely without changing the BIM surface");
+        var source = new byte[] { 0, 255, 255, 0 };
+        var map = RenderScalarMap.FromGray(2, 2, source);
+        source[0] = 255;
+        check(map.LevelCount == 2 && map.Sample(.25f, .75f, 0) < .01f &&
+              map.Sample(.75f, .75f, 0) > .99f &&
+              MathF.Abs(map.Sample(.25f, .75f, 2) - .5f) < .01f,
+            "Linear roughness/metallic maps preserve texels, filter distant values and own their buffers");
+        bool Invalid(Func<RenderScalarMap> create)
+        {
+            try { create(); return false; } catch (ArgumentException) { return true; }
+        }
+        var odd = RenderScalarMap.FromGray(3, 1, [0, 255, 0]);
+        check(Invalid(() => RenderScalarMap.FromGray(65536, 65536, [])) &&
+              Invalid(() => RenderScalarMap.FromGray(2, 2, [1, 2])) &&
+              odd.LevelCount == 3 && float.IsFinite(odd.Sample(.2f, .3f, 10)),
+            "PBR scalar maps reject malformed images and downsample odd dimensions safely");
     }
 
     /// <summary>Checks that exposed concrete varies across its surface while painted walls keep their own finish.</summary>
@@ -77,6 +82,60 @@ static class RenderEngineChecks
         check(exposed.Pattern == SurfacePattern.PouredConcrete && painted.Pattern != exposed.Pattern &&
               values.All(value => float.IsFinite(value) && value is > 0.5f and < 1.3f) && values.Max() - values.Min() > 0.05f,
             "Exposed concrete has bounded surface variation without changing painted walls");
+    }
+
+    /// <summary>Natural-stone patterns have irregular joints and a stone-specific relief without changing concrete blocks.</summary>
+    private static void NaturalStone(Action<bool, string> check)
+    {
+        var stone = MaterialLibrary.ForKind(SurfaceKind.WallStone);
+        var blocks = MaterialLibrary.ForKind(SurfaceKind.WallBlock);
+        var samples = (from y in Enumerable.Range(0, 64)
+                       from x in Enumerable.Range(0, 64)
+                       select SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale,
+                           new Vector3(x * 0.017f, 0, y * 0.017f), Vector3.UnitY).X).ToArray();
+        check(stone.Pattern == SurfacePattern.StoneMasonry && blocks.Pattern == SurfacePattern.Blocks &&
+              samples.All(value => float.IsFinite(value) && value > 0.15f && value < 1.6f) &&
+              samples.Max() - samples.Min() > 0.35f,
+            "Natural-stone walls have distinct recessed joints and varied stones without affecting concrete blocks");
+
+        var p = new Vector3(-0.19f, 0, 0.31f);
+        var a = SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale, p, Vector3.UnitY);
+        var b = SurfacePatterns.Modulate(stone.Pattern, stone.PatternScale, p, -Vector3.UnitY);
+        var details = Enumerable.Range(0, 80)
+            .Select(i => SurfacePatterns.Relief(stone.Pattern, stone.PatternScale,
+                new Vector3(i * 0.013f, 0, 0.16f), Vector3.UnitY, 2f)).ToArray();
+        check(a == b && details.All(n => float.IsFinite(n.X) && float.IsFinite(n.Y) && float.IsFinite(n.Z) &&
+              MathF.Abs(n.Length() - 1) < 0.001f) && details.Any(n => Vector3.Dot(n, Vector3.UnitY) < 0.99f),
+            "Stone relief is deterministic, unit length and continuous across opposite wall faces");
+    }
+
+    /// <summary>Distant normal maps converge toward their area-average direction instead of shimmering.</summary>
+    private static void NormalMapFiltering(Action<bool, string> check)
+    {
+        byte[] texels = [255, 128, 255, 0, 128, 255,
+                         0, 128, 255, 255, 128, 255];
+        var map = NormalMap.FromRgb(2, 2, texels);
+        var near = map.Sample(0.25f, 0.75f, 0);
+        var far = map.Sample(0.25f, 0.75f, 2);
+        texels[0] = 0;
+        var retained = map.Sample(0.25f, 0.75f);
+        check(map.LevelCount == 2 && near.X > 0.6f && far.Z > 0.99f &&
+              MathF.Abs(far.X) < 0.03f && retained.X > 0.6f,
+            "Normal maps retain near detail, filter distant opposing slopes and own the source buffer");
+
+        bool Rejects(Func<NormalMap> create)
+        {
+            try { create(); return false; }
+            catch (ArgumentException) { return true; }
+        }
+        var odd = NormalMap.FromRgb(3, 1,
+            [128, 128, 255, 255, 128, 255, 128, 128, 255]);
+        var sample = odd.Sample(0.2f, 0.4f, 4);
+        check(Rejects(() => NormalMap.FromRgb(65_536, 65_536, [])) &&
+              Rejects(() => NormalMap.FromRgb(2, 2, new byte[11])) &&
+              odd.LevelCount == 3 && float.IsFinite(sample.X) &&
+              MathF.Abs(sample.Length() - 1f) < 1e-4f,
+            "Normal maps reject malformed dimensions and filter odd-sized maps safely");
     }
 
     private static void TextureInputValidation(Action<bool, string> check)
@@ -123,6 +182,39 @@ static class RenderEngineChecks
             "An overcast sky has no sun and is brightest overhead");
         var hazy = new SkyModel(SkyKind.Clear, Vector3.Normalize(new Vector3(0.3f, 0, 1)), float.NaN);
         check(float.IsFinite(hazy.Turbidity) && Sum(hazy.Radiance(Vector3.UnitX)) > 0, "A NaN turbidity falls back to a clear sky");
+    }
+
+    private static void Hdri(Action<bool, string> check)
+    {
+        var header = System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 2 +X 2\n");
+        // Encode 1.0 in the red or blue channel as 128 * 2^(129 - 136).
+        var values = new byte[]
+        {
+            128, 0, 0, 129, 128, 0, 0, 129,
+            0, 0, 128, 129, 0, 0, 128, 129
+        };
+        var panorama = HdriEnvironment.FromRgbe([.. header, .. values]);
+        var top = panorama.Sample(Vector3.UnitZ);
+        var bottom = panorama.Sample(-Vector3.UnitZ);
+        check(panorama.Width == 2 && panorama.Height == 2 &&
+              top.X > 0.99f && top.Z < 0.01f && bottom.Z > 0.99f && bottom.X < 0.01f,
+            "Radiance HDRI renders distinct top/bottom hemispheres in linear radiance");
+        bool Reject(byte[] bytes)
+        {
+            try { _ = HdriEnvironment.FromRgbe(bytes); return false; }
+            catch (InvalidDataException) { return true; }
+        }
+        check(Reject([.. header, .. values, 0]) &&
+              Reject(System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 99999 +X 2\n")),
+            "HDRI rejects unexpected trailing bytes and extreme dimensions");
+
+        // Width >= 8 selects Radiance's four-channel scanline RLE.
+        var rleHeader = System.Text.Encoding.ASCII.GetBytes("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 8\n");
+        var rle = HdriEnvironment.FromRgbe([.. rleHeader, 2, 2, 0, 8,
+            136, 128, 136, 64, 136, 32, 136, 129]);
+        var light = rle.Sample(Vector3.UnitX);
+        check(rle.Width == 8 && light.X > light.Y && light.Y > light.Z && light.Z > 0,
+            "RGBE per-channel RLE scanlines decode colors and exponent correctly");
     }
 
     private static float Sum(Vector3 v) => v.X + v.Y + v.Z;
@@ -311,15 +403,52 @@ static class RenderEngineChecks
             check(phases.SequenceEqual(["Render.Preparing", "Render.Rendering"]) && result.Rays > 0, "A render session reports its phases and ray count");
         }
 
+        var rejectedInvalidBucket = false;
+        try
+        {
+            using var invalid = new RenderSession(scene, camera, new RenderSettings(),
+                new RenderJob(64, 64, 2, Buckets: true) { BucketSize = 7 });
+        }
+        catch (ArgumentOutOfRangeException) { rejectedInvalidBucket = true; }
+        check(rejectedInvalidBucket && new RenderSetup { BucketSize = 8 } is { BucketSize: 8 },
+            "Bucket size is validated before rendering and the selection is stored in RenderSetup");
+        var rejectedSetup = false;
+        try { (new RenderSetup { BucketSize = 7 }).Validate(); }
+        catch (InvalidDataException) { rejectedSetup = true; }
+        check(rejectedSetup, "Project render setups reject invalid bucket sizes");
+
+        // Partial buckets at the image edge can be 1px wide or high.
+        // Verify corner markers neither escape the tile nor write past the BGRA buffer.
+        var bracketMethod = typeof(RenderSession).GetMethod("Brackets",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var cornerFrame = new byte[17 * 17 * 4];
+        var stripFrame = new byte[17 * 17 * 4];
+        var clippedBrackets = bracketMethod is not null;
+        try
+        {
+            bracketMethod?.Invoke(null, new object[] { cornerFrame, 17, 16, 16, 1, 1 });
+            bracketMethod?.Invoke(null, new object[] { stripFrame, 17, 16, 0, 1, 16 });
+        }
+        catch (System.Reflection.TargetInvocationException) { clippedBrackets = false; }
+        check(clippedBrackets && cornerFrame.Count(value => value != 0) == 3 &&
+              Enumerable.Range(0, stripFrame.Length).All(i => (i / 4) % 17 == 16 || stripFrame[i] == 0),
+            "Bucket corner markers stay inside one-pixel edge tiles and the image buffer");
+
         var bucketFrames = new List<RenderFrame>();
-        using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true)))
+        using (var bucketed = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(150, 100, 4, Buckets: true) { BucketSize = 16 }))
         {
             bucketed.FrameReady += frame => { lock (bucketFrames) bucketFrames.Add(frame); };
             var result = await bucketed.RunAsync(CancellationToken.None);
             var first = bucketFrames[0].Bgra;
             var darkAtStart = first.Where((_, i) => i % 4 != 3).All(value => value <= 40);
-            check(result.Completed && result.Samples == 4 && bucketFrames[^1].IsFinal && darkAtStart,
-                "A bucket render starts fully dark and ends with a complete final image");
+            check(result.Completed && result.Samples == 4 && bucketFrames[^1].IsFinal && darkAtStart &&
+                  bucketFrames[0].Progress == 0 && bucketFrames[^1].Progress == 1,
+                "A 16px bucket render begins empty, fills its exact completion bar and ends with an image");
+            check(bucketFrames.All(frame => frame.Progress is >= 0 and <= 1) &&
+                  bucketFrames.Zip(bucketFrames.Skip(1), (a, b) => a.Progress <= b.Progress).All(value => value),
+                "Bucket progress never decreases even when many workers complete squares concurrently");
+            check(bucketed.RenderElapsed >= TimeSpan.Zero && bucketed.RenderElapsed <= result.Elapsed + TimeSpan.FromMilliseconds(50),
+                "The monotonic elapsed timer freezes when the render completes");
         }
 
         using (var cancelling = new RenderSession(scene, camera, new RenderSettings(), new RenderJob(48, 32, 100000)))

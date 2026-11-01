@@ -148,13 +148,23 @@ public partial class MainWindow
                 SelectExtendedElement(structuralId: picked.Id);
                 break;
         }
-        // Clicking an object in the render viewport opens its surface material immediately.
-        // These are category-wide assignments; the picked element remains selected in the BIM model.
+        // Clicking an object in the render viewport opens its own scoped material editor.
+        // The BIM selection stays active; project-wide finishes are a separate deliberate choice.
         if (ReferenceEquals(surface, RenderPanelControl.Surface))
         {
             SurfaceKind? material = picked.Kind switch
             {
-                PickedKind.Wall => SurfaceKind.Wall,
+                PickedKind.Wall => _session.Document.Walls.FirstOrDefault(w => w.Id == picked.Id) is { } wall
+                    ? _session.Document.WallTypes.FirstOrDefault(t => t.Id == wall.WallTypeId)?.Construction switch
+                    {
+                        WallConstruction.Brick => SurfaceKind.WallBrick,
+                        WallConstruction.Block => SurfaceKind.WallBlock,
+                        WallConstruction.Concrete => SurfaceKind.WallConcrete,
+                        WallConstruction.Stone => SurfaceKind.WallStone,
+                        WallConstruction.Wood => SurfaceKind.WallWood,
+                        WallConstruction.Metal => SurfaceKind.WallMetal,
+                        _ => SurfaceKind.Wall
+                    } : SurfaceKind.Wall,
                 PickedKind.Floor => _session.Document.Floors.FirstOrDefault(floor => floor.Id == picked.Id) is { } slab
                     ? BuildingMesher.SelectableSlabSurface(slab) : SurfaceKind.Floor,
                 PickedKind.Opening => _session.Document.Openings.Any(item =>
@@ -163,7 +173,7 @@ public partial class MainWindow
                 PickedKind.Column or PickedKind.Structural => SurfaceKind.Structure,
                 _ => null
             };
-            if (material is { } category) RenderPanelControl.FocusMaterial(category);
+            if (material is { } category) RenderPanelControl.FocusMaterial(category, picked.Id);
         }
         RefreshProperties();
         RenderPlan();

@@ -30,6 +30,7 @@ public partial class MainWindow
     private DispatcherTimer? _sceneDebounce;
     private bool _modelDirty = true;
     private bool _renderClay;
+    private bool _stoneMicrogeometry;
     private int _modelBuildRequest;
     private readonly System.Threading.SemaphoreSlim _modelBuildGate = new(1, 1);
     private event Action? SceneChanged;
@@ -81,6 +82,7 @@ public partial class MainWindow
         public int SceneVersion => window._sceneVersion;
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;
+        public string? ProjectFilePath => window._filePath;
 
         /// <summary>Limits the neutral material override to rendered scenes.</summary>
         public bool ClayMode
@@ -90,6 +92,17 @@ public partial class MainWindow
             {
                 if (window._renderClay == value) return;
                 window._renderClay = value;
+                window.MarkSceneDirty();
+            }
+        }
+
+        public bool StoneMicrogeometry
+        {
+            get => window._stoneMicrogeometry;
+            set
+            {
+                if (window._stoneMicrogeometry == value) return;
+                window._stoneMicrogeometry = value;
                 window.MarkSceneDirty();
             }
         }
@@ -104,8 +117,15 @@ public partial class MainWindow
                 window.MarkSceneDirty();
             }
         }
-        public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
-            window.AssignRenderMaterial(category, texturePath, size, relief);
+        public void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId = null) =>
+            window.AssignElementRenderMaterial(category, texturePath, size, relief, elementId);
+
+        public void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
+            string? normalPath, string? roughnessPath, string? metallicPath) =>
+            window.SetRenderMaterialMaps(category, elementId, normalPath, roughnessPath, metallicPath);
+        public void SetRenderMaterialAppearance(SurfaceKind category, Guid? elementId,
+            double? roughness, double? metallic, double relief) =>
+            window.SetRenderMaterialAppearance(category, elementId, roughness, metallic, relief);
 
         public event Action? SceneChanged
         {
@@ -149,17 +169,70 @@ public partial class MainWindow
     private bool _artificialLights = true;
 
     /// <summary>Assigns (or, with no path, clears) the render texture of a surface category as one undoable step.</summary>
-    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief)
+    // Keep this four-argument entry point for existing callers and reflection-based interaction tests.
+    private void AssignRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief) =>
+        AssignElementRenderMaterial(category, texturePath, size, relief, null);
+
+    private void AssignElementRenderMaterial(SurfaceKind category, string? texturePath, double size, double relief, Guid? elementId)
     {
         try
         {
-            if (texturePath is null) _session.ClearRenderMaterial(category);
-            else _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath) { TextureSize = size, Relief = relief });
+            if (texturePath is null) _session.ClearRenderMaterial(category, elementId);
+            else
+            {
+                var previous = _session.Document.RenderMaterials.FirstOrDefault(a =>
+                    a.Category == category && a.ElementId == elementId);
+                _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath)
+                {
+                    ElementId = elementId, TextureSize = size, Relief = relief,
+                    NormalPath = previous?.NormalPath, RoughnessPath = previous?.RoughnessPath,
+                    MetallicPath = previous?.MetallicPath,
+                    RoughnessOverride = previous?.RoughnessOverride, MetallicOverride = previous?.MetallicOverride
+                });
+            }
         }
         catch (InvalidDataException exception)
         {
             StatusText.Text = LocalizedErrors.Translate(exception.Message);
         }
+        RefreshAll();
+    }
+
+    /// <summary>One undoable, project-scoped update; never edits a shared .g3dm file.</summary>
+    private void SetRenderMaterialAppearance(SurfaceKind category, Guid? elementId,
+        double? roughness, double? metallic, double relief)
+    {
+        try
+        {
+            var current = _session.Document.RenderMaterials.FirstOrDefault(a =>
+                a.Category == category && a.ElementId == elementId);
+            var assignment = (current ?? new RenderMaterialAssignment(category, "stock:") { ElementId = elementId }) with
+            {
+                RoughnessOverride = roughness, MetallicOverride = metallic, Relief = relief
+            };
+            _session.SetRenderMaterial(assignment);
+        }
+        catch (InvalidDataException exception)
+        {
+            StatusText.Text = LocalizedErrors.Translate(exception.Message);
+        }
+        RefreshAll();
+    }
+
+    /// <summary>One undoable update of a material's independent PBR maps; stock materials may also receive maps.</summary>
+    private void SetRenderMaterialMaps(SurfaceKind category, Guid? elementId,
+        string? normalPath, string? roughnessPath, string? metallicPath)
+    {
+        var current = _session.Document.RenderMaterials.FirstOrDefault(a =>
+            a.Category == category && a.ElementId == elementId);
+        var updated = (current ?? new RenderMaterialAssignment(category, "stock:") { ElementId = elementId }) with
+        {
+            NormalPath = normalPath, RoughnessPath = roughnessPath, MetallicPath = metallicPath
+        };
+        if (updated.TexturePath == "stock:" && normalPath is null && roughnessPath is null && metallicPath is null)
+            _session.ClearRenderMaterial(category, elementId);
+        else
+            _session.SetRenderMaterial(updated);
         RefreshAll();
     }
 
@@ -192,10 +265,14 @@ public partial class MainWindow
         var projectFile = _filePath;
         var lightsOn = _artificialLights;
         var clay = _renderClay;
+        var stoneDetail = _stoneMicrogeometry;
         var task = Task.Run<RenderScene?>(() =>
         {
             var mesh = BuildingMesher.Build(document, includeGround: true, plants: PlantDetail.Render);
-            var builder = new RenderSceneBuilder().AddBuilding(mesh, RenderTextureLibrary.Resolver(materials, projectFile, lightsOn));
+            if (stoneDetail) RenderStoneDisplacement.Append(mesh);
+            var builder = new RenderSceneBuilder().AddBuilding(mesh,
+                RenderTextureLibrary.Resolver(materials, projectFile, lightsOn),
+                RenderTextureLibrary.ElementResolver(materials, projectFile, lightsOn));
             foreach (var (link, loaded) in links) builder.AddModel(loaded.Model, link.Placement);
             var scene = builder.Build();
             if (clay) scene = RenderSceneStyles.Clay(scene);

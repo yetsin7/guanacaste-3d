@@ -9,6 +9,7 @@ static class NativeDocumentChecks
         try
         {
             CheckProjectContainer(root, check);
+            CheckRenderEnvironmentSetup(root, check);
             CheckFamilyContainer(root, check);
             CheckTemplateContainer(root, check);
             CheckDependencyCycles(check);
@@ -22,6 +23,7 @@ static class NativeDocumentChecks
     private static void CheckProjectContainer(string root, Action<bool, string> check)
     {
         var project = BuildingDocument.Create("Native Project");
+        project.RenderSetup = new Guanacaste3D.Core.Rendering.RenderSetup { StoneMicrogeometry = true };
         var path = Path.Combine(root, "native-project.g3d");
         ProjectFile.Save(path, project);
 
@@ -36,6 +38,10 @@ static class NativeDocumentChecks
         var reopened = ProjectFile.Load(path);
         check(reopened.Id == project.Id && reopened.Name == project.Name,
             ".G3D project survives a validated native round trip");
+        check(reopened.RenderSetup?.StoneMicrogeometry == true,
+            "Render-only stone detail preference survives the compressed .g3d round trip");
+        check(!new Guanacaste3D.Core.Rendering.RenderSetup().StoneMicrogeometry,
+            "Legacy render setup defaults to lightweight stone shading");
 
         var disguised = Path.Combine(root, "native-project.bin");
         File.Copy(path, disguised);
@@ -49,6 +55,33 @@ static class NativeDocumentChecks
         try { NativeDocumentStore.LoadFamily(path); }
         catch (InvalidDataException) { wrongKindRejected = true; }
         check(wrongKindRejected, "Native containers reject loading a project as a family");
+    }
+
+    private static void CheckRenderEnvironmentSetup(string root, Action<bool, string> check)
+    {
+        var project = BuildingDocument.Create("HDRI portable test");
+        project.RenderSetup = new Guanacaste3D.Core.Rendering.RenderSetup
+        {
+            EnvironmentPath = "assets/softbox.hdr", EnvironmentYawDegrees = 172.5,
+            EnvironmentExposureStops = -0.75
+        };
+        var path = Path.Combine(root, "hdri-preserved.g3d");
+        ProjectFile.Save(path, project);
+        var saved = ProjectFile.Load(path).RenderSetup;
+        check(saved?.EnvironmentPath == "assets/softbox.hdr" &&
+              saved.EnvironmentYawDegrees == 172.5 &&
+              saved.EnvironmentExposureStops == -0.75,
+            "HDRI source, sky rotation and exposure persist through compressed .g3d save/load");
+
+        var rejectsInvalid = false;
+        try { (saved! with { EnvironmentYawDegrees = float.PositiveInfinity }).Validate(); }
+        catch (InvalidDataException) { rejectsInvalid = true; }
+        check(rejectsInvalid, "Corrupted HDRI sky rotation is rejected on project load");
+
+        rejectsInvalid = false;
+        try { (saved! with { EnvironmentPath = new string('x', 1025) }).Validate(); }
+        catch (InvalidDataException) { rejectsInvalid = true; }
+        check(rejectsInvalid, "Oversized external asset references are rejected during validation");
     }
 
     private static void CheckFamilyContainer(string root, Action<bool, string> check)

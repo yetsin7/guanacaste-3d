@@ -16,6 +16,11 @@ namespace Guanacaste3D.Desktop.Controls;
 
 public partial class RenderPanel
 {
+    private HdriEnvironment? _hdriEnvironment;
+    private string? _hdriFilePath;
+    // Invalidate async reads when another project opens or a different HDRI is chosen.
+    private int _hdriRequestVersion;
+
     // ---------------------------------------------------------------- control state
 
     /// <summary>Reads the stable enum identifier from a localized selector entry.</summary>
@@ -65,11 +70,123 @@ public partial class RenderPanel
         HardwareText.ToolTip = _hardware.BackendSummary;
     }
 
+    /// <summary>Loads a bounded Radiance RGBE panorama on a worker without freezing the WPF workspace.</summary>
+    private async void HdriLoad_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rendering) return;
+        var dialog = new OpenFileDialog
+        {
+            Title = "Elegir cielo HDRI (Radiance .hdr)",
+            Filter = "HDRI Radiance (.hdr)|*.hdr|Todos los archivos|*.*"
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        await LoadHdriAsync(dialog.FileName, ++_hdriRequestVersion, showWarning: true);
+    }
+
+    /// <summary>Reject network locations to avoid accidental UNC access from an untrusted project.</summary>
+    private static bool IsNetworkHdriPath(string path) =>
+        path.StartsWith(@"\\", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal);
+
+    /// <summary>Resolve saved local references without permitting relative traversal outside the project folder.</summary>
+    private static string? ResolveSavedHdri(string path, string? projectFile)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || IsNetworkHdriPath(path) ||
+                (projectFile is not null && IsNetworkHdriPath(projectFile))) return null;
+            if (Path.IsPathRooted(path)) return Path.GetFullPath(path);
+            if (projectFile is null) return null;
+            var folder = Path.GetDirectoryName(Path.GetFullPath(projectFile));
+            if (folder is null) return null;
+            var full = Path.GetFullPath(Path.Combine(folder, path));
+            var prefix = Path.TrimEndingDirectorySeparator(folder) + Path.DirectorySeparatorChar;
+            return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? full : null;
+        }
+        catch (Exception error) when (error is ArgumentException or NotSupportedException or IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Restore safely: a broken or missing asset leaves the physical procedural sky enabled.</summary>
+    internal void RestoreHdriForProject(string? savedPath, string? projectFile)
+    {
+        if (savedPath is null) return;
+        var resolved = ResolveSavedHdri(savedPath, projectFile);
+        if (resolved is null)
+        {
+            HdriNameText.Text = "⚠ HDRI no disponible; cielo procedural activo";
+            return;
+        }
+        _hdriFilePath = resolved;
+        _ = LoadHdriAsync(resolved, ++_hdriRequestVersion, showWarning: false);
+    }
+
+    private async Task LoadHdriAsync(string file, int request, bool showWarning)
+    {
+        try
+        {
+            if (IsNetworkHdriPath(file))
+                throw new InvalidDataException("No se cargan rutas HDRI de red automáticamente.");
+            if (new FileInfo(file).Length > HdriEnvironment.MaximumFileBytes)
+                throw new InvalidDataException("El HDRI excede el límite de 32 MiB.");
+            var panorama = await Task.Run(() => HdriEnvironment.FromRgbe(File.ReadAllBytes(file)));
+            if (request != _hdriRequestVersion || Dispatcher.HasShutdownStarted) return;
+            _hdriEnvironment = panorama;
+            _hdriFilePath = file;
+            HdriNameText.Text = Path.GetFileName(file) + $" · {panorama.Width}×{panorama.Height}";
+            _showingFinal = false;
+            Lighting_Changed(this, new RoutedEventArgs());
+            if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+        {
+            if (request != _hdriRequestVersion || Dispatcher.HasShutdownStarted) return;
+            _hdriEnvironment = null;
+            _hdriFilePath = file;
+            HdriNameText.Text = "⚠ " + Path.GetFileName(file) + " no disponible; cielo procedural activo";
+            Lighting_Changed(this, new RoutedEventArgs());
+            if (showWarning)
+            {
+                var localized = Application.Current?.TryFindResource("Error." + ex.Message) as string ?? ex.Message;
+                MessageBox.Show(Window.GetWindow(this), localized, "No se pudo cargar el HDRI",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    /// <summary>Clear sky textures and cancel older async reads whenever the user opens another project.</summary>
+    internal void ClearHdriForDocument()
+    {
+        _hdriRequestVersion++;
+        _hdriEnvironment = null;
+        _hdriFilePath = null;
+        if (HdriNameText is not null) HdriNameText.Text = "Cielo físico procedural activo";
+        if (_ready) Lighting_Changed(this, new RoutedEventArgs());
+    }
+
+    private void HdriClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rendering) return;
+        ClearHdriForDocument();
+        _showingFinal = false;
+        if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
+    }
+
     /// <summary>Runs the benchmark again, for instance after switching the Windows power plan.</summary>
     private async void Recalibrate_Click(object sender, RoutedEventArgs e) => await CalibrateAsync(force: true);
 
     /// <summary>Resolves the worker resource budget from the selected preset.</summary>
     private ResourceMode ResourceUse() => Enum.TryParse<ResourceMode>(Mode(ResourcePicker), out var value) ? value : ResourceMode.Balanced;
+
+    /// <summary>Selects 16px tiles on low-resource machines unless the person overrides AUTO.</summary>
+    private int SelectedBucketSize()
+    {
+        if (int.TryParse(Mode(BucketSizePicker), out var selected) && selected is 8 or 16 or 32 or 64 or 128)
+            return selected;
+        var free = RenderSafety.ReadMemory().AvailableBytes;
+        return _hardware.LogicalCores <= 2 || free < 2L * 1024 * 1024 * 1024 ? 16 : 32;
+    }
 
     /// <summary>Parses the solar latitude while bounding invalid input to a usable default.</summary>
     private double Latitude()
@@ -88,10 +205,20 @@ public partial class RenderPanel
         return lighting with
         {
             AerialPerspective = HazeCheck.IsChecked == true ? 1f : 0f,
-            CloudCover = (float)(CloudSlider.Value / 100),
+            CloudCover = _hdriEnvironment is null ? (float)(CloudSlider.Value / 100) : 0f,
             Clouds = SelectedClouds(),
-            SunIntensity = lighting.SunIntensity * (storm ? 0.55f : 1f),
-            SkyIntensity = lighting.SkyIntensity * (storm ? 0.6f : 1f)
+            CloudSeed = (uint)CloudSeedSlider.Value,
+            CloudDirectionDegrees = (float)CloudDirectionSlider.Value,
+            Turbidity = (float)TurbiditySlider.Value,
+            // Radiance files can already carry the solar disk. Avoid counting the analytic sun twice.
+            SunIntensity = _hdriEnvironment is null
+                ? lighting.SunIntensity * (storm ? 0.55f : 1f) * (float)SunStrengthSlider.Value : 0f,
+            SkyIntensity = _hdriEnvironment is null
+                ? lighting.SkyIntensity * (storm ? 0.6f : 1f) * (float)SkyStrengthSlider.Value
+                : lighting.SkyIntensity * (float)SkyStrengthSlider.Value *
+                    MathF.Pow(2f, (float)HdriExposureSlider.Value),
+            EnvironmentYawDegrees = (float)HdriYawSlider.Value,
+            Environment = _hdriEnvironment
         };
     }
 
@@ -186,6 +313,8 @@ public partial class RenderPanel
         {
             // Moving again leaves the finished picture and returns to the live preview.
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (PreviewToggle.IsChecked == true) ResumePreview();
         }
         BeginInteractivePreview();
@@ -201,6 +330,8 @@ public partial class RenderPanel
         if (PreviewToggle.IsChecked == true)
         {
             _showingFinal = false;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
+            RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (IsVisible) ResumePreview();
         }
         else

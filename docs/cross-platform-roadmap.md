@@ -1,0 +1,64 @@
+# Guanacaste 3D — compatibilidad Windows, Linux y macOS
+
+## Estado actual
+
+- **Motor:** `Guanacaste3D.Core` usa `net10.0`, sin depender de WPF. La geometría BIM, el almacenamiento nativo `.g3d` y las transacciones se comparten entre sistemas.
+- **Interfaz Windows actual:** `Guanacaste3D.Desktop` usa WPF (`net10.0-windows`). Se conserva íntegra durante la transición.
+- **Interfaz multiplataforma inicial:** `Guanacaste3D.CrossPlatform` usa Avalonia 12.1.4, `net10.0`, y referencia el mismo `Guanacaste3D.Core`. Actualmente permite crear, abrir, validar y guardar proyectos, visualizar una planta 2D, seleccionar muros/ejes, crear muros y ejes, renombrar ejes y gestionar deshacer/rehacer mediante DocumentSession. **Todavía no tiene paridad de modelado, anotación ni renderizado con WPF**.
+- **CI:** matriz de Windows x64, Linux x64 y macOS Apple Silicon (arm64). El build no sustituye a las pruebas de interacción real en esos sistemas.
+
+## Principios de migración
+
+1. Una sola fuente de verdad para el BIM y archivos `.g3d`, no tres motores distintos.
+2. Mantener WPF operativo mientras se desarrollan capacidades multiplataforma en paralelo.
+3. Extraer a bibliotecas `net10.0` servicios hoy acoplados a WPF (estado de interfaz, entrada de usuario, navegación, selección, documento reciente, comandos y preferencias).
+4. Mantener el modelo 2D/3D independiente de componentes UI, con renderizador y abstracción de GPU/CPU independientes del sistema operativo.
+5. Reemplazar las vistas WPF por componentes Avalonia, comenzando por Inicio/Archivo, navegador, propiedades y edición 2D; después viewport 3D, familias, anotaciones, materiales, render y exportaciones.
+6. Probar acciones reales de crear/editar/guardar/reabrir y deshacer/rehacer en cada sistema.
+7. Publicar paquetes de producción separados: Windows instalable/portable, Linux AppImage/deb/rpm según distro y macOS .app/.dmg firmados y notarizados. Los artefactos CI iniciales son binarios portables, **no instaladores ni apps firmadas**.
+
+## Requisitos de entrega
+
+- No fusionar un cambio si rompe la compilación WPF existente o las pruebas del núcleo.
+- Para macOS: validar Apple Silicon e Intel antes de anunciar ambos como compatibles; para firma y notarización de distribución se requiere entorno Apple apropiado.
+- Para Linux: comprobar X11 y Wayland/XWayland, rutas sensibles a mayúsculas, permisos, fuentes y bibliotecas nativas.
+- Escalabilidad: implementar y comprobar fallback CPU si no hay GPU compatible, especialmente para vistas/render.
+- Cada funcionalidad trasladada debe conservar reglas BIM, referencias asociativas y semántica de eliminación independiente de muros y ejes.
+
+## Uso preliminar de la interfaz Avalonia
+
+```sh
+dotnet run --project src/Guanacaste3D.CrossPlatform/Guanacaste3D.CrossPlatform.csproj
+```
+
+La ventana preliminar no debe comercializarse como editor BIM completo. La interfaz WPF continúa siendo la versión de trabajo principal mientras avanza la migración.
+
+## Segundo hito: edición BIM 2D (prototipo)
+
+La ventana `PlanWorkspace` añade una cuadrícula de metros y dibujo de muros y ejes mediante clic en dos puntos. La selección presenta propiedades y navegador BIM, con controles de renombrado de ejes, eliminación individual y deshacer/rehacer. La geometría procede de `DocumentSession`; el guardado escribe el documento modificado.
+
+**Importante:** mover un eje y arrastrar automáticamente los muros sujetos corresponde a la rama separada `feature/associative-grid-axes-20261101`. Esa rama debe integrarse cuidadosamente antes de prometer vínculos asociativos de geometría en el cliente multiplataforma. Borrar un eje o muro en la interfaz inicial es independiente del otro, conservando las reglas de `DocumentSession`.
+
+**Próximas pruebas:** interacción real del viewport en Windows, macOS y Linux (incluyendo X11/Wayland), persistencia, coordenadas, selección y vistas con zoom/rotación, además del paquete `.app` firmado y los paquetes de Linux.
+
+## Tercer hito: navegación y seguridad de edición
+
+- Zoom con rueda del ratón anclado al cursor, limitado para evitar escalas extremas, y paneo con botón central/derecho.
+- Selección de nivel activo: muros visibles/editables por nivel, sin alterar los ejes globales del proyecto.
+- Previsualización de la línea al colocar muros o ejes y resaltado desde el navegador BIM.
+- Detección de cambios sin guardar y confirmación explícita al abrir otro proyecto, crear uno nuevo o cerrar la ventana; nunca se descartan cambios silenciosamente.
+- Guardar el proyecto actual, Guardar como y atajos del sistema (Control en Windows/Linux, Command en macOS); deshacer y rehacer desde el teclado.
+- La vista de planta sigue siendo un prototipo, no un renderizador 3D ni un sustituto completo de la versión WPF.
+
+Se requiere comprobar manualmente la precisión del puntero, la accesibilidad del teclado, el desempeño con modelos grandes y el guardado/recuperación en sistemas reales.
+
+## Cuarto hito: precisión de dibujo y eliminación segura
+
+- Resolver geométricamente referencias a extremos de muros del nivel activo y a los extremos de los ejes globales.
+- Cuadrícula de referencia de 0,25 m con opciones independientes para activar o desactivar los ajustes.
+- `Shift` restringe el trazado al eje horizontal o vertical; un ajuste cercano no puede romper la dirección bloqueada.
+- Referencias con tolerancia expresada en píxeles y convertida a metros según el zoom. Indicador visual al trazar.
+- Eliminar un muro o un eje requiere confirmación explícita; los dos son entidades independientes, y el diálogo explica el destino de los elementos hospedados.
+- Pruebas automáticas de referencia geométrica, separación de niveles, cuadrícula, ortogonalidad e inmutabilidad del documento ejecutadas en Windows, Linux y macOS.
+
+Todavía se requieren pruebas visuales y de interacción reales en máquinas de usuario; las compilaciones y regresiones sin pantalla no demuestran paridad de la interfaz.

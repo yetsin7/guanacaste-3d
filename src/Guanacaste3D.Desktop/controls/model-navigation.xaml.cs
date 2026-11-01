@@ -30,6 +30,12 @@ public partial class ModelNavigation : UserControl
         NavigationBar.CommandRequested += ForwardCommand;
     }
 
+    /// <summary>Applies the user's ViewCube visibility without disabling other navigation controls.</summary>
+    public void SetCubeVisible(bool visible)
+    {
+        CubeCanvas.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>Forwards navigation selectors through the same host command route as the cube.</summary>
     private void ForwardCommand(string command) => CommandRequested?.Invoke(command);
 

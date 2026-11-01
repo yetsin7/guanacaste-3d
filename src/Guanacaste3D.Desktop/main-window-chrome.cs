@@ -6,10 +6,10 @@ namespace Guanacaste3D.Desktop;
 
 public partial class MainWindow
 {
-    /// <summary>Opens the application file menu under the blue file tab.</summary>
+    /// <summary>Opens the application file menu under whichever application entry point invoked it.</summary>
     private void FileMenuButton_Click(object sender, RoutedEventArgs e)
     {
-        FileMenu.PlacementTarget = FileMenuButton;
+        FileMenu.PlacementTarget = sender as UIElement ?? FileMenuButton;
         FileMenu.Placement = PlacementMode.Bottom;
         FileMenu.IsOpen = true;
     }
