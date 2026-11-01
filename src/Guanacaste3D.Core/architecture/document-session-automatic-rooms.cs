@@ -61,13 +61,15 @@ public sealed partial class DocumentSession
     private static int RebuildAutomaticRooms(BuildingDocument document, Guid levelId)
     {
         var protectedRooms = document.Rooms.Where(room => room.LevelId == levelId && !room.IsAutomatic).ToArray();
+        var automatic = document.Rooms.Where(room => room.LevelId == levelId && room.IsAutomatic).ToArray();
+        // Keep nested detected faces available for matching an EXISTING room. Adding another
+        // wall loop inside a room must not silently erase its identity, name and schedule
+        // simply because the new topology marks that face as a nested courtyard.
+        // An unmatched nested face is still a courtyard by default, not a new automatic room.
         var regions = RoomPolygonDetection.Detect(document, levelId)
-            // A completely nested face is an outdoor courtyard by default; users can place
-            // their own manual room annotation inside if they need to schedule it.
-            .Where(region => !region.IsCourtyard && protectedRooms.All(room =>
+            .Where(region => protectedRooms.All(room =>
                 RoomRegionGeometry.IntersectionArea(room, region) < 1e-8))
             .ToArray();
-        var automatic = document.Rooms.Where(room => room.LevelId == levelId && room.IsAutomatic).ToArray();
 
         var candidates = (
             from oldIndex in Enumerable.Range(0, automatic.Length)
@@ -109,7 +111,7 @@ public sealed partial class DocumentSession
         var created = 0;
         for (var index = 0; index < regions.Length; index++)
         {
-            if (usedRegions.Contains(index)) continue;
+            if (usedRegions.Contains(index) || regions[index].IsCourtyard) continue;
             string number;
             do
             {
