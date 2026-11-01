@@ -104,7 +104,7 @@ public static class PbrMaterialAudit
             var maps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var parent = System.IO.Path.GetDirectoryName(fullPath)!;
             foreach (var (channel, required) in new[]
-                { ("albedo", true), ("normal", false), ("roughnessMap", false), ("metallicMap", false) })
+                { ("albedo", true), ("normal", false), ("roughnessMap", false), ("metallicMap", false), ("heightMap", false) })
             {
                 var mapName = GetString(root, channel);
                 if (string.IsNullOrWhiteSpace(mapName))
@@ -120,8 +120,8 @@ public static class PbrMaterialAudit
                 maps[channel] = resolved!;
             }
             if (maps.Count == 1)
-                warnings.Add("Only albedo supplied: normal, roughness and metallic values are uniform or procedural.");
-            foreach (var field in new[] { "ao", "heightMap", "displacementMap", "opacityMap", "emissionMap" })
+                warnings.Add("Only albedo supplied: normal, roughness, metallic and height values are uniform or procedural.");
+            foreach (var field in new[] { "ao", "displacementMap", "opacityMap", "emissionMap" })
                 if (TryGet(root, field, out var unsupported) &&
                     unsupported.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
                     warnings.Add(field + " is reserved metadata and is not connected to the renderer.");
