@@ -65,8 +65,14 @@ static class GridAxisChecks
         check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId == other,
             "A new centerline-aligned wall automatically binds to its axis");
         session.SetWallGridAxis(unlinkedWall, null);
-        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId is null,
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId is null &&
+              session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisAssociationDisabled,
             "A wall can explicitly release its datum association");
+        var beforeUnlinkedMove = session.Document.Walls.Single(x => x.Id == unlinkedWall).Start;
+        session.MoveGridAxis(other, 0, -0.5);
+        check(session.Document.Walls.Single(x => x.Id == unlinkedWall).Start == beforeUnlinkedMove,
+            "Detached wall stays fixed when its former grid is moved");
+        session.Undo();
         session.SetWallGridAxis(unlinkedWall, other);
         check(session.Document.Walls.Single(x => x.Id == unlinkedWall).GridAxisId == other,
             "A wall can rebind to an existing aligned datum");
