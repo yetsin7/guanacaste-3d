@@ -24,6 +24,10 @@ public partial class RenderPanel
         CloudStylePicker.SelectedIndex = 0;
         foreach (var style in RenderLooks.Styles) StylePicker.Items.Add(new ComboBoxItem { Content = Text(style.NameKey), Tag = style.Id });
         StylePicker.SelectedIndex = 0;
+        foreach (var lut in ColorLutPresets.All)
+            LutPicker.Items.Add(new ComboBoxItem { Content = lut.Name, Tag = lut.Id });
+        LutPicker.Items.Add(new ComboBoxItem { Content = "LUT personalizada (.cube)", Tag = "custom" });
+        LutPicker.SelectedIndex = 0;
     }
 
     private CloudStyle SelectedClouds() => Enum.TryParse<CloudStyle>(Mode(CloudStylePicker), out var clouds) ? clouds : CloudStyle.Cumulus;
@@ -108,6 +112,8 @@ public partial class RenderPanel
         Sharpen = (float)SharpenSlider.Value,
         ChromaticAberration = (float)AberrationSlider.Value,
         FilmGrain = (float)GrainSlider.Value,
-        Monochrome = MonochromeCheck.IsChecked == true
+        Monochrome = MonochromeCheck.IsChecked == true,
+        Lut = SelectedLut(),
+        LutStrength = (float)LutStrengthSlider.Value
     };
 }

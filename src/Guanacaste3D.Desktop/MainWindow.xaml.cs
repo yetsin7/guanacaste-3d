@@ -262,6 +262,7 @@ public partial class MainWindow : Window
         RenderPanelControl.SetProjectFilePath(_filePath);
         // Prevent an async sky load from a previous document from leaking into the new project.
         RenderPanelControl.ClearHdriForDocument();
+        RenderPanelControl.ClearLutForDocument();
         _dirty = false;
         _projectChosen = true;
         HideStartScreen();
