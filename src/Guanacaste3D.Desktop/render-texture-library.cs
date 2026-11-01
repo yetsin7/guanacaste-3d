@@ -23,7 +23,7 @@ internal static class RenderTextureLibrary
 
     public static IReadOnlyList<BuiltInTexture> BuiltIn { get; } =
     (new BuiltInTexture[]
-    [
+    {
         new("brick-red", "Texture.Brick", 1.0, 0.6),
         new("wood-floor", "Texture.WoodFloor", 1.0, 0.25),
         new("stone-paving", "Texture.StonePaving", 2.0, 0.6),
@@ -43,7 +43,7 @@ internal static class RenderTextureLibrary
         new("ambientcg-plaster001", "Texture.AmbientPlaster001", 1.0, 0.1, ".jpg"),
         new("ambientcg-ground108", "Texture.AmbientGround108", 1.5, 0.25, ".jpg"),
         new("ambientcg-fabric085", "Texture.AmbientFabric085", 0.3, 0.1, ".jpg")
-    ]).Concat(TreeTextureGenerator.Catalog.Select(species =>
+    }).Concat(TreeTextureGenerator.Catalog.Select(species =>
         new BuiltInTexture(species.Key, "Texture." + species.Key, species.Bark ? 1.2 : 0.8,
             species.Bark ? 0.75 : 0.22))).ToArray();
 
