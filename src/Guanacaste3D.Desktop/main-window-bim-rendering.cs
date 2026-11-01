@@ -65,20 +65,16 @@ public partial class MainWindow
         }
         foreach (var room in document.Rooms.Where(room => room.LevelId == _activeLevelId))
         {
-            var first = WorldToCanvas(room.FirstCorner);
-            var second = WorldToCanvas(room.SecondCorner);
-            var rectangle = new Rectangle
+            // Draw the exact footprint, rather than its bounding box, for concave rooms.
+            var outline = RoomRegionGeometry.Outline(room);
+            PlanCanvas.Children.Add(new Polygon
             {
-                Width = Math.Abs(second.X - first.X),
-                Height = Math.Abs(second.Y - first.Y),
+                Points = new PointCollection(outline.Select(WorldToCanvas)),
                 Fill = new SolidColorBrush(Color.FromArgb(45, 61, 132, 181)),
                 Stroke = room.Id == _selectedRoomId ? Brushes.DarkOrange : Brushes.SteelBlue,
                 StrokeThickness = room.Id == _selectedRoomId ? 2.5 : 1,
                 Tag = room.Id
-            };
-            Canvas.SetLeft(rectangle, Math.Min(first.X, second.X));
-            Canvas.SetTop(rectangle, Math.Min(first.Y, second.Y));
-            PlanCanvas.Children.Add(rectangle);
+            });
             var center = WorldToCanvas(room.Center);
             var label = new TextBlock
             {
