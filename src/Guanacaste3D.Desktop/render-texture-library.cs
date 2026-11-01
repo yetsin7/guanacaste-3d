@@ -22,6 +22,7 @@ internal static class RenderTextureLibrary
     public const string BuiltInPrefix = "builtin:";
 
     public static IReadOnlyList<BuiltInTexture> BuiltIn { get; } =
+    (new BuiltInTexture[]
     [
         new("brick-red", "Texture.Brick", 1.0, 0.6),
         new("wood-floor", "Texture.WoodFloor", 1.0, 0.25),
@@ -42,7 +43,9 @@ internal static class RenderTextureLibrary
         new("ambientcg-plaster001", "Texture.AmbientPlaster001", 1.0, 0.1, ".jpg"),
         new("ambientcg-ground108", "Texture.AmbientGround108", 1.5, 0.25, ".jpg"),
         new("ambientcg-fabric085", "Texture.AmbientFabric085", 0.3, 0.1, ".jpg")
-    ];
+    ]).Concat(TreeTextureGenerator.Catalog.Select(species =>
+        new BuiltInTexture(species.Key, "Texture." + species.Key, species.Bark ? 1.2 : 0.8,
+            species.Bark ? 0.75 : 0.22))).ToArray();
 
     /// <summary>The categories whose render material a project may replace, with their label resources.</summary>
     public static IReadOnlyList<(SurfaceKind Category, string LabelKey)> Categories { get; } =
@@ -60,6 +63,9 @@ internal static class RenderTextureLibrary
         (SurfaceKind.WallWood, "Material.WallWood"),
         (SurfaceKind.WallBrick, "Material.WallBrick"),
         (SurfaceKind.WallStone, "Material.WallStone"),
+        (SurfaceKind.Bark, "Material.Bark"),
+        (SurfaceKind.Foliage, "Material.Foliage"),
+        (SurfaceKind.Leaf, "Material.Leaf"),
         (SurfaceKind.Glass, "Material.Glass"),
         (SurfaceKind.OpeningFrame, "Material.Frames"),
         (SurfaceKind.Metal, "Material.Metal"),
@@ -84,6 +90,7 @@ internal static class RenderTextureLibrary
         if (texturePath.StartsWith(BuiltInPrefix, StringComparison.Ordinal))
         {
             var key = texturePath[BuiltInPrefix.Length..];
+            if (TreeTextureGenerator.Contains(key)) return TreeTextureGenerator.Resolve(key);
             var builtIn = BuiltIn.FirstOrDefault(texture => texture.Key == key);
             return builtIn is null ? null : Path.Combine(AppContext.BaseDirectory, "resources", "textures", key + builtIn.Extension);
         }
