@@ -93,6 +93,9 @@ public partial class MainWindow
             case ArchitectureCommand.RoomSeparator:
                 BeginKindTool(StructuralElementKind.RoomSeparator);
                 break;
+            case ArchitectureCommand.RoomSeparatorCurve:
+                BeginCurvedRoomSeparatorTool();
+                break;
             case ArchitectureCommand.TagRoom:
                 BeginTagTool(TagTarget.Room);
                 break;
