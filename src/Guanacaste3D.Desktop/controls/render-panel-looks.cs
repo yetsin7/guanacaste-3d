@@ -43,12 +43,26 @@ public partial class RenderPanel
             CloudSlider.Value = preset.CloudCover * 100;
             Select(CloudStylePicker, preset.Clouds.ToString());
             HazeCheck.IsChecked = preset.Haze;
+            TurbiditySlider.Value = preset.Turbidity;
+            CloudSeedSlider.Value = preset.CloudSeed;
+            CloudDirectionSlider.Value = preset.CloudDirectionDegrees;
+            SunStrengthSlider.Value = preset.SunStrength;
+            SkyStrengthSlider.Value = preset.SkyStrength;
+            // Picking a built-in procedural sky deliberately replaces any custom HDRI, not just its label.
+            if (_hdriEnvironment is not null) ClearHdriForDocument();
         }
         finally
         {
             _applyingLook = false;
         }
         Select(StylePicker, preset.StyleId);
+        Lighting_Changed(sender, e);
+    }
+
+    /// <summary>Changes the deterministic pattern without fetching data or using external assets.</summary>
+    private void NewClouds_Click(object sender, RoutedEventArgs e)
+    {
+        CloudSeedSlider.Value = ((uint)CloudSeedSlider.Value * 1664525u + 1013904223u) % 1024u;
         Lighting_Changed(sender, e);
     }
 

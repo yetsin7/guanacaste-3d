@@ -308,4 +308,9 @@
   <sys:String x:Key="RenderPanel.TravelSpeedHint">De 0,2 a 10 m/s. Mayús acelera; Alt permite movimientos precisos.</sys:String>
   <sys:String x:Key="RenderPanel.HorizontalTravel">Mantener altura al avanzar</sys:String>
   <sys:String x:Key="RenderPanel.FlightHint">Clic en la vista para navegar. W/A/S/D o flechas: desplazarse. Q/E: bajar/subir. Botón derecho: mirar. Rueda: avanzar/retroceder. Desactiva las colisiones para atravesar paredes.</sys:String>
+  <!-- Built-in cloud families used in the Render atmosphere library -->
+  <sys:String x:Key="CloudStyle.Altocumulus">Altocúmulos (manchas altas)</sys:String>
+  <sys:String x:Key="CloudStyle.Altostratus">Altoestratos (velo suave)</sys:String>
+  <sys:String x:Key="CloudStyle.Cumulonimbus">Cumulonimbos (tormenta)</sys:String>
+  <sys:String x:Key="CloudStyle.Lenticular">Nubes lenticulares</sys:String>
 </ResourceDictionary>
