@@ -244,16 +244,27 @@ public static class IfcExporter
         return text.Contains('.') ? text : text + ".";
     }
 
-    /// <summary>Encodes a STEP string: quotes and backslashes escaped, non-ASCII as \X2\ UTF-16 hex.</summary>
+    /// <summary>Encodes STEP strings using Unicode scalar values (X2 for BMP, X4 for supplementary planes).</summary>
     public static string Text(string value)
     {
+        ArgumentNullException.ThrowIfNull(value);
         var builder = new StringBuilder("'");
-        foreach (var character in value)
+        for (var index = 0; index < value.Length;)
         {
-            if (character == '\'') builder.Append("''");
-            else if (character == '\\') builder.Append("\\\\");
-            else if (character is >= ' ' and <= '~') builder.Append(character);
-            else builder.Append("\\X2\\").Append(((int)character).ToString("X4", Invariant)).Append("\\X0\\");
+            // Iterating char-by-char would emit isolated UTF-16 surrogate halves for emoji and
+            // other supplementary characters. ISO 10303-21 expects a single X4 code point.
+            if (!Rune.TryGetRuneAt(value, index, out var rune))
+                throw new ArgumentException("STEP strings must contain valid UTF-16.", nameof(value));
+
+            var scalar = rune.Value;
+            if (scalar == '\'') builder.Append("''");
+            else if (scalar == '\\') builder.Append("\\\\");
+            else if (scalar is >= ' ' and <= '~') builder.Append((char)scalar);
+            else if (scalar <= 0xFFFF)
+                builder.Append("\\X2\\").Append(scalar.ToString("X4", Invariant)).Append("\\X0\\");
+            else
+                builder.Append("\\X4\\").Append(scalar.ToString("X8", Invariant)).Append("\\X0\\");
+            index += rune.Utf16SequenceLength;
         }
         return builder.Append('\'').ToString();
     }
