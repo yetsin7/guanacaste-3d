@@ -432,6 +432,15 @@
                     <ComboBoxItem Content="{DynamicResource RenderPanel.SizeQhd}" Tag="2560x1440"/>
                     <ComboBoxItem Content="{DynamicResource RenderPanel.SizeUhd}" Tag="3840x2160"/>
                   </ComboBox>
+                  <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.BucketSize}" Margin="0,12,0,4"/>
+                  <ComboBox x:Name="BucketSizePicker" SelectedIndex="0" ToolTip="{DynamicResource RenderPanel.BucketSizeHint}">
+                    <ComboBoxItem Content="{DynamicResource RenderPanel.BucketAuto}" Tag="0"/>
+                    <ComboBoxItem Content="8 × 8 px" Tag="8"/>
+                    <ComboBoxItem Content="16 × 16 px" Tag="16"/>
+                    <ComboBoxItem Content="32 × 32 px" Tag="32"/>
+                    <ComboBoxItem Content="64 × 64 px" Tag="64"/>
+                    <ComboBoxItem Content="128 × 128 px" Tag="128"/>
+                  </ComboBox>
                 </StackPanel>
               </Border>
               <Border Style="{StaticResource SettingsCard}">
@@ -473,6 +482,39 @@
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
+      <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
+      <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
+              Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="10" Padding="12,10"
+              Visibility="Collapsed" IsHitTestVisible="False">
+        <StackPanel Width="267">
+          <TextBlock Text="{DynamicResource RenderPanel.Telemetry}" Foreground="White" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+          <Grid Margin="0,0,0,5">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="CPU" Foreground="White" VerticalAlignment="Center"/>
+            <Canvas Grid.Column="1" Width="120" Height="24" ClipToBounds="True">
+              <Polyline x:Name="CpuLine" Stroke="#66D9C4" StrokeThickness="1.8" StrokeLineJoin="Round"/>
+            </Canvas>
+            <TextBlock x:Name="CpuUsageText" Grid.Column="2" Foreground="White" Text="—" TextAlignment="Right" VerticalAlignment="Center" FontSize="11"/>
+          </Grid>
+          <Grid Margin="0,0,0,5">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="RAM" Foreground="White" VerticalAlignment="Center"/>
+            <Canvas Grid.Column="1" Width="120" Height="24" ClipToBounds="True">
+              <Polyline x:Name="RamLine" Stroke="#93B8FC" StrokeThickness="1.8" StrokeLineJoin="Round"/>
+            </Canvas>
+            <TextBlock x:Name="RamUsageText" Grid.Column="2" Foreground="White" Text="—" TextAlignment="Right" VerticalAlignment="Center" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+          </Grid>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="GPU" Foreground="White" VerticalAlignment="Center"/>
+            <Canvas Grid.Column="1" Width="120" Height="24" ClipToBounds="True">
+              <Polyline x:Name="GpuLine" Stroke="#F4B76D" StrokeThickness="1.8" StrokeLineJoin="Round"/>
+            </Canvas>
+            <TextBlock Grid.Column="2" Foreground="#D7E0ED" Text="0 % GRE" TextAlignment="Right" VerticalAlignment="Center" FontSize="10.5"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource RenderPanel.GpuCpuBackend}" Foreground="#BBC9D9" TextWrapping="Wrap" FontSize="10" Margin="0,6,0,0"/>
+        </StackPanel>
+      </Border>
       <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,66" Padding="14,7" CornerRadius="16"
               Background="#B31E293B" IsHitTestVisible="False">
         <TextBlock x:Name="HintText" Text="{DynamicResource RenderPanel.Controls}" Foreground="White" FontSize="12"
@@ -481,8 +523,18 @@
       <Border VerticalAlignment="Bottom" Background="White" BorderBrush="{DynamicResource PanelBorderBrush}"
               BorderThickness="0,1,0,0" Padding="18,12">
         <DockPanel>
-          <ProgressBar x:Name="RenderProgress" DockPanel.Dock="Right" Width="240" Height="10" Minimum="0" Maximum="1"
-                       VerticalAlignment="Center" Margin="16,0,0,0" Visibility="Collapsed"/>
+          <StackPanel x:Name="RenderProgressPanel" DockPanel.Dock="Right" Width="285" Margin="16,0,0,0"
+                      Visibility="Collapsed">
+            <ProgressBar x:Name="RenderProgress" Height="12" Minimum="0" Maximum="1"
+                         VerticalAlignment="Center"/>
+            <Grid Margin="0,5,0,0">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock x:Name="RenderElapsedText" Text="00:00:00" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11.5"
+                         ToolTip="{DynamicResource RenderPanel.ElapsedHint}"/>
+              <TextBlock x:Name="RenderRemainingText" Grid.Column="1" Text="—" Foreground="{DynamicResource SecondaryTextBrush}"
+                         FontSize="11" ToolTip="{DynamicResource RenderPanel.RemainingHint}"/>
+            </Grid>
+          </StackPanel>
           <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15" VerticalAlignment="Center"
                      Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
           <TextBlock x:Name="StatusText" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13.5"
