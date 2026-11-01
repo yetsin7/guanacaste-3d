@@ -110,7 +110,10 @@ public sealed class BuildingDocument
         Openings = [.. Openings],
         WallTypes = [.. WallTypes],
         OpeningTypes = [.. OpeningTypes],
-        Rooms = [.. Rooms],
+        Rooms = Rooms.Select(room => room with
+        {
+            Boundary = room.Boundary is null ? null : [.. room.Boundary]
+        }).ToList(),
         Floors = Floors.Select(floor => floor with
         {
             Boundary = [.. floor.Boundary], TopoPoints = floor.TopoPoints is null ? null : [.. floor.TopoPoints]
@@ -254,6 +257,7 @@ public sealed class BuildingDocument
                 string.IsNullOrWhiteSpace(room.Name) || room.Name.Length > 120 ||
                 !double.IsFinite(room.FirstCorner.X) || !double.IsFinite(room.FirstCorner.Y) ||
                 !double.IsFinite(room.SecondCorner.X) || !double.IsFinite(room.SecondCorner.Y) ||
+                (room.Boundary is { } outline && !RoomRegionGeometry.IsValid(outline)) ||
                 room.Area is < 0.1 or > 100000000) ||
             Rooms.Select(room => room.Number).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Rooms.Count)
             throw new InvalidDataException("Invalid room definitions.");
