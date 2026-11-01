@@ -16,7 +16,8 @@ namespace Guanacaste3D.Desktop.Controls;
 /// </summary>
 public partial class RenderPanel
 {
-    private sealed record GalleryEntry(string Key, string Label, double Size, double Relief, bool Imported);
+    private sealed record GalleryEntry(string Key, string Label, double Size, double Relief, bool Imported,
+        double Roughness, double Metallic);
     private const int GalleryPageSize = 8;
     private const int GalleryCacheLimit = 24;
     private bool _galleryReady;
@@ -117,12 +118,13 @@ public partial class RenderPanel
             .Where(texture => GalleryGroupMatches(group, texture.Key) &&
                 MaterialCatalogSearch.Matches(search, texture.Key, Text(texture.LabelKey)))
             .Select(texture => new GalleryEntry(RenderTextureLibrary.BuiltInPrefix + texture.Key,
-                Text(texture.LabelKey), texture.Size, texture.Relief, false));
+                Text(texture.LabelKey), texture.Size, texture.Relief, false, .82, 0));
         // Only the active project's packages and explicitly imported files: never scan a disk or network folder.
         var packages = group is "pbr" or "all"
             ? PbrGalleryLibrary.Entries(_source?.RenderMaterials, _source?.ProjectFilePath)
                 .Where(item => MaterialCatalogSearch.Matches(search, item.Name, item.Key))
-                .Select(item => new GalleryEntry(item.Key, item.Name, item.Size, item.Relief, true))
+                .Select(item => new GalleryEntry(item.Key, item.Name, item.Size, item.Relief, true,
+                    item.Roughness, item.Metallic))
             : Enumerable.Empty<GalleryEntry>();
         var matches = included.Concat(packages).ToArray();
         var pageCount = (matches.Length + GalleryPageSize - 1) / GalleryPageSize;
@@ -170,7 +172,8 @@ public partial class RenderPanel
                 picture.Source = cached;
                 placeholder.Visibility = Visibility.Collapsed;
             }
-            else _ = LoadGalleryThumbnailAsync(key, picture, placeholder, revision, token);
+            else _ = LoadGalleryThumbnailAsync(key, picture, placeholder, revision, token,
+                sphere: true, texture.Roughness, texture.Metallic, texture.Relief);
         }
         GalleryPageText.Text = pageCount == 0 ? "0 / 0" : $"{_galleryPage + 1} / {pageCount}";
         GalleryPreviousButton.IsEnabled = _galleryPage > 0;
@@ -238,7 +241,8 @@ public partial class RenderPanel
     }
 
     private async Task LoadGalleryThumbnailAsync(string key, Image view, TextBlock placeholder,
-        int revision, CancellationToken token)
+        int revision, CancellationToken token, bool sphere = false, double roughness = .8,
+        double metallic = 0, double relief = 0)
     {
         try
         {
@@ -257,11 +261,11 @@ public partial class RenderPanel
                     var image = new BitmapImage();
                     image.BeginInit();
                     image.CacheOption = BitmapCacheOption.OnLoad;
-                    image.DecodePixelWidth = 132;
+                    image.DecodePixelWidth = sphere ? 192 : 132;
                     image.StreamSource = stream;
                     image.EndInit();
                     image.Freeze();
-                    return (BitmapSource)image;
+                    return sphere ? MaterialSpherePreview.Create(image, roughness, metallic, relief) : (BitmapSource)image;
                 }, token);
             }
             finally { _galleryDecodeGate.Release(); }
