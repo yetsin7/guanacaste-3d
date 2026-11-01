@@ -37,6 +37,14 @@
   <sys:String x:Key="RenderPanel.SizeFullHd">Full HD 1920 × 1080</sys:String>
   <sys:String x:Key="RenderPanel.SizeQhd">2K 2560 × 1440</sys:String>
   <sys:String x:Key="RenderPanel.SizeUhd">4K 3840 × 2160</sys:String>
+  <sys:String x:Key="RenderPanel.BucketSize">Tamaño de los cuadros de render</sys:String>
+  <sys:String x:Key="RenderPanel.BucketAuto">Automático · según el equipo</sys:String>
+  <sys:String x:Key="RenderPanel.BucketSizeHint">Cuadritos de 8 a 128 píxeles. Los más pequeños revelan zonas antes; la calidad final no cambia.</sys:String>
+  <sys:String x:Key="RenderPanel.Telemetry">Rendimiento durante el render</sys:String>
+  <sys:String x:Key="RenderPanel.GpuCpuBackend">Render por CPU: la GPU no acelera GRE. RAM: carga del sistema y memoria del programa.</sys:String>
+  <sys:String x:Key="RenderPanel.ElapsedHint">Tiempo transcurrido medido desde el inicio del trazado; excluye la preparación e incluye las pausas.</sys:String>
+  <sys:String x:Key="RenderPanel.RemainingHint">Solo estimación del tiempo restante; puede variar según la carga del equipo.</sys:String>
+  <sys:String x:Key="RenderPanel.RenderingSimple">Renderizando imagen…</sys:String>
   <sys:String x:Key="RenderPanel.Resources">Uso del equipo</sys:String>
   <sys:String x:Key="RenderPanel.Eco">Eco · deja el equipo libre</sys:String>
   <sys:String x:Key="RenderPanel.Balanced">Equilibrado</sys:String>
