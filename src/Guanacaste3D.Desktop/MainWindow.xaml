@@ -23,8 +23,11 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0"
                     WindowChrome.IsHitTestVisibleInChrome="True">
-          <Image Source="{StaticResource Brand.Logo}" Width="20" Height="20" Margin="0,0,8,0"
-                 ToolTip="{DynamicResource App.Name}"/>
+          <Button x:Name="ApplicationMenuButton" Click="FileMenuButton_Click"
+                  Style="{StaticResource QuickAccessButtonStyle}" Width="24" Height="24" Margin="0,0,4,0"
+                  ToolTip="{DynamicResource Menu.File}" AutomationProperties.Name="{DynamicResource Menu.File}">
+            <Image Source="{StaticResource Brand.Logo}" Width="20" Height="20"/>
+          </Button>
           <StackPanel x:Name="QuickAccessHost" Orientation="Horizontal"/>
           <Button Click="CustomizeCommands_Click" Style="{StaticResource QuickAccessButtonStyle}" MinWidth="16"
                   ToolTip="{DynamicResource CommandCustomization.ToolTip}"
