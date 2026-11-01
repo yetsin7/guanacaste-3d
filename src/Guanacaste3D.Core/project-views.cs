@@ -71,6 +71,12 @@ public sealed record ProjectView(
     public SectionCut? Cut { get; init; }
     public ViewGraphicsSettings? Graphics { get; init; }
 
+    /// <summary>Persistent room labels of this plan view; generated from the room model, not duplicated notes.</summary>
+    public bool ShowRoomTags { get; init; }
+
+    /// <summary>Persistent area labels of this plan view; generated from area objects.</summary>
+    public bool ShowAreaTags { get; init; }
+
     /// <summary>Simple vertical visibility controls for plan views; null uses the architectural default.</summary>
     public PlanViewRange? Range { get; init; }
 
