@@ -499,4 +499,5 @@
   <sys:String x:Key="Transaction.SyncAutomaticRooms">Recalcular habitaciones automáticas</sys:String>
   <sys:String x:Key="Error.The room level does not exist.">El nivel de la habitación no existe.</sys:String>
   <sys:String x:Key="Error.The room boundary grid is too large.">El plano contiene demasiadas divisiones para detectar habitaciones automáticamente. Simplifica los límites o divide el proyecto por zonas.</sys:String>
+  <sys:String x:Key="Error.The room outline cannot be offset.">No se puede ampliar este contorno de habitación con la distancia solicitada. Reduce el margen o revisa las esquinas.</sys:String>
 </ResourceDictionary>
