@@ -66,11 +66,8 @@ public partial class MainWindow
                 BeginStructuralTool(StructuralElementKind.ModelLine, StructuralPlacementMode.Group); return true;
             case ArchitectureCommand.GroupPlace: BeginGroupPlace(); return true;
             case ArchitectureCommand.RoomAutomatic: AutomaticRooms(); return true;
-            case ArchitectureCommand.TagAllRooms:
-                StatusText.Text = FormatText("Status.AllRoomsTagged", _session.Document.Rooms.Count(room => room.LevelId == _activeLevelId)); return true;
-            case ArchitectureCommand.TagAllAreas:
-                StatusText.Text = FormatText("Status.AllAreasTagged", _session.Document.StructuralElements.Count(element =>
-                    element.LevelId == _activeLevelId && element.Kind == StructuralElementKind.Area)); return true;
+            case ArchitectureCommand.TagAllRooms: ShowPlanCategoryTags(TagCategory.Room); return true;
+            case ArchitectureCommand.TagAllAreas: ShowPlanCategoryTags(TagCategory.Area); return true;
             case ArchitectureCommand.AreaByBoundary: AreaFromBoundaries(); return true;
             case ArchitectureCommand.WallOpening: PlaceWallOpening(); return true;
             case ArchitectureCommand.WorkPlaneByLevel: Levels_Click(this, new RoutedEventArgs()); return true;
