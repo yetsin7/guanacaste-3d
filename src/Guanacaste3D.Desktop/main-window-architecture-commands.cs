@@ -160,7 +160,11 @@ public partial class MainWindow
     private void AutomaticRooms()
     {
         var count = _session.AddAutomaticRooms(_activeLevelId);
-        StatusText.Text = count == 0 ? GetText("Status.NoRoomsFound") : FormatText("Status.RoomsCreated", count);
+        StatusText.Text = count > 0
+            ? FormatText("Status.RoomsCreated", count)
+            : _session.Document.Rooms.Any(room => room.LevelId == _activeLevelId && room.IsAutomatic)
+                ? GetText("Status.RoomsSynchronized")
+                : GetText("Status.NoRoomsFound");
         RefreshAll();
     }
 
