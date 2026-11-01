@@ -62,8 +62,10 @@ public sealed class PlanWorkspace : Grid
         _sidebar.Children.Add(_snapGrid);
         _sidebar.Children.Add(new TextBlock { Text = "Mantén Shift al dibujar para bloquear horizontal o vertical.",
             TextWrapping = TextWrapping.Wrap });
-        _snapEndpoints.IsCheckedChanged += (_, _) => Redraw();
-        _snapGrid.IsCheckedChanged += (_, _) => Redraw();
+        _snapEndpoints.Checked += (_, _) => Redraw();
+        _snapEndpoints.Unchecked += (_, _) => Redraw();
+        _snapGrid.Checked += (_, _) => Redraw();
+        _snapGrid.Unchecked += (_, _) => Redraw();
         _levelPicker.SelectionChanged += (_, _) =>
         {
             if (_levelPicker.SelectedItem is LevelEntry level)
