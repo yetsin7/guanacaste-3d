@@ -89,7 +89,7 @@ public static class RoomRegionGeometry
     public static bool Contains(IReadOnlyList<Point2> polygon, Point2 point)
     {
         var inside = false;
-        for (var i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
         {
             var a = polygon[i];
             var b = polygon[j];
