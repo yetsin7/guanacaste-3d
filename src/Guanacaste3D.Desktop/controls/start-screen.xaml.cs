@@ -66,6 +66,7 @@ public sealed class StartItem : INotifyPropertyChanged
 public partial class StartScreen : UserControl
 {
     private IStartScreenHost? _host;
+    private string _fileFilter = "All";
     private readonly Dictionary<string, ImageSource> _thumbnails = new(StringComparer.OrdinalIgnoreCase);
 
     public StartScreen()
@@ -87,7 +88,9 @@ public partial class StartScreen : UserControl
         var samples = SamplesTab.IsChecked == true;
         PageTitle.Text = Text(samples ? "Start.Samples" : "Start.Recent");
         SearchHint.Text = Text(samples ? "Start.SearchSamples" : "Start.Search");
-        var items = samples ? SampleItems() : RecentItems();
+        IEnumerable<StartItem> items = samples ? SampleItems() : RecentItems();
+        if (!samples && _fileFilter != "All")
+            items = items.Where(item => string.Equals(item.Badge, _fileFilter, StringComparison.OrdinalIgnoreCase));
         var query = SearchBox.Text.Trim();
         if (query.Length > 0)
             items = items.Where(item => item.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
@@ -235,6 +238,22 @@ public partial class StartScreen : UserControl
     private void Search_Changed(object sender, TextChangedEventArgs e)
     {
         SearchHint.Visibility = SearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Refresh();
+    }
+
+    private void Filter_Click(object sender, RoutedEventArgs e)
+    {
+        FilterMenu.PlacementTarget = FilterButton;
+        FilterMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        FilterMenu.IsOpen = true;
+    }
+
+    private void FilterOption_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string filter }) return;
+        _fileFilter = filter;
+        foreach (var menuItem in FilterMenu.Items.OfType<MenuItem>())
+            menuItem.IsChecked = string.Equals(menuItem.Tag as string, filter, StringComparison.OrdinalIgnoreCase);
         Refresh();
     }
 
