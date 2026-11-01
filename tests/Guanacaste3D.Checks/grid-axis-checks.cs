@@ -81,5 +81,37 @@ static class GridAxisChecks
               session.Document.Grids.Any(x => x.Id == other),
             "Moving an individual wall detaches it from the axis without moving the axis");
 
+        // A copied wall retains its geometry and hosted openings, not its source's datum constraint.
+        var editSession = new DocumentSession(BuildingDocument.Create("Ejes al duplicar y girar"));
+        var editLevel = editSession.Document.Levels[0].Id;
+        var editAxis = editSession.AddGridAxis("C", new Point2(0, 0), new Point2(10, 0));
+        var sourceWall = editSession.AddWall(editLevel, new Point2(1, 0), new Point2(7, 0));
+        var copiedWall = editSession.DuplicateWall(sourceWall, 0, 2);
+        check(editSession.Document.Walls.Single(w => w.Id == copiedWall) is
+                { GridAxisId: null, GridAxisAssociationDisabled: true },
+            "Duplicated walls never inherit an unrelated grid-axis constraint");
+        editSession.MoveGridAxis(editAxis, 0, .5);
+        check(editSession.Document.Walls.Single(w => w.Id == sourceWall).Start.Y == .5 &&
+              editSession.Document.Walls.Single(w => w.Id == copiedWall).Start.Y == 2,
+            "Moving an axis affects its source wall but not the detached copy");
+        editSession.Undo();
+
+        editSession.RotateWall(sourceWall, 15);
+        var rotated = editSession.Document.Walls.Single(w => w.Id == sourceWall);
+        check(rotated.GridAxisId is null && rotated.GridAxisAssociationDisabled,
+            "Rotating a wall releases its stale grid-axis association");
+        var rotatedStart = rotated.Start;
+        var rotatedEnd = rotated.End;
+        editSession.MoveGridAxis(editAxis, 0, 1);
+        check(editSession.Document.Walls.Single(w => w.Id == sourceWall).Start == rotatedStart &&
+              editSession.Document.Walls.Single(w => w.Id == sourceWall).End == rotatedEnd,
+            "Moving the former axis cannot displace a manually rotated wall");
+        editSession.Undo();
+        editSession.Undo();
+        check(editSession.Document.Walls.Single(w => w.Id == sourceWall).GridAxisId == editAxis,
+            "Undoing rotation restores the original axis constraint");
+        editSession.RotateWall(sourceWall, 0);
+        check(editSession.Document.Walls.Single(w => w.Id == sourceWall).GridAxisId == editAxis,
+            "A zero-degree rotation preserves a valid axis constraint");
     }
 }
