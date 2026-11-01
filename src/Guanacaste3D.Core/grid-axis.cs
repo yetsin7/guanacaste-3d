@@ -92,7 +92,7 @@ public sealed partial class DocumentSession
         const double toleranceMeters = 0.015;
         var axisDx = axis.End.X - axis.Start.X;
         var axisDy = axis.End.Y - axis.Start.Y;
-        var axisLength = Math.Hypot(axisDx, axisDy);
+        var axisLength = double.Hypot(axisDx, axisDy);
         var ux = axisDx / axisLength;
         var uy = axisDy / axisLength;
 
