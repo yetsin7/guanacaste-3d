@@ -1014,6 +1014,24 @@ public sealed partial class PathTracer
                     // A bend that would turn the surface away from the eye is dropped, as for image relief.
                     if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
                 }
+                // A real grayscale height map is not inferred from albedo. UV meshes also receive
+                // bump shading, so imported stone, timber and tiles can show fine depth at close range.
+                if (surface.HeightMap is { } height && surface.TextureDepth > 0)
+                {
+                    static Vector2 UpHeight(Vector2 point) => new(point.X, 1 - point.Y);
+                    var v = 1 - uv.Y;
+                    var step = height.TexelSize(footprint);
+                    var dU = (height.Sample(uv.X + step, v, footprint) -
+                              height.Sample(uv.X - step, v, footprint)) / (2 * step);
+                    var dV = (height.Sample(uv.X, v + step, footprint) -
+                              height.Sample(uv.X, v - step, footprint)) / (2 * step);
+                    var tangentNormal = Vector3.Normalize(new Vector3(-dU * surface.TextureDepth * imagePerMetre,
+                        -dV * surface.TextureDepth * imagePerMetre, 1));
+                    var bent = NormalMap.Perturb(normal, tangentNormal,
+                        _scene.Positions[_scene.Indices[i]], _scene.Positions[_scene.Indices[i + 1]],
+                        _scene.Positions[_scene.Indices[i + 2]], UpHeight(uvs[i]), UpHeight(uvs[i + 1]), UpHeight(uvs[i + 2]));
+                    if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
+                }
             }
             else
             {
@@ -1031,11 +1049,13 @@ public sealed partial class PathTracer
                 diffuse *= texture.Sample(u * tiles, v * tiles, footprint);
                 if (surface.TextureDepth > 0)
                 {
-                    var step = texture.TexelSize(footprint);
-                    var dU = (texture.Luminance(u * tiles + step, v * tiles, footprint) -
-                              texture.Luminance(u * tiles - step, v * tiles, footprint)) / (2 * step) * tiles;
-                    var dV = (texture.Luminance(u * tiles, v * tiles + step, footprint) -
-                              texture.Luminance(u * tiles, v * tiles - step, footprint)) / (2 * step) * tiles;
+                    var height = surface.HeightMap;
+                    var step = height?.TexelSize(footprint) ?? texture.TexelSize(footprint);
+                    float SampleHeight(float x, float y) => height?.Sample(x, y, footprint) ?? texture.Luminance(x, y, footprint);
+                    var dU = (SampleHeight(u * tiles + step, v * tiles) -
+                              SampleHeight(u * tiles - step, v * tiles)) / (2 * step) * tiles;
+                    var dV = (SampleHeight(u * tiles, v * tiles + step) -
+                              SampleHeight(u * tiles, v * tiles - step)) / (2 * step) * tiles;
                     var bent = SurfacePatterns.Bend(normal, dU * surface.TextureDepth, dV * surface.TextureDepth);
                     if (Vector3.Dot(bent, direction) < -0.05f) normal = bent;
                 }
@@ -1531,6 +1551,7 @@ public sealed partial class PathTracer
         public float Roughness { get; init; }
         public RenderScalarMap? RoughnessMap { get; init; }
         public RenderScalarMap? MetallicMap { get; init; }
+        public RenderScalarMap? HeightMap { get; init; }
         public Vector3 Diffuse { get; init; }
         public Vector3 F0 { get; init; }
         public Vector3 Emission { get; init; }
@@ -1600,6 +1621,7 @@ public sealed partial class PathTracer
                 Roughness = m.Roughness,
                 RoughnessMap = m.RoughnessMap,
                 MetallicMap = m.MetallicMap,
+                HeightMap = m.HeightMap,
                 Diffuse = diffuse,
                 F0 = f0,
                 Emission = m.Emission,
