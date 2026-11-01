@@ -278,4 +278,6 @@
   <sys:String x:Key="Error.Solo se admiten imágenes PNG o JPEG.">Solo se admiten imágenes PNG o JPEG.</sys:String>
   <sys:String x:Key="Error.La imagen debe tener un tamaño entre 1 byte y 100 MB.">La imagen debe tener un tamaño entre 1 byte y 100 MB.</sys:String>
   <sys:String x:Key="Error.El contenido de la imagen no coincide con el formato indicado.">El contenido de la imagen no coincide con el formato indicado.</sys:String>
+  <sys:String x:Key="Error.Only room and area labels can be configured with this command.">Este comando solamente permite configurar etiquetas de habitaciones y áreas.</sys:String>
+  <sys:String x:Key="Error.A plan view must be selected before enabling room or area labels.">Selecciona una vista de planta antes de activar las etiquetas de habitaciones o áreas.</sys:String>
 </ResourceDictionary>
