@@ -64,6 +64,20 @@ internal static partial class InteractionChecks
             typeof(RenderPanel).GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
             Check(((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera).Position != oldPosition,
                 "Render navigation updates the interactive model camera immediately");
+            // A second click while the scene is still loading must not start another render.
+            var startingField = typeof(RenderPanel).GetField("_renderStarting", PrivateInstance)!;
+            startingField.SetValue(panel, true);
+            try
+            {
+                var duplicate = (Task)typeof(RenderPanel).GetMethod("RenderFinalAsync", PrivateInstance)!.Invoke(panel, null)!;
+                Check(duplicate.IsCompletedSuccessfully &&
+                      typeof(RenderPanel).GetField("_session", PrivateInstance)!.GetValue(panel) is null,
+                    "Duplicate render requests are ignored while the scene is preparing");
+            }
+            finally
+            {
+                startingField.SetValue(panel, false);
+            }
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&
                   Math.Abs(captured.SolarHour - setup.SolarHour) < 1e-6 && captured.Look == setup.Look && !captured.Bloom &&
