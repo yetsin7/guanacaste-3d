@@ -26,16 +26,27 @@ Optional third-party AI providers may charge for their own services.
 
 ## Download for Windows
 
-Download the [Windows x64 installer ZIP](https://github.com/yetsin7/guanacaste-3d/releases/download/v0.23.2/guanacaste-3d-0.23.2-win-x64-installer.zip) from the
-[releases page](https://github.com/yetsin7/guanacaste-3d/releases).
-Extract the entire ZIP, close Guanacaste 3D after saving, and run `install.cmd`. The application includes
-the .NET runtime and does not require an application subscription or an SDK.
-Optional Explorer file thumbnails support `.g3d`, `.g3dt`, `.g3df`, and Revit/SketchUp `.g3dx` exchanges.
-They are **disabled by default** because the current provider executes inside the Windows Shell process.
-To opt in after extracting the ZIP, run `./install.ps1 -EnableThumbnails` in PowerShell. The installer bundles
-the official .NET 10 Desktop runtime needed only by this optional component and installs it when missing.
-Windows 10 or 11 on a 64-bit PC is required. The package is an unsigned
-technical preview; Windows may display a reputation warning.
+**The Windows installer is not yet available as a published release.** The
+[releases page](https://github.com/yetsin7/guanacaste-3d/releases) currently has
+no public Windows application installer; an older Windows build is stored in a
+draft release and cannot be downloaded by the public. Do not rely on a
+`releases/download/v0.23.2/...` link until that release is actually published.
+
+For development testing, use the Windows artifact from a
+[successful GitHub Actions run](https://github.com/yetsin7/guanacaste-3d/actions)
+(GitHub sign-in may be required), or build the project from source using
+[the Windows verification script](scripts/verify-windows.ps1). The packaged
+installer is designed to install for the current user without an SDK, but it
+must first be built and published.
+
+When a Windows installer is released, extract its entire ZIP, save your work,
+close Guanacaste 3D, and run `install.cmd`. Explorer thumbnails for
+`.g3d`, `.g3dt`, `.g3df`, and `.g3dx` remain disabled by default because
+the current optional provider executes inside a Windows Shell process. Only
+enable them if you accept that risk; see
+[the security issue](https://github.com/yetsin7/guanacaste-3d/issues/23).
+The Windows package is an unsigned technical preview and may trigger a
+reputation warning.
 
 Current navigation and editing changes: [Modeling workspace](docs/model-workspace-navigation.md).
 
@@ -44,8 +55,8 @@ Current navigation and editing changes: [Modeling workspace](docs/model-workspac
 Bring Revit and SketchUp models into Guanacaste 3D as editable projects (native walls, doors, windows and slabs;
 everything else as `.g3df` families) — see [Opening Revit projects](docs/revit-import.md):
 
-- [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.1/Guanacaste3D-Revit.zip)
-  — Revit 2027 add-in 1.0.1 with embedded previews and optional Windows thumbnails (disabled by default). Unzip and run `install.cmd`, then restart Revit.
+- [Guanacaste3D-Revit.zip](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-Revit.zip)
+  — Revit add-in from the published plugin bundle with embedded previews and optional Windows thumbnails (disabled by default). Unzip and run `install.cmd`, then restart Revit.
 - [Guanacaste3D-SketchUp.rbz](https://github.com/yetsin7/guanacaste-3d/releases/download/plugins-v1.0.0/Guanacaste3D-SketchUp.rbz)
   — SketchUp extension (preview). Install from Extensions → Extension Manager.
 
@@ -53,7 +64,7 @@ With Revit 2025 or later installed, Guanacaste 3D also opens `.rvt` files direct
 
 ## Status
 
-Version 0.23.2 is a working technical preview, not a complete professional BIM
+Source version 0.23.3 is a working technical preview, not a complete professional BIM
 system. It must not be used for certified structural calculations or issued
 construction documents without independent professional review.
 
