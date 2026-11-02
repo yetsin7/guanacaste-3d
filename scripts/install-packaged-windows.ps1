@@ -31,7 +31,7 @@ foreach ($extension in $types.Keys) {
     $type = 'Guanacaste3D.' + $types[$extension]
     $extensionKey = "HKCU:\Software\Classes\$extension"
     $typeKey = "HKCU:\Software\Classes\$type"
-    New-Item -Path $extensionKey -Force | Out-Null
+    if (-not (Test-Path -LiteralPath $extensionKey)) { New-Item -Path $extensionKey -Force | Out-Null }
     Set-Item -Path $extensionKey -Value $type
     New-Item -Path "$typeKey\DefaultIcon" -Force | Out-Null
     Set-Item -Path "$typeKey\DefaultIcon" -Value "`"$executable`",0"
