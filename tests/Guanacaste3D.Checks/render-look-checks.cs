@@ -49,7 +49,7 @@ static class RenderLookChecks
         // lower-case directives and tab-separated titles. Their domain still
         // controls the input mapping, rather than being silently ignored.
         var compatibleCube = cube.Replace("\\n", "\n")
-            .Replace("TITLE \\"Identity\\"", "\\uFEFFtitle\\t\\"Identity\\"", StringComparison.Ordinal)
+            .Replace("TITLE \"Identity\"", "\uFEFFtitle\t\"Identity\"", StringComparison.Ordinal)
             .Replace("LUT_3D_SIZE", "lut_3d_size", StringComparison.Ordinal)
             .Replace("DOMAIN_MIN 0 0 0", "domain_min -1 -1 -1", StringComparison.Ordinal)
             .Replace("DOMAIN_MAX 1 1 1", "domain_max 1 1 1", StringComparison.Ordinal);
