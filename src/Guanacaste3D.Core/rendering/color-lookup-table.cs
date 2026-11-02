@@ -43,19 +43,23 @@ public sealed class ColorLookupTable
         {
             if (++lines > 270000) throw new InvalidDataException(invalid);
             var line = raw.Split('#', 2)[0].Trim();
-            if (line.Length == 0 || line.StartsWith("TITLE ", StringComparison.OrdinalIgnoreCase)) continue;
+            // UTF-8 .cube files may begin with a BOM; it is not a LUT directive.
+            if (lines == 1) line = line.TrimStart('\uFEFF');
+            if (line.Length == 0) continue;
             var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (parts[0].Equals("TITLE", StringComparison.OrdinalIgnoreCase)) continue;
             if (parts[0].Equals("LUT_3D_SIZE", StringComparison.OrdinalIgnoreCase))
             {
                 if (size != 0 || pixels.Count != 0 || parts.Length != 2 ||
                     !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out size) ||
                     size is < 2 or > 64) throw new InvalidDataException(invalid);
             }
-            else if (parts[0] is "DOMAIN_MIN" or "DOMAIN_MAX")
+            else if (parts[0].Equals("DOMAIN_MIN", StringComparison.OrdinalIgnoreCase) ||
+                     parts[0].Equals("DOMAIN_MAX", StringComparison.OrdinalIgnoreCase))
             {
                 if (pixels.Count != 0 || parts.Length != 4) throw new InvalidDataException(invalid);
                 var value = Parse(parts, 1);
-                if (parts[0] == "DOMAIN_MIN") min = value; else max = value;
+                if (parts[0].Equals("DOMAIN_MIN", StringComparison.OrdinalIgnoreCase)) min = value; else max = value;
             }
             else
             {
