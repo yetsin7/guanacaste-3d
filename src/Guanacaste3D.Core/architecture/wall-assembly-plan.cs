@@ -59,10 +59,18 @@ public static class WallAssemblyPlanRules
     /// <summary>Stud centre positions including both ends, with the pitch never exceeding the chosen spacing.</summary>
     public static IReadOnlyList<double> StudPositions(double length, double spacing)
     {
-        if (!double.IsFinite(length) || length <= 0 ||
-            !double.IsFinite(spacing) || spacing < 0.15 || spacing > 1.2)
+        if (!double.IsFinite(length) || length <= 0)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        if (!double.IsFinite(spacing) || spacing < 0.15 || spacing > 1.2)
             throw new ArgumentOutOfRangeException(nameof(spacing));
-        var spans = Math.Max(1, (int)Math.Ceiling(length / spacing));
+
+        // Check the floating-point count before casting to int or allocating an array.
+        // Otherwise an extreme finite length can overflow the cast or exhaust memory.
+        const int maximumIntervals = 1_000_000;
+        var requestedIntervals = Math.Ceiling(length / spacing);
+        if (!double.IsFinite(requestedIntervals) || requestedIntervals > maximumIntervals)
+            throw new ArgumentOutOfRangeException(nameof(length), "Wall requires too many stud intervals.");
+        var spans = Math.Max(1, (int)requestedIntervals);
         return Enumerable.Range(0, spans + 1).Select(index => length * index / spans).ToArray();
     }
 }
