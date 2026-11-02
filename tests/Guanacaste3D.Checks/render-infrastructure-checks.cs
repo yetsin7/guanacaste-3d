@@ -243,6 +243,30 @@ static class RenderInfrastructureChecks
             "IES integration of an isotropic 100 cd source gives 4π·100 lumens");
         check(Math.Abs(profile.IntensityTowards(new Vector3(0.3f, -0.2f, -0.9f)) - 100) < 1e-3f, "Isotropic profile returns 100 cd in any direction");
 
+        // Exercise binary-search boundaries, exact knots and interpolation.
+        // A 180-degree horizontal table declares bilateral symmetry.
+        const string asymmetric = """
+            IESNA:LM-63-2002
+            [TEST] asymmetric
+            TILT=NONE
+            1 -1 1 3 3 1 2 0 0 0
+            1 1 100
+            0 90 180
+            0 90 180
+            10 20 30
+            40 50 60
+            70 80 90
+            """;
+        var measured = IesProfile.Parse(asymmetric);
+        check(Math.Abs(measured.Candela(90, 45) - 35) < 1e-4f &&
+              Math.Abs(measured.Candela(45, 90) - 45) < 1e-4f &&
+              Math.Abs(measured.Candela(90, 90) - 50) < 1e-4f &&
+              Math.Abs(measured.Candela(90, 180) - 80) < 1e-4f &&
+              Math.Abs(measured.Candela(90, 270) - 50) < 1e-4f &&
+              Math.Abs(measured.Candela(-20, 0) - 10) < 1e-4f &&
+              Math.Abs(measured.Candela(200, 0) - 30) < 1e-4f,
+            "IES angle lookup preserves exact knots, interpolation, symmetry and endpoint clamping");
+
         // Cosine downlight: I = 200·cos(θ) cd for θ in 0..90°; flux = π·200 lm.
         var rows = string.Join(" ", Enumerable.Range(0, 19).Select(i => (200 * MathF.Cos(i * 5 * MathF.PI / 180)).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)));
         var angles = string.Join(" ", Enumerable.Range(0, 19).Select(i => i * 5));
