@@ -45,6 +45,29 @@ static class RenderLookChecks
         check(lookup.Size == 2 && Vector3.Distance(lookup.Sample(new Vector3(.35f,.6f,.7f)),
               new Vector3(.35f,.6f,.7f)) < .0001f,
             "A standard .cube file interpolates RGB with red varying fastest");
+        // Imported grading presets from other editors can carry a UTF-8 BOM,
+        // lower-case directives and tab-separated titles. Their domain still
+        // controls the input mapping, rather than being silently ignored.
+        var compatibleCube = cube.Replace("\\n", "\n")
+            .Replace("TITLE \\"Identity\\"", "\\uFEFFtitle\\t\\"Identity\\"", StringComparison.Ordinal)
+            .Replace("LUT_3D_SIZE", "lut_3d_size", StringComparison.Ordinal)
+            .Replace("DOMAIN_MIN 0 0 0", "domain_min -1 -1 -1", StringComparison.Ordinal)
+            .Replace("DOMAIN_MAX 1 1 1", "domain_max 1 1 1", StringComparison.Ordinal);
+        var compatibleLookup = ColorLookupTable.FromCube(compatibleCube);
+        check(compatibleLookup.Size == 2 &&
+              Vector3.Distance(compatibleLookup.Sample(Vector3.Zero), new Vector3(.5f)) < .0001f &&
+              Vector3.Distance(compatibleLookup.Sample(-Vector3.One), Vector3.Zero) < .0001f &&
+              Vector3.Distance(compatibleLookup.Sample(Vector3.One), Vector3.One) < .0001f,
+            "External .cube files accept a UTF-8 BOM, mixed-case directives, tabs and custom input domains");
+        var invalidDomainRejected = false;
+        try
+        {
+            _ = ColorLookupTable.FromCube(compatibleCube.Replace(
+                "domain_max 1 1 1", "domain_max -1 -1 -1", StringComparison.Ordinal));
+        }
+        catch (InvalidDataException) { invalidDomainRejected = true; }
+        check(invalidDomainRejected, "A malformed imported LUT domain remains rejected");
+
         var sample = ColorLutPresets.Find("warm")!;
         var colorLut = ImageProcessor.ToBgra32(image, width, height, 1, plain with
         { Lut = sample, LutStrength = 1 });
