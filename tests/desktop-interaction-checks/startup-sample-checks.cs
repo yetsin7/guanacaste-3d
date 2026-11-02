@@ -80,6 +80,11 @@ internal static partial class InteractionChecks
             var pendingScene = new TaskCompletionSource<Guanacaste3D.Core.Rendering.RenderScene?>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             sceneTaskField.SetValue(opened, pendingScene.Task);
+            // This console-driven STA test does not install the DispatcherSynchronizationContext that WPF
+            // normally supplies. Install it for awaited UI operations and restore the test context afterwards.
+            var previousContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(
+                new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
             try
             {
                 var first = (Task)renderMethod.Invoke(panel, null)!;
@@ -107,6 +112,7 @@ internal static partial class InteractionChecks
             {
                 pendingScene.TrySetResult(null);
                 sceneTaskField.SetValue(opened, originalSceneTask);
+                SynchronizationContext.SetSynchronizationContext(previousContext);
             }
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&
