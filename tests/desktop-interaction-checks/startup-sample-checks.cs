@@ -59,11 +59,61 @@ internal static partial class InteractionChecks
                   viewport.Camera is not null && previewToggle.IsChecked != true &&
                   typeof(RenderPanel).GetField("_preview", PrivateInstance)!.GetValue(panel) is null,
                 "Render opens as an interactive 3D model without starting progressive ray tracing");
+            // A worker-thread scene notification must rebuild the WPF viewport through its dispatcher.
+            viewport.Children.Clear();
+            Task.Run(() => typeof(RenderPanel).GetMethod("RefreshInteractiveScene", PrivateInstance)!.Invoke(panel, null))
+                .GetAwaiter().GetResult();
+            var workerDeadline = DateTime.UtcNow.AddSeconds(90);
+            while (viewport.Children.Count <= 2 && DateTime.UtcNow < workerDeadline) Pump();
+            Check(viewport.Children.Count > 2 && viewport.Camera is not null,
+                "Worker-thread scene refresh safely returns to the WPF dispatcher");
             var oldPosition = ((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera!).Position;
             camera.Position += new System.Numerics.Vector3(1, 0, 0);
             typeof(RenderPanel).GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
             Check(((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera).Position != oldPosition,
                 "Render navigation updates the interactive model camera immediately");
+            // Delay the real scene task: repeated clicks must not create competing render sessions.
+            var sceneTaskField = typeof(MainWindow).GetField("_sceneTask", PrivateInstance)!;
+            var originalSceneTask = sceneTaskField.GetValue(opened);
+            var renderMethod = typeof(RenderPanel).GetMethod("RenderFinalAsync", PrivateInstance)!;
+            var renderButton = (Button)panel.FindName("RenderButton");
+            var pendingScene = new TaskCompletionSource<Guanacaste3D.Core.Rendering.RenderScene?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            sceneTaskField.SetValue(opened, pendingScene.Task);
+            // This console-driven STA test does not install the DispatcherSynchronizationContext that WPF
+            // normally supplies. Install it for awaited UI operations and restore the test context afterwards.
+            var previousContext = SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(
+                new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
+            try
+            {
+                var first = (Task)renderMethod.Invoke(panel, null)!;
+                var duplicate = (Task)renderMethod.Invoke(panel, null)!;
+                Check(!first.IsCompleted && duplicate.IsCompletedSuccessfully && !renderButton.IsEnabled &&
+                      typeof(RenderPanel).GetField("_session", PrivateInstance)!.GetValue(panel) is null,
+                    "A second render request cannot start while scene preparation is pending");
+                pendingScene.SetResult(null);
+                var renderDeadline = DateTime.UtcNow.AddSeconds(5);
+                while (!first.IsCompleted && DateTime.UtcNow < renderDeadline) Pump();
+                Check(first.IsCompletedSuccessfully && renderButton.IsEnabled,
+                    "Finishing scene preparation releases the render-start guard");
+
+                var failedScene = new TaskCompletionSource<Guanacaste3D.Core.Rendering.RenderScene?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                sceneTaskField.SetValue(opened, failedScene.Task);
+                var failed = (Task)renderMethod.Invoke(panel, null)!;
+                failedScene.SetException(new InvalidDataException("simulated scene failure"));
+                renderDeadline = DateTime.UtcNow.AddSeconds(5);
+                while (!failed.IsCompleted && DateTime.UtcNow < renderDeadline) Pump();
+                Check(failed.IsCompletedSuccessfully && renderButton.IsEnabled,
+                    "Scene-build errors are reported without leaving Render disabled");
+            }
+            finally
+            {
+                pendingScene.TrySetResult(null);
+                sceneTaskField.SetValue(opened, originalSceneTask);
+                SynchronizationContext.SetSynchronizationContext(previousContext);
+            }
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&
                   Math.Abs(captured.SolarHour - setup.SolarHour) < 1e-6 && captured.Look == setup.Look && !captured.Bloom &&
