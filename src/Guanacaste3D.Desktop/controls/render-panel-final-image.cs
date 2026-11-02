@@ -18,6 +18,8 @@ public partial class RenderPanel
 {
     // A slow previous grading request must never overwrite a newer slider/filter change.
     private int _refinishVersion;
+    // Prevent two render requests from racing while the scene is still being prepared.
+    private bool _renderStarting;
 
     /// <summary>Re-applies exposure and grading to a finished render without rendering again.</summary>
     private async void RefinishFinal()
@@ -69,8 +71,33 @@ public partial class RenderPanel
     /// <summary>Runs a bounded progressive final render and restores controls after completion or cancellation.</summary>
     private async Task RenderFinalAsync()
     {
-        if (_source is null) return;
-        var scene = await _source.GetSceneAsync();
+        if (_source is null || _renderStarting || _rendering || _renderingTour) return;
+        var source = _source;
+        var sceneVersion = source.SceneVersion;
+        _renderStarting = true;
+        RenderButton.IsEnabled = false;
+        RenderScene? scene;
+        try
+        {
+            scene = await source.GetSceneAsync();
+        }
+        catch (OutOfMemoryException)
+        {
+            StatusText.Text = UiText.Get("RenderPanel.NoMemory");
+            return;
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = UiText.Format("RenderPanel.Failed", ex.Message);
+            return;
+        }
+        finally
+        {
+            _renderStarting = false;
+            RenderButton.IsEnabled = true;
+        }
+        // Never render a scene belonging to a project or geometry version that was replaced while loading.
+        if (!ReferenceEquals(source, _source) || sceneVersion != source.SceneVersion) return;
         if (scene is null)
         {
             StatusText.Text = UiText.Get("RenderPanel.EmptyScene");
