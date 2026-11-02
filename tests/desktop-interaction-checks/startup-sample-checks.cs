@@ -64,19 +64,41 @@ internal static partial class InteractionChecks
             typeof(RenderPanel).GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
             Check(((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera).Position != oldPosition,
                 "Render navigation updates the interactive model camera immediately");
-            // A second click while the scene is still loading must not start another render.
-            var startingField = typeof(RenderPanel).GetField("_renderStarting", PrivateInstance)!;
-            startingField.SetValue(panel, true);
+            // Delay the real scene task: repeated clicks must not create competing render sessions.
+            var sceneTaskField = typeof(MainWindow).GetField("_sceneTask", PrivateInstance)!;
+            var originalSceneTask = sceneTaskField.GetValue(opened);
+            var renderMethod = typeof(RenderPanel).GetMethod("RenderFinalAsync", PrivateInstance)!;
+            var renderButton = (Button)panel.FindName("RenderButton");
+            var pendingScene = new TaskCompletionSource<Guanacaste3D.Core.Rendering.RenderScene?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            sceneTaskField.SetValue(opened, pendingScene.Task);
             try
             {
-                var duplicate = (Task)typeof(RenderPanel).GetMethod("RenderFinalAsync", PrivateInstance)!.Invoke(panel, null)!;
-                Check(duplicate.IsCompletedSuccessfully &&
+                var first = (Task)renderMethod.Invoke(panel, null)!;
+                var duplicate = (Task)renderMethod.Invoke(panel, null)!;
+                Check(!first.IsCompleted && duplicate.IsCompletedSuccessfully && !renderButton.IsEnabled &&
                       typeof(RenderPanel).GetField("_session", PrivateInstance)!.GetValue(panel) is null,
-                    "Duplicate render requests are ignored while the scene is preparing");
+                    "A second render request cannot start while scene preparation is pending");
+                pendingScene.SetResult(null);
+                var renderDeadline = DateTime.UtcNow.AddSeconds(5);
+                while (!first.IsCompleted && DateTime.UtcNow < renderDeadline) Pump();
+                Check(first.IsCompletedSuccessfully && renderButton.IsEnabled,
+                    "Finishing scene preparation releases the render-start guard");
+
+                var failedScene = new TaskCompletionSource<Guanacaste3D.Core.Rendering.RenderScene?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                sceneTaskField.SetValue(opened, failedScene.Task);
+                var failed = (Task)renderMethod.Invoke(panel, null)!;
+                failedScene.SetException(new InvalidDataException("simulated scene failure"));
+                renderDeadline = DateTime.UtcNow.AddSeconds(5);
+                while (!failed.IsCompleted && DateTime.UtcNow < renderDeadline) Pump();
+                Check(failed.IsCompletedSuccessfully && renderButton.IsEnabled,
+                    "Scene-build errors are reported without leaving Render disabled");
             }
             finally
             {
-                startingField.SetValue(panel, false);
+                pendingScene.TrySetResult(null);
+                sceneTaskField.SetValue(opened, originalSceneTask);
             }
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&
