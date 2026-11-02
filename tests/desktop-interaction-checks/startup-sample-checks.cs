@@ -59,6 +59,14 @@ internal static partial class InteractionChecks
                   viewport.Camera is not null && previewToggle.IsChecked != true &&
                   typeof(RenderPanel).GetField("_preview", PrivateInstance)!.GetValue(panel) is null,
                 "Render opens as an interactive 3D model without starting progressive ray tracing");
+            // A worker-thread scene notification must rebuild the WPF viewport through its dispatcher.
+            viewport.Children.Clear();
+            Task.Run(() => typeof(RenderPanel).GetMethod("RefreshInteractiveScene", PrivateInstance)!.Invoke(panel, null))
+                .GetAwaiter().GetResult();
+            var workerDeadline = DateTime.UtcNow.AddSeconds(90);
+            while (viewport.Children.Count <= 2 && DateTime.UtcNow < workerDeadline) Pump();
+            Check(viewport.Children.Count > 2 && viewport.Camera is not null,
+                "Worker-thread scene refresh safely returns to the WPF dispatcher");
             var oldPosition = ((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera!).Position;
             camera.Position += new System.Numerics.Vector3(1, 0, 0);
             typeof(RenderPanel).GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
