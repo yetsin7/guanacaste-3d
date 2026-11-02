@@ -160,8 +160,11 @@ public sealed class IesProfile
     private static (int Low, int High, float Fraction) Bracket(float[] angles, float value)
     {
         if (angles.Length == 1) return (0, 0, 0);
-        var high = Array.FindIndex(angles, angle => angle >= value);
-        if (high < 0) return (angles.Length - 1, angles.Length - 1, 0);
+        // Parsed angle tables are strictly ascending. Binary search keeps IES
+        // flux integration responsive even for dense manufacturer photometry.
+        var high = Array.BinarySearch(angles, value);
+        if (high < 0) high = ~high; // first angle greater than the requested one
+        if (high >= angles.Length) return (angles.Length - 1, angles.Length - 1, 0);
         if (high == 0) return (0, 1, 0);
         var low = high - 1;
         var span = angles[high] - angles[low];
