@@ -26,6 +26,18 @@ Check(WallAssemblyPlanRules.StudPositions(3.0, WallAssemblyPlanRules.Stud16Inche
     .Zip(WallAssemblyPlanRules.StudPositions(3.0, WallAssemblyPlanRules.Stud16Inches).Skip(1))
     .All(pair => pair.Second - pair.First <= WallAssemblyPlanRules.Stud16Inches + 1e-9),
     "Gypsum stud intervals never exceed maximum pitch");
+foreach (var invalidLength in new[] { 0d, double.NaN, double.MaxValue, 1_000_001d * WallAssemblyPlanRules.Stud16Inches })
+{
+    var rejected = false;
+    try { WallAssemblyPlanRules.StudPositions(invalidLength, WallAssemblyPlanRules.Stud16Inches); }
+    catch (ArgumentOutOfRangeException exception) when (exception.ParamName == "length") { rejected = true; }
+    Check(rejected, "Gypsum stud layout rejects invalid or excessive lengths before allocation");
+}
+var longStudLayout = WallAssemblyPlanRules.StudPositions(12, WallAssemblyPlanRules.Stud24Inches);
+Check(longStudLayout[0] == 0 && longStudLayout[^1] == 12 &&
+      longStudLayout.Zip(longStudLayout.Skip(1)).All(pair => pair.Second > pair.First &&
+          pair.Second - pair.First <= WallAssemblyPlanRules.Stud24Inches + 1e-9),
+    "Long gypsum walls preserve exact endpoints and safe stud pitch");
 var layerDocument = BuildingDocument.Create();
 layerDocument.WallTypes[1] = finishedType;
 layerDocument.Validate();
