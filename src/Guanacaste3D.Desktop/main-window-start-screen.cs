@@ -22,7 +22,7 @@ public partial class MainWindow : IStartScreenHost
     IReadOnlyList<StartSample> IStartScreenHost.Samples => _samples ??=
     [
         new("cobogo", "Start.Sample.Cobogo", "Start.Sample.CobogoDetail",
-            () => NativeDocumentStore.LoadProject(Path.Combine(AppContext.BaseDirectory, "resources", "samples", "casa-del-cobogo.g3d")),
+            BreezeBlockSample.Load,
             Path.Combine(AppContext.BaseDirectory, "resources", "samples", "casa-del-cobogo.png")),
         new("villa", "Start.Sample.Villa", "Start.Sample.VillaDetail", ModernHouseShowcase.Create),
         new("two-storey", "Start.Sample.TwoStorey", "Start.Sample.TwoStoreyDetail", TwoStoreyHouse.Create),

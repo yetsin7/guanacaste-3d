@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Media;
 using Guanacaste3D.Core.Rendering;
 
 namespace Guanacaste3D.Desktop.Controls;
@@ -16,6 +17,15 @@ public partial class RenderPanel
     /// <summary>A stable copy of the actual rendered pixels, not a screenshot of ribbons or overlays.</summary>
     private BitmapSource? VisibleImageSnapshot()
     {
+        if (InteractiveViewport.Visibility == Visibility.Visible && InteractiveViewport.ActualWidth > 0 && InteractiveViewport.ActualHeight > 0)
+        {
+            var width = Math.Max(1, (int)Math.Ceiling(InteractiveViewport.ActualWidth));
+            var height = Math.Max(1, (int)Math.Ceiling(InteractiveViewport.ActualHeight));
+            var snapshot = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            snapshot.Render(InteractiveViewport);
+            snapshot.Freeze();
+            return snapshot;
+        }
         if (PreviewImage.Source is not BitmapSource image) return null;
         var copy = image.CloneCurrentValue();
         copy.Freeze();
@@ -27,17 +37,17 @@ public partial class RenderPanel
         var image = VisibleImageSnapshot();
         if (image is null)
         {
-            StatusText.Text = "Todavía no hay imagen: activa la vista previa o genera un render.";
+            StatusText.Text = UiText.Get("RenderPanel.NoViewForAi");
             return;
         }
         try
         {
             Clipboard.SetImage(image);
-            StatusText.Text = "Vista actual copiada. Pégala como imagen de referencia en tu IA.";
+            StatusText.Text = UiText.Get("RenderPanel.ViewCopiedForAi");
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
-            StatusText.Text = "No se pudo copiar: el portapapeles está ocupado.";
+            StatusText.Text = UiText.Get("RenderPanel.ClipboardBusy");
         }
     }
 
@@ -46,10 +56,10 @@ public partial class RenderPanel
         var snapshot = VisibleImageSnapshot();
         if (snapshot is null)
         {
-            StatusText.Text = "Esperando la imagen de la escena. Activa la vista previa antes de usar Render con IA.";
+            StatusText.Text = UiText.Get("RenderPanel.NoViewForAi");
             return;
         }
-        var dialog = new AiRenderWindow(_projectFilePath, _source?.ProjectName ?? "Proyecto", snapshot)
+        var dialog = new AiRenderWindow(_projectFilePath, _source?.ProjectName ?? UiText.Get("Project.Untitled"), snapshot)
         {
             Owner = Window.GetWindow(this)
         };

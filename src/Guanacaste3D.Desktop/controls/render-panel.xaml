@@ -175,7 +175,7 @@
           </Grid>
           <Grid Margin="0,10,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <ToggleButton x:Name="PreviewToggle" IsChecked="True" Padding="12,7" MinHeight="34"
+            <ToggleButton x:Name="PreviewToggle" IsChecked="False" Visibility="Collapsed" Padding="12,7" MinHeight="34"
                           Checked="PreviewToggle_Changed" Unchecked="PreviewToggle_Changed"
                           Content="{DynamicResource RenderPanel.Preview}" ToolTip="{DynamicResource RenderPanel.PreviewHint}"/>
             <Button x:Name="SaveButton" Grid.Column="1" Click="SaveButton_Click" IsEnabled="False" Padding="12,7" MinHeight="34"
@@ -708,17 +708,18 @@
           <GradientStop Color="#111D2B" Offset="0"/><GradientStop Color="#25394C" Offset="1"/>
         </LinearGradientBrush>
       </Grid.Background>
-      <Border Margin="28,24,28,62" Background="#F9FBFD" BorderBrush="#4A6579" BorderThickness="1" CornerRadius="8" Padding="8">
+      <Viewport3D x:Name="InteractiveViewport" IsHitTestVisible="False" ClipToBounds="True"/>
+      <Border x:Name="FinalImageBorder" Visibility="Collapsed" Margin="28,24,28,62" Background="#F9FBFD" BorderBrush="#4A6579" BorderThickness="1" CornerRadius="8" Padding="8">
         <Border.Effect><DropShadowEffect Color="#475569" BlurRadius="24" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
       <!-- Always available while inside Render, including for live preview frames. -->
-      <Button x:Name="CopyCurrentViewButton" Content="Copiar vista para IA" Click="CopyCurrentView_Click"
+      <Button x:Name="CopyCurrentViewButton" Content="{DynamicResource RenderPanel.CopyViewForAi}" Click="CopyCurrentView_Click"
               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,110"
               Padding="14,9" MinHeight="38" FontWeight="SemiBold"
               Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
-              ToolTip="Copia los píxeles de la vista actual, sin incluir controles de la interfaz."/>
+              ToolTip="{DynamicResource RenderPanel.CopyViewForAiHint}"/>
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
       <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
               Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="10" Padding="12,10"

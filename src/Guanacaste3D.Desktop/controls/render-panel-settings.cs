@@ -136,6 +136,7 @@ public partial class RenderPanel
             _hdriFilePath = file;
             HdriNameText.Text = Path.GetFileName(file) + $" · {panorama.Width}×{panorama.Height}";
             _showingFinal = false;
+            ShowInteractiveScene(true);
             Lighting_Changed(this, new RoutedEventArgs());
             if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
         }
@@ -170,6 +171,7 @@ public partial class RenderPanel
         if (_rendering) return;
         ClearHdriForDocument();
         _showingFinal = false;
+        ShowInteractiveScene(true);
         if (PreviewToggle.IsChecked == true && IsVisible) ResumePreview();
     }
 
@@ -313,10 +315,12 @@ public partial class RenderPanel
         {
             // Moving again leaves the finished picture and returns to the live preview.
             _showingFinal = false;
+            ShowInteractiveScene(true);
             RenderProgressPanel.Visibility = Visibility.Collapsed;
             RenderTelemetryPanel.Visibility = Visibility.Collapsed;
             if (PreviewToggle.IsChecked == true) ResumePreview();
         }
+        UpdateInteractiveCamera();
         BeginInteractivePreview();
         _preview?.SetCamera(CurrentCamera());
     }

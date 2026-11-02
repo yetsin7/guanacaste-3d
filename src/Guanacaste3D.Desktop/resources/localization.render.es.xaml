@@ -216,6 +216,12 @@
   <sys:String x:Key="RenderPanel.NoMemory">No hay memoria suficiente para este render. Cierra otros programas o elige un tamaño menor.</sys:String>
   <sys:String x:Key="RenderPanel.Failed">El render se detuvo por un problema inesperado: {0}</sys:String>
   <sys:String x:Key="RenderPanel.EmptyScene">No hay geometría que mostrar. Dibuja muros o importa un modelo.</sys:String>
+  <sys:String x:Key="RenderPanel.ModelViewFailed">No se pudo preparar la vista 3D. Intenta abrir el proyecto de nuevo.</sys:String>
+  <sys:String x:Key="RenderPanel.CopyViewForAi">Copiar vista para IA</sys:String>
+  <sys:String x:Key="RenderPanel.CopyViewForAiHint">Copia la vista actual sin los controles de la interfaz.</sys:String>
+  <sys:String x:Key="RenderPanel.NoViewForAi">Espera a que se muestre el modelo o genera un render.</sys:String>
+  <sys:String x:Key="RenderPanel.ViewCopiedForAi">Vista copiada. Pégala como imagen de referencia en tu IA.</sys:String>
+  <sys:String x:Key="RenderPanel.ClipboardBusy">No se pudo copiar: el portapapeles está ocupado.</sys:String>
   <sys:String x:Key="RenderPanel.NothingToSave">Todavía no hay una imagen para guardar. Pulsa Renderizar.</sys:String>
   <sys:String x:Key="RenderPanel.Saved">Imagen guardada: {0}</sys:String>
   <sys:String x:Key="RenderPanel.PreviewFailed">La vista previa no pudo prepararse (memoria insuficiente). Reduce el modelo o cierra otros programas.</sys:String>

@@ -144,7 +144,6 @@ public partial class RenderPanel
 
         _preview?.Suspend();
         _renderingTour = true;
-        _showingFinal = true;
         _cancel = new CancellationTokenSource();
         RenderButton.Content = UiText.Get("RenderPanel.Stop");
         RenderTourButton.IsEnabled = false;

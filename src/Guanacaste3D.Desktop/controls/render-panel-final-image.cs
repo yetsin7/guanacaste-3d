@@ -113,6 +113,7 @@ public partial class RenderPanel
         SetRendering(true);
         StartRenderTelemetry();
         _showingFinal = true;
+        ShowInteractiveScene(false);
         var session = _session;
         session.PhaseChanged += phase => Dispatcher.BeginInvoke(() =>
         {
@@ -142,7 +143,12 @@ public partial class RenderPanel
             SetRendering(false);
             StopRenderTelemetry(result?.Elapsed);
         }
-        if (result is null) return;
+        if (result is null)
+        {
+            _showingFinal = false;
+            ShowInteractiveScene(true);
+            return;
+        }
 
         _lastFinal = result.LastFrame;
         RenderProgressPanel.Visibility = _lastFinal is not null ? Visibility.Visible : Visibility.Collapsed;

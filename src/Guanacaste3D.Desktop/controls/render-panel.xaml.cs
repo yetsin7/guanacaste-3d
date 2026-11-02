@@ -15,8 +15,8 @@ using Microsoft.Win32;
 namespace Guanacaste3D.Desktop.Controls;
 
 /// <summary>
-/// The Render tab: a live, navigable ray-traced preview, and the final render. Moving the camera shows lighting and
-/// shadows at low detail; pressing Render freezes the picture while a high-quality image (or a walk-through video) is
+/// The Render tab: an interactive model for navigation and an explicitly requested final render. Pressing Render
+/// freezes the picture while a high-quality image (or a walk-through video) is
 /// generated. Rendering is protected: it is fitted to the free memory beforehand and stopped, keeping the picture so
 /// far, if memory runs short.
 /// </summary>
@@ -86,6 +86,7 @@ public partial class RenderPanel : UserControl
         InitializeFlightControls();
         _navigator.Changed += OnCameraChanged;
         source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshScene);
+        source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshInteractiveScene);
         source.SceneChanged += () => Dispatcher.BeginInvoke(RefreshMaterialRows);
         RefreshMaterialRows();
         source.QueryChanged += () => Dispatcher.BeginInvoke(ApplyCollision);
@@ -111,11 +112,14 @@ public partial class RenderPanel : UserControl
     {
         if (!IsVisible)
         {
+            _interactiveSceneRequest++;
             StopInteractivePreview();
             _preview?.Suspend();
             StopTour();
             return;
         }
+        ShowInteractiveScene(!_showingFinal);
+        RefreshInteractiveScene();
         if (_preview is null && PreviewToggle.IsChecked == true) StartPreview();
         else if (PreviewToggle.IsChecked == true && !_showingFinal) ResumePreview();
         UpdateMemoryEstimate();
@@ -124,6 +128,7 @@ public partial class RenderPanel : UserControl
     /// <summary>Stops preview workers, camera playback, and outstanding render cancellation tokens.</summary>
     private void Shutdown()
     {
+        _interactiveSceneRequest++;
         StopInteractivePreview();
         // Invalidate asynchronous scene requests before disposing the preview.
         _sceneRefreshVersion++;
@@ -281,6 +286,7 @@ public partial class RenderPanel : UserControl
     private void ImageHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (!_ready) return;
+        UpdateInteractiveCamera();
         if (_preview is not null)
         {
             var (width, height) = PreviewSize();

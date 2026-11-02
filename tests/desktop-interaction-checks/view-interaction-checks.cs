@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using Guanacaste3D.Core;
 using Guanacaste3D.Core.Geometry;
@@ -150,8 +151,6 @@ internal static partial class InteractionChecks
             tabs.SelectedIndex = 6;
             Pump();
             var panel = (Control)_window.FindName("RenderPanelControl");
-            var status = (TextBlock)panel.FindName("StatusText");
-            var image = (Image)panel.FindName("PreviewImage");
             var imageHost = (FrameworkElement)panel.FindName("ImageHost");
             var titleBar = (FrameworkElement)_window.FindName("MainTitleBar");
             var ribbon = (FrameworkElement)_window.FindName("RibbonTabControl");
@@ -260,25 +259,19 @@ internal static partial class InteractionChecks
             gallery.IsExpanded = false;
             ((Button)panel.FindName("RenderRailScene")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(sectionTabs.SelectedIndex == 0, "The Render rail can return to the environment panel");
-            Check(WaitFor(() => image.Source is WriteableBitmap { PixelWidth: > 0 }, 60), "The Render tab shows a live ray-traced preview of the open project");
-            Check(WaitFor(() => status.Text.Contains("muestra") || status.Text.Contains("lista"), 20), "The preview reports its progress in Spanish");
-
-            byte[] Snapshot()
-            {
-                var bitmap = (WriteableBitmap)image.Source;
-                var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
-                bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
-                return pixels;
-            }
-            WaitFor(() => status.Text.Contains("lista"), 40);
+            var viewport = (Viewport3D)panel.FindName("InteractiveViewport");
+            Check(WaitFor(() => viewport.Children.Count > 2 && viewport.Camera is not null, 60),
+                "The Render tab displays the project as interactive 3D geometry");
+            Check(typeof(RenderPanel).GetField("_preview", PrivateInstance)!.GetValue(panel) is null,
+                "Opening Render does not start the progressive preview worker");
             SaveBitmap("artifacts/interaction-evidence/render-workspace-dark.png");
-            var before = Snapshot();
+            var before = ((PerspectiveCamera)viewport.Camera!).Position;
             var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
             camera.Position = new System.Numerics.Vector3(-8, 8, 3);
             camera.LookAt(new System.Numerics.Vector3(0, 0, 1));
             var navigator = panel.GetType().GetProperty("Navigator", PrivateInstance | System.Reflection.BindingFlags.Public)!.GetValue(panel)!;
             ((Action?)navigator.GetType().GetField("Changed", PrivateInstance)!.GetValue(navigator))?.Invoke();
-            Check(WaitFor(() => !Snapshot().SequenceEqual(before), 40), "Moving the shared camera updates the live preview");
+            Check(((PerspectiveCamera)viewport.Camera!).Position != before, "Moving the shared camera updates the interactive viewport");
 
             // A mesh dropped on the window: the import dialog is accepted automatically, as the user would press Import.
             var model = Path.Combine(folder, "tree.obj");

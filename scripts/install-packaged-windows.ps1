@@ -3,8 +3,11 @@
 Installs a prebuilt Guanacaste 3D package without requiring a compiler or source checkout.
 #>
 [CmdletBinding()]
-param([switch]$EnableThumbnails)
+param([switch]$EnableThumbnails, [switch]$PreserveThumbnailRegistration)
 $ErrorActionPreference = 'Stop'
+if ($EnableThumbnails -and $PreserveThumbnailRegistration) {
+    throw 'Choose either thumbnail installation or preservation of the existing registration.'
+}
 $source = Join-Path $PSScriptRoot 'application'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\Guanacaste 3D'
 $executable = Join-Path $installRoot 'Guanacaste3D.Desktop.exe'
@@ -38,7 +41,7 @@ foreach ($extension in $types.Keys) {
 if ($EnableThumbnails) {
     & (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -ProviderDirectory (Join-Path $source 'thumbnail-handler') -AllowInProcess
 }
-else {
+elseif (-not $PreserveThumbnailRegistration) {
     # Remove previously installed in-process thumbnail handlers during normal updates.
     & (Join-Path $PSScriptRoot 'register-thumbnails.ps1') -Unregister
     Write-Output 'Explorer thumbnails disabled by default. Use -EnableThumbnails only if you accept in-process rendering risks.'

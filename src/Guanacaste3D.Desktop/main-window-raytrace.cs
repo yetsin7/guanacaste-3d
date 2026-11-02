@@ -79,6 +79,22 @@ public partial class MainWindow
         public string ProjectName => window._session.Document.Name;
         public (Vector3 Min, Vector3 Max) SceneBounds() => window.SceneBounds();
         public Task<RenderScene?> GetSceneAsync() => window.GetSceneAsync();
+        /// <summary>Copies document and material state before building WPF geometry off the UI thread.</summary>
+        public Task<ModelSceneSnapshot> GetInteractiveSceneAsync()
+        {
+            var document = window.ModelDisplayDocument();
+            var textures = RenderTextureLibrary.Previews3D(document.RenderMaterials, window._filePath);
+            var links = window._links.Visible().ToArray();
+            var clay = window._renderClay;
+            return Task.Run(() =>
+            {
+                var snapshot = ModelSceneSnapshot.Build(document, clay, false, false, textures);
+                var models = snapshot.Models.ToList();
+                foreach (var (link, loaded) in links)
+                    models.AddRange(ScenePresentation.ToWpfModels(loaded.Proxy, loaded.Model.Materials, link.Placement, clay));
+                return snapshot with { Models = models };
+            });
+        }
         public int SceneVersion => window._sceneVersion;
         public SceneQuery? Query => window._query;
         public IReadOnlyList<RenderMaterialAssignment> RenderMaterials => window._session.Document.RenderMaterials;

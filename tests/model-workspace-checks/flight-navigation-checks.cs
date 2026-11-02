@@ -72,7 +72,7 @@ internal static partial class WorkspaceChecks
         RenderFlightPreviewChecks(panel);
     }
 
-    /// <summary>Verifies navigation resolution and settled recovery against the real live-render worker and WPF image.</summary>
+    /// <summary>Verifies that camera movement updates the interactive scene without starting a ray-traced preview.</summary>
     private static void RenderFlightPreviewChecks(RenderPanel panel)
     {
         UseDocument((session, level) =>
@@ -85,34 +85,18 @@ internal static partial class WorkspaceChecks
         ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 6;
         ((TabControl)panel.FindName("SectionTabs")).SelectedIndex = 2;
         Pump();
-        var image = (Image)panel.FindName("PreviewImage");
-        WaitFor(() => image.Source is not null);
-        /// <summary>Copies the displayed pixels to distinguish a newly rendered view from a reused bitmap.</summary>
-        byte[] CapturePixels()
-        {
-            var bitmap = (System.Windows.Media.Imaging.BitmapSource)image.Source;
-            var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
-            bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
-            return pixels;
-        }
-        var previousPixels = CapturePixels();
-        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        var viewport = (System.Windows.Controls.Viewport3D)panel.FindName("InteractiveViewport");
+        WaitFor(() => viewport.Children.Count > 2 && viewport.Camera is not null);
+        var previousPosition = ((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera!).Position;
         var camera = Field<NavigationCamera>("_navigation");
         camera.Position = new(0, 0, 1.6f);
         camera.LookAt(new(4, 2, 1.6f));
         panel.GetType().GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
-        var size = ((int Width, int Height))panel.GetType().GetMethod("PreviewSize", PrivateInstance)!.Invoke(panel, null)!;
-        Check(size.Height <= 144, "Camera motion reduces live preview cost immediately");
-        WaitFor(() => !(bool)panel.GetType().GetField("_interactivePreview", PrivateInstance)!.GetValue(panel)!);
-        var settled = ((int Width, int Height))panel.GetType().GetMethod("PreviewSize", PrivateInstance)!.Invoke(panel, null)!;
-        WaitFor(() => image.Source is System.Windows.Media.Imaging.BitmapSource bitmap && bitmap.PixelHeight == settled.Height &&
-                      !CapturePixels().SequenceEqual(previousPixels));
-        Check(settled.Height >= size.Height, "Settling restores the hardware-selected preview resolution");
-        var status = (TextBlock)panel.FindName("StatusText");
-        var ready = string.Format((string)Application.Current.FindResource("RenderPanel.PreviewReady"), 40);
-        WaitFor(() => elapsed.Elapsed.TotalSeconds >= 1 && status.Text == ready);
+        Check(((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera!).Position != previousPosition &&
+              panel.GetType().GetField("_preview", PrivateInstance)!.GetValue(panel) is null,
+            "Render navigation moves the 3D camera without starting the preview worker");
         Check(Vector3.Distance(camera.Position, new(0, 0, 1.6f)) < 0.001,
-            "The settled interior render retains the requested eye position");
+            "The interactive interior view retains the requested eye position");
         SaveBitmap("render-interior-navigation.png");
         ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 1;
         Pump();

@@ -8,7 +8,7 @@
     <AssemblyName>Guanacaste3D.Desktop</AssemblyName>
     <RootNamespace>Guanacaste3D.Desktop</RootNamespace>
     <Product>Guanacaste 3D</Product>
-    <Version>0.23.2</Version>
+    <Version>0.23.3</Version>
     <!-- Embedded in the .exe so Explorer, the Start menu shortcut and the taskbar show the brand mark. -->
     <ApplicationIcon>resources\brand\guanacaste3d.ico</ApplicationIcon>
   </PropertyGroup>
@@ -31,6 +31,7 @@
     <!-- Detailed mesh families (CC0 trees and cars, see docs/third-party-models.md) and the saved sample projects. -->
     <Content Include="resources\families\*.g3df" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="resources\samples\*.g3d" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="resources\samples\casa-del-cobogo.g3d" LogicalName="Guanacaste3D.BreezeBlockHouse.g3d" />
     <!-- Rendered pictures of the samples for the Home screen tiles. -->
     <Content Include="resources\samples\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

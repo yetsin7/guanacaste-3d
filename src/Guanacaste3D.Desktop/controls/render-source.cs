@@ -29,6 +29,9 @@ internal interface IRenderSource
     /// <summary>The current scene, built in the background and cached; null when the project is empty.</summary>
     Task<RenderScene?> GetSceneAsync();
 
+    /// <summary>Builds frozen, lightweight model geometry for interactive camera navigation.</summary>
+    Task<ModelSceneSnapshot> GetInteractiveSceneAsync();
+
     /// <summary>Incremented whenever geometry, visibility, or materials invalidate the cached scene.</summary>
     int SceneVersion { get; }
 

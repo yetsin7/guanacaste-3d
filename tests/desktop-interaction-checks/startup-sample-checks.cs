@@ -34,6 +34,8 @@ internal static partial class InteractionChecks
             Check(home.Visibility == Visibility.Visible && host.Samples.Any(sample => sample.Id == "cobogo") &&
                   host.Samples.All(sample => Application.Current.TryFindResource(sample.TitleKey) is string),
                 "Startup shows the Home screen with its samples");
+            Check(typeof(MainWindow).Assembly.GetManifestResourceInfo("Guanacaste3D.BreezeBlockHouse.g3d") is not null,
+                "The complete sample is embedded in the desktop application");
 
             host.OpenSample(host.Samples.Single(sample => sample.Id == "cobogo"));
             var session = (DocumentSession)typeof(MainWindow).GetField("_session", PrivateInstance)!.GetValue(opened)!;
@@ -49,6 +51,19 @@ internal static partial class InteractionChecks
                   Math.Abs(camera.PitchDegrees - setup.PitchDegrees) < 1e-3,
                 "The sample opens on the Render tab from its saved camera");
             var panel = (RenderPanel)opened.FindName("RenderPanelControl");
+            var viewport = (System.Windows.Controls.Viewport3D)panel.FindName("InteractiveViewport");
+            var previewToggle = (System.Windows.Controls.Primitives.ToggleButton)panel.FindName("PreviewToggle");
+            var deadline = DateTime.UtcNow.AddSeconds(90);
+            while (viewport.Children.Count <= 2 && DateTime.UtcNow < deadline) Pump();
+            Check(viewport.Visibility == Visibility.Visible && viewport.Children.Count > 2 &&
+                  viewport.Camera is not null && previewToggle.IsChecked != true &&
+                  typeof(RenderPanel).GetField("_preview", PrivateInstance)!.GetValue(panel) is null,
+                "Render opens as an interactive 3D model without starting progressive ray tracing");
+            var oldPosition = ((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera!).Position;
+            camera.Position += new System.Numerics.Vector3(1, 0, 0);
+            typeof(RenderPanel).GetMethod("OnCameraChanged", PrivateInstance)!.Invoke(panel, null);
+            Check(((System.Windows.Media.Media3D.PerspectiveCamera)viewport.Camera).Position != oldPosition,
+                "Render navigation updates the interactive model camera immediately");
             var captured = panel.CaptureSetup(camera);
             Check(captured.Width == 1920 && captured.Height == 1080 && captured.DayOfYear == setup.DayOfYear &&
                   Math.Abs(captured.SolarHour - setup.SolarHour) < 1e-6 && captured.Look == setup.Look && !captured.Bloom &&

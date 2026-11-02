@@ -64,9 +64,7 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Opens the breeze-block house sample saved next to the application, with its detailed jacaranda and cars. It opens
-    /// as an untitled copy, so saving asks for a new file and the shipped sample stays intact. Without the file (a
-    /// trimmed install) the house is rebuilt from the shipped families, or from procedural ones.
+    /// Opens the embedded breeze-block house as an untitled copy, preserving the original example.
     /// </summary>
     private void OpenBreezeBlockHouse_Click(object sender, RoutedEventArgs e)
     {
@@ -77,12 +75,9 @@ public partial class MainWindow
     /// <summary>Loads the breeze-block house sample and reports whether it opened.</summary>
     private bool OpenBreezeBlockHouse()
     {
-        var sample = Path.Combine(AppContext.BaseDirectory, "resources", "samples", "casa-del-cobogo.g3d");
         try
         {
-            AttachDocument(File.Exists(sample)
-                ? NativeDocumentStore.LoadProject(sample)
-                : BreezeBlockHouseShowcase.Create(ShippedMeshFamilies()), null);
+            AttachDocument(BreezeBlockSample.Load(), null);
             StatusText.Text = GetText("Status.BreezeBlockHouseOpened");
             return true;
         }
@@ -91,15 +86,6 @@ public partial class MainWindow
             MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
-    }
-
-    /// <summary>The detailed mesh families (trees, cars) shipped in resources/families.</summary>
-    private static FamilyDocument[] ShippedMeshFamilies()
-    {
-        var folder = Path.Combine(AppContext.BaseDirectory, "resources", "families");
-        return Directory.Exists(folder)
-            ? Directory.GetFiles(folder, "*" + NativeDocumentStore.FamilyExtension).Select(NativeDocumentStore.LoadFamily).ToArray()
-            : [];
     }
 
     /// <summary>Starts a project from a .g3dt file. The template is only read, so it never changes.</summary>
