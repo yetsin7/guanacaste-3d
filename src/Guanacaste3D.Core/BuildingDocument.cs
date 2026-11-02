@@ -179,7 +179,9 @@ public sealed class BuildingDocument
         var levelIds = Levels.Select(l => l.Id).ToHashSet();
         BaseLevels.Validate(this);
         if (Grids.Count > 10000 || Grids.Any(axis => axis is null || !axis.IsValid) ||
-            Grids.Select(axis => axis.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Grids.Count)
+            // Match the interactive editor's case-insensitive, whitespace-trimmed axis-name rule.
+            // Imported/native documents must not bypass uniqueness by storing "A" and " A ".
+            Grids.Select(axis => axis.Name.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Grids.Count)
             throw new InvalidDataException("Invalid grid axis definitions.");
         if (WallTypes.Count is < 1 or > 10000 || WallTypes.Any(type =>
                 type.Id == Guid.Empty || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 120 ||

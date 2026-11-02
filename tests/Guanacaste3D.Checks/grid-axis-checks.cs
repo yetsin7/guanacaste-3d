@@ -19,6 +19,19 @@ static class GridAxisChecks
         check(rejected && session.Document.Grids.Single(x => x.Id == id).Name == "A",
             "Duplicate numerical labels cannot overwrite existing axes");
 
+        // Files can be imported or edited outside DocumentSession. They must obey the
+        // same normalized-name uniqueness rule as the interactive grid-axis editor.
+        var imported = BuildingDocument.Create("Imported axes");
+        imported.Grids.Add(new GridAxis(Guid.NewGuid(), "A", new(0, 0), new(10, 0)));
+        imported.Grids.Add(new GridAxis(Guid.NewGuid(), " a ", new(0, 4), new(10, 4)));
+        rejected = false;
+        try { imported.Validate(); }
+        catch (InvalidDataException) { rejected = true; }
+        check(rejected, "Imported axes cannot duplicate names by case or surrounding whitespace");
+        imported.Grids.RemoveAt(1);
+        imported.Validate();
+        check(imported.Grids.Count == 1, "Valid existing grid axes remain compatible with document validation");
+
         var wallId = session.AddWall(level, new Point2(1, 0), new Point2(7, 0));
         var crossing = session.AddWall(level, new Point2(4, -2), new Point2(4, 2));
         session.AddOpening(wallId, OpeningKind.Door, offset: 2);
