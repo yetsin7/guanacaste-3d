@@ -215,6 +215,18 @@ static class RenderEngineChecks
         var light = rle.Sample(Vector3.UnitX);
         check(rle.Width == 8 && light.X > light.Y && light.Y > light.Z && light.Z > 0,
             "RGBE per-channel RLE scanlines decode colors and exponent correctly");
+
+        // Very large but finite camera/environment yaw values must not overflow
+        // degrees-to-radians conversion and turn HDRI samples into NaN pixels.
+        var hugeYaw = panorama.Sample(Vector3.UnitX, float.MaxValue);
+        var negativeHugeYaw = panorama.Sample(Vector3.UnitX, -float.MaxValue);
+        var reducedYaw = (float)((double)float.MaxValue % 360.0);
+        check(float.IsFinite(hugeYaw.X + hugeYaw.Y + hugeYaw.Z) &&
+              float.IsFinite(negativeHugeYaw.X + negativeHugeYaw.Y + negativeHugeYaw.Z) &&
+              Vector3.Distance(hugeYaw, panorama.Sample(Vector3.UnitX, reducedYaw)) < 1e-4f &&
+              Vector3.Distance(panorama.Sample(Vector3.UnitX, float.NaN),
+                               panorama.Sample(Vector3.UnitX)) < 1e-4f,
+            "HDRI sampling wraps extreme finite yaw and ignores nonfinite yaw without NaN pixels");
     }
 
     private static float Sum(Vector3 v) => v.X + v.Y + v.Z;

@@ -140,7 +140,12 @@ public sealed class HdriEnvironment
         if (!float.IsFinite(direction.X + direction.Y + direction.Z) || direction.LengthSquared() < 1e-12f)
             return Vector3.Zero;
         direction = Vector3.Normalize(direction);
-        var yaw = float.IsFinite(yawDegrees) ? yawDegrees * MathF.PI / 180f : 0f;
+        // Reduce degrees before converting to radians: even a finite float yaw can
+        // overflow float multiplication, producing NaN UVs and contaminating the sky.
+        // Double precision preserves the remainder of large finite float inputs.
+        var yaw = float.IsFinite(yawDegrees)
+            ? (float)(((double)yawDegrees % 360.0) * (Math.PI / 180.0))
+            : 0f;
         var longitude = MathF.Atan2(direction.Y, direction.X) + yaw;
         var u = longitude / (2 * MathF.PI) + 0.5f;
         u -= MathF.Floor(u);
