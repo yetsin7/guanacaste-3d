@@ -29,8 +29,8 @@ static class RenderDetailChecks
             var leaves = render.TriangleKinds.Count(kind => kind == SurfaceKind.Leaf);
             var (min, max) = render.Bounds();
             check(leaves > 2000 && render.TriangleCount > model.TriangleCount * 3 &&
-                  Math.Abs(max.Z - preset.Height) < 0.02 && min.Z > -0.01f,
-                $"The render-quality {preset.Style} has branches and single leaves and keeps its height");
+                  Math.Abs(max.Z - (preset.Height - 0.08)) < 0.02 && Math.Abs(min.Z + 0.08) < 0.01,
+                $"The render-quality {preset.Style} has branches and single leaves and is embedded slightly below ground");
             var again = BuildingMesher.Build(document, plants: PlantDetail.Render);
             check(again.Positions.Count == render.Positions.Count && again.Positions[^1] == render.Positions[^1],
                 $"The render-quality {preset.Style} regenerates identically");

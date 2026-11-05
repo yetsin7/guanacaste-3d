@@ -156,9 +156,9 @@ public partial class MainWindow
         var standardVisibility = renderIsActive ? Visibility.Collapsed : Visibility.Visible;
         StandardSidebar.Visibility = standardVisibility;
         StandardSidebarSplitter.Visibility = standardVisibility;
-        // Render is a separate studio: no BIM ribbon, project palettes, global status bar or title toolbar.
+        // Render retains the window title bar while hiding the BIM ribbon and palettes.
         // The project model, view state and commands remain loaded and are restored on return to 3D.
-        MainTitleBar.Visibility = standardVisibility;
+        MainTitleBar.Visibility = Visibility.Visible;
         RibbonTabControl.Visibility = standardVisibility;
         MainStatusStrip.Visibility = standardVisibility;
         RenderReturn3DButton.Visibility = renderIsActive ? Visibility.Visible : Visibility.Collapsed;

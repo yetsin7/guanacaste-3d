@@ -262,7 +262,7 @@
   <sys:String x:Key="RenderPanel.PreviewStatus">Vista previa · muestra {0} de {1}</sys:String>
   <sys:String x:Key="RenderPanel.PreviewReady">Vista previa lista · {0} muestras</sys:String>
   <sys:String x:Key="RenderPanel.Rendering">Renderizando · muestra {0} de {1} · {2}×{3} px · quedan {4}</sys:String>
-  <sys:String x:Key="RenderPanel.Rendered">Render terminado · {0} muestras · {1}×{2} px · {3} · {4:0.0} Mrayos/s</sys:String>
+  <sys:String x:Key="RenderPanel.Rendered">Render completado · {0} muestras · {1}×{2} px · {3} · {4:0.0} Mrayos/s</sys:String>
   <sys:String x:Key="RenderPanel.RenderStopped">Render detenido en la muestra {0}. La imagen está lista para guardar.</sys:String>
   <sys:String x:Key="RenderPanel.MemoryStop">Memoria casi agotada: el render se detuvo en la muestra {0} para proteger tu equipo. La imagen está lista para guardar; prueba un tamaño menor o el modo Eco.</sys:String>
   <sys:String x:Key="RenderPanel.SizeReduced">El tamaño se redujo a {0}×{1} px para que quepa en la memoria libre.</sys:String>
@@ -400,4 +400,16 @@
   <sys:String x:Key="RenderGallery.Reset">Restaurar valores</sys:String>
   <sys:String x:Key="RenderGallery.MapChannels">Mapas PBR (normales, rugosidad y metalicidad)</sys:String>
   <sys:String x:Key="RenderGallery.MapHint">Los cambios de apariencia se guardan en el proyecto; el archivo .g3dm original permanece intacto. Los mapas propios pueden sustituir los del paquete.</sys:String>
+  <sys:String x:Key="RenderPanel.RailEnvironment">Entorno</sys:String>
+  <sys:String x:Key="RenderPanel.RailImage">Imagen</sys:String>
+  <sys:String x:Key="RenderPanel.RailCamera">Cámara</sys:String>
+  <sys:String x:Key="RenderPanel.RailMaterial">Material</sys:String>
+  <sys:String x:Key="RenderPanel.RailQuality">Calidad</sys:String>
+  <sys:String x:Key="RenderPanel.RailAi">Render IA</sys:String>
+  <sys:String x:Key="RenderPanel.RailEnvironmentHint">Entorno, sol y luces</sys:String>
+  <sys:String x:Key="RenderPanel.RailImageHint">Estilos, efectos y color</sys:String>
+  <sys:String x:Key="RenderPanel.RailCameraHint">Cámara y encuadre</sys:String>
+  <sys:String x:Key="RenderPanel.RailMaterialHint">Biblioteca de materiales y texturas</sys:String>
+  <sys:String x:Key="RenderPanel.RailQualityHint">Calidad, tamaño y equipo</sys:String>
+  <sys:String x:Key="RenderPanel.RailAiHint">Render con IA: prepara la imagen para servicios externos</sys:String>
 </ResourceDictionary>

@@ -346,6 +346,8 @@ public static class BuildingMesher
             {
                 var planting = element.Kind == StructuralElementKind.Planting;
                 var ground = planting ? TerrainUnder(document, element.LevelId, element.Start) : 0;
+                // A small render-only embed hides gaps at uneven ground and mesh bases.
+                if (planting && plants == PlantDetail.Render) ground -= 0.08;
                 // A plant's width is its canopy spread: both plan axes scale alike, so the crown keeps its shape.
                 var size = familyMesh.Decode().Size;
                 var spread = element.Width / Math.Max(size.X, size.Y);
@@ -360,6 +362,7 @@ public static class BuildingMesher
             {
                 // Like a Revit site component, a plant stands on the toposolid it is placed on.
                 var ground = datum + TerrainUnder(document, element.LevelId, element.Start);
+                if (plants == PlantDetail.Render) ground -= 0.08;
                 if (plants == PlantDetail.Render) PlantDetailGeometry.AppendTo(mesh, element, ground);
                 else PlantGeometry.AppendTo(mesh, element, ground);
                 mesh.MarkElement(element.Id, elementFirst);

@@ -100,6 +100,7 @@ public partial class RenderPanel
         var source = _source;
         var sceneVersion = source.SceneVersion;
         _renderStarting = true;
+        StatusText.Text = UiText.Get("RenderPanel.PreparingScene");
         RenderButton.IsEnabled = false;
         RenderScene? scene;
         try
@@ -169,7 +170,7 @@ public partial class RenderPanel
         var session = _session;
         session.PhaseChanged += phase => Dispatcher.BeginInvoke(() =>
         {
-            if (_rendering) StatusText.Text = UiText.Get(phase == "Render.Preparing" ? "RenderPanel.PreparingScene" : "RenderPanel.Idle");
+            if (_rendering) StatusText.Text = UiText.Get(phase == "Render.Preparing" ? "RenderPanel.PreparingScene" : "RenderPanel.RenderingSimple");
         });
         session.FrameReady += frame => Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
         {
