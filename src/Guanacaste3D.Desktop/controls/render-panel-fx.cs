@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Guanacaste3D.Core.Rendering;
 using Microsoft.Win32;
 
@@ -266,10 +267,10 @@ public partial class RenderPanel
             var selected = category == _fxCategory;
             var button = new Button
             {
-                HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 0, 2),
-                BorderThickness = new Thickness(0), Cursor = Cursors.Hand,
+                HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 8, 8, 8), Margin = new Thickness(0, 0, 0, 1),
+                BorderThickness = new Thickness(selected ? 1 : 0), BorderBrush = Brushes.LightSteelBlue, Cursor = Cursors.Hand,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF0, 0xF6)),
-                Background = new SolidColorBrush(selected ? Color.FromRgb(0x2B, 0x55, 0x63) : Color.FromArgb(0, 0, 0, 0)),
+                Background = new SolidColorBrush(selected ? Color.FromRgb(0x32, 0x6B, 0x88) : Color.FromArgb(0, 0, 0, 0)),
                 Content = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -294,28 +295,44 @@ public partial class RenderPanel
     private void ShowFxCategory(FxCategory category)
     {
         FxTiles.Children.Clear();
-        foreach (var effect in RenderFx.In(category)) FxTiles.Children.Add(BuildFxTile(effect));
+        var effects = category == FxCategory.Featured ? ReferenceFeaturedEffects() : RenderFx.In(category);
+        foreach (var effect in effects) FxTiles.Children.Add(BuildFxTile(effect));
+    }
+
+    private static readonly string[] ReferenceEffectIds = ["orthographic", "perspective", "dof", "matching", "clouds", "sun", "shadow", "reflection", "hyperlight", "skylight", "color", "layers"];
+
+    private static IEnumerable<FxEffect> ReferenceFeaturedEffects()
+    {
+        string[] names = ["Vista ortográfica", "Perspectiva de 2 puntos", "Profundidad de campo", "Ajuste fotográfico", "Cielos reales", "Sol", "Sombras", "Reflexión", "Hyperlight", "Luz del cielo", "Corrección de color", "Visibilidad de capas"];
+        for (var i = 0; i < ReferenceEffectIds.Length; i++)
+            yield return RenderFx.Find(ReferenceEffectIds[i]) ?? new FxEffect(ReferenceEffectIds[i], names[i], "Este efecto de la referencia aún no está disponible en el motor.", FxCategory.Featured, "", [], Planned: true);
+    }
+
+    private static ImageSource EffectThumbnail(FxEffect effect)
+    {
+        var index = Array.IndexOf(ReferenceEffectIds, effect.Id);
+        if (index < 0) return new BitmapImage(new Uri("pack://application:,,,/resources/samples/casa-del-cobogo.png"));
+        var reference = new BitmapImage(new Uri("pack://application:,,,/resources/render-reference/effects.png"));
+        // Only the illustrative photograph is used; names and state remain live controls.
+        return new CroppedBitmap(reference, new Int32Rect(150 + index % 3 * 162, 63 + index / 3 * 96, 160, 57));
     }
 
     private UIElement BuildFxTile(FxEffect effect)
     {
         var inUse = _fxActive.Contains(effect.Id);
-        var hue = effect.Id.Aggregate(0, (sum, letter) => (sum * 31 + letter) % 360);
-        var tile = new Grid { Width = 148, Height = 98 };
+        var tile = new Grid { Height = 120, ClipToBounds = true };
         tile.Children.Add(new Border
         {
-            CornerRadius = new CornerRadius(6),
-            Background = new LinearGradientBrush(HsvColor(hue, 0.45, 0.62), HsvColor((hue + 40) % 360, 0.55, 0.28), 60),
-            Opacity = effect.Planned ? 0.45 : 1
+            Background = new ImageBrush(EffectThumbnail(effect)) { Stretch = Stretch.UniformToFill },
+            Opacity = 1
+        });
+        tile.Children.Add(new Border
+        {
+            Background = new LinearGradientBrush(Color.FromArgb(190, 0, 0, 0), Color.FromArgb(25, 0, 0, 0), 90)
         });
         tile.Children.Add(new TextBlock
         {
-            Text = effect.Glyph, FontFamily = new FontFamily(FxFont), FontSize = 34, Opacity = 0.5, Foreground = Brushes.White,
-            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
-        });
-        tile.Children.Add(new TextBlock
-        {
-            Text = effect.Name, Foreground = Brushes.White, FontSize = 12, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
+            Text = effect.Name, Foreground = Brushes.White, FontSize = 11, TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(8, 6, 8, 0), VerticalAlignment = VerticalAlignment.Top
         });
         if (inUse || effect.Planned)
@@ -326,8 +343,8 @@ public partial class RenderPanel
             });
         var card = new Border
         {
-            Child = tile, Margin = new Thickness(4), CornerRadius = new CornerRadius(6), Cursor = Cursors.Hand,
-            ToolTip = effect.Description, BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromRgb(0x3E, 0x53, 0x65))
+            Child = tile, Margin = new Thickness(0), Cursor = Cursors.Hand,
+            ToolTip = effect.Description, BorderThickness = new Thickness(0, 0, 1, 1), BorderBrush = new SolidColorBrush(Color.FromRgb(0x83, 0x92, 0x97))
         };
         card.MouseEnter += (_, _) => card.BorderBrush = new SolidColorBrush(Color.FromRgb(0x7B, 0xDC, 0xD0));
         card.MouseLeave += (_, _) => card.BorderBrush = new SolidColorBrush(Color.FromRgb(0x3E, 0x53, 0x65));

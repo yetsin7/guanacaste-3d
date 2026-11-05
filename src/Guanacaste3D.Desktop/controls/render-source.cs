@@ -17,6 +17,7 @@ namespace Guanacaste3D.Desktop.Controls;
 /// <summary>What the render panel needs from the window that hosts it.</summary>
 internal interface IRenderSource
 {
+    string ExecuteSceneCommand(string command) => "La acción no está disponible en esta vista.";
     /// <summary>The camera shared with the 3D view, so both always show the same place.</summary>
     NavigationCamera Camera { get; }
 

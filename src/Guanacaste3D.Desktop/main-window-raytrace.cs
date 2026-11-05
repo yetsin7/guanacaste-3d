@@ -75,6 +75,27 @@ public partial class MainWindow
     /// <summary>Adapts the window to what the render panel asks of its host.</summary>
     private sealed class RenderSource(MainWindow window) : IRenderSource
     {
+        public string ExecuteSceneCommand(string command)
+        {
+            var args = new RoutedEventArgs();
+            switch (command)
+            {
+                case "import": window.ImportModel_Click(window, args); break;
+                case "rotate": window.Rotate_Click(window, args); break;
+                case "delete": window.Delete_Click(window, args); break;
+                case "undo": window.Undo_Click(window, args); break;
+                case "duplicate":
+                    if (window._selectedStructuralId is Guid id)
+                    {
+                        window._selectedStructuralId = window._session.DuplicateRenderComponent(id);
+                        window.RefreshAll();
+                        return "Objeto duplicado a un metro del original.";
+                    }
+                    window.Duplicate_Click(window, args);
+                    break;
+            }
+            return window.StatusText.Text;
+        }
         public NavigationCamera Camera => window._navigation;
         public string ProjectName => window._session.Document.Name;
         public (Vector3 Min, Vector3 Max) SceneBounds() => window.SceneBounds();

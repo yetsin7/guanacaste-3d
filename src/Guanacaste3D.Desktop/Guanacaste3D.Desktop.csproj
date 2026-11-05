@@ -31,6 +31,8 @@
     <Resource Include="resources\brand\guanacaste3d.ico" />
     <Content Include="resources\brand\guanacaste3d.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Resource Include="resources\brand\guanacaste3d-logo.png" />
+    <Resource Include="resources\samples\casa-del-cobogo.png" />
+    <Resource Include="resources\render-reference\effects.png" />
     <!-- Shipped render textures, loaded from disk next to the executable by RenderTextureLibrary. -->
     <Content Include="resources\textures\*.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="resources\textures\*.jpg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

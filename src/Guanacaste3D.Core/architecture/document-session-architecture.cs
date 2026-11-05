@@ -228,6 +228,23 @@ public sealed partial class DocumentSession
         });
     }
 
+    /// <summary>Copies a scene component with a visible offset as one undoable edit.</summary>
+    public Guid DuplicateRenderComponent(Guid elementId)
+    {
+        var source = Document.StructuralElements.FirstOrDefault(item => item.Id == elementId)
+            ?? throw new InvalidDataException("The element does not exist.");
+        if (source.Kind != StructuralElementKind.Component)
+            throw new InvalidDataException("Select a component to duplicate in the render view.");
+        var id = Guid.NewGuid();
+        Commit("Transaction.DuplicateStructuralElement", document => document.StructuralElements.Add(source with
+        {
+            Id = id,
+            Start = new Point2(source.Start.X + 1, source.Start.Y + 1),
+            End = new Point2(source.End.X + 1, source.End.Y + 1)
+        }));
+        return id;
+    }
+
     /// <summary>An angle brought into [0, 2π), with turns within a micro-radian of a right angle snapped onto it.</summary>
     private static double NormalizeTurn(double radians)
     {
