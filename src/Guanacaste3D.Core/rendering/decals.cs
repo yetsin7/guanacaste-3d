@@ -53,13 +53,14 @@ public static class Decals
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var decals = new List<Decal>();
+            var ids = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var decal = new Decal(item.GetProperty("Id").GetGuid(), item.GetProperty("WallId").GetGuid(),
                     (DecalFace)item.GetProperty("Face").GetInt32(), item.GetProperty("Along").GetDouble(),
                     item.GetProperty("CenterHeight").GetDouble(), item.GetProperty("Width").GetDouble(),
                     item.GetProperty("Height").GetDouble(), item.GetProperty("ImagePath").GetString() ?? "");
-                if (!IsSane(decal)) return null;
+                if (!IsSane(decal) || !ids.Add(decal.Id)) return null;
                 decals.Add(decal);
             }
             return decals;
