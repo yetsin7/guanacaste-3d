@@ -993,7 +993,16 @@
     <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                   Background="{DynamicResource PanelBorderBrush}" Cursor="SizeWE" Focusable="False"/>
 
-    <Grid Grid.Column="2" x:Name="ImageHost" ClipToBounds="True" SizeChanged="ImageHost_SizeChanged"
+    <DockPanel Grid.Column="2">
+      <DockPanel DockPanel.Dock="Top" Background="#101D29" LastChildFill="True">
+      <Button x:Name="CopyCurrentViewButton" Content="{DynamicResource RenderPanel.CopyViewForAi}" Click="CopyCurrentView_Click"
+              DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0"
+              Padding="14,9" MinHeight="38" FontWeight="SemiBold"
+              Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
+              ToolTip="{DynamicResource RenderPanel.CopyViewForAiHint}"/>
+        <ContentControl x:Name="OutputModeHost" HorizontalContentAlignment="Left" VerticalContentAlignment="Center"/>
+      </DockPanel>
+    <Grid x:Name="ImageHost" ClipToBounds="True" SizeChanged="ImageHost_SizeChanged"
           AllowDrop="True" DragOver="MaterialDragOver" Drop="MaterialDrop">
       <Grid.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -1009,12 +1018,7 @@
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
-      <!-- Always available while inside Render, including for live preview frames. -->
-      <Button x:Name="CopyCurrentViewButton" Content="{DynamicResource RenderPanel.CopyViewForAi}" Click="CopyCurrentView_Click"
-              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,176"
-              Padding="14,9" MinHeight="38" FontWeight="SemiBold"
-              Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
-              ToolTip="{DynamicResource RenderPanel.CopyViewForAiHint}"/>
+
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
       <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
               Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="0" Padding="12,10"
@@ -1049,7 +1053,8 @@
         </StackPanel>
       </Border>
       <!-- Effect picker: categories on the left, one tile per effect on the right, like Lumion's "Select Photo Effect". -->
-      <Border x:Name="FxPicker" Visibility="Collapsed" Panel.ZIndex="100" Background="#788E99" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+      <Border x:Name="FxPicker" Visibility="Collapsed" PreviewKeyDown="FxPicker_KeyDown" KeyboardNavigation.TabNavigation="Cycle" Panel.ZIndex="100" Background="#788E99" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+
         <DockPanel>
           <Grid DockPanel.Dock="Top" Height="44" Background="#7C919B">
             <Button Click="FxPickerClose_Click" HorizontalAlignment="Left" Width="44" Background="Transparent" BorderThickness="0"
@@ -1057,8 +1062,13 @@
             <TextBlock Text="Seleccionar efecto de foto" Foreground="White" FontSize="17"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
+          <DockPanel DockPanel.Dock="Top" Margin="12,0,12,8">
+            <Label Content="_Buscar" Target="{Binding ElementName=FxSearch}" Foreground="White"/>
+            <TextBox x:Name="FxSearch" TextChanged="FxSearch_Changed" AutomationProperties.Name="Buscar efectos" ToolTip="Buscar en todas las categorías"/>
+          </DockPanel>
           <ScrollViewer DockPanel.Dock="Left" Width="148" VerticalScrollBarVisibility="Auto" Background="#596F7A">
             <StackPanel x:Name="FxCategoryList" Margin="4,1,2,0"/>
+
           </ScrollViewer>
           <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#465C66">
             <UniformGrid x:Name="FxTiles" Columns="3" VerticalAlignment="Top"/>
@@ -1182,5 +1192,6 @@
         </DockPanel>
       </Border>
     </Grid>
+    </DockPanel>
   </Grid>
 </UserControl>

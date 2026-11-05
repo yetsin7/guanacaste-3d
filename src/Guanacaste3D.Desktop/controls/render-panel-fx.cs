@@ -252,12 +252,35 @@ public partial class RenderPanel
 
     private void AddFx_Click(object sender, RoutedEventArgs e)
     {
+        _fxOpener = sender as Button;
+        FxSearch.Clear();
         BuildFxCategories();
         ShowFxCategory(_fxCategory);
         FxPicker.Visibility = Visibility.Visible;
+        FxSearch.Focus();
     }
 
-    private void FxPickerClose_Click(object sender, RoutedEventArgs e) => FxPicker.Visibility = Visibility.Collapsed;
+    private Button? _fxOpener;
+
+    private void CloseFxPicker()
+    {
+        FxPicker.Visibility = Visibility.Collapsed;
+        _fxOpener?.Focus();
+    }
+
+    private void FxPickerClose_Click(object sender, RoutedEventArgs e) => CloseFxPicker();
+
+    private void FxPicker_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        CloseFxPicker();
+    }
+
+    private void FxSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (FxTiles is not null) ShowFxCategory(_fxCategory);
+    }
 
     private void BuildFxCategories()
     {
@@ -285,6 +308,7 @@ public partial class RenderPanel
             button.Click += (_, _) =>
             {
                 _fxCategory = chosen;
+                FxSearch.Clear();
                 BuildFxCategories();
                 ShowFxCategory(chosen);
             };
@@ -295,7 +319,10 @@ public partial class RenderPanel
     private void ShowFxCategory(FxCategory category)
     {
         FxTiles.Children.Clear();
-        var effects = category == FxCategory.Featured ? ReferenceFeaturedEffects() : RenderFx.In(category);
+        var query = FxSearch.Text.Trim();
+        var effects = query.Length == 0
+            ? (category == FxCategory.Featured ? ReferenceFeaturedEffects() : RenderFx.In(category))
+            : RenderFx.All.Where(effect => effect.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || effect.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         foreach (var effect in effects) FxTiles.Children.Add(BuildFxTile(effect));
     }
 
@@ -315,6 +342,7 @@ public partial class RenderPanel
         var reference = new BitmapImage(new Uri("pack://application:,,,/resources/render-reference/effects.png"));
         // Only the illustrative photograph is used; names and state remain live controls.
         return new CroppedBitmap(reference, new Int32Rect(150 + index % 3 * 162, 63 + index / 3 * 96, 160, 57));
+
     }
 
     private UIElement BuildFxTile(FxEffect effect)
@@ -341,17 +369,19 @@ public partial class RenderPanel
                 Text = effect.Planned ? "Próximamente" : "Ya en uso", Foreground = Brushes.White, FontSize = 10.5,
                 Margin = new Thickness(0, 0, 8, 5), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom
             });
-        var card = new Border
+        var card = new Button
         {
-            Child = tile, Margin = new Thickness(0), Cursor = Cursors.Hand,
+            Content = tile, Padding = new Thickness(0), Margin = new Thickness(0), Cursor = Cursors.Hand,
             ToolTip = effect.Description, BorderThickness = new Thickness(0, 0, 1, 1), BorderBrush = new SolidColorBrush(Color.FromRgb(0x83, 0x92, 0x97))
+
         };
         card.MouseEnter += (_, _) => card.BorderBrush = new SolidColorBrush(Color.FromRgb(0x7B, 0xDC, 0xD0));
         card.MouseLeave += (_, _) => card.BorderBrush = new SolidColorBrush(Color.FromRgb(0x3E, 0x53, 0x65));
-        card.MouseLeftButtonUp += (_, _) =>
+        System.Windows.Automation.AutomationProperties.SetName(card, effect.Name);
+        card.Click += (_, _) =>
         {
             AddFx(effect);
-            if (!effect.Planned) FxPicker.Visibility = Visibility.Collapsed;
+            CloseFxPicker();
         };
         return card;
     }
@@ -494,7 +524,9 @@ public partial class RenderPanel
         }
         var shown = entering ? Visibility.Collapsed : Visibility.Visible;
         SettingsSplitter.Visibility = shown;
-        PhotoStrip.Visibility = shown;
+        ModeOverlayHost.Visibility = shown;
+        PhotoStrip.Visibility = !entering && _mode == RenderMode.Photo ? Visibility.Visible : Visibility.Collapsed;
+        OutputModeHost.IsEnabled = !entering;
         TheaterText.Text = entering ? "Mostrar paneles" : "Teatro";
     }
 }

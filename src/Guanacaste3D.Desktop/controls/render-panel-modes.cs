@@ -42,7 +42,7 @@ public partial class RenderPanel
     {
         ModeOverlayHost.Children.Clear();
         _modeButtons.Clear();
-        ModeOverlayHost.Children.Add(BuildModeSwitch());
+        OutputModeHost.Content = BuildModeSwitch();
         _movieStrip = BuildMovieStrip();
         _panoramaStrip = BuildPanoramaStrip();
         ModeOverlayHost.Children.Add(_movieStrip);
@@ -54,7 +54,7 @@ public partial class RenderPanel
 
     private FrameworkElement BuildModeSwitch()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        var row = new WrapPanel();
         foreach (var (mode, label, glyph) in new[]
                  {
                      (RenderMode.Photo, "Foto", ""), (RenderMode.Movie, "Película", ""), (RenderMode.Panorama, "Panorama 360°", "")
@@ -85,7 +85,7 @@ public partial class RenderPanel
         return new Border
         {
             VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(14, 0, 0, 172), CornerRadius = new CornerRadius(9), Padding = new Thickness(2),
+            Margin = new Thickness(4), CornerRadius = new CornerRadius(9), Padding = new Thickness(2),
             Background = Frozen(Color.FromArgb(0xEC, 0x0F, 0x1B, 0x26)), BorderBrush = CardBorderIdle, BorderThickness = new Thickness(1),
             Child = row
         };
