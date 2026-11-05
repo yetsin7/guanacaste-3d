@@ -28,8 +28,17 @@ public static class Decals
 
     public static string? Serialize(IReadOnlyCollection<Decal> decals)
     {
+        ArgumentNullException.ThrowIfNull(decals);
+        if (decals.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(decals), $"No se pueden guardar más de {Maximum} estampados.");
+        var ids = new HashSet<Guid>();
+        foreach (var decal in decals)
+        {
+            if (decal is null || !IsSane(decal) || !ids.Add(decal.Id))
+                throw new ArgumentException("Los estampados contienen datos inválidos o identificadores duplicados.", nameof(decals));
+        }
         if (decals.Count == 0) return null;
-        return JsonSerializer.Serialize(new { V = 1, Items = decals.Take(Maximum) });
+        return JsonSerializer.Serialize(new { V = 1, Items = decals });
     }
 
     /// <summary>Reads the saved decals; null when the text is damaged, an empty list when there are none.</summary>
