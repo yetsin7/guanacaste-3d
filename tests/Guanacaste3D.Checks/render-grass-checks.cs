@@ -79,6 +79,11 @@ static class RenderGrassChecks
         check(Windy(0, 3).SequenceEqual(still) && still.SequenceEqual(grown) && !Windy(0.8f, 0).SequenceEqual(still) && !Windy(0.8f, 1.3f).SequenceEqual(Windy(0.8f, 0)),
             "With no wind the picture does not depend on the time; with wind the lawn leans, and the gusts have moved a moment later");
 
+        // Rendering must not wait for the thread pool to grow: once a tracer exists the pool starts with room for every core.
+        ThreadPool.GetMinThreads(out var poolThreads, out _);
+        check(poolThreads >= Math.Max(4, Environment.ProcessorCount * 2),
+            $"A path tracer leaves the thread pool room to start with twice as many threads as cores ({poolThreads}), so no core waits for it to grow");
+
         // Saved with the photo's look, and refused out of range.
         var setup = new RenderSetup { Grass = 0.6, Wind = 0.35 };
         var rejected = new[] { new RenderSetup { Grass = 1.4 }, new RenderSetup { Grass = -0.1 }, new RenderSetup { Grass = double.NaN }, new RenderSetup { Wind = 2 } }.Count(bad =>

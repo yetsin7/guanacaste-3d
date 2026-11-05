@@ -126,6 +126,7 @@ public sealed partial class PathTracer
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scene);
+        RenderThreads.EnsureCapacity();
         if (width is < 1 or > 8192 || height is < 1 or > 8192)
             throw new ArgumentOutOfRangeException(nameof(width), "Render size must be 1–8192 pixels.");
         var buildClock = System.Diagnostics.Stopwatch.StartNew();
