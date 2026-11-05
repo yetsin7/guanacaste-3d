@@ -171,11 +171,17 @@ public partial class RenderPanel
         _cancel = new CancellationTokenSource();
         RenderButton.Content = UiText.Get("RenderPanel.Stop");
         RenderTourButton.IsEnabled = false;
+        RenderProgressPanel.Visibility = Visibility.Visible;
         RenderProgress.Visibility = Visibility.Visible;
+        RenderProgress.Value = 0;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         var progress = new Progress<TourProgress>(p =>
         {
-            RenderProgress.Value = p.Frame / (double)Math.Max(1, p.Total);
-            StatusText.Text = UiText.Format("RenderPanel.TourFrame", p.Frame, p.Total, p.Seconds);
+            var fraction = (p.Frame + (p.Samples > 0 ? p.Sample / (double)p.Samples : 0)) / Math.Max(1, p.Total);
+            RenderProgress.Value = Math.Clamp(fraction, 0, 1);
+            RenderElapsedText.Text = timer.Elapsed.ToString(@"hh\:mm\:ss");
+            RenderRemainingText.Text = fraction > .001 ? TimeSpan.FromSeconds(timer.Elapsed.TotalSeconds * (1 - fraction) / fraction).ToString(@"hh\:mm\:ss") : "—";
+            StatusText.Text = $"Película: {p.Frame}/{p.Total} fotogramas · {fraction:P0}" + (p.Samples > 0 ? $" · muestra {p.Sample}/{p.Samples}" : "");
         });
         // The encoder is tried first, before any frame is rendered, so a computer that cannot make video says so at once.
         Mp4VideoWriter? video = null;
@@ -199,7 +205,7 @@ public partial class RenderPanel
             _renderingTour = false;
             RenderButton.Content = UiText.Get("RenderPanel.Render");
             RenderTourButton.IsEnabled = true;
-            RenderProgress.Visibility = Visibility.Collapsed;
+            RenderProgressPanel.Visibility = Visibility.Collapsed;
             _preview?.Resume();
         }
         if (failure is not null)

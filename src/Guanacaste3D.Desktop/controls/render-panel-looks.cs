@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Guanacaste3D.Core.Rendering;
 
 namespace Guanacaste3D.Desktop.Controls;
@@ -17,17 +19,36 @@ public partial class RenderPanel
     private void InitializeLooks()
     {
         SkyPicker.Items.Add(new ComboBoxItem { Content = Text("RenderSky.Custom"), Tag = string.Empty });
-        foreach (var sky in RenderLooks.Skies) SkyPicker.Items.Add(new ComboBoxItem { Content = Text(sky.NameKey), Tag = sky.Id });
+        foreach (var sky in RenderLooks.Skies) SkyPicker.Items.Add(new ComboBoxItem { Content = LookEntry(Text(sky.NameKey), () => RenderLookThumbnail.Sky(sky)), Tag = sky.Id });
         SkyPicker.SelectedIndex = 0;
         foreach (var clouds in Enum.GetValues<CloudStyle>())
             CloudStylePicker.Items.Add(new ComboBoxItem { Content = Text($"CloudStyle.{clouds}"), Tag = clouds.ToString() });
         CloudStylePicker.SelectedIndex = 0;
-        foreach (var style in RenderLooks.Styles) StylePicker.Items.Add(new ComboBoxItem { Content = Text(style.NameKey), Tag = style.Id });
+        foreach (var style in RenderLooks.Styles) StylePicker.Items.Add(new ComboBoxItem { Content = LookEntry(Text(style.NameKey), () => RenderLookThumbnail.Style(style)), Tag = style.Id });
         StylePicker.SelectedIndex = 0;
         foreach (var lut in ColorLutPresets.All)
             LutPicker.Items.Add(new ComboBoxItem { Content = lut.Name, Tag = lut.Id });
         LutPicker.Items.Add(new ComboBoxItem { Content = "LUT personalizada (.cube)", Tag = "custom" });
         LutPicker.SelectedIndex = 0;
+    }
+
+    /// <summary>Load the example off the UI thread, only when its picker item is shown.</summary>
+    private static FrameworkElement LookEntry(string name, Func<BitmapSource?> make)
+    {
+        var image = new Image { Width = 64, Height = 36, Stretch = Stretch.UniformToFill, Margin = new Thickness(0, 0, 8, 0) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(image);
+        row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
+        bool started = false;
+        image.Loaded += async (_, _) =>
+        {
+            if (started) return;
+            started = true;
+            try { image.Source = await Task.Run(make); }
+            catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or
+                                               InvalidOperationException or NotSupportedException or ArgumentException) { }
+        };
+        return row;
     }
 
     private CloudStyle SelectedClouds() => Enum.TryParse<CloudStyle>(Mode(CloudStylePicker), out var clouds) ? clouds : CloudStyle.Cumulus;

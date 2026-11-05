@@ -1,0 +1,91 @@
+using System.Numerics;
+using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
+using Guanacaste3D.Core.Navigation;
+using Guanacaste3D.Core.Rendering;
+
+var output = Path.GetFullPath(args[0]);
+Directory.CreateDirectory(output);
+var s = new DocumentSession(ArchitecturalLibrary.CreateProject("Casa terraza — referencia 30 × 40 pies"));
+var g = s.Document.Levels.Single(l=>l.Role==LevelRole.BaseFloor).Id;
+var r = s.Document.Levels.Single(l=>l.Role==LevelRole.BaseRoof).Id;
+s.UpdateLevel(g,"Planta baja",0.60); s.UpdateLevel(r,"Terraza",3.65);
+var site=s.AddLevel(); s.UpdateLevel(site,"Jardín",0);
+Point2 P(double x,double y)=>new(x,y);
+Point2[] Rect(double a,double b,double c,double d)=>[P(a,b),P(c,b),P(c,d),P(a,d)];
+SlabPreset Sl(string n)=>ArchitecturalLibrary.SlabPresets.Single(p=>p.Name==n);
+ElementPreset El(string n)=>ArchitecturalLibrary.ElementPresets.Single(p=>p.Name==n);
+Guid W(Guid l,double a,double b,double c,double d,string type="Rendered Block 150 mm",double h=3)=>s.AddWall(l,P(a,b),P(c,d),height:h,wallTypeId:ArchitecturalLibrary.WallTypes().Single(t=>t.Name==type).Id);
+void Floor(Guid l,double a,double b,double c,double d,string n="Porcelain Tile Floor 200 mm",double offset=0)=>s.AddSlabFromPreset(l,Rect(a,b,c,d),Sl(n),offset);
+void Door(Guid w,double at,double width=.8)=>s.AddOpening(w,OpeningKind.Door,at,width,0,2.2);
+void Win(Guid w,double at,double width,double height=2.3,double sill=.35)=>s.AddOpening(w,OpeningKind.Window,at,width,sill,height);
+void Place(Guid l,string n,double x,double y,double turn=0)=>s.AddElementFromPreset(l,El(n),P(x,y),P(x,y),turn);
+void Room(string n,double a,double b,double c,double d)=>s.AddRoom(g,P(a,b),P(c,d),n);
+// Image proportions govern the layout; printed room sizes contradict the total lot.
+Floor(site,0,0,9.144,12.192,"Lawn 150 mm");
+Floor(g,1.35,3.10,8.35,11.45);
+var front=W(g,1.35,3.1,8.35,3.1); Win(front,1.35,1.8); Door(front,3.55,1.05); Win(front,5.65,1.8);
+var west=W(g,1.35,3.1,1.35,11.45); Win(west,1.55,1.5); Win(west,5,1.2);
+var east=W(g,8.35,3.1,8.35,11.45); Win(east,1.7,1.5); Win(east,4.65,.65,.6,1.7); Win(east,6.8,1.4);
+var back=W(g,1.35,11.45,8.35,11.45); Win(back,1.8,1.2,1.2,1); Win(back,3.7,.6,.5,1.7); Win(back,5.6,1.3,1.3,.9);
+var hall=W(g,4.2,3.1,4.2,6.2,"Gypsum Partition 100 mm");
+s.AddOpening(hall,OpeningKind.Window,1.55,openingTypeId:s.Document.OpeningTypes.First(t=>t.Operation==OpeningOperation.Void && t.Width==2.4).Id);
+var br=W(g,5.45,3.1,5.45,7.15,"Gypsum Partition 100 mm"); Door(br,3.25);
+W(g,5.45,7.15,8.35,7.15,"Gypsum Partition 100 mm");
+var bath=W(g,5.45,7.15,5.45,8.65,"Gypsum Partition 100 mm"); Door(bath,.7,.7);
+W(g,5.45,8.65,8.35,8.65,"Gypsum Partition 100 mm");
+var br2=W(g,5.45,8.65,5.45,11.45,"Gypsum Partition 100 mm"); Door(br2,.65);
+var bath2=W(g,4.2,9.35,5.45,9.35,"Gypsum Partition 100 mm"); Door(bath2,.625,.7);
+W(g,4.2,9.35,4.2,11.45,"Gypsum Partition 100 mm");
+var utility=W(g,1.35,9.2,2.25,9.2,"Gypsum Partition 100 mm"); Door(utility,.45,.7);
+W(g,2.25,9.2,2.25,11.45,"Gypsum Partition 100 mm");
+Room("Sala",1.45,3.2,4.1,6.15); Room("Vestíbulo",4.3,3.2,5.35,6.1);
+Room("Dormitorio principal",5.55,3.2,8.25,7.05); Room("Baño 1",5.55,7.25,8.25,8.55);
+Room("Dormitorio 2",5.55,8.75,8.25,11.35); Room("Baño 2",4.3,9.45,5.35,11.35);
+Room("Cocina",2.35,9.0,4.1,11.35); Room("Lavandería",1.45,9.3,2.15,11.35); Room("Comedor",1.45,6.3,4.1,8.9);
+Floor(g,5.55,3.2,8.25,7.05,"Timber Joist Floor 250 mm",.015); Floor(g,5.55,8.75,8.25,11.35,"Timber Joist Floor 250 mm",.015);
+Floor(g,5.55,7.25,8.25,8.55,"Ceramic Tile Floor 200 mm",.015); Floor(g,4.3,9.45,5.35,11.35,"Ceramic Tile Floor 200 mm",.015);
+// Entrance platform, broad steps and white portal.
+Floor(g,2.95,1.9,6.05,3.1,"Concrete Slab 150 mm");
+for(int i=0;i<4;i++) Floor(site,3.15, .7+i*.3,5.85,1.0+i*.3,"Concrete Slab 150 mm",.15*(i+1));
+foreach(double x in new[]{3.05,5.95}) s.AddColumn(g,P(x,2.05),.3,.3,3);
+Floor(g,1.2,1.85,6.15,3.5,"Painted Concrete Slab 300 mm",3.05);
+Floor(r,1.2,3.0,8.5,11.6,"Painted Concrete Slab 300 mm");
+W(r,1.25,1.9,6.15,1.9,h:.35); W(r,1.25,1.9,1.25,11.5,h:.35); W(r,8.45,3.0,8.45,11.5,h:.35); W(r,1.25,11.5,8.45,11.5,h:.9);
+void Rail(double a,double b,double c,double d)=>s.AddElementFromPreset(r,El("Guard with Balusters 1100 mm") with {Offset=.3,Height=.85},P(a,b),P(c,d));
+Rail(1.25,1.95,6.15,1.95); Rail(6.15,1.95,6.15,3.05); Rail(6.15,3.05,8.45,3.05); Rail(1.25,1.95,1.25,11.5); Rail(8.45,3.05,8.45,11.5);
+// Rear rooftop pavilion (inferred from the photograph).
+foreach(double x in new[]{2.9,6.7}) foreach(double y in new[]{6.8,10.5}) s.AddColumn(r,P(x,y),.18,.18,2.35);
+Floor(r,2.65,6.5,7.0,10.8,"Painted Concrete Slab 300 mm",2.55);
+W(r,2.8,10.5,6.8,10.5,"Timber Clad Wall 200 mm",2.3);
+// Stone accent at the right entrance pier and timber fins.
+W(g,7.55,2.95,8.3,2.95,"Stone Veneer Wall 250 mm",3);
+for(int i=0;i<5;i++) W(g,8.38,3.35+i*.14,8.38,3.42+i*.14,"Timber Clad Wall 200 mm",3);
+W(r,6.2,3.08,8.35,3.08,"Stone Veneer Wall 250 mm",.65);
+Place(g,"Three Seat Sofa",1.95,4.5,Math.PI/2); Place(g,"Armchair",3.3,5.6,Math.PI); Place(g,"Coffee Table",3,4.5);
+Place(g,"Dining Table 6 Seats",3,7.7); foreach(double x in new[]{2.5,3.4}) foreach(double y in new[]{7.05,8.35}) Place(g,"Dining Chair",x,y,y<8?Math.PI:0);
+Place(g,"King Bed",7.05,5.05,-Math.PI/2); Place(g,"Nightstand",7.95,3.8); Place(g,"Nightstand",7.95,6.3); Place(g,"Wardrobe",6.6,6.75,Math.PI);
+Place(g,"King Bed",7.05,10.05,-Math.PI/2); Place(g,"Wardrobe",5.85,10.5,Math.PI/2);
+Place(g,"Kitchen Sink Cabinet",3.15,11.0); Place(g,"Cooking Range",3.8,10.2,-Math.PI/2); Place(g,"Refrigerator",2.7,9.4); Place(g,"Washing Machine",1.8,10.9);
+Place(g,"Toilet",6.25,8.15); Place(g,"Pedestal Sink",7.8,8.15); Place(g,"Toilet",4.8,10.95); Place(g,"Pedestal Sink",4.7,9.85);
+foreach(double x in new[]{3.15,5.85}) Place(g,"Indoor Plant",x,2.5);
+for(int i=0;i<17;i++) Floor(site,.65,1+i*.6,1.15,1.4+i*.6,"Concrete Slab 150 mm",.03);
+Floor(site,3.15,0,5.85,.7,"Concrete Slab 150 mm",.02);
+foreach(var p in new[]{P(.4,.6),P(8.7,.6),P(.4,11.7),P(8.7,11.7)}) s.AddElementFromPreset(site,El("Broadleaf Tree 8 m") with{Width=1.8,Height=3.5},p,p);
+for(int i=0;i<14;i++){var p=P(.3,1.5+i*.7);s.AddElementFromPreset(site,El("Shrub 1.5 m") with{Width=.5,Height=.65},p,p);}
+foreach(var p in new[]{P(7.3,1.4),P(7.9,1.8),P(6.8,2.5),P(2.2,1.7)}) s.AddElementFromPreset(site,El("Shrub 1.5 m") with{Width=.8,Height=.6},p,p);
+foreach(var p in new[]{P(1.7,2.4),P(2.5,2.4),P(7,3.6),P(8,3.6)}) s.AddElementFromPreset(r,El("Shrub 1.5 m") with{Width=.6,Height=.65},p,p);
+s.AutoDimensionLevel(g);
+s.StoreRenderSetup(new RenderSetup{CameraX=15,CameraY=-13,CameraZ=8,YawDegrees=125,PitchDegrees=-14,FieldOfViewDegrees=48,Width=1000,Height=750,AutoExposure=true,CorrectVerticals=true,Quality=RenderQuality.High,Scenario=LightingScenario.Sunny,SolarHour=15,Latitude=10,DayOfYear=100});
+var doc=s.Document.Clone(); doc.Validate();
+var path=Path.Combine(output,"Casa-terraza-30x40.g3d"); NativeDocumentStore.SaveProject(path,doc);
+var loaded=NativeDocumentStore.LoadProject(path); loaded.Validate();
+if(loaded.Walls.Count!=doc.Walls.Count || loaded.Openings.Count!=doc.Openings.Count || loaded.StructuralElements.Count!=doc.StructuralElements.Count) throw new Exception("Round trip changed the model");
+Console.WriteLine($"SAVED {path}: {doc.Walls.Count} walls, {doc.Openings.Count} openings, {doc.Rooms.Count} rooms, {doc.StructuralElements.Count} components");
+var setup=doc.RenderSetup!; var nav=new NavigationCamera{Position=new Vector3((float)setup.CameraX,(float)setup.CameraY,(float)setup.CameraZ),YawDegrees=(float)setup.YawDegrees,PitchDegrees=(float)setup.PitchDegrees,FieldOfViewDegrees=(float)setup.FieldOfViewDegrees};
+var mesh=BuildingMesher.Build(doc,includeGround:true,plants:PlantDetail.Render); var scene=new RenderSceneBuilder().AddBuilding(mesh).Build();
+var settings=RenderPresets.Lighting(setup.Scenario,setup.Latitude,setup.DayOfYear,setup.SolarHour,RenderQuality.High);
+var tracer=new PathTracer(scene,800,600,nav.ToRenderCamera(20) with{CorrectVerticals=true},settings);
+for(int i=0;i<12;i++){tracer.RenderPass();Console.WriteLine($"Render {i+1}/12");}
+PngCodec.Save(Path.Combine(output,"Vista-casa.png"),RasterImage.FromBgra32(800,600,tracer.ToBgra32(true,new ImageFinish{AutoExposure=true,ToneMapper=ToneMapper.Aces})));
+

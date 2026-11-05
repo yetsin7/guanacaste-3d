@@ -456,7 +456,8 @@ public sealed class BuildingDocument
                 string.IsNullOrWhiteSpace(floor.Name) || floor.Name.Length > 120 ||
                 floor.Boundary is null || floor.Boundary.Count is < 3 or > 500 ||
                 floor.Boundary.Any(point => !double.IsFinite(point.X) || !double.IsFinite(point.Y)) ||
-                !double.IsFinite(floor.Thickness) || floor.Thickness is < 0.03 or > 3 ||
+                !double.IsFinite(floor.Thickness) || floor.Thickness > 3 ||
+                floor.Thickness < (floor.Kind == FloorKind.Ceiling ? 0.005 : 0.03) ||
                 !double.IsFinite(floor.ElevationOffset) || floor.ElevationOffset is < -10 or > 1000 ||
                 !Enum.IsDefined(floor.Kind) ||
                 floor.CalculateArea() is < 0.1 or > 100000000 || !Enum.IsDefined(floor.Finish) ||
@@ -517,3 +518,4 @@ public sealed class BuildingDocument
             throw new InvalidDataException("Invalid project views.");
     }
 }
+

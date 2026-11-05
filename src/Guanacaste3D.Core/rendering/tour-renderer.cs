@@ -4,7 +4,7 @@ using Guanacaste3D.Core.Navigation;
 namespace Guanacaste3D.Core.Rendering;
 
 /// <summary>Progress of a video render.</summary>
-public readonly record struct TourProgress(int Frame, int Total, double Seconds);
+public readonly record struct TourProgress(int Frame, int Total, double Seconds, int Sample = 0, int Samples = 0);
 
 /// <summary>
 /// Layer animation for a video: the animation says which levels are hidden at each moment, and <see cref="SceneFor"/>
@@ -97,6 +97,8 @@ public static class TourRenderer
                 for (var sample = 0; sample < samplesPerFrame; sample++)
                 {
                     tracer.RenderPass(safety.Token);
+                    if (sample == 0 || (sample + 1) % 4 == 0 || sample + 1 == samplesPerFrame)
+                        progress?.Report(new TourProgress(written, total, written / (double)Math.Max(1, framesPerSecond), sample + 1, samplesPerFrame));
                     if (tracer.ActiveFraction <= 0.0005f && sample >= settings.AdaptiveMinimumSamples) break;
                 }
                 // Fires and smoke burn with the movie: the same instant that places the camera shapes their flames.

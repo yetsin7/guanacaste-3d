@@ -11,7 +11,7 @@ namespace Guanacaste3D.Desktop.Controls;
 /// </summary>
 public partial class RenderPanel
 {
-    private static readonly int[] FocalPresetLengths = [14, 24, 35, 50, 85, 135];
+    private static readonly int[] FocalPresetLengths = [14, 16, 18, 20, 24, 28, 35, 50, 70, 85, 100, 135];
     private bool _syncingLens;
 
     /// <summary>Builds the quick focal-length buttons once.</summary>
@@ -24,7 +24,8 @@ public partial class RenderPanel
             var button = new Button
             {
                 Content = $"{length} mm", Style = (Style)FindResource("PanelButton"), Margin = new Thickness(0, 0, 6, 6),
-                Padding = new Thickness(9, 4, 9, 4), MinHeight = 28, MinWidth = 52
+                Padding = new Thickness(9, 4, 9, 4), MinHeight = 28, MinWidth = 52,
+                ToolTip = $"{length} mm · campo vertical {PhotographicCamera.VerticalFieldOfView(length):0.#}° · sensor de 35 mm"
             };
             button.Click += (_, _) => FocalSlider.Value = millimetres;
             FocalPresets.Children.Add(button);

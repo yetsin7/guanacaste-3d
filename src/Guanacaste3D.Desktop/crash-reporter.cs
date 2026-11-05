@@ -32,7 +32,15 @@ internal static class CrashReporter
         application.DispatcherUnhandledException += OnInterfaceError;
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
-            Log("fatal error", e.ExceptionObject as Exception ?? new InvalidOperationException(e.ExceptionObject?.ToString()));
+            var exception = e.ExceptionObject as Exception ?? new InvalidOperationException(e.ExceptionObject?.ToString());
+            Log("fatal error", exception);
+            try
+            {
+                Directory.CreateDirectory(LogDirectory);
+                File.WriteAllText(Path.Combine(LogDirectory, "pending-crash.txt"),
+                    $"Guanacaste 3D {typeof(CrashReporter).Assembly.GetName().Version}\n{DateTime.Now:O}\n{exception}");
+            }
+            catch (Exception) { /* The log may be unavailable during shutdown. */ }
             SaveWork();
         };
         TaskScheduler.UnobservedTaskException += (_, e) =>
@@ -40,6 +48,33 @@ internal static class CrashReporter
             Log("background task", e.Exception);
             e.SetObserved();
         };
+    }
+
+    /// <summary>Shows a fatal error from the preceding session once the interface is usable.</summary>
+    public static void OfferPendingReport(Window owner)
+    {
+        var path = Path.Combine(LogDirectory, "pending-crash.txt");
+        string report;
+        try { if (!File.Exists(path)) return; report = File.ReadAllText(path); }
+        catch (Exception) { return; }
+        var dialog = new Window { Title = "Guanacaste 3D — informe de error", Owner = owner,
+            Width = 700, Height = 520, WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        var panel = new System.Windows.Controls.DockPanel { Margin = new Thickness(16) };
+        var description = new System.Windows.Controls.TextBlock { Text = "La sesión anterior terminó por un error. Revisa los detalles antes de compartirlos: pueden contener rutas o información del proyecto.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) };
+        System.Windows.Controls.DockPanel.SetDock(description, System.Windows.Controls.Dock.Top); panel.Children.Add(description);
+        var buttons = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
+        System.Windows.Controls.DockPanel.SetDock(buttons, System.Windows.Controls.Dock.Bottom); panel.Children.Add(buttons);
+        var copy = new System.Windows.Controls.Button { Content = "Copiar errores", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
+        var send = new System.Windows.Controls.Button { Content = "Abrir reporte en GitHub", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0) };
+        var close = new System.Windows.Controls.Button { Content = "Cerrar", Padding = new Thickness(12, 6, 12, 6) };
+        buttons.Children.Add(copy); buttons.Children.Add(send); buttons.Children.Add(close);
+        var details = new System.Windows.Controls.TextBox { Text = report, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto };
+        panel.Children.Add(details); dialog.Content = panel;
+        copy.Click += (_, _) => { try { Clipboard.SetText(report); } catch (Exception ex) { MessageBox.Show(dialog, ex.Message); } };
+        send.Click += (_, _) => { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/yetsin7/guanacaste-3d/issues/new") { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(dialog, ex.Message); } };
+        close.Click += (_, _) => dialog.Close();
+        dialog.ShowDialog();
+        try { File.Delete(path); } catch (Exception) { }
     }
 
     private static void OnInterfaceError(object sender, DispatcherUnhandledExceptionEventArgs e)

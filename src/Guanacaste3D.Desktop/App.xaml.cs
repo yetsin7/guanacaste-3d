@@ -36,6 +36,7 @@ public partial class App : Application
 
         splash.Report(StartupStepCount, StartupStepCount, GetText("Splash.Step.Ready"));
         splash.Close();
+        CrashReporter.OfferPendingReport(window);
         // A copy left by a session that ended without saving is offered before anything else is opened.
         if (projectPath is null) window.OfferRecovery();
     }

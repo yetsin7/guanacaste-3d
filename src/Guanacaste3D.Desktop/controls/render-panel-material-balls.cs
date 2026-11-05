@@ -91,9 +91,7 @@ public partial class RenderPanel
         var original = GalleryOriginalAppearance(assignment, category);
         var roughness = assignment?.RoughnessOverride ?? original.Roughness;
         var metallic = assignment?.MetallicOverride ?? original.Metallic;
-        var relief = assignment?.Relief ?? 0;
-        var picture = new Image { Stretch = Stretch.Uniform, IsHitTestVisible = false };
-        RenderOptions.SetBitmapScalingMode(picture, BitmapScalingMode.HighQuality);
+        var picture = new MaterialBall3D(roughness, metallic);
         var frame = new Border
         {
             Width = 100, Height = 64, CornerRadius = new CornerRadius(6), Margin = new Thickness(0, 0, 10, 0),
@@ -101,19 +99,34 @@ public partial class RenderPanel
             Background = new SolidColorBrush(Color.FromRgb(24, 36, 49)),
             BorderBrush = new SolidColorBrush(Color.FromRgb(62, 83, 101)), BorderThickness = new Thickness(1),
             Child = picture,
-            ToolTip = $"Bola de ejemplo · rugosidad {roughness:0.00} · metálico {metallic:0.00}"
+            ToolTip = $"Muestra 3D: arrastra para girar · rugosidad {roughness:0.00} · metálico {metallic:0.00}"
         };
         var projectFile = _source?.ProjectFilePath;
-        _ = LoadMaterialBallAsync(picture, revision, () =>
-            RenderMaterialBall(assignment, category, projectFile, roughness, metallic, relief));
+        _ = LoadMaterialTextureAsync(picture, revision, assignment, category, projectFile);
         return frame;
     }
 
-    private async Task LoadMaterialBallAsync(Image view, int revision, Func<BitmapSource?> make)
+    private async Task LoadMaterialTextureAsync(MaterialBall3D ball, int revision,
+        RenderMaterialAssignment? assignment, SurfaceKind category, string? projectFile)
     {
-        var ball = await Task.Run(make);
-        // A newer rebuild of the rows replaced this one while it was drawing.
-        if (revision == _materialBallRevision && ball is not null) view.Source = ball;
+        try
+        {
+            var bitmap = await Task.Run(() =>
+            {
+                var preset = assignment is null ? null : MaterialPresets.FromPath(assignment.TexturePath);
+                var file = assignment is null || assignment.TexturePath == "stock:" ? null :
+                    RenderTextureLibrary.Resolve(assignment.TexturePath, projectFile);
+                if (file is not null && File.Exists(file)) return DecodeGalleryImage(file, 192);
+                var material = preset?.Material ?? MaterialLibrary.ForKind(category);
+                var color = assignment?.TintHex is { } tint ? TintToLinear(tint) : material.BaseColor;
+                if (material.Transmission > .5f) color = Vector3.Lerp(new Vector3(.9f), material.TransmissionTint, .5f);
+                return SolidSwatch(color);
+            });
+            if (revision == _materialBallRevision) ball.SetTexture(bitmap);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                                            NotSupportedException or ArgumentException or FormatException or
+                                            InvalidOperationException or System.Runtime.InteropServices.COMException) { }
     }
 
     private const int OptionBallCacheLimit = 240;
