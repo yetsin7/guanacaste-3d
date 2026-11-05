@@ -71,9 +71,14 @@ public static class Decals
         }
     }
 
-    /// <summary>The decals saved in a document; empty when there are none or the text cannot be read.</summary>
-    public static IReadOnlyList<Decal> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads decals without silently treating corrupt saved data as an empty collection.</summary>
+    public static IReadOnlyList<Decal> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los estampados guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 
     private static bool IsSane(Decal decal) =>
         decal.Id != Guid.Empty && decal.WallId != Guid.Empty && Enum.IsDefined(decal.Face) &&
