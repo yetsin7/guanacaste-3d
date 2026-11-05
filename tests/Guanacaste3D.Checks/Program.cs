@@ -634,6 +634,7 @@ RenderPeopleChecks.Run(Check);
 RenderWetChecks.Run(Check);
 RenderGrassChecks.Run(Check);
 RenderFireChecks.Run(Check);
+RenderInterpolationChecks.Run(Check);
 await RenderMotionChecks.Run(Check);
 RenderWeatherChecks.Run(Check);
 ImportedUvChecks.Run(Check);

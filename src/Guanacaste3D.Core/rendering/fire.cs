@@ -70,6 +70,17 @@ public static class Fires
 public sealed class ScreenProjection(Vector3 position, Vector3 forward, Vector3 right, Vector3 up, float halfWidth, float halfHeight,
     float horizontalShift, float verticalShift, int width, int height)
 {
+    /// <summary>Where the camera stands.</summary>
+    public Vector3 Position => position;
+
+    /// <summary>The direction of the ray through a point of the picture (column and row in pixels, as <see cref="TryProject"/> gives them).</summary>
+    public Vector3 Direction(float column, float row)
+    {
+        var x = column / width * 2 - 1;
+        var y = 1 - row / height * 2;
+        return Vector3.Normalize(forward + right * (x * halfWidth + horizontalShift) + up * (y * halfHeight + verticalShift));
+    }
+
     /// <summary>
     /// The column, row and distance of a world point, and how many pixels a metre across measures there. False for a
     /// point behind the camera or too close to it.

@@ -146,6 +146,7 @@
   <sys:String x:Key="Error.This kind of file cannot be converted.">Este tipo de archivo no se puede convertir.</sys:String>
   <sys:String x:Key="Error.Choose a .zip file.">Elija un archivo .zip.</sys:String>
   <sys:String x:Key="Error.Select a mass first.">Primero seleccione una masa.</sys:String>
+  <sys:String x:Key="Error.Select a component to duplicate in the render view.">Seleccione un componente para duplicarlo en la vista de render.</sys:String>
   <sys:String x:Key="Error.The study is invalid.">El estudio no es válido: revise los rangos, el objetivo y la cantidad.</sys:String>
   <sys:String x:Key="Error.The study does not exist.">El estudio no existe.</sys:String>
   <sys:String x:Key="Error.The project has too many studies.">El proyecto ya tiene demasiados estudios.</sys:String>

@@ -34,6 +34,7 @@ internal static partial class InteractionChecks
         ((ComboBox)panel.FindName("QualityPicker")).SelectedIndex = Number("G3D_MOVIE_QUALITY", 2);
         ((ComboBox)panel.FindName("SizePicker")).SelectedIndex = Number("G3D_MOVIE_SIZE", 1);
         ((ComboBox)panel.FindName("FpsPicker")).SelectedIndex = fpsIndex;
+        ((ComboBox)panel.FindName("KeyFpsPicker")).SelectedIndex = Number("G3D_MOVIE_PANEL_KEYFPS", 6) switch { 0 => 0, 10 => 1, 4 => 3, _ => 2 };
 
         // An orbit round the house, a little more than a third of a turn, rising and closing in: the camera glides, it never jumps.
         var (min, max) = ((System.Numerics.Vector3 Min, System.Numerics.Vector3 Max))typeof(MainWindow).GetMethod("SceneBounds", PrivateInstance)!.Invoke(opened, null)!;

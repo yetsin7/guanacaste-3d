@@ -164,7 +164,9 @@ public partial class RenderPanel
         // The frames only go to this folder if the video cannot be made.
         var folder = Path.Combine(Path.GetDirectoryName(videoPath) ?? ".", Path.GetFileNameWithoutExtension(videoPath) + "-cuadros");
         // Video frames need far fewer samples than a still: the next frame is nearly the same picture.
-        var samples = Math.Max(12, RenderPresets.Profile(quality).TargetSamples / 4);
+        // The denoiser and the frames made between rendered ones do part of the work, so each real frame needs fewer samples than a still.
+        var samples = Math.Max(8, RenderPresets.Profile(quality).TargetSamples / 8);
+        var keyFps = int.TryParse((KeyFpsPicker.SelectedItem as ComboBoxItem)?.Tag as string, out var keyChosen) ? keyChosen : 0;
 
         _preview?.Suspend();
         _renderingTour = true;
@@ -192,7 +194,7 @@ public partial class RenderPanel
         try
         {
             result = await TourRenderer.RenderAsync(scene, _path, LightingFor(quality, ResourceUse()), fit.Width, fit.Height, fps, samples,
-                CurrentFinish(), folder, progress, _cancel.Token, LayersForRender(), ActorRig.From(_source.GetActors(), CarLibrary.Load), video);
+                CurrentFinish(), folder, progress, _cancel.Token, LayersForRender(), ActorRig.From(_source.GetActors(), CarLibrary.Load), video, keyFps);
         }
         catch (Exception ex)
         {

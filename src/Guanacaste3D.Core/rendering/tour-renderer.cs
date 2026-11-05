@@ -34,12 +34,12 @@ public static class TourRenderer
 {
     public static Task<TourResult> RenderAsync(RenderScene scene, CameraPath path, RenderSettings settings, int width, int height,
         int framesPerSecond, int samplesPerFrame, ImageFinish finish, string folder, IProgress<TourProgress>? progress,
-        CancellationToken cancellation, LayerSource? layers = null, ActorRig? actors = null, IFrameSink? sink = null) =>
-        Task.Run(() => Render(scene, path, settings, width, height, framesPerSecond, samplesPerFrame, finish, folder, progress, cancellation, layers, actors, sink));
+        CancellationToken cancellation, LayerSource? layers = null, ActorRig? actors = null, IFrameSink? sink = null, int keyframesPerSecond = 0) =>
+        Task.Run(() => Render(scene, path, settings, width, height, framesPerSecond, samplesPerFrame, finish, folder, progress, cancellation, layers, actors, sink, keyframesPerSecond));
 
     private static TourResult Render(RenderScene scene, CameraPath path, RenderSettings settings, int width, int height,
         int framesPerSecond, int samplesPerFrame, ImageFinish finish, string folder, IProgress<TourProgress>? progress,
-        CancellationToken cancellation, LayerSource? layers, ActorRig? actors, IFrameSink? sink)
+        CancellationToken cancellation, LayerSource? layers, ActorRig? actors, IFrameSink? sink, int keyframesPerSecond)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(path);
@@ -67,13 +67,27 @@ public static class TourRenderer
             var startScene = animated ? layers!.SceneFor(layers.Animation.HiddenAt(0)) ?? scene : scene;
             var tracer = Open(startScene, first);
             MemoryTrim.AfterHeavyBuild();
-            for (var frame = 0; frame < total; frame++)
+            double TimeOf(int frame) => total <= 1 ? 0 : path.Duration * frame / (total - 1);
+
+            // The frames that are really rendered. With a rate of real frames below the movie's, only some are: the others are made
+            // from their two neighbours (see FrameInterpolator), which is what puts a smooth, sharp minute within reach.
+            var keys = new List<int>();
+            if (keyframesPerSecond <= 0 || keyframesPerSecond >= framesPerSecond || total <= 2)
+                keys.AddRange(Enumerable.Range(0, total));
+            else
+            {
+                var step = framesPerSecond / (double)keyframesPerSecond;
+                for (var k = 0; Math.Round(k * step) < total - 1; k++) keys.Add((int)Math.Round(k * step));
+                keys.Add(total - 1);
+            }
+
+            KeyFrame RenderKey(int frame)
             {
                 safety.Token.ThrowIfCancellationRequested();
                 var (position, target, fieldOfView) = path.Frame(frame, framesPerSecond);
                 if (animated)
                 {
-                    var hidden = layers!.Animation.HiddenAt(total <= 1 ? 0 : path.Duration * frame / (total - 1));
+                    var hidden = layers!.Animation.HiddenAt((float)TimeOf(frame));
                     var key = LayerAnimation.StateKey(hidden);
                     if (key != state && layers.SceneFor(hidden) is { } changed)
                     {
@@ -87,12 +101,12 @@ public static class TourRenderer
                 // People walk with the movie: the same instant of the movie that places the camera places them.
                 if (actors is not null && tracer.HasActors)
                 {
-                    var (positions, normals) = actors.Frame(total <= 1 ? 0 : path.Duration * frame / (total - 1));
+                    var (positions, normals) = actors.Frame(TimeOf(frame));
                     tracer.MoveActors(positions, normals);
                 }
                 // The wind moves with the movie too: the gusts are where they are at this instant.
                 if (settings.WindStrength > 0 && settings.GrassHeight > 0)
-                    tracer.UpdateSettings(settings with { AdaptiveSampling = true, WindSeconds = total <= 1 ? 0 : (float)(path.Duration * frame / (total - 1)) });
+                    tracer.UpdateSettings(settings with { AdaptiveSampling = true, WindSeconds = (float)TimeOf(frame) });
                 tracer.SetCamera(new RenderCamera(position, target, fieldOfView));
                 for (var sample = 0; sample < samplesPerFrame; sample++)
                 {
@@ -101,10 +115,15 @@ public static class TourRenderer
                         progress?.Report(new TourProgress(written, total, written / (double)Math.Max(1, framesPerSecond), sample + 1, samplesPerFrame));
                     if (tracer.ActiveFraction <= 0.0005f && sample >= settings.AdaptiveMinimumSamples) break;
                 }
+                return new KeyFrame(tracer.LinearImage(denoise: true), FrameInterpolator.Copy(tracer.CaptureFeatures()),
+                    tracer.Projection() ?? throw new InvalidOperationException("A panorama has no flat picture to interpolate."), tracer.BaseExposure);
+            }
+
+            void Emit(int frame, Vector3[] radiance, FeatureBuffer features, float exposure)
+            {
                 // Fires and smoke burn with the movie: the same instant that places the camera shapes their flames.
-                var frameFinish = tracer.WithScreenEffects(finish with { FireSeconds = total <= 1 ? 0 : (float)(path.Duration * frame / (total - 1)) });
-                var bytes = ImageProcessor.ToBgra32(tracer.LinearImage(denoise: true), width, height, tracer.BaseExposure, frameFinish,
-                    tracer.CaptureFeatures);
+                var frameFinish = tracer.WithScreenEffects(finish with { FireSeconds = (float)TimeOf(frame) });
+                var bytes = ImageProcessor.ToBgra32(radiance, width, height, exposure, frameFinish, () => features);
                 // With a video file the frame goes into it; as images only when there is no video or the encoder gave up.
                 sink?.Add(bytes, width, height);
                 if (sink is null || sink.Failed)
@@ -114,6 +133,26 @@ public static class TourRenderer
                 }
                 written++;
                 progress?.Report(new TourProgress(written, total, written / (double)Math.Max(1, framesPerSecond)));
+            }
+
+            var previous = RenderKey(keys[0]);
+            Emit(keys[0], previous.Radiance, previous.Features, previous.Exposure);
+            for (var index = 1; index < keys.Count; index++)
+            {
+                var current = RenderKey(keys[index]);
+                for (var frame = keys[index - 1] + 1; frame < keys[index]; frame++)
+                {
+                    safety.Token.ThrowIfCancellationRequested();
+                    // The camera of this frame in between, set only to know where the picture falls (nothing is rendered with it).
+                    var (position, target, fieldOfView) = path.Frame(frame, framesPerSecond);
+                    tracer.SetCamera(new RenderCamera(position, target, fieldOfView));
+                    var along = (frame - keys[index - 1]) / (float)(keys[index] - keys[index - 1]);
+                    var between = FrameInterpolator.Between(previous, current, along, tracer.Projection()!, width, height);
+                    var nearest = along < 0.5f ? previous : current;
+                    Emit(frame, between, nearest.Features, nearest.Exposure);
+                }
+                Emit(keys[index], current.Radiance, current.Features, current.Exposure);
+                previous = current;
             }
         }
         catch (OperationCanceledException)

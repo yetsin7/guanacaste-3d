@@ -239,6 +239,9 @@
   <sys:String x:Key="RenderPanel.StopTour">Parar</sys:String>
   <sys:String x:Key="RenderPanel.MarkSeconds">Segundos hasta la marca</sys:String>
   <sys:String x:Key="RenderPanel.Fps">Cuadros por segundo</sys:String>
+  <sys:String x:Key="RenderPanel.KeyFps">Cuadros renderizados por segundo</sys:String>
+  <sys:String x:Key="RenderPanel.KeyFpsAll">Todos (el más lento)</sys:String>
+  <sys:String x:Key="RenderPanel.KeyFpsHint">Cuántos cuadros se renderizan de verdad cada segundo. Los demás se reconstruyen entre ellos, con la perspectiva correcta, y el video sale igual de fluido en una fracción del tiempo. Con 6 un minuto a 30 cuadros por segundo tarda cinco veces menos.</sys:String>
   <sys:String x:Key="RenderPanel.RenderVideo">Renderizar recorrido…</sys:String>
   <sys:String x:Key="RenderPanel.MarkName">Marca {0} · {1:0.#} s</sys:String>
   <sys:String x:Key="RenderPanel.TourNeedsMarks">Añade al menos dos marcas para crear un recorrido.</sys:String>

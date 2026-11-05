@@ -85,12 +85,13 @@ internal sealed class Mp4VideoWriter : IFrameSink
         _started = true;
         Check(MF.MFCreateSinkWriterFromURL(Path, IntPtr.Zero, IntPtr.Zero, out var writer));
         _writer = writer;
-        var bitrate = (int)Math.Clamp((long)(_width * (long)_height * _fps * 0.11), 1_500_000, 40_000_000);
+        var bitrate = (int)Math.Clamp((long)(_width * (long)_height * _fps * 0.22), 2_500_000, 40_000_000);
 
         Check(MF.MFCreateMediaType(out var output));
         output.SetGUID(MF.MajorType, MF.Video);
         output.SetGUID(MF.Subtype, MF.H264);
         output.SetUINT32(MF.AverageBitrate, bitrate);
+        output.SetUINT32(MF.Mpeg2Profile, 100); // H.264 High profile: sharper at the same size than the default
         output.SetUINT32(MF.InterlaceMode, 2);
         output.SetUINT64(MF.FrameSize, Pack(_width, _height));
         output.SetUINT64(MF.FrameRate, Pack(_fps, 1));
@@ -186,6 +187,7 @@ internal sealed class Mp4VideoWriter : IFrameSink
         public const uint Version = 0x00020070;
         public static readonly Guid MajorType = new("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
         public static readonly Guid Subtype = new("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
+        public static readonly Guid Mpeg2Profile = new("ad76a80b-2d5c-4e0b-b375-64e520137036");
         public static readonly Guid AverageBitrate = new("20332624-fb0d-4d9e-bd0d-cbf6786c102e");
         public static readonly Guid InterlaceMode = new("e2724bb8-e676-4806-b4b2-a8d6efb44ccd");
         public static readonly Guid FrameSize = new("1652c33d-d6b2-4012-b834-72030849a37d");

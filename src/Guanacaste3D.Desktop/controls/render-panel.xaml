@@ -773,6 +773,12 @@
                         <ComboBox x:Name="FpsPicker" SelectedIndex="1" Width="96" HorizontalAlignment="Left">
                           <ComboBoxItem Content="24" Tag="24"/><ComboBoxItem Content="30" Tag="30"/><ComboBoxItem Content="60" Tag="60"/>
                         </ComboBox>
+                        <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.KeyFps}" Margin="0,8,0,4"/>
+                        <ComboBox x:Name="KeyFpsPicker" SelectedIndex="2" Width="170" HorizontalAlignment="Left"
+                                  ToolTip="{DynamicResource RenderPanel.KeyFpsHint}">
+                          <ComboBoxItem Content="{DynamicResource RenderPanel.KeyFpsAll}" Tag="0"/>
+                          <ComboBoxItem Content="10" Tag="10"/><ComboBoxItem Content="6" Tag="6"/><ComboBoxItem Content="4" Tag="4"/>
+                        </ComboBox>
                       </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">
