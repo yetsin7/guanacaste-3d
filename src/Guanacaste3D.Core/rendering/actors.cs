@@ -141,16 +141,25 @@ public static class Actors
         return 0;
     }
 
-    public static string? Serialize(IReadOnlyCollection<Actor> actors) =>
-        actors.Count == 0 ? null : JsonSerializer.Serialize(new
+    public static string? Serialize(IReadOnlyCollection<Actor> actors)
+    {
+        ArgumentNullException.ThrowIfNull(actors);
+        if (actors.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(actors), $"No se pueden guardar más de {Maximum} actores.");
+        if (actors.Any(actor => actor is null || !actor.IsValid))
+            throw new ArgumentException("La colección contiene actores no válidos.", nameof(actors));
+        if (actors.Select(actor => actor.Id).Distinct().Count() != actors.Count)
+            throw new ArgumentException("Los identificadores de actores deben ser únicos.", nameof(actors));
+        return actors.Count == 0 ? null : JsonSerializer.Serialize(new
         {
             V = 1,
-            Items = actors.Take(Maximum).Select(actor => new
+            Items = actors.Select(actor => new
             {
                 actor.Id, actor.Name, actor.Look, actor.Speed, actor.Loop, actor.Start, Kind = (int)actor.Kind,
                 Route = actor.Route.Select(point => new[] { point.X, point.Y, point.Z })
             })
         });
+    }
 
     /// <summary>Reads saved actors; null when the text is damaged, an empty list when there are none.</summary>
     public static IReadOnlyList<Actor>? TryParse(string? text)
