@@ -169,10 +169,12 @@ internal sealed class Mp4VideoWriter : IFrameSink
             _jobs.Add(() =>
             {
                 try { _writer?.FinalizeWriting(); }
-                catch (COMException exception) { _failed = true; _problem ??= exception.Message; }
-                if (_writer is not null) Marshal.ReleaseComObject(_writer);
+                catch (Exception exception) { _failed = true; _problem ??= exception.Message; }
+                try { if (_writer is not null) Marshal.ReleaseComObject(_writer); }
+                catch (Exception exception) { _problem ??= exception.Message; }
                 _writer = null;
-                if (_started) MF.MFShutdown();
+                try { if (_started) MF.MFShutdown(); }
+                catch (Exception exception) { _problem ??= exception.Message; }
                 _started = false;
             });
             _jobs.CompleteAdding();

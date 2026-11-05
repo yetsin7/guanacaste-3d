@@ -34,12 +34,15 @@ public static class TourRenderer
 {
     public static Task<TourResult> RenderAsync(RenderScene scene, CameraPath path, RenderSettings settings, int width, int height,
         int framesPerSecond, int samplesPerFrame, ImageFinish finish, string folder, IProgress<TourProgress>? progress,
-        CancellationToken cancellation, LayerSource? layers = null, ActorRig? actors = null, IFrameSink? sink = null, int keyframesPerSecond = 0) =>
-        Task.Run(() => Render(scene, path, settings, width, height, framesPerSecond, samplesPerFrame, finish, folder, progress, cancellation, layers, actors, sink, keyframesPerSecond));
+        CancellationToken cancellation, LayerSource? layers = null, ActorRig? actors = null, IFrameSink? sink = null, int keyframesPerSecond = 0,
+        int lightingDivisor = 1) =>
+        Task.Run(() => Render(scene, path, settings, width, height, framesPerSecond, samplesPerFrame, finish, folder, progress, cancellation, layers, actors, sink, keyframesPerSecond,
+            lightingDivisor));
 
     private static TourResult Render(RenderScene scene, CameraPath path, RenderSettings settings, int width, int height,
         int framesPerSecond, int samplesPerFrame, ImageFinish finish, string folder, IProgress<TourProgress>? progress,
-        CancellationToken cancellation, LayerSource? layers, ActorRig? actors, IFrameSink? sink, int keyframesPerSecond)
+        CancellationToken cancellation, LayerSource? layers, ActorRig? actors, IFrameSink? sink, int keyframesPerSecond,
+        int lightingDivisor)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(path);
@@ -107,7 +110,13 @@ public static class TourRenderer
                 // The wind moves with the movie too: the gusts are where they are at this instant.
                 if (settings.WindStrength > 0 && settings.GrassHeight > 0)
                     tracer.UpdateSettings(settings with { AdaptiveSampling = true, WindSeconds = (float)TimeOf(frame) });
-                tracer.SetCamera(new RenderCamera(position, target, fieldOfView));
+                // The light is traced at a fraction of the size (a quarter of the paths at half size) and brought to full size with the
+                // full-size surfaces, which keeps edges and textures sharp: the one big saving that costs a picture almost nothing.
+                var divisor = Math.Clamp(lightingDivisor, 1, 4);
+                int lowWidth = Math.Max(32, width / divisor), lowHeight = Math.Max(18, height / divisor);
+                var shown = new RenderCamera(position, target, fieldOfView);
+                if (divisor > 1) tracer.Resize(lowWidth, lowHeight);
+                tracer.SetCamera(shown);
                 for (var sample = 0; sample < samplesPerFrame; sample++)
                 {
                     tracer.RenderPass(safety.Token);
@@ -115,8 +124,19 @@ public static class TourRenderer
                         progress?.Report(new TourProgress(written, total, written / (double)Math.Max(1, framesPerSecond), sample + 1, samplesPerFrame));
                     if (tracer.ActiveFraction <= 0.0005f && sample >= settings.AdaptiveMinimumSamples) break;
                 }
-                return new KeyFrame(tracer.LinearImage(denoise: true), FrameInterpolator.Copy(tracer.CaptureFeatures()),
-                    tracer.Projection() ?? throw new InvalidOperationException("A panorama has no flat picture to interpolate."), tracer.BaseExposure);
+                var exposure = tracer.BaseExposure;
+                var image = tracer.LinearImage(denoise: true);
+                var features = FrameInterpolator.Copy(tracer.CaptureFeatures());
+                if (divisor > 1)
+                {
+                    var lowFeatures = features;
+                    tracer.Resize(width, height);
+                    tracer.SetCamera(shown);
+                    features = FrameInterpolator.Copy(tracer.CaptureFeatures());
+                    image = FrameInterpolator.UpscaleLighting(image, lowFeatures, features);
+                }
+                return new KeyFrame(image, features,
+                    tracer.Projection() ?? throw new InvalidOperationException("A panorama has no flat picture to interpolate."), exposure);
             }
 
             void Emit(int frame, Vector3[] radiance, FeatureBuffer features, float exposure)

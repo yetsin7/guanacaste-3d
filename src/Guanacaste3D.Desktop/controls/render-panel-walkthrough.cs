@@ -141,7 +141,13 @@ public partial class RenderPanel
             FileName = SafeName(_source.ProjectName), OverwritePrompt = true
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        await RunTourAsync(dialog.FileName);
+        try { await RunTourAsync(dialog.FileName); }
+        catch (Exception ex)
+        {
+            // This is an async void button: whatever goes wrong must end here, with a message, never as a program that closes.
+            CrashReporter.Log("movie", ex);
+            StatusText.Text = UiText.Format("RenderPanel.Failed", ex.Message);
+        }
     }
 
     /// <summary>Renders the camera path to the given .mp4 (the part after the file is chosen, so it can be run without a dialog).</summary>
@@ -167,6 +173,7 @@ public partial class RenderPanel
         // The denoiser and the frames made between rendered ones do part of the work, so each real frame needs fewer samples than a still.
         var samples = Math.Max(8, RenderPresets.Profile(quality).TargetSamples / 8);
         var keyFps = int.TryParse((KeyFpsPicker.SelectedItem as ComboBoxItem)?.Tag as string, out var keyChosen) ? keyChosen : 0;
+        var lightingDivisor = int.TryParse((MovieLightingPicker.SelectedItem as ComboBoxItem)?.Tag as string, out var lightingChosen) ? lightingChosen : 1;
 
         _preview?.Suspend();
         _renderingTour = true;
@@ -194,7 +201,7 @@ public partial class RenderPanel
         try
         {
             result = await TourRenderer.RenderAsync(scene, _path, LightingFor(quality, ResourceUse()), fit.Width, fit.Height, fps, samples,
-                CurrentFinish(), folder, progress, _cancel.Token, LayersForRender(), ActorRig.From(_source.GetActors(), CarLibrary.Load), video, keyFps);
+                CurrentFinish(), folder, progress, _cancel.Token, LayersForRender(), ActorRig.From(_source.GetActors(), CarLibrary.Load), video, keyFps, lightingDivisor);
         }
         catch (Exception ex)
         {
@@ -203,7 +210,11 @@ public partial class RenderPanel
         }
         finally
         {
-            if (video is not null) await Task.Run(video.Dispose);
+            if (video is not null)
+            {
+                try { await Task.Run(video.Dispose); }
+                catch (Exception ex) { CrashReporter.Log("movie file", ex); }
+            }
             _renderingTour = false;
             RenderButton.Content = UiText.Get("RenderPanel.Render");
             RenderTourButton.IsEnabled = true;

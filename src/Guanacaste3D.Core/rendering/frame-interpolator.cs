@@ -18,6 +18,33 @@ internal static class FrameInterpolator
     /// <summary>Distance used for sky, whose pixels turn with the camera but do not shift with its position.</summary>
     private const float SkyDistance = 10000f;
 
+    /// <summary>
+    /// A full-size picture from one lit at a lower resolution: the light is moved to each full-size pixel from the low-resolution
+    /// pixels that agree with it about surface and distance, and the colour comes back from the full-size surface, so edges and
+    /// textures are as sharp as in a full-size render while only a fraction of the paths were traced. The sky, which has no surface to
+    /// agree with, is read smoothly from the low-resolution picture.
+    /// </summary>
+    public static Vector3[] UpscaleLighting(Vector3[] low, FeatureBuffer lowFeatures, FeatureBuffer highFeatures)
+    {
+        var image = new GuidedUpsampler().Upscale(low, lowFeatures, highFeatures);
+        int width = highFeatures.Width, height = highFeatures.Height, lowWidth = lowFeatures.Width, lowHeight = lowFeatures.Height;
+        Parallel.For(0, height, row =>
+        {
+            for (var column = 0; column < width; column++)
+            {
+                var index = row * width + column;
+                if (!float.IsInfinity(highFeatures.Depth[index])) continue;
+                float u = (column + 0.5f) * lowWidth / width - 0.5f, v = (row + 0.5f) * lowHeight / height - 0.5f;
+                int x0 = Math.Clamp((int)MathF.Floor(u), 0, lowWidth - 1), y0 = Math.Clamp((int)MathF.Floor(v), 0, lowHeight - 1);
+                int x1 = Math.Min(x0 + 1, lowWidth - 1), y1 = Math.Min(y0 + 1, lowHeight - 1);
+                float fx = Math.Clamp(u - x0, 0, 1), fy = Math.Clamp(v - y0, 0, 1);
+                image[index] = Vector3.Lerp(Vector3.Lerp(low[y0 * lowWidth + x0], low[y0 * lowWidth + x1], fx),
+                                            Vector3.Lerp(low[y1 * lowWidth + x0], low[y1 * lowWidth + x1], fx), fy);
+            }
+        });
+        return image;
+    }
+
     /// <summary>A copy of the buffers of a frame, because the renderer reuses its own for the next one.</summary>
     public static FeatureBuffer Copy(FeatureBuffer source)
     {

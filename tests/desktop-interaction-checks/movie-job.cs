@@ -34,6 +34,7 @@ internal static partial class InteractionChecks
         ((ComboBox)panel.FindName("QualityPicker")).SelectedIndex = Number("G3D_MOVIE_QUALITY", 2);
         ((ComboBox)panel.FindName("SizePicker")).SelectedIndex = Number("G3D_MOVIE_SIZE", 1);
         ((ComboBox)panel.FindName("FpsPicker")).SelectedIndex = fpsIndex;
+        ((ComboBox)panel.FindName("MovieLightingPicker")).SelectedIndex = Number("G3D_MOVIE_LIGHTING", 2) == 1 ? 1 : 0;
         ((ComboBox)panel.FindName("KeyFpsPicker")).SelectedIndex = Number("G3D_MOVIE_PANEL_KEYFPS", 6) switch { 0 => 0, 10 => 1, 4 => 3, _ => 2 };
 
         // An orbit round the house, a little more than a third of a turn, rising and closing in: the camera glides, it never jumps.
@@ -101,7 +102,7 @@ internal static partial class InteractionChecks
                 if (DateTime.UtcNow - lastReport > TimeSpan.FromSeconds(20))
                 {
                     lastReport = DateTime.UtcNow;
-                    Console.WriteLine($"[{(DateTime.UtcNow - started).TotalMinutes:0.0} min] {status.Text}");
+                    Console.WriteLine($"[{(DateTime.UtcNow - started).TotalMinutes:0.0} min] {status.Text} · process {System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64 / 1048576} MB, heap {GC.GetTotalMemory(false) / 1048576} MB, system memory load {Guanacaste3D.Core.Rendering.RenderSafety.ReadMemory().Load:P0}");
                 }
             }
             Console.WriteLine($"DONE in {(DateTime.UtcNow - started).TotalMinutes:0.0} min: {status.Text}");

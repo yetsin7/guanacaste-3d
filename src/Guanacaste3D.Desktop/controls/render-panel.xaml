@@ -779,6 +779,12 @@
                           <ComboBoxItem Content="{DynamicResource RenderPanel.KeyFpsAll}" Tag="0"/>
                           <ComboBoxItem Content="10" Tag="10"/><ComboBoxItem Content="6" Tag="6"/><ComboBoxItem Content="4" Tag="4"/>
                         </ComboBox>
+                        <TextBlock Style="{StaticResource PanelLabel}" Text="{DynamicResource RenderPanel.MovieLighting}" Margin="0,8,0,4"/>
+                        <ComboBox x:Name="MovieLightingPicker" SelectedIndex="0" Width="170" HorizontalAlignment="Left"
+                                  ToolTip="{DynamicResource RenderPanel.MovieLightingHint}">
+                          <ComboBoxItem Content="{DynamicResource RenderPanel.MovieLightingFast}" Tag="2"/>
+                          <ComboBoxItem Content="{DynamicResource RenderPanel.MovieLightingFull}" Tag="1"/>
+                        </ComboBox>
                       </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">

@@ -239,6 +239,10 @@
   <sys:String x:Key="RenderPanel.StopTour">Parar</sys:String>
   <sys:String x:Key="RenderPanel.MarkSeconds">Segundos hasta la marca</sys:String>
   <sys:String x:Key="RenderPanel.Fps">Cuadros por segundo</sys:String>
+  <sys:String x:Key="RenderPanel.MovieLighting">Iluminación del video</sys:String>
+  <sys:String x:Key="RenderPanel.MovieLightingFast">Rápida (mitad de tamaño)</sys:String>
+  <sys:String x:Key="RenderPanel.MovieLightingFull">Completa (la más lenta)</sys:String>
+  <sys:String x:Key="RenderPanel.MovieLightingHint">Rápida calcula la luz a la mitad del tamaño y la lleva al tamaño final con las superficies reales: los bordes y las texturas quedan igual de nítidos y el video tarda unas cuatro veces menos. Completa calcula la luz en cada píxel.</sys:String>
   <sys:String x:Key="RenderPanel.KeyFps">Cuadros renderizados por segundo</sys:String>
   <sys:String x:Key="RenderPanel.KeyFpsAll">Todos (el más lento)</sys:String>
   <sys:String x:Key="RenderPanel.KeyFpsHint">Cuántos cuadros se renderizan de verdad cada segundo. Los demás se reconstruyen entre ellos, con la perspectiva correcta, y el video sale igual de fluido en una fracción del tiempo. Con 6 un minuto a 30 cuadros por segundo tarda cinco veces menos.</sys:String>

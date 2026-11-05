@@ -43,6 +43,25 @@ static class RenderInterpolationChecks
             var keys = Directory.GetFiles(Path.Combine(folder, "keys"), "frame_*.png").Order().ToArray();
             check(all.Length == 9 && keys.Length == 9, $"With two real frames a second a movie of {fps} frames a second still has every frame ({keys.Length} of {all.Length})");
 
+            // The light traced at half size and brought to full size with the real surfaces: nearly the same picture, sky included, in a quarter of the paths.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            TourRenderer.RenderAsync(scene, path, settings, width, height, fps, 24, new ImageFinish(), Path.Combine(folder, "half"), null, CancellationToken.None,
+                lightingDivisor: 2).GetAwaiter().GetResult();
+            var half = Directory.GetFiles(Path.Combine(folder, "half"), "frame_*.png").Order().ToArray();
+            double halfError = 0;
+            double skyMean = 0;
+            for (var frame = 0; frame < 9; frame++)
+            {
+                var a = PngCodec.Load(half[frame]).Rgb;
+                var b = PngCodec.Load(all[frame]).Rgb;
+                double sum = 0;
+                for (var i = 0; i < a.Length; i++) sum += Math.Abs(a[i] - b[i]);
+                halfError += sum / a.Length / 9;
+                for (var i = 0; i < width * 3 * 4; i++) skyMean += a[i] / (double)(width * 3 * 4) / 9;   // the top rows are sky
+            }
+            check(halfError < 4 && skyMean > 60,
+                $"Light traced at half size and upscaled with the real surfaces gives nearly the same movie (error {halfError:0.00} of 255) with the sky kept (top rows {skyMean:0})");
+
             byte[] Pixels(string file) => PngCodec.Load(file).Rgb;
             double Error(byte[] a, byte[] b)
             {
