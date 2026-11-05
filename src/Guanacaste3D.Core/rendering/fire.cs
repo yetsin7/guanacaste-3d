@@ -23,8 +23,17 @@ public static class Fires
     public const string Key = "render.fire";
     public const int Maximum = 50;
 
-    public static string? Serialize(IReadOnlyCollection<FireEmitter> fires) =>
-        fires.Count == 0 ? null : JsonSerializer.Serialize(new { V = 1, Items = fires.Take(Maximum) });
+    public static string? Serialize(IReadOnlyCollection<FireEmitter> fires)
+    {
+        ArgumentNullException.ThrowIfNull(fires);
+        if (fires.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(fires), $"No se pueden guardar más de {Maximum} emisores de fuego.");
+        if (fires.Any(fire => fire is null || !fire.IsValid))
+            throw new ArgumentException("La colección contiene emisores de fuego no válidos.", nameof(fires));
+        if (fires.Select(fire => fire.Id).Distinct().Count() != fires.Count)
+            throw new ArgumentException("Los identificadores de emisores de fuego deben ser únicos.", nameof(fires));
+        return fires.Count == 0 ? null : JsonSerializer.Serialize(new { V = 1, Items = fires });
+    }
 
     /// <summary>Reads saved fires; null when the text is damaged, an empty list when there are none.</summary>
     public static IReadOnlyList<FireEmitter>? TryParse(string? text)
