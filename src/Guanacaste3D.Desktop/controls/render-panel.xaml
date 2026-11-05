@@ -978,7 +978,16 @@
     <GridSplitter x:Name="SettingsSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
                   Background="{DynamicResource PanelBorderBrush}" Cursor="SizeWE" Focusable="False"/>
 
-    <Grid Grid.Column="2" x:Name="ImageHost" ClipToBounds="True" SizeChanged="ImageHost_SizeChanged"
+    <DockPanel Grid.Column="2">
+      <DockPanel DockPanel.Dock="Top" Background="#101D29" LastChildFill="True">
+      <Button x:Name="CopyCurrentViewButton" Content="{DynamicResource RenderPanel.CopyViewForAi}" Click="CopyCurrentView_Click"
+              DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0"
+              Padding="14,9" MinHeight="38" FontWeight="SemiBold"
+              Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
+              ToolTip="{DynamicResource RenderPanel.CopyViewForAiHint}"/>
+        <ContentControl x:Name="OutputModeHost" HorizontalContentAlignment="Left" VerticalContentAlignment="Center"/>
+      </DockPanel>
+    <Grid x:Name="ImageHost" ClipToBounds="True" SizeChanged="ImageHost_SizeChanged"
           AllowDrop="True" DragOver="MaterialDragOver" Drop="MaterialDrop">
       <Grid.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -994,12 +1003,7 @@
         <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
       </Border>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
-      <!-- Always available while inside Render, including for live preview frames. -->
-      <Button x:Name="CopyCurrentViewButton" Content="{DynamicResource RenderPanel.CopyViewForAi}" Click="CopyCurrentView_Click"
-              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,18,176"
-              Padding="14,9" MinHeight="38" FontWeight="SemiBold"
-              Background="#DB174B5A" Foreground="#FFFFFF" BorderBrush="#72D8C4"
-              ToolTip="{DynamicResource RenderPanel.CopyViewForAiHint}"/>
+
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
       <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
               Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="10" Padding="12,10"
@@ -1034,8 +1038,8 @@
         </StackPanel>
       </Border>
       <!-- Effect picker: categories on the left, one tile per effect on the right, like Lumion's "Select Photo Effect". -->
-      <Border x:Name="FxPicker" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
-              Width="660" Height="430" CornerRadius="10" Background="#F2182633" BorderBrush="#4A6870" BorderThickness="1">
+      <Border x:Name="FxPicker" Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="12"
+              MaxWidth="660" MaxHeight="430" Panel.ZIndex="10" PreviewKeyDown="FxPicker_KeyDown" KeyboardNavigation.TabNavigation="Cycle" CornerRadius="10" Background="#F2182633" BorderBrush="#4A6870" BorderThickness="1">
         <Border.Effect><DropShadowEffect Color="Black" BlurRadius="28" ShadowDepth="4" Opacity="0.45"/></Border.Effect>
         <DockPanel>
           <Grid DockPanel.Dock="Top" Margin="0,10,0,10">
@@ -1044,7 +1048,11 @@
             <TextBlock Text="Seleccionar efecto de foto" Foreground="#F1F5F9" FontSize="16" FontWeight="SemiBold"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
-          <ScrollViewer DockPanel.Dock="Left" Width="170" VerticalScrollBarVisibility="Auto" Margin="8,0,0,8">
+          <DockPanel DockPanel.Dock="Top" Margin="12,0,12,8">
+            <Label Content="_Buscar" Target="{Binding ElementName=FxSearch}" Foreground="White"/>
+            <TextBox x:Name="FxSearch" TextChanged="FxSearch_Changed" AutomationProperties.Name="Buscar efectos" ToolTip="Buscar en todas las categorías"/>
+          </DockPanel>
+          <ScrollViewer DockPanel.Dock="Left" Width="135" VerticalScrollBarVisibility="Auto" Margin="8,0,0,8">
             <StackPanel x:Name="FxCategoryList"/>
           </ScrollViewer>
           <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="8,0,8,8">
@@ -1147,5 +1155,6 @@
         </DockPanel>
       </Border>
     </Grid>
+    </DockPanel>
   </Grid>
 </UserControl>
