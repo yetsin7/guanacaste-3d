@@ -200,7 +200,12 @@ public static class Actors
         }
     }
 
-    /// <summary>The actors saved in a document; empty when there are none or the text cannot be read.</summary>
-    public static IReadOnlyList<Actor> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads saved actores without silently discarding corrupt data.</summary>
+    public static IReadOnlyList<Actor> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los actores guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 }
