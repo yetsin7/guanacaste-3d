@@ -25,7 +25,7 @@ public sealed record Actor(Guid Id, string Name, int Look, double Speed, bool Lo
 
     public bool IsValid => Id != Guid.Empty && !string.IsNullOrWhiteSpace(Name) && Name.Length <= 80 && Look is >= 0 and < Looks &&
         Enum.IsDefined(Kind) && double.IsFinite(Speed) && Speed is >= 0.1 and <= MaximumSpeed && double.IsFinite(Start) && Start is >= 0 and <= 36000 &&
-        Route.Count is >= 1 and <= MaximumRoutePoints &&
+        Route is { Count: >= 1 and <= MaximumRoutePoints } &&
         Route.All(point => double.IsFinite(point.X + point.Y + point.Z) && Math.Abs(point.X) < 1e6 && Math.Abs(point.Y) < 1e6 && Math.Abs(point.Z) < 1e5);
 }
 
