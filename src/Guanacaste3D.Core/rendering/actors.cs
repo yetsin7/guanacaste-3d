@@ -173,6 +173,7 @@ public static class Actors
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var actors = new List<Actor>();
+            var seenIds = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var route = new List<ActorPoint>();
@@ -188,6 +189,7 @@ public static class Actors
                     item.GetProperty("Look").GetInt32(), item.GetProperty("Speed").GetDouble(), item.GetProperty("Loop").GetBoolean(),
                     item.GetProperty("Start").GetDouble(), route, kind);
                 if (!actor.IsValid) return null;
+                if (!seenIds.Add(actor.Id)) return null;
                 actors.Add(actor);
             }
             return actors;
