@@ -51,6 +51,10 @@ public static class Actors
     public static ActorState At(Actor actor, double seconds)
     {
         ArgumentNullException.ThrowIfNull(actor);
+        if (!actor.IsValid)
+            throw new ArgumentException("El actor tiene una ruta o parámetros no válidos.", nameof(actor));
+        if (!double.IsFinite(seconds))
+            throw new ArgumentOutOfRangeException(nameof(seconds), "El tiempo debe ser finito.");
         var route = actor.Route;
         var first = new Vector3((float)route[0].X, (float)route[0].Y, (float)route[0].Z);
         double length = 0;
