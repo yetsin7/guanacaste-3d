@@ -47,12 +47,14 @@ public static class Fires
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var fires = new List<FireEmitter>();
+            var seenIds = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var fire = new FireEmitter(item.GetProperty("Id").GetGuid(), item.GetProperty("Name").GetString() ?? "", item.GetProperty("X").GetDouble(),
                     item.GetProperty("Y").GetDouble(), item.GetProperty("Z").GetDouble(), item.GetProperty("Flames").GetDouble(),
                     item.GetProperty("Smoke").GetDouble(), item.GetProperty("Size").GetDouble());
                 if (!fire.IsValid) return null;
+                if (!seenIds.Add(fire.Id)) return null;
                 fires.Add(fire);
             }
             return fires;
