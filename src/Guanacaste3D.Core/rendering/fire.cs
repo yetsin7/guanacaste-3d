@@ -65,8 +65,14 @@ public static class Fires
         }
     }
 
-    public static IReadOnlyList<FireEmitter> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads saved emisores de fuego without silently discarding corrupt data.</summary>
+    public static IReadOnlyList<FireEmitter> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los emisores de fuego guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 
     /// <summary>
     /// The light a fire gives its surroundings: a warm point light a little above its base, as strong as its flames and as big
