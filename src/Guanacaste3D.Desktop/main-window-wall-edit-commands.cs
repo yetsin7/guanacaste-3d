@@ -69,6 +69,17 @@ public partial class MainWindow
         RunWallEdit(() => _selectedWallId = _session.OffsetWalls([id], distance, copy: true)[0], "Status.WallOffset");
     }
 
+    /// <summary>Validates an array size before converting the user's double to an integer.</summary>
+    private static bool TryReadArrayCount(string text, out int count)
+    {
+        count = 0;
+        if (!TryReadNumber(text, out var parsed) || parsed < 2 ||
+            parsed > DocumentSession.MaximumArrayCount || parsed != Math.Truncate(parsed))
+            return false;
+        count = (int)parsed;
+        return true;
+    }
+
     private void ArraySelectedWall()
     {
         if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
@@ -79,22 +90,22 @@ public partial class MainWindow
         // "r; 6; 60": a radial array of 6 members, 60 degrees apart, about the start of the selected wall.
         if (parts.Length == 3 && parts[0].Equals("r", StringComparison.OrdinalIgnoreCase))
         {
-            if (!TryReadNumber(parts[1], out var members) || !TryReadNumber(parts[2], out var step) || members != Math.Floor(members))
+            if (!TryReadArrayCount(parts[1], out var members) || !TryReadNumber(parts[2], out var step))
             {
                 StatusText.Text = GetText("Status.InvalidNumber");
                 return;
             }
             var center = _session.Document.Walls.Single(wall => wall.Id == id).Start;
-            RunWallEdit(() => _session.ArrayWallsRadial([id], (int)members, center, step), "Status.WallArrayed");
+            RunWallEdit(() => _session.ArrayWallsRadial([id], members, center, step), "Status.WallArrayed");
             return;
         }
-        if (parts.Length != 3 || !TryReadNumber(parts[0], out var count) || !TryReadNumber(parts[1], out var deltaX) ||
-            !TryReadNumber(parts[2], out var deltaY) || count != Math.Floor(count))
+        if (parts.Length != 3 || !TryReadArrayCount(parts[0], out var count) || !TryReadNumber(parts[1], out var deltaX) ||
+            !TryReadNumber(parts[2], out var deltaY))
         {
             StatusText.Text = GetText("Status.InvalidNumber");
             return;
         }
-        RunWallEdit(() => _session.ArrayWallsLinear([id], (int)count, deltaX, deltaY), "Status.WallArrayed");
+        RunWallEdit(() => _session.ArrayWallsLinear([id], count, deltaX, deltaY), "Status.WallArrayed");
     }
 
     /// <summary>Ties the selected wall's top to the underside of the slab or roof above it.</summary>
