@@ -43,10 +43,21 @@ public sealed class SiteTerrain
     /// </summary>
     public Level? LevelFor(double x, double y, double groundHeight)
     {
+        // Resolve the owning level from the same highest surface used by HeightAt.
+        // Equal heights retain the first surface, matching HeightAt's tie behavior.
         var point = new Point2(x, y);
-        foreach (var (slab, _, _) in _terrains)
-            if (TopographyGeometry.Contains(slab.Boundary, point) && _document.Levels.FirstOrDefault(level => level.Id == slab.LevelId) is { } owner)
-                return owner;
+        Level? terrainLevel = null;
+        double? highest = null;
+        foreach (var (slab, surface, datum) in _terrains)
+        {
+            if (!TopographyGeometry.Contains(slab.Boundary, point)) continue;
+            var height = datum + surface.ElevationAt(x, y);
+            if (highest is not null && height <= highest.Value) continue;
+            if (_document.Levels.FirstOrDefault(level => level.Id == slab.LevelId) is not { } owner) continue;
+            highest = height;
+            terrainLevel = owner;
+        }
+        if (terrainLevel is not null) return terrainLevel;
         var levels = _document.Levels;
         return levels.Where(level => level.Elevation <= groundHeight + 0.05).OrderByDescending(level => level.Elevation).FirstOrDefault() ??
                levels.OrderBy(level => level.Elevation).FirstOrDefault();
