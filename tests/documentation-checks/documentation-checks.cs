@@ -157,7 +157,7 @@ internal static partial class DocumentationChecks
             [new(1, 1), new(2, 1), new(2, 2), new(1, 2)], 0, 1.5);
         var primitives = PdfPlanExporter.PlanPrimitives(session.Document, level);
         var texts = primitives.OfType<SheetText>().Select(text => text.Text).ToArray();
-        var expectedDimension = 6d.ToString("0.00", CultureInfo.CurrentCulture);
+        var expectedDimension = 6d.ToString("0.00", CultureInfo.CurrentCulture) + " m";
         var exportedTexts = string.Join(" | ", texts.Select(text => text.Replace("\\r", "\\\\r").Replace("\\n", "\\\\n")));
         Check(texts.Contains(expectedDimension),
             $"PDF permanent dimension missing: expected '{expectedDimension}', culture '{CultureInfo.CurrentCulture.Name}'; exported: [{exportedTexts}]");
