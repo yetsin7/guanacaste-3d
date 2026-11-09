@@ -1179,6 +1179,20 @@
       </Border>
       <!-- Mode switch, movie timeline and panorama bar are built in render-panel-modes.cs. -->
       <Grid x:Name="ModeOverlayHost"/>
+      <Border x:Name="RenderCompletedBanner" Visibility="Collapsed" Panel.ZIndex="30"
+              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,20,185"
+              Background="#F01A3D38" BorderBrush="#70D4B1" BorderThickness="1" CornerRadius="7" Padding="14,10">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#A7F3D0"
+                     FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+          <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+            <TextBlock Text="{DynamicResource RenderPanel.CompletedTitle}" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+            <TextBlock Text="{DynamicResource RenderPanel.CompletedHint}" Foreground="#DAEEE8" FontSize="11"/>
+          </StackPanel>
+          <Button Content="{DynamicResource RenderPanel.CompletedSave}" Click="SaveButton_Click" Padding="10,5" Margin="0,0,8,0"/>
+          <Button Content="✕" Click="DismissRenderCompleted_Click" Padding="8,5" ToolTip="{DynamicResource RenderPanel.CompletedDismiss}"/>
+        </StackPanel>
+      </Border>
       <Border VerticalAlignment="Bottom" Background="#12232C" BorderBrush="#38505A"
               BorderThickness="0,1,0,0" Padding="18,9">
         <DockPanel>

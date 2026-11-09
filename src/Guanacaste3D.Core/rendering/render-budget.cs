@@ -5,7 +5,7 @@ public enum PlanNote
 {
     /// <summary>The quality was chosen automatically from the hardware.</summary>
     ChosenAutomatically,
-    /// <summary>Running on battery: fewer cores and a lower quality level to save energy and heat.</summary>
+    /// <summary>Running on battery: fewer cores, and AUTO may use a lower quality to save energy and heat.</summary>
     BatteryLowered,
     /// <summary>The image would not fit the memory budget, so it is rendered at a smaller size.</summary>
     OutputResolutionReduced,
@@ -83,7 +83,9 @@ public static class QualityPlanner
         if (hardware.IsOnBattery)
         {
             resources = ResourceMode.Eco;
-            if (quality > RenderQuality.Standard) quality = RenderQuality.Standard;
+            // AUTO may trade quality for battery life, but a deliberately selected quality is a
+            // promise to the user. Keep its sample budget; only reduce the worker count.
+            if (requested is null && quality > RenderQuality.Standard) quality = RenderQuality.Standard;
             notes.Add(PlanNote.BatteryLowered);
         }
 

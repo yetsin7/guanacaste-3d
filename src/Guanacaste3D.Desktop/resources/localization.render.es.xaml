@@ -9,6 +9,10 @@
   <sys:String x:Key="RenderPanel.Preview">Vista previa</sys:String>
   <sys:String x:Key="RenderPanel.PreviewHint">Navega por el proyecto con luz y sombras reales a baja calidad. Al pulsar Renderizar, la imagen se detiene mientras se genera.</sys:String>
   <sys:String x:Key="RenderPanel.Render">Renderizar</sys:String>
+  <sys:String x:Key="RenderPanel.CompletedTitle">Render completado</sys:String>
+  <sys:String x:Key="RenderPanel.CompletedHint">La imagen está lista para guardar.</sys:String>
+  <sys:String x:Key="RenderPanel.CompletedSave">Guardar imagen</sys:String>
+  <sys:String x:Key="RenderPanel.CompletedDismiss">Cerrar aviso</sys:String>
   <sys:String x:Key="RenderPanel.Stop">Detener</sys:String>
   <sys:String x:Key="RenderPanel.Pause">Pausar</sys:String>
   <sys:String x:Key="RenderPanel.Resume">Reanudar</sys:String>

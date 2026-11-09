@@ -173,9 +173,13 @@ static class RenderInfrastructureChecks
         check(QualityPlanner.Plan(null, Machine(64, 256), 1920, 1080).Quality != RenderQuality.Final, "AUTO never chooses Final");
         var final = QualityPlanner.Plan(RenderQuality.Final, Machine(16, 24), 1920, 1080);
         var onBattery = QualityPlanner.Plan(RenderQuality.Final, Machine(16, 24, battery: true), 1920, 1080);
-        check(final.Quality == RenderQuality.Final && !final.LowPriorityThreads && onBattery.Quality == RenderQuality.Standard &&
+        check(final.Quality == RenderQuality.Final && !final.LowPriorityThreads && onBattery.Quality == RenderQuality.Final &&
+              onBattery.TargetSamples == RenderPresets.Profile(RenderQuality.Final).TargetSamples &&
               onBattery.Resources == ResourceMode.Eco && onBattery.Notes.Contains(PlanNote.BatteryLowered),
-            "Battery power lowers Final to Standard with half the cores, and says so");
+            "Battery power keeps an explicitly requested Final quality while limiting worker cores");
+        var autoBattery = QualityPlanner.Plan(null, Machine(16, 24, battery: true), 1920, 1080);
+        check(autoBattery.Quality == RenderQuality.Standard && autoBattery.Resources == ResourceMode.Eco,
+            "AUTO may lower quality on battery to save power");
         check(QualityPlanner.Plan(RenderQuality.High, Machine(16, 24), 1920, 1080).Resources == ResourceMode.Balanced &&
               QualityPlanner.Plan(RenderQuality.High, Machine(16, 24), 1920, 1080).Threads == 15,
             "Balanced mode leaves one core to the interface");

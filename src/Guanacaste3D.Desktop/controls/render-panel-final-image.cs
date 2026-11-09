@@ -23,6 +23,7 @@ public partial class RenderPanel
     /// <summary>Discards a previous project's image and cancels its render when another project is opened.</summary>
     internal void ResetRenderedImageForDocument()
     {
+        RenderCompletedBanner.Visibility = Visibility.Collapsed;
         _renderDocumentVersion++;
         _refinishVersion++;
         _cancel?.Cancel();
@@ -95,6 +96,7 @@ public partial class RenderPanel
     private async Task RenderFinalAsync()
     {
         if (_source is null || _renderStarting || _rendering || _renderingTour) return;
+        RenderCompletedBanner.Visibility = Visibility.Collapsed;
         if (PreviewToggle.IsChecked == true) PreviewToggle.IsChecked = false;
         var documentVersion = _renderDocumentVersion;
         var source = _source;
@@ -215,8 +217,11 @@ public partial class RenderPanel
         else if (result.Cancelled)
             StatusText.Text = UiText.Format("RenderPanel.RenderStopped", result.Samples);
         else
+        {
             StatusText.Text = UiText.Format("RenderPanel.Rendered", result.Samples, session.Tracer?.Width ?? fit.Width,
                 session.Tracer?.Height ?? fit.Height, UiText.Duration(result.Elapsed), result.MegaRaysPerSecond);
+            if (_lastFinal is not null && !_batchRunning) RenderCompletedBanner.Visibility = Visibility.Visible;
+        }
         if (result.StoppedForMemory)
         {
             // Let go of the working buffers; the picture itself is already kept.
@@ -225,6 +230,9 @@ public partial class RenderPanel
             GC.Collect();
         }
     }
+
+    private void DismissRenderCompleted_Click(object sender, RoutedEventArgs e) =>
+        RenderCompletedBanner.Visibility = Visibility.Collapsed;
 
     /// <summary>Restores the last completed image after the user returns to interactive navigation.</summary>
     private void ShowImage_Click(object sender, RoutedEventArgs e)
