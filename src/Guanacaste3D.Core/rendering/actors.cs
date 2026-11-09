@@ -25,7 +25,7 @@ public sealed record Actor(Guid Id, string Name, int Look, double Speed, bool Lo
 
     public bool IsValid => Id != Guid.Empty && !string.IsNullOrWhiteSpace(Name) && Name.Length <= 80 && Look is >= 0 and < Looks &&
         Enum.IsDefined(Kind) && double.IsFinite(Speed) && Speed is >= 0.1 and <= MaximumSpeed && double.IsFinite(Start) && Start is >= 0 and <= 36000 &&
-        Route.Count is >= 1 and <= MaximumRoutePoints &&
+        Route is { Count: >= 1 and <= MaximumRoutePoints } &&
         Route.All(point => double.IsFinite(point.X + point.Y + point.Z) && Math.Abs(point.X) < 1e6 && Math.Abs(point.Y) < 1e6 && Math.Abs(point.Z) < 1e5);
 }
 
@@ -51,6 +51,10 @@ public static class Actors
     public static ActorState At(Actor actor, double seconds)
     {
         ArgumentNullException.ThrowIfNull(actor);
+        if (!actor.IsValid)
+            throw new ArgumentException("El actor tiene una ruta o parámetros no válidos.", nameof(actor));
+        if (!double.IsFinite(seconds))
+            throw new ArgumentOutOfRangeException(nameof(seconds), "El tiempo debe ser finito.");
         var route = actor.Route;
         var first = new Vector3((float)route[0].X, (float)route[0].Y, (float)route[0].Z);
         double length = 0;
@@ -141,16 +145,25 @@ public static class Actors
         return 0;
     }
 
-    public static string? Serialize(IReadOnlyCollection<Actor> actors) =>
-        actors.Count == 0 ? null : JsonSerializer.Serialize(new
+    public static string? Serialize(IReadOnlyCollection<Actor> actors)
+    {
+        ArgumentNullException.ThrowIfNull(actors);
+        if (actors.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(actors), $"No se pueden guardar más de {Maximum} actores.");
+        if (actors.Any(actor => actor is null || !actor.IsValid))
+            throw new ArgumentException("La colección contiene actores no válidos.", nameof(actors));
+        if (actors.Select(actor => actor.Id).Distinct().Count() != actors.Count)
+            throw new ArgumentException("Los identificadores de actores deben ser únicos.", nameof(actors));
+        return actors.Count == 0 ? null : JsonSerializer.Serialize(new
         {
             V = 1,
-            Items = actors.Take(Maximum).Select(actor => new
+            Items = actors.Select(actor => new
             {
                 actor.Id, actor.Name, actor.Look, actor.Speed, actor.Loop, actor.Start, Kind = (int)actor.Kind,
                 Route = actor.Route.Select(point => new[] { point.X, point.Y, point.Z })
             })
         });
+    }
 
     /// <summary>Reads saved actors; null when the text is damaged, an empty list when there are none.</summary>
     public static IReadOnlyList<Actor>? TryParse(string? text)
@@ -164,6 +177,7 @@ public static class Actors
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var actors = new List<Actor>();
+            var seenIds = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var route = new List<ActorPoint>();
@@ -179,6 +193,7 @@ public static class Actors
                     item.GetProperty("Look").GetInt32(), item.GetProperty("Speed").GetDouble(), item.GetProperty("Loop").GetBoolean(),
                     item.GetProperty("Start").GetDouble(), route, kind);
                 if (!actor.IsValid) return null;
+                if (!seenIds.Add(actor.Id)) return null;
                 actors.Add(actor);
             }
             return actors;
@@ -189,7 +204,12 @@ public static class Actors
         }
     }
 
-    /// <summary>The actors saved in a document; empty when there are none or the text cannot be read.</summary>
-    public static IReadOnlyList<Actor> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads saved actores without silently discarding corrupt data.</summary>
+    public static IReadOnlyList<Actor> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los actores guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 }

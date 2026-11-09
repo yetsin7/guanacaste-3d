@@ -28,8 +28,17 @@ public static class Decals
 
     public static string? Serialize(IReadOnlyCollection<Decal> decals)
     {
+        ArgumentNullException.ThrowIfNull(decals);
+        if (decals.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(decals), $"No se pueden guardar más de {Maximum} estampados.");
+        var ids = new HashSet<Guid>();
+        foreach (var decal in decals)
+        {
+            if (decal is null || !IsSane(decal) || !ids.Add(decal.Id))
+                throw new ArgumentException("Los estampados contienen datos inválidos o identificadores duplicados.", nameof(decals));
+        }
         if (decals.Count == 0) return null;
-        return JsonSerializer.Serialize(new { V = 1, Items = decals.Take(Maximum) });
+        return JsonSerializer.Serialize(new { V = 1, Items = decals });
     }
 
     /// <summary>Reads the saved decals; null when the text is damaged, an empty list when there are none.</summary>
@@ -44,13 +53,14 @@ public static class Decals
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var decals = new List<Decal>();
+            var ids = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var decal = new Decal(item.GetProperty("Id").GetGuid(), item.GetProperty("WallId").GetGuid(),
                     (DecalFace)item.GetProperty("Face").GetInt32(), item.GetProperty("Along").GetDouble(),
                     item.GetProperty("CenterHeight").GetDouble(), item.GetProperty("Width").GetDouble(),
                     item.GetProperty("Height").GetDouble(), item.GetProperty("ImagePath").GetString() ?? "");
-                if (!IsSane(decal)) return null;
+                if (!IsSane(decal) || !ids.Add(decal.Id)) return null;
                 decals.Add(decal);
             }
             return decals;
@@ -61,9 +71,14 @@ public static class Decals
         }
     }
 
-    /// <summary>The decals saved in a document; empty when there are none or the text cannot be read.</summary>
-    public static IReadOnlyList<Decal> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads decals without silently treating corrupt saved data as an empty collection.</summary>
+    public static IReadOnlyList<Decal> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los estampados guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 
     private static bool IsSane(Decal decal) =>
         decal.Id != Guid.Empty && decal.WallId != Guid.Empty && Enum.IsDefined(decal.Face) &&

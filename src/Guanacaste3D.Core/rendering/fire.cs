@@ -23,8 +23,17 @@ public static class Fires
     public const string Key = "render.fire";
     public const int Maximum = 50;
 
-    public static string? Serialize(IReadOnlyCollection<FireEmitter> fires) =>
-        fires.Count == 0 ? null : JsonSerializer.Serialize(new { V = 1, Items = fires.Take(Maximum) });
+    public static string? Serialize(IReadOnlyCollection<FireEmitter> fires)
+    {
+        ArgumentNullException.ThrowIfNull(fires);
+        if (fires.Count > Maximum)
+            throw new ArgumentOutOfRangeException(nameof(fires), $"No se pueden guardar más de {Maximum} emisores de fuego.");
+        if (fires.Any(fire => fire is null || !fire.IsValid))
+            throw new ArgumentException("La colección contiene emisores de fuego no válidos.", nameof(fires));
+        if (fires.Select(fire => fire.Id).Distinct().Count() != fires.Count)
+            throw new ArgumentException("Los identificadores de emisores de fuego deben ser únicos.", nameof(fires));
+        return fires.Count == 0 ? null : JsonSerializer.Serialize(new { V = 1, Items = fires });
+    }
 
     /// <summary>Reads saved fires; null when the text is damaged, an empty list when there are none.</summary>
     public static IReadOnlyList<FireEmitter>? TryParse(string? text)
@@ -38,12 +47,14 @@ public static class Fires
             var items = root.GetProperty("Items");
             if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > Maximum) return null;
             var fires = new List<FireEmitter>();
+            var seenIds = new HashSet<Guid>();
             foreach (var item in items.EnumerateArray())
             {
                 var fire = new FireEmitter(item.GetProperty("Id").GetGuid(), item.GetProperty("Name").GetString() ?? "", item.GetProperty("X").GetDouble(),
                     item.GetProperty("Y").GetDouble(), item.GetProperty("Z").GetDouble(), item.GetProperty("Flames").GetDouble(),
                     item.GetProperty("Smoke").GetDouble(), item.GetProperty("Size").GetDouble());
                 if (!fire.IsValid) return null;
+                if (!seenIds.Add(fire.Id)) return null;
                 fires.Add(fire);
             }
             return fires;
@@ -54,8 +65,14 @@ public static class Fires
         }
     }
 
-    public static IReadOnlyList<FireEmitter> Of(BuildingDocument document) =>
-        TryParse(document.Extensions.GetValueOrDefault(Key)) ?? [];
+    /// <summary>Reads saved emisores de fuego without silently discarding corrupt data.</summary>
+    public static IReadOnlyList<FireEmitter> Of(BuildingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var parsed = TryParse(document.Extensions.GetValueOrDefault(Key));
+        return parsed ?? throw new InvalidDataException(
+            "Los emisores de fuego guardados están dañados. No se puede continuar como si estuvieran vacíos.");
+    }
 
     /// <summary>
     /// The light a fire gives its surroundings: a warm point light a little above its base, as strong as its flames and as big
