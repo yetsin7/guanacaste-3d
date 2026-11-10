@@ -38,3 +38,23 @@ This is infrastructure, not a claim that the exact CAD/B-Rep evaluator or WPF fa
 ## Template payload
 
 `.G3Dt` stores metric/project initialization settings, levels, material presets, preloaded-family references, view-template names, sheet bases and other named settings. Creating a project from a template produces an independent `BuildingDocument`; subsequent project edits do not mutate the template.
+
+## Render export and model link
+
+*Archivo → Exportar a Guanacaste Render…* writes a project snapshot for Guanacaste Render and, beside it, a
+`<export>.model-link` file. The link is a GZip-compressed JSON record with the path of the model the snapshot was
+taken from, that file's time and size at the export, a sync token that is also stored in the export under the
+`render.modelsync` extension, and the exported model itself as the common baseline.
+
+- Guanacaste Render uses the link to notice when the model file is saved again and to merge the new model into
+  the render project while keeping cameras, photos, render materials and placed scene components
+  (`RenderModelUpdate` in `src/Guanacaste3D.Core/interop/`).
+- Exporting again over an export whose token still matches its link merges the new model into the existing file,
+  so work saved there by Guanacaste Render is kept. Without a matching link the file is replaced and the previous
+  one remains as `.bak`.
+- After an export the application offers to open it in Guanacaste Render when that application is installed and
+  not already running.
+
+The link is a sidecar: moving the export without it only disables the automatic notice and the three-way merge;
+the export itself stays a complete project. `tests/Guanacaste3D.Checks/render-model-update-checks.cs` covers the
+merge rules, the link file and the export behavior.

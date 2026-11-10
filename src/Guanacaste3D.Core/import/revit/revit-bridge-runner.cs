@@ -95,6 +95,8 @@ public static class RevitBridgeRunner
     public static void RecordApplicationPath(string? executable)
     {
         if (string.IsNullOrWhiteSpace(executable)) return;
+        // Test hosts and other embedders run the same startup code; only the real application may record itself.
+        if (!string.Equals(Path.GetFileName(executable), "Guanacaste3D.Desktop.exe", StringComparison.OrdinalIgnoreCase)) return;
         try
         {
             var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Guanacaste3D");

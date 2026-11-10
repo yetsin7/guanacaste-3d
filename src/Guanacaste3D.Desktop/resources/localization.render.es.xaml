@@ -421,5 +421,11 @@
   <sys:String x:Key="RenderExport.Completed">Proyecto exportado para Guanacaste Render.</sys:String>
   <sys:String x:Key="RenderExport.SameFile">Selecciona un archivo diferente al proyecto original.</sys:String>
   <sys:String x:Key="RenderExport.ExternalAssets">La copia conserva referencias externas; mantén disponibles los archivos vinculados y materiales externos.</sys:String>
+  <sys:String x:Key="RenderExport.Merged">Exportación actualizada: se conservó el trabajo hecho en Guanacaste Render.</sys:String>
+  <sys:String x:Key="RenderExport.OpenNow">¿Abrir ahora en Guanacaste Render?</sys:String>
+  <sys:String x:Key="RenderExport.AlreadyOpen">Guanacaste Render ya está abierto: ábrela allí con «Abrir proyecto». Si ya la tienes abierta, guarda aquí el modelo y pulsa «Actualizar modelo» en Guanacaste Render.</sys:String>
+  <sys:String x:Key="RenderExport.NotInstalled">Guanacaste Render no está instalado en este equipo o aún no se ha abierto una primera vez.</sys:String>
+  <sys:String x:Key="RenderExport.LaunchFailed">No se pudo iniciar Guanacaste Render. Abre el archivo exportado desde la aplicación.</sys:String>
+  <sys:String x:Key="Transaction.UpdateModel">Actualizar modelo</sys:String>
   <sys:String x:Key="RenderProduct.Name">Guanacaste Render</sys:String>
 </ResourceDictionary>
