@@ -161,7 +161,7 @@ public partial class MainWindow
         MainTitleBar.Visibility = Visibility.Visible;
         RibbonTabControl.Visibility = standardVisibility;
         MainStatusStrip.Visibility = standardVisibility;
-        RenderReturn3DButton.Visibility = renderIsActive ? Visibility.Visible : Visibility.Collapsed;
+        RenderReturn3DButton.Visibility = renderIsActive && !App.RenderOnly ? Visibility.Visible : Visibility.Collapsed;
         RenderPanelControl.Visibility = renderIsActive ? Visibility.Visible : Visibility.Collapsed;
     }
 

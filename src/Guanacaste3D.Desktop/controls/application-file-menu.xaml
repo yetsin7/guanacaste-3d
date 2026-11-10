@@ -25,6 +25,7 @@
               <MenuItem Header="{DynamicResource Action.ExportDxf}" Click="Command_Click" Tag="ExportDxf"/>
               <MenuItem Header="{DynamicResource Action.ExportPdf}" Click="Command_Click" Tag="ExportPdf"/>
               <MenuItem Header="{DynamicResource Action.ExportIfc}" Click="Command_Click" Tag="ExportIfc"/>
+              <MenuItem Header="{DynamicResource Action.ExportRenderProject}" Click="Command_Click" Tag="ExportRenderProject"/>
               <MenuItem Header="{DynamicResource Action.ExportModel3D}" Click="Command_Click" Tag="ExportModel3D"/>
               <Separator/>
               <MenuItem Header="{DynamicResource Menu.Edit}">

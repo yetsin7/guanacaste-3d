@@ -8,12 +8,16 @@ public partial class App : Application
 {
     private const int StartupStepCount = 4;
 
+    /// <summary>Starts the shared desktop host in the dedicated rendering workspace.</summary>
+    public static bool RenderOnly { get; set; }
+
     /// <summary>Shows the splash, loads the model libraries and workspace, then reveals the main window.</summary>
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         CrashReporter.Install(this);
         var projectPath = StartupDocumentResolver.FindSupportedPath(e.Args);
+        if (RenderOnly) Resources["App.Name"] = Resources["RenderProduct.Name"];
         var splash = new SplashWindow();
         splash.Show();
 
@@ -24,7 +28,8 @@ public partial class App : Application
 
         await ReportStepAsync(splash, 1, "Splash.Step.Interface");
         // Started without a document, the application shows the Home screen so the person chooses what to work on.
-        var window = new MainWindow(projectPath, showStartScreen: true);
+        var window = new MainWindow(projectPath, showStartScreen: !RenderOnly);
+        if (RenderOnly) window.EnterRenderWorkspace();
         MainWindow = window;
 
         await ReportStepAsync(splash, 2, "Splash.Step.Workspace");
@@ -38,7 +43,7 @@ public partial class App : Application
         splash.Close();
         CrashReporter.OfferPendingReport(window);
         // A copy left by a session that ended without saving is offered before anything else is opened.
-        if (projectPath is null) window.OfferRecovery();
+        if (projectPath is null && !RenderOnly) window.OfferRecovery();
     }
 
     /// <summary>Publishes a startup step and yields so the splash paints before the next blocking step.</summary>

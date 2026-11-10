@@ -256,7 +256,7 @@
         <Border DockPanel.Dock="Top" Background="#202C35" BorderBrush="#344555" BorderThickness="0,0,0,1" Padding="18,16">
           <StackPanel>
             <TextBlock Text="RENDER" Foreground="#E3EDF0" FontSize="10.5" FontWeight="Bold"/>
-            <TextBlock Text="Guanacaste 3D" Foreground="#F4F7FA" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0"/>
+            <TextBlock Text="{DynamicResource App.Name}" Foreground="#F4F7FA" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0"/>
           </StackPanel>
         </Border>
 

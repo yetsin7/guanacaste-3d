@@ -9,6 +9,14 @@ namespace Guanacaste3D.Desktop;
 /// </summary>
 public partial class MainWindow
 {
+    /// <summary>Opens the rendering workspace when hosted by Guanacaste Render.</summary>
+    public void EnterRenderWorkspace()
+    {
+        WorkspaceToggleButton.Visibility = Visibility.Collapsed;
+        QuickAccessHost.Visibility = Visibility.Collapsed;
+        ViewTabs.SelectedIndex = RenderTabIndex;
+    }
+
     private void RenderReturn3D_Click(object sender, RoutedEventArgs e)
     {
         // Navigation uses the same project-view selection path as the main BIM view controls.

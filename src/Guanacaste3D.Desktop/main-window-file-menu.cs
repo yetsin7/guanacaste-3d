@@ -63,6 +63,7 @@ public partial class MainWindow
             "ExportPdf" => ExportPdf_Click,
             "ExportIfc" => ExportIfc_Click,
             "ExportModel3D" => ExportModel3D_Click,
+            "ExportRenderProject" => ExportRenderProject_Click,
             "Undo" => Undo_Click,
             "Redo" => Redo_Click,
             "Delete" => Delete_Click,
