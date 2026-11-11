@@ -152,9 +152,7 @@ fn validate_dotnet_opening_rules(
             .then_with(|| a.from_m.total_cmp(&b.from_m))
     });
     for pair in ordered.windows(2) {
-        if pair[0].wall_id == pair[1].wall_id
-            && pair[1].from_m < pair[0].to_m + 0.05
-        {
+        if pair[0].wall_id == pair[1].wall_id && pair[1].from_m < pair[0].to_m + 0.05 {
             return Err(SliceError::InvalidOpeningRules);
         }
     }
