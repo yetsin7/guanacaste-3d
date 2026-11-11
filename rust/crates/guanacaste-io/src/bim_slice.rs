@@ -142,12 +142,19 @@ fn validate_dotnet_opening_rules(
         }
     }
     // C# rejects gaps below 0.05 m between openings on the same wall.
-    for (index, opening) in openings.iter().enumerate() {
-        if openings[..index].iter().any(|previous| {
-            previous.wall_id == opening.wall_id
-                && previous.from_m < opening.to_m + 0.05
-                && opening.from_m < previous.to_m + 0.05
-        }) {
+    // Sorting by host and interval avoids the quadratic pairwise scan on
+    // large imported projects. Adjacent intervals are sufficient to detect
+    // every overlap or undersized gap in a sorted sequence.
+    let mut ordered: Vec<_> = openings.iter().collect();
+    ordered.sort_unstable_by(|a, b| {
+        a.wall_id
+            .cmp(&b.wall_id)
+            .then_with(|| a.from_m.total_cmp(&b.from_m))
+    });
+    for pair in ordered.windows(2) {
+        if pair[0].wall_id == pair[1].wall_id
+            && pair[1].from_m < pair[0].to_m + 0.05
+        {
             return Err(SliceError::InvalidOpeningRules);
         }
     }
@@ -313,6 +320,27 @@ mod tests {
             extract_wall_slice(&inspected),
             Err(SliceError::InvalidOpeningRules)
         );
+    }
+
+    #[test]
+    fn opening_clearances_are_checked_per_host_even_when_input_is_unsorted() {
+        let first = r#"{"Id":"00000000-0000-0000-0000-000000000003",
+            "WallId":"00000000-0000-0000-0000-000000000002",
+            "Kind":1,"Offset":1.5,"Width":1,"Sill":1,"Height":1}"#;
+        let second = r#"{"Id":"00000000-0000-0000-0000-000000000004",
+            "WallId":"00000000-0000-0000-0000-000000000002",
+            "Kind":1,"Offset":2.54,"Width":1,"Sill":1,"Height":1}"#;
+        let payload = PROJECT.replace(first, &format!("{second},{first}"));
+        let inspected = inspect_legacy_json(payload.as_bytes()).unwrap();
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::InvalidOpeningRules)
+        );
+
+        // Exactly 0.05 m clearance is accepted by the C# rule.
+        let allowed = payload.replace("\"Offset\":2.54", "\"Offset\":2.55");
+        let inspected = inspect_legacy_json(allowed.as_bytes()).unwrap();
+        assert!(extract_wall_slice(&inspected).is_ok());
     }
 
     #[test]
