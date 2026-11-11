@@ -164,7 +164,10 @@ mod tests {
         assert!(changed_volume > old_volume);
         assert!(session.undo());
         assert_eq!(session.document(), &original);
-        assert_eq!(session.document().wall_mesh(2).unwrap().signed_volume(), old_volume);
+        assert_eq!(
+            session.document().wall_mesh(2).unwrap().signed_volume(),
+            old_volume
+        );
         assert!(session.redo());
         assert_eq!(
             session.document().wall_mesh(2).unwrap().signed_volume(),
@@ -175,10 +178,12 @@ mod tests {
     #[test]
     fn failure_preserves_redo_and_history() {
         let mut session = DocumentSession::new(sample(), 3).unwrap();
-        session.edit(|d| {
-            d.walls[0].thickness_m = 0.3;
-            Ok(())
-        }).unwrap();
+        session
+            .edit(|d| {
+                d.walls[0].thickness_m = 0.3;
+                Ok(())
+            })
+            .unwrap();
         session.undo();
         let before = session.document().clone();
         let undo_count = session.undo_count();
@@ -199,17 +204,21 @@ mod tests {
     #[test]
     fn new_branch_clears_redo_only_on_change() {
         let mut session = DocumentSession::new(sample(), 2).unwrap();
-        session.edit(|d| {
-            d.walls[0].thickness_m = 0.3;
-            Ok(())
-        }).unwrap();
+        session
+            .edit(|d| {
+                d.walls[0].thickness_m = 0.3;
+                Ok(())
+            })
+            .unwrap();
         session.undo();
         assert_eq!(session.edit(|_| Ok(())).unwrap(), false);
         assert!(session.can_redo());
-        session.edit(|d| {
-            d.walls[0].height_m = 4.0;
-            Ok(())
-        }).unwrap();
+        session
+            .edit(|d| {
+                d.walls[0].height_m = 4.0;
+                Ok(())
+            })
+            .unwrap();
         assert!(!session.can_redo());
         assert!(!session.redo());
         assert_eq!(session.document().walls[0].height_m, 4.0);
@@ -219,10 +228,12 @@ mod tests {
     fn history_capacity_drops_oldest_snapshot() {
         let mut session = DocumentSession::new(sample(), 2).unwrap();
         for thickness in [0.3, 0.4, 0.5] {
-            session.edit(|d| {
-                d.walls[0].thickness_m = thickness;
-                Ok(())
-            }).unwrap();
+            session
+                .edit(|d| {
+                    d.walls[0].thickness_m = thickness;
+                    Ok(())
+                })
+                .unwrap();
         }
         assert_eq!(session.undo_count(), 2);
         assert!(session.undo());
