@@ -133,42 +133,66 @@ pub fn mesh_wall_with_openings(
             // Front (+right) and back (-right) faces.
             append_quad(
                 &mut mesh,
-                [point(u0, z0, 1.0), point(u1, z0, 1.0),
-                 point(u1, z1, 1.0), point(u0, z1, 1.0)],
+                [
+                    point(u0, z0, 1.0),
+                    point(u1, z0, 1.0),
+                    point(u1, z1, 1.0),
+                    point(u0, z1, 1.0),
+                ],
             );
             append_quad(
                 &mut mesh,
-                [point(u1, z0, -1.0), point(u0, z0, -1.0),
-                 point(u0, z1, -1.0), point(u1, z1, -1.0)],
+                [
+                    point(u1, z0, -1.0),
+                    point(u0, z0, -1.0),
+                    point(u0, z1, -1.0),
+                    point(u1, z1, -1.0),
+                ],
             );
             // Left and right ends, plus opening jambs.
             if col == 0 || !filled[row * cols + col - 1] {
                 append_quad(
                     &mut mesh,
-                    [point(u0, z0, 1.0), point(u0, z0, -1.0),
-                     point(u0, z1, -1.0), point(u0, z1, 1.0)],
+                    [
+                        point(u0, z0, 1.0),
+                        point(u0, z0, -1.0),
+                        point(u0, z1, -1.0),
+                        point(u0, z1, 1.0),
+                    ],
                 );
             }
             if col + 1 == cols || !filled[row * cols + col + 1] {
                 append_quad(
                     &mut mesh,
-                    [point(u1, z0, -1.0), point(u1, z0, 1.0),
-                     point(u1, z1, 1.0), point(u1, z1, -1.0)],
+                    [
+                        point(u1, z0, -1.0),
+                        point(u1, z0, 1.0),
+                        point(u1, z1, 1.0),
+                        point(u1, z1, -1.0),
+                    ],
                 );
             }
             // Bottom and top horizontal surfaces, including sills and heads.
             if row == 0 || !filled[(row - 1) * cols + col] {
                 append_quad(
                     &mut mesh,
-                    [point(u0, z0, 1.0), point(u0, z0, -1.0),
-                     point(u1, z0, -1.0), point(u1, z0, 1.0)],
+                    [
+                        point(u0, z0, 1.0),
+                        point(u0, z0, -1.0),
+                        point(u1, z0, -1.0),
+                        point(u1, z0, 1.0),
+                    ],
                 );
             }
             if row + 1 == rows || !filled[(row + 1) * cols + col] {
                 append_quad(
                     &mut mesh,
-                    [point(u1, z1, 1.0), point(u1, z1, -1.0),
-                     point(u0, z1, -1.0), point(u0, z1, 1.0)],
+                    [
+                        point(u1, z1, 1.0),
+                        point(u1, z1, -1.0),
+                        point(u0, z1, -1.0),
+                        point(u0, z1, 1.0),
+                    ],
                 );
             }
         }
