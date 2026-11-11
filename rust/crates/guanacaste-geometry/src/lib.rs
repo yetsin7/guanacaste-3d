@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod mesh;
+pub mod topology;
 
 /// A finite, two-dimensional project point in meters.
 #[derive(Clone, Copy, Debug, PartialEq)]
