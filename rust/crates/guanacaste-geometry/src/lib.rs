@@ -3,6 +3,8 @@
 //! Metric coordinates, double precision; no unsafe code.
 #![forbid(unsafe_code)]
 
+pub mod mesh;
+
 /// A finite, two-dimensional project point in meters.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point2 {
