@@ -209,6 +209,21 @@ pub fn inspect_native(bytes: &[u8]) -> Result<InspectedDocument, FileError> {
     })
 }
 
+/// Read-only preflight of the import-only .g3d.json legacy format.
+/// Unlike .g3 this has no envelope; both use the same 20 MiB file limit.
+/// The original bytes are retained and no schema upgrade is attempted.
+pub fn inspect_legacy_json(bytes: &[u8]) -> Result<InspectedDocument, FileError> {
+    if bytes.len() > MAX_PREVIEW_BYTES {
+        return Err(FileError::InvalidLength);
+    }
+    let root = parse_json(bytes)?;
+    validate_project_identity(&root, None, None)?;
+    Ok(InspectedDocument {
+        header: None,
+        json: bytes.to_vec(),
+    })
+}
+
 /// Preflight of the legacy .g3 envelope (not .g3d.json).
 /// This does not migrate its schema or rewrite its content.
 pub fn inspect_preview(bytes: &[u8]) -> Result<InspectedDocument, FileError> {
@@ -330,6 +345,37 @@ mod tests {
         assert_eq!(
             inspect_native(&native).unwrap_err(),
             FileError::DuplicateProjectField
+        );
+    }
+
+    #[test]
+    fn legacy_json_matches_preview_payload_without_rewriting() {
+        let original = project_json();
+        let mut preview = PREVIEW_SIGNATURE.to_vec();
+        preview.extend_from_slice(&original);
+        assert_eq!(inspect_legacy_json(&original).unwrap().json, original);
+        assert_eq!(
+            inspect_legacy_json(&original).unwrap().json,
+            inspect_preview(&preview).unwrap().json
+        );
+        assert_eq!(
+            inspect_legacy_json(&preview).unwrap_err(),
+            FileError::InvalidJson
+        );
+    }
+
+    #[test]
+    fn legacy_json_rejects_duplicate_keys_and_oversize() {
+        let duplicate = format!(
+            r#"{{"SchemaVersion":15,"Id":"{GUID}","Name":"First","Name":"Second","Levels":[],"Walls":[]}}"#
+        );
+        assert_eq!(
+            inspect_legacy_json(duplicate.as_bytes()).unwrap_err(),
+            FileError::DuplicateProjectField
+        );
+        assert_eq!(
+            inspect_legacy_json(&vec![b' '; MAX_PREVIEW_BYTES + 1]).unwrap_err(),
+            FileError::InvalidLength
         );
     }
 
