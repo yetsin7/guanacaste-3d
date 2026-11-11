@@ -5,8 +5,8 @@
 //! replacement for the full .NET BuildingDocument deserializer.
 #![forbid(unsafe_code)]
 
-mod strict_json;
 pub mod bim_slice;
+mod strict_json;
 
 use flate2::read::GzDecoder;
 use serde_json::Value;
