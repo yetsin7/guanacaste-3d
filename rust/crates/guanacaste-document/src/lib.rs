@@ -5,6 +5,8 @@
 //! Identifiers are stable 128-bit values supplied by the caller (e.g. GUIDs).
 #![forbid(unsafe_code)]
 
+pub mod session;
+
 use guanacaste_geometry::mesh::TriangleMesh;
 use guanacaste_geometry::wall::{mesh_wall_with_openings, WallMeshError, WallOpening};
 use std::collections::HashSet;
