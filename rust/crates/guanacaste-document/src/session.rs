@@ -135,10 +135,10 @@ mod tests {
 
     #[test]
     fn rejects_zero_capacity_and_invalid_initial_state() {
-        assert_eq!(
-            DocumentSession::new(sample(), 0).unwrap_err().capacity,
-            0
-        );
+        assert!(matches!(
+            DocumentSession::new(sample(), 0),
+            Err(SessionError::InvalidCapacity)
+        ));
         let mut invalid = sample();
         invalid.walls[0].level_id = 999;
         assert!(matches!(
