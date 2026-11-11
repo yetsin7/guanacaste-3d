@@ -316,6 +316,24 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_fields_in_preview_and_native_payloads() {
+        let duplicate_json = format!(
+            r#"{{"SchemaVersion":15,"Id":"{GUID}","Name":"Test","Name":"Altered","Levels":[],"Walls":[]}}"#
+        );
+        let mut preview = PREVIEW_SIGNATURE.to_vec();
+        preview.extend_from_slice(duplicate_json.as_bytes());
+        assert_eq!(
+            inspect_preview(&preview).unwrap_err(),
+            FileError::DuplicateProjectField
+        );
+        let native = native_with_json(1, duplicate_json.as_bytes());
+        assert_eq!(
+            inspect_native(&native).unwrap_err(),
+            FileError::DuplicateProjectField
+        );
+    }
+
+    #[test]
     fn rejects_missing_project_fields_and_non_object_json() {
         let mut content = PREVIEW_SIGNATURE.to_vec();
         content.extend_from_slice(br#"{"SchemaVersion":15,"Id":"abc"}"#);
