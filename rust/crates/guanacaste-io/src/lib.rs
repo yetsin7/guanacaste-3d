@@ -417,7 +417,6 @@ mod tests {
         assert_eq!(legacy.json, json);
     }
 
-
     #[test]
     fn populated_straight_wall_matches_csharp_net_volume_across_all_envelopes() {
         use crate::bim_slice::extract_wall_slice;
