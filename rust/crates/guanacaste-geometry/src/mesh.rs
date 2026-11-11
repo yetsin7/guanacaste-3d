@@ -63,8 +63,12 @@ impl TriangleMesh {
         }
         let mut edges: HashMap<(usize, usize), (u32, i32)> = HashMap::new();
         for &[a, b, c] in &self.indices {
-            if a >= self.positions.len() || b >= self.positions.len() || c >= self.positions.len()
-                || a == b || b == c || c == a
+            if a >= self.positions.len()
+                || b >= self.positions.len()
+                || c >= self.positions.len()
+                || a == b
+                || b == c
+                || c == a
             {
                 return false;
             }
@@ -87,10 +91,14 @@ impl TriangleMesh {
                 let entry = edges.entry(key).or_insert((0, 0));
                 entry.0 += 1;
                 entry.1 += sign;
-                if entry.0 > 2 { return false; }
+                if entry.0 > 2 {
+                    return false;
+                }
             }
         }
-        edges.values().all(|&(count, orientation)| count == 2 && orientation == 0)
+        edges
+            .values()
+            .all(|&(count, orientation)| count == 2 && orientation == 0)
     }
 
     /// Signed volume of an oriented closed triangular surface.
@@ -219,6 +227,9 @@ mod tests {
         let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
         assert!(mesh.is_closed_oriented_manifold());
         mesh.indices.pop();
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices.push(mesh.indices[0]);
         assert!(!mesh.is_closed_oriented_manifold());
         let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
         mesh.indices[0].swap(0, 1);
