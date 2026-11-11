@@ -31,7 +31,7 @@ La creación de cada crate se realizará cuando exista funcionalidad probada, si
 
 ## Fases y criterios verificables
 - [x] **F0.** Inspeccionar arquitectura inicial y abrir este documento de control en una rama separada.
-- [ ] **F1.** Crear workspace Rust mínimo que compile; primera biblioteca de matemática/transformaciones con pruebas de invariantes, NaN, tolerancias, precisión métrica y determinismo.
+- [x] **F1.** Crear workspace Rust mínimo que compile; primera biblioteca de matemática/transformaciones con pruebas de invariantes, NaN, tolerancias, precisión métrica y determinismo. CI Rust Windows/Linux verificada en commit `2b1d48a7`.
 - [ ] **F2.** Establecer bancos de pruebas de equivalencia C# ↔ Rust con fixtures de edificios, transformaciones, mallas y persistencia; medir tiempos y memoria con misma entrada y máquina.
 - [ ] **F3.** Portar geometría computacional, cortes, triangulación, snapping y topología con pruebas de casos degenerados.
 - [ ] **F4.** Portar documento BIM, validaciones, transacciones atómicas, undo/redo, parámetros, familias y regeneración de operaciones.
@@ -54,3 +54,5 @@ La creación de cada crate se realizará cuando exista funcionalidad probada, si
 ## Registro de progreso
 - 2026-11-11: inspección de `ARCHITECTURE.md`, solución `.slnx`, carpetas `src/`, `tests/` y commits recientes; se establece la rama y el plan.
 - Próxima entrega: workspace, primer crate con pruebas y CI Rust en Windows/Linux, manteniendo .NET/WPF.
+
+- 2026-11-11, segunda entrega: añadido `guanacaste-geometry`, port inicial de triangulación de polígonos desde `PolygonTriangulator.cs` y pruebas de polígonos cóncavos, inversión de orientación, vértices colineales y desplazamientos de coordenadas grandes. **F3 sigue incompleta**: faltan triangulación validada en casos adversarios, mallas BIM, booleanas, snapping y paridad cruzada automatizada. Corregida la política de acciones de terceros mediante pin SHA del checkout y `rustup`.
