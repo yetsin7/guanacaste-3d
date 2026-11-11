@@ -211,7 +211,7 @@ mod tests {
             })
             .unwrap();
         session.undo();
-        assert_eq!(session.edit(|_| Ok(())).unwrap(), false);
+        assert!(!session.edit(|_| Ok(())).unwrap());
         assert!(session.can_redo());
         session
             .edit(|d| {
