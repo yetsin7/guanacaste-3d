@@ -5,6 +5,7 @@
 
 pub mod mesh;
 pub mod topology;
+pub mod wall;
 
 /// A finite, two-dimensional project point in meters.
 #[derive(Clone, Copy, Debug, PartialEq)]
