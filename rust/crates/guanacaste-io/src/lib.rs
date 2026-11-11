@@ -424,9 +424,11 @@ mod tests {
         let json = project_json();
         let mut corrupt = native_with_json(1, &json);
         corrupt[49] ^= 0x80;
-        assert_eq!(inspect_native(&corrupt).unwrap_err(), FileError::InvalidChecksum);
+        assert_eq!(
+            inspect_native(&corrupt).unwrap_err(),
+            FileError::InvalidChecksum
+        );
         let inspected = inspect_native(&native_with_json(1, &json)).unwrap();
         assert!(extract_wall_slice(&inspected).is_ok());
     }
-
 }
