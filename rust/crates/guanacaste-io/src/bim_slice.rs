@@ -324,22 +324,23 @@ mod tests {
 
     #[test]
     fn opening_clearances_are_checked_per_host_even_when_input_is_unsorted() {
-        let first = r#"{"Id":"00000000-0000-0000-0000-000000000003",
-            "WallId":"00000000-0000-0000-0000-000000000002",
-            "Kind":1,"Offset":1.5,"Width":1,"Sill":1,"Height":1}"#;
-        let second = r#"{"Id":"00000000-0000-0000-0000-000000000004",
-            "WallId":"00000000-0000-0000-0000-000000000002",
-            "Kind":1,"Offset":2.54,"Width":1,"Sill":1,"Height":1}"#;
-        let payload = PROJECT.replace(first, &format!("{second},{first}"));
-        let inspected = inspect_legacy_json(payload.as_bytes()).unwrap();
+        let mut payload: Value = serde_json::from_str(PROJECT).unwrap();
+        let original = payload["Openings"][0].clone();
+        let mut adjacent = original.clone();
+        adjacent["Id"] = Value::from("00000000-0000-0000-0000-000000000004");
+        adjacent["Offset"] = Value::from(2.54);
+        payload["Openings"] = Value::from(vec![adjacent, original]);
+        let json = serde_json::to_vec(&payload).unwrap();
+        let inspected = inspect_legacy_json(&json).unwrap();
         assert_eq!(
             extract_wall_slice(&inspected),
             Err(SliceError::InvalidOpeningRules)
         );
 
-        // Exactly 0.05 m clearance is accepted by the C# rule.
-        let allowed = payload.replace("\"Offset\":2.54", "\"Offset\":2.55");
-        let inspected = inspect_legacy_json(allowed.as_bytes()).unwrap();
+        // C# permits a gap of at least 0.05 m between openings.
+        payload["Openings"][0]["Offset"] = Value::from(2.55);
+        let json = serde_json::to_vec(&payload).unwrap();
+        let inspected = inspect_legacy_json(&json).unwrap();
         assert!(extract_wall_slice(&inspected).is_ok());
     }
 
