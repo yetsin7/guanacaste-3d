@@ -5,6 +5,8 @@
 //! replacement for the full .NET BuildingDocument deserializer.
 #![forbid(unsafe_code)]
 
+mod strict_json;
+
 use flate2::read::GzDecoder;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -95,7 +97,7 @@ fn dotnet_guid(bytes: &[u8]) -> String {
 }
 
 fn parse_json(bytes: &[u8]) -> Result<Value, FileError> {
-    let root: Value = serde_json::from_slice(bytes).map_err(|_| FileError::InvalidJson)?;
+    let root = strict_json::parse(bytes)?;
     if !root.is_object() {
         return Err(FileError::InvalidJson);
     }
