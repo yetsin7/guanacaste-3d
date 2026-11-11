@@ -48,20 +48,32 @@ impl TriangleMesh {
     }
 
     /// Signed volume of an oriented closed triangular surface.
+    /// Returns NaN for invalid indices or non-finite coordinates rather than panicking.
     /// Meaningful only for consistently oriented, watertight meshes.
     pub fn signed_volume(&self) -> f64 {
-        self.indices
-            .iter()
-            .map(|&[a, b, c]| {
-                let a = self.positions[a];
-                let b = self.positions[b];
-                let c = self.positions[c];
-                (a.x * (b.y * c.z - b.z * c.y)
-                    + a.y * (b.z * c.x - b.x * c.z)
-                    + a.z * (b.x * c.y - b.y * c.x))
-                    / 6.0
-            })
-            .sum()
+        self.checked_signed_volume().unwrap_or(f64::NAN)
+    }
+
+    /// Checked volume for meshes received from untrusted importers or FFI callers.
+    /// This validates indices and finite coordinates, not watertight topology.
+    pub fn checked_signed_volume(&self) -> Option<f64> {
+        let mut volume = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            if [a, b, c]
+                .iter()
+                .any(|p| !p.x.is_finite() || !p.y.is_finite() || !p.z.is_finite())
+            {
+                return None;
+            }
+            volume += (a.x * (b.y * c.z - b.z * c.y)
+                + a.y * (b.z * c.x - b.x * c.z)
+                + a.z * (b.x * c.y - b.y * c.x))
+                / 6.0;
+        }
+        volume.is_finite().then_some(volume)
     }
 }
 
@@ -154,6 +166,19 @@ mod tests {
         let mesh = extrude_footprint(&polygon, -1.0, 2.0).unwrap();
         assert_eq!(mesh.triangle_count(), 20);
         assert!((mesh.signed_volume() - 18.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn malformed_mesh_volume_is_checked_without_panicking() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        assert_eq!(mesh.checked_signed_volume(), Some(12.0));
+        mesh.indices[0][0] = mesh.positions.len();
+        assert_eq!(mesh.checked_signed_volume(), None);
+        assert!(mesh.signed_volume().is_nan());
+        mesh.indices[0][0] = 0;
+        mesh.positions[0].x = f64::NAN;
+        assert_eq!(mesh.checked_signed_volume(), None);
+        assert!(mesh.signed_volume().is_nan());
     }
 
     #[test]
