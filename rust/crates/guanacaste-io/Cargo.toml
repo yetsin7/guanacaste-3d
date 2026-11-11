@@ -8,6 +8,7 @@ description = "Read-only integrity-checked Guanacaste BIM project compatibility 
 
 [dependencies]
 flate2 = "1"
+serde = "1"
 serde_json = "1"
 sha2 = "0.10"
 
