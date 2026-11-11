@@ -1,0 +1,30 @@
+name: Rust migration validation
+on:
+  push:
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-migration.yml'
+  pull_request:
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-migration.yml'
+jobs:
+  rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --workspace --all-targets
