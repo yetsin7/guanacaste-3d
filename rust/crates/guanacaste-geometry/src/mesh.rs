@@ -34,9 +34,15 @@ impl TriangleMesh {
 
     pub fn bounds(&self) -> Option<(Point3, Point3)> {
         let first = *self.positions.first()?;
+        if !first.x.is_finite() || !first.y.is_finite() || !first.z.is_finite() {
+            return None;
+        }
         let mut min = first;
         let mut max = first;
         for point in &self.positions[1..] {
+            if !point.x.is_finite() || !point.y.is_finite() || !point.z.is_finite() {
+                return None;
+            }
             min.x = min.x.min(point.x);
             min.y = min.y.min(point.y);
             min.z = min.z.min(point.z);
@@ -192,5 +198,11 @@ mod tests {
             Err(GeometryError::NonFiniteCoordinate)
         );
         assert_eq!(TriangleMesh::default().bounds(), None);
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.positions[0].x = f64::NAN;
+        assert_eq!(mesh.bounds(), None);
+        mesh.positions[0].x = 0.0;
+        mesh.positions[1].z = f64::INFINITY;
+        assert_eq!(mesh.bounds(), None);
     }
 }
