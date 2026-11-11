@@ -38,8 +38,7 @@ pub fn signed_double_area(polygon: &[Point2]) -> f64 {
         .map(|edge| {
             let a = edge[0];
             let b = edge[1];
-            (a.x - origin.x) * (b.y - origin.y)
-                - (b.x - origin.x) * (a.y - origin.y)
+            (a.x - origin.x) * (b.y - origin.y) - (b.x - origin.x) * (a.y - origin.y)
         })
         .sum()
 }
@@ -212,13 +211,7 @@ mod tests {
 
     #[test]
     fn removable_collinear_vertex_preserves_area() {
-        let points = poly(&[
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 0.0),
-            (2.0, 2.0),
-            (0.0, 2.0),
-        ]);
+        let points = poly(&[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)]);
         let triangles = triangulate(&points).unwrap();
         assert_eq!(summed_triangle_area(&points, &triangles), 4.0);
     }
