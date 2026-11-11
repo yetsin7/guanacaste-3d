@@ -56,7 +56,7 @@ pub fn mesh_wall_with_openings(
 
     let mut us = vec![0.0, length];
     let mut zs = vec![bottom_z, top_z];
-    for opening in openings {
+    for (index, opening) in openings.iter().enumerate() {
         let v = [opening.from, opening.to, opening.bottom, opening.top];
         if v.iter().any(|x| !x.is_finite()) {
             return Err(WallMeshError::NonFinite);
@@ -70,7 +70,7 @@ pub fn mesh_wall_with_openings(
         {
             return Err(WallMeshError::InvalidOpening);
         }
-        for previous in openings.iter().take_while(|p| !std::ptr::eq(*p, opening)) {
+        for previous in &openings[..index] {
             if opening.from < previous.to
                 && previous.from < opening.to
                 && opening.bottom < previous.top
@@ -140,15 +140,15 @@ pub fn mesh_wall_with_openings(
             if col == 0 || !filled[row * cols + col - 1] {
                 append_quad(
                     &mut mesh,
-                    [point(u0, z0, -1.0), point(u0, z0, 1.0),
-                     point(u0, z1, 1.0), point(u0, z1, -1.0)],
+                    [point(u0, z0, 1.0), point(u0, z0, -1.0),
+                     point(u0, z1, -1.0), point(u0, z1, 1.0)],
                 );
             }
             if col + 1 == cols || !filled[row * cols + col + 1] {
                 append_quad(
                     &mut mesh,
-                    [point(u1, z0, 1.0), point(u1, z0, -1.0),
-                     point(u1, z1, -1.0), point(u1, z1, 1.0)],
+                    [point(u1, z0, -1.0), point(u1, z0, 1.0),
+                     point(u1, z1, 1.0), point(u1, z1, -1.0)],
                 );
             }
             // Bottom and top horizontal surfaces, including sills and heads.
