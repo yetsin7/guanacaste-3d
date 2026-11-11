@@ -38,7 +38,8 @@ pub struct HostedOpening {
     pub wall_id: ElementId,
     pub from_m: f64,
     pub to_m: f64,
-    /// Relative to the wall's actual base elevation.
+    /// Bottom and top relative to the host LEVEL elevation, matching C#
+    /// WallOpening.Sill and Sill + Height (not the wall BaseOffset).
     pub sill_m: f64,
     pub head_m: f64,
 }
@@ -108,7 +109,7 @@ impl Document {
                 || opening.to_m > length
                 || opening.sill_m < 0.0
                 || opening.sill_m >= opening.head_m
-                || opening.head_m > wall.height_m - wall.base_offset_m
+                || opening.head_m > wall.height_m
             {
                 return Err(DocumentError::InvalidOpening);
             }
@@ -154,11 +155,16 @@ impl Document {
         }
         let mut holes = Vec::new();
         for opening in self.openings.iter().filter(|o| o.wall_id == wall.id) {
+            // Match C# WallGeometry.ReshapeBase: a raised base clips the
+            // aperture instead of moving its sill upward with the wall.
+            if opening.head_m <= wall.base_offset_m {
+                continue;
+            }
             holes.push(WallOpening {
                 from: opening.from_m,
                 to: opening.to_m,
-                bottom: bottom + opening.sill_m,
-                top: bottom + opening.head_m,
+                bottom: level.elevation_m + opening.sill_m.max(wall.base_offset_m),
+                top: level.elevation_m + opening.head_m,
             });
         }
         mesh_wall_with_openings(wall.start, wall.end, bottom, top, wall.thickness_m, &holes)
@@ -216,6 +222,38 @@ mod tests {
         assert_eq!(min.z, 2.5);
         assert_eq!(max.z, 5.0);
         assert!((mesh.signed_volume() - 1.8).abs() < 1e-9);
+    }
+
+    #[test]
+    fn opening_height_uses_level_datum_not_raised_wall_base() {
+        let mut doc = sample();
+        doc.openings[0].sill_m = 1.0;
+        doc.openings[0].head_m = 2.0;
+        let mesh = doc.wall_mesh(2).unwrap();
+        assert!(mesh.positions.iter().any(|point| point.z == 3.0));
+        assert!(mesh.positions.iter().any(|point| point.z == 4.0));
+        assert!((mesh.signed_volume() - 1.8).abs() < 1e-9);
+    }
+
+    #[test]
+    fn raised_wall_base_clips_below_base_opening_without_moving_head() {
+        let mut doc = sample();
+        doc.openings[0].sill_m = 0.0;
+        doc.openings[0].head_m = 1.0;
+        let mesh = doc.wall_mesh(2).unwrap();
+        assert!((mesh.signed_volume() - 1.9).abs() < 1e-9);
+        assert!(mesh.positions.iter().any(|point| point.z == 3.0));
+    }
+
+    #[test]
+    fn opening_entirely_below_raised_base_leaves_wall_solid() {
+        let mut doc = sample();
+        doc.walls[0].base_offset_m = 1.5;
+        doc.openings[0].sill_m = 0.0;
+        doc.openings[0].head_m = 1.0;
+        let mesh = doc.wall_mesh(2).unwrap();
+        assert!((mesh.signed_volume() - 1.2).abs() < 1e-9);
+        assert_eq!(mesh.triangle_count(), 12);
     }
 
     #[test]
