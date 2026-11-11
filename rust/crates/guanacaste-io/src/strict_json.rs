@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn detects_same_field_after_json_escape_decoding() {
         assert_eq!(
-            parse(br#"{"Id":"a","\\u0049d":"b"}"#),
+            parse(br#"{"Id":"a","\u0049d":"b"}"#),
             Err(crate::FileError::DuplicateProjectField)
         );
     }
