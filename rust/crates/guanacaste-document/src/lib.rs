@@ -56,14 +56,9 @@ impl HostedOpening {
         sill_m: f64,
         height_m: f64,
     ) -> Result<Self, DocumentError> {
-        if [
-            center_offset_m,
-            width_m,
-            sill_m,
-            height_m,
-        ]
-        .iter()
-        .any(|value| !value.is_finite())
+        if [center_offset_m, width_m, sill_m, height_m]
+            .iter()
+            .any(|value| !value.is_finite())
             || width_m <= 0.0
             || height_m <= 0.0
             || sill_m < 0.0
@@ -307,10 +302,7 @@ mod tests {
 
     #[test]
     fn converts_dotnet_center_width_sill_height_without_shifting_levels() {
-        let opening = HostedOpening::from_dotnet_dimensions(
-            3, 2, 1.5, 1.0, 1.0, 1.0,
-        )
-        .unwrap();
+        let opening = HostedOpening::from_dotnet_dimensions(3, 2, 1.5, 1.0, 1.0, 1.0).unwrap();
         assert_eq!(opening.from_m, 1.0);
         assert_eq!(opening.to_m, 2.0);
         assert_eq!(opening.sill_m, 1.0);
