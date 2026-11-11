@@ -306,7 +306,7 @@ mod tests {
             "Kind":1,"Offset":2.54,"Width":1,"Sill":1,"Height":1}"#;
         let payload = PROJECT.replace(
             "\"Sill\":1,\"Height\":1}],",
-            &format!("\"Sill\":1,\"Height\":1}{extra}],"),
+            &format!("\"Sill\":1,\"Height\":1}}{extra}],"),
         );
         let inspected = inspect_legacy_json(payload.as_bytes()).unwrap();
         assert_eq!(
