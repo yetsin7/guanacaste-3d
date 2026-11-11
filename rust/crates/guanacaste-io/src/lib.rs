@@ -83,7 +83,14 @@ fn dotnet_guid(bytes: &[u8]) -> String {
         u32::from_le_bytes(bytes[0..4].try_into().expect("four bytes")),
         u16::from_le_bytes(bytes[4..6].try_into().expect("two bytes")),
         u16::from_le_bytes(bytes[6..8].try_into().expect("two bytes")),
-        bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15]
     )
 }
 
@@ -95,15 +102,24 @@ fn parse_json(bytes: &[u8]) -> Result<Value, FileError> {
     Ok(root)
 }
 
-fn validate_project_identity(root: &Value, schema: Option<i32>, guid: Option<&str>) -> Result<(), FileError> {
+fn validate_project_identity(
+    root: &Value,
+    schema: Option<i32>,
+    guid: Option<&str>,
+) -> Result<(), FileError> {
     for field in ["SchemaVersion", "Id", "Name", "Levels", "Walls"] {
         if root.get(field).is_none() {
             return Err(FileError::MissingProjectField);
         }
     }
-    let stored_schema = root["SchemaVersion"].as_i64().ok_or(FileError::InvalidPayload)?;
+    let stored_schema = root["SchemaVersion"]
+        .as_i64()
+        .ok_or(FileError::InvalidPayload)?;
     let stored_guid = root["Id"].as_str().ok_or(FileError::InvalidPayload)?;
-    if stored_schema < 1 || stored_guid.is_empty() || stored_guid == "00000000-0000-0000-0000-000000000000" {
+    if stored_schema < 1
+        || stored_guid.is_empty()
+        || stored_guid == "00000000-0000-0000-0000-000000000000"
+    {
         return Err(FileError::InvalidIdentity);
     }
     if let Some(schema) = schema {
@@ -171,7 +187,9 @@ pub fn inspect_native(bytes: &[u8]) -> Result<InspectedDocument, FileError> {
         validate_project_identity(&root, Some(schema_version), Some(&document_guid))?;
     } else {
         if root["SchemaVersion"].as_i64() != Some(i64::from(schema_version))
-            || root["Id"].as_str().is_none_or(|id| !id.eq_ignore_ascii_case(&document_guid))
+            || root["Id"]
+                .as_str()
+                .is_none_or(|id| !id.eq_ignore_ascii_case(&document_guid))
         {
             return Err(FileError::InvalidIdentity);
         }
@@ -230,7 +248,7 @@ mod tests {
         data.extend_from_slice(&0x00112233u32.to_le_bytes());
         data.extend_from_slice(&0x4455u16.to_le_bytes());
         data.extend_from_slice(&0x6677u16.to_le_bytes());
-        data.extend_from_slice(&[0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff]);
+        data.extend_from_slice(&[0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
         data.extend_from_slice(&(json.len() as i64).to_le_bytes());
         data.extend_from_slice(&(gz.len() as i64).to_le_bytes());
         data.extend_from_slice(Sha256::digest(json).as_slice());
@@ -254,13 +272,22 @@ mod tests {
         let original = project_json();
         let mut corrupted = native_with_json(1, &original);
         corrupted[50] ^= 1;
-        assert_eq!(inspect_native(&corrupted).unwrap_err(), FileError::InvalidChecksum);
+        assert_eq!(
+            inspect_native(&corrupted).unwrap_err(),
+            FileError::InvalidChecksum
+        );
         let mut truncated = native_with_json(1, &original);
         truncated.pop();
-        assert_eq!(inspect_native(&truncated).unwrap_err(), FileError::InvalidLength);
+        assert_eq!(
+            inspect_native(&truncated).unwrap_err(),
+            FileError::InvalidLength
+        );
         let mut wrong_kind = native_with_json(7, &original);
         wrong_kind[12] = 9;
-        assert_eq!(inspect_native(&wrong_kind).unwrap_err(), FileError::InvalidKind);
+        assert_eq!(
+            inspect_native(&wrong_kind).unwrap_err(),
+            FileError::InvalidKind
+        );
     }
 
     #[test]
@@ -268,7 +295,10 @@ mod tests {
         let json = project_json().into_iter().map(|b| b).collect::<Vec<_>>();
         let mut changed = native_with_json(1, &json);
         changed[17] ^= 1;
-        assert_eq!(inspect_native(&changed).unwrap_err(), FileError::InvalidIdentity);
+        assert_eq!(
+            inspect_native(&changed).unwrap_err(),
+            FileError::InvalidIdentity
+        );
     }
 
     #[test]
@@ -277,16 +307,25 @@ mod tests {
         content.extend_from_slice(&project_json());
         let parsed = inspect_preview(&content).unwrap();
         assert_eq!(parsed.json, project_json());
-        assert_eq!(inspect_preview(&project_json()).unwrap_err(), FileError::InvalidSignature);
+        assert_eq!(
+            inspect_preview(&project_json()).unwrap_err(),
+            FileError::InvalidSignature
+        );
     }
 
     #[test]
     fn rejects_missing_project_fields_and_non_object_json() {
         let mut content = PREVIEW_SIGNATURE.to_vec();
         content.extend_from_slice(br#"{"SchemaVersion":15,"Id":"abc"}"#);
-        assert_eq!(inspect_preview(&content).unwrap_err(), FileError::MissingProjectField);
+        assert_eq!(
+            inspect_preview(&content).unwrap_err(),
+            FileError::MissingProjectField
+        );
         let mut content = PREVIEW_SIGNATURE.to_vec();
         content.extend_from_slice(b"[]");
-        assert_eq!(inspect_preview(&content).unwrap_err(), FileError::InvalidJson);
+        assert_eq!(
+            inspect_preview(&content).unwrap_err(),
+            FileError::InvalidJson
+        );
     }
 }
