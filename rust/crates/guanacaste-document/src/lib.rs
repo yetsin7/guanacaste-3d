@@ -5,9 +5,9 @@
 //! Identifiers are stable 128-bit values supplied by the caller (e.g. GUIDs).
 #![forbid(unsafe_code)]
 
-use std::collections::HashSet;
 use guanacaste_geometry::mesh::TriangleMesh;
 use guanacaste_geometry::wall::{mesh_wall_with_openings, WallMeshError, WallOpening};
+use std::collections::HashSet;
 
 pub type ElementId = u128;
 
@@ -76,8 +76,13 @@ impl Document {
                 return Err(DocumentError::MissingLevel);
             }
             let vals = [
-                wall.start.0, wall.start.1, wall.end.0, wall.end.1,
-                wall.thickness_m, wall.height_m, wall.base_offset_m,
+                wall.start.0,
+                wall.start.1,
+                wall.end.0,
+                wall.end.1,
+                wall.thickness_m,
+                wall.height_m,
+                wall.base_offset_m,
             ];
             if vals.iter().any(|x| !x.is_finite())
                 || wall.height_m <= wall.base_offset_m
@@ -94,9 +99,12 @@ impl Document {
             };
             let length = (wall.end.0 - wall.start.0).hypot(wall.end.1 - wall.start.1);
             if [opening.from_m, opening.to_m, opening.sill_m, opening.head_m]
-                .iter().any(|x| !x.is_finite())
-                || opening.from_m < 0.0 || opening.from_m >= opening.to_m
-                || opening.to_m > length || opening.sill_m < 0.0
+                .iter()
+                .any(|x| !x.is_finite())
+                || opening.from_m < 0.0
+                || opening.from_m >= opening.to_m
+                || opening.to_m > length
+                || opening.sill_m < 0.0
                 || opening.sill_m >= opening.head_m
                 || opening.head_m > wall.height_m - wall.base_offset_m
             {
@@ -112,10 +120,7 @@ impl Document {
 
     /// Stage a complete mutation and commit only if all document invariants hold.
     /// Failed edits leave the current snapshot unchanged.
-    pub fn transact(
-        &mut self,
-        edit: impl FnOnce(&mut Document),
-    ) -> Result<(), DocumentError> {
+    pub fn transact(&mut self, edit: impl FnOnce(&mut Document)) -> Result<(), DocumentError> {
         let mut candidate = self.clone();
         edit(&mut candidate);
         candidate.validate()?;
@@ -126,13 +131,19 @@ impl Document {
     /// Build a standalone mesh using typed wall and opening references.
     pub fn wall_mesh(&self, wall_id: ElementId) -> Result<TriangleMesh, DocumentError> {
         self.validate()?;
-        let wall = self.walls.iter().find(|w| w.id == wall_id)
+        let wall = self
+            .walls
+            .iter()
+            .find(|w| w.id == wall_id)
             .ok_or(DocumentError::MissingWall)?;
         self.wall_mesh_unchecked(wall)
     }
 
     fn wall_mesh_unchecked(&self, wall: &Wall) -> Result<TriangleMesh, DocumentError> {
-        let level = self.levels.iter().find(|l| l.id == wall.level_id)
+        let level = self
+            .levels
+            .iter()
+            .find(|l| l.id == wall.level_id)
             .ok_or(DocumentError::MissingLevel)?;
         let bottom = level.elevation_m + wall.base_offset_m;
         let top = level.elevation_m + wall.height_m;
@@ -148,9 +159,8 @@ impl Document {
                 top: bottom + opening.head_m,
             });
         }
-        mesh_wall_with_openings(
-            wall.start, wall.end, bottom, top, wall.thickness_m, &holes,
-        ).map_err(DocumentError::Geometry)
+        mesh_wall_with_openings(wall.start, wall.end, bottom, top, wall.thickness_m, &holes)
+            .map_err(DocumentError::Geometry)
     }
 }
 
@@ -171,15 +181,26 @@ mod tests {
     fn sample() -> Document {
         Document {
             levels: vec![Level {
-                id: 1, name: "Level 1".into(), elevation_m: 2.0,
+                id: 1,
+                name: "Level 1".into(),
+                elevation_m: 2.0,
             }],
             walls: vec![Wall {
-                id: 2, level_id: 1, start: (0.0, 0.0), end: (4.0, 0.0),
-                thickness_m: 0.2, height_m: 3.0, base_offset_m: 0.5,
+                id: 2,
+                level_id: 1,
+                start: (0.0, 0.0),
+                end: (4.0, 0.0),
+                thickness_m: 0.2,
+                height_m: 3.0,
+                base_offset_m: 0.5,
             }],
             openings: vec![HostedOpening {
-                id: 3, wall_id: 2, from_m: 1.0, to_m: 2.0,
-                sill_m: 0.5, head_m: 1.5,
+                id: 3,
+                wall_id: 2,
+                from_m: 1.0,
+                to_m: 2.0,
+                sill_m: 0.5,
+                head_m: 1.5,
             }],
         }
     }
@@ -214,7 +235,8 @@ mod tests {
             Err(DocumentError::InvalidWall)
         );
         assert_eq!(doc, before);
-        doc.transact(|candidate| candidate.walls[0].thickness_m = 0.3).unwrap();
+        doc.transact(|candidate| candidate.walls[0].thickness_m = 0.3)
+            .unwrap();
         assert_eq!(doc.walls[0].thickness_m, 0.3);
     }
 
@@ -224,8 +246,12 @@ mod tests {
         let before = doc.clone();
         let result = doc.transact(|candidate| {
             candidate.openings.push(HostedOpening {
-                id: 4, wall_id: 2, from_m: 1.5, to_m: 2.5,
-                sill_m: 0.75, head_m: 1.75,
+                id: 4,
+                wall_id: 2,
+                from_m: 1.5,
+                to_m: 2.5,
+                sill_m: 0.75,
+                head_m: 1.75,
             });
         });
         assert_eq!(
