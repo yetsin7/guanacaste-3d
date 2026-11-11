@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod strict_json;
+pub mod bim_slice;
 
 use flate2::read::GzDecoder;
 use serde_json::Value;
