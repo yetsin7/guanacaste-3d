@@ -80,8 +80,12 @@ mod tests {
     #[test]
     fn accepts_concave_outline_and_reversed_outline() {
         let mut l = points(&[
-            (0.0, 0.0), (4.0, 0.0), (4.0, 1.0),
-            (1.0, 1.0), (1.0, 3.0), (0.0, 3.0),
+            (0.0, 0.0),
+            (4.0, 0.0),
+            (4.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 3.0),
+            (0.0, 3.0),
         ]);
         assert_eq!(validate_extrusion_footprint(&l), Ok(()));
         l.reverse();
@@ -90,24 +94,21 @@ mod tests {
 
     #[test]
     fn rejects_crossing_edges_even_when_signed_area_nonzero() {
-        let bow = points(&[
-            (0.0, 0.0), (3.0, 3.0), (0.0, 4.0), (4.0, 0.0),
-        ]);
-        assert_eq!(validate_extrusion_footprint(&bow), Err(GeometryError::NoEarFound));
+        let bow = points(&[(0.0, 0.0), (3.0, 3.0), (0.0, 4.0), (4.0, 0.0)]);
+        assert_eq!(
+            validate_extrusion_footprint(&bow),
+            Err(GeometryError::NoEarFound)
+        );
     }
 
     #[test]
     fn rejects_duplicate_closing_point_and_collinear_triples() {
-        let repeated = points(&[
-            (0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0), (0.0, 0.0),
-        ]);
+        let repeated = points(&[(0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0), (0.0, 0.0)]);
         assert_eq!(
             validate_extrusion_footprint(&repeated),
             Err(GeometryError::DegeneratePolygon)
         );
-        let collinear = points(&[
-            (0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0),
-        ]);
+        let collinear = points(&[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0)]);
         assert_eq!(
             validate_extrusion_footprint(&collinear),
             Err(GeometryError::DegeneratePolygon)
@@ -116,10 +117,7 @@ mod tests {
 
     #[test]
     fn rejects_touching_nonadjacent_edges() {
-        let touching = points(&[
-            (0.0, 0.0), (4.0, 0.0), (4.0, 3.0),
-            (2.0, 0.0), (0.0, 3.0),
-        ]);
+        let touching = points(&[(0.0, 0.0), (4.0, 0.0), (4.0, 3.0), (2.0, 0.0), (0.0, 3.0)]);
         assert_eq!(
             validate_extrusion_footprint(&touching),
             Err(GeometryError::NoEarFound)
