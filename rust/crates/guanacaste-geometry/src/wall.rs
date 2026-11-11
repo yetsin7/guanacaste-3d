@@ -154,10 +154,10 @@ pub fn mesh_wall_with_openings(
                 append_quad(
                     &mut mesh,
                     [
-                        point(u0, z0, 1.0),
                         point(u0, z0, -1.0),
-                        point(u0, z1, -1.0),
+                        point(u0, z0, 1.0),
                         point(u0, z1, 1.0),
+                        point(u0, z1, -1.0),
                     ],
                 );
             }
@@ -165,10 +165,10 @@ pub fn mesh_wall_with_openings(
                 append_quad(
                     &mut mesh,
                     [
-                        point(u1, z0, -1.0),
                         point(u1, z0, 1.0),
-                        point(u1, z1, 1.0),
+                        point(u1, z0, -1.0),
                         point(u1, z1, -1.0),
+                        point(u1, z1, 1.0),
                     ],
                 );
             }
