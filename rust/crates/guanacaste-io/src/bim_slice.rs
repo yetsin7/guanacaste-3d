@@ -1,0 +1,242 @@
+//! Narrow, read-only schema-15 adapter for straight, level-hosted wall geometry.
+//! This is intentionally not a full BuildingDocument loader: unsupported wall
+//! profiles, top-level constraints or curves are rejected, never flattened.
+#![forbid(unsafe_code)]
+
+use guanacaste_document::{Document, DocumentError, HostedOpening, Level, Wall};
+use serde_json::Value;
+
+use crate::{strict_json, DocumentKind, InspectedDocument};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SliceError {
+    NotProject,
+    InvalidJson,
+    UnsupportedSchema,
+    UnsupportedWallFeature,
+    InvalidField,
+    InvalidGuid,
+    InvalidDocument(DocumentError),
+}
+
+impl From<DocumentError> for SliceError {
+    fn from(value: DocumentError) -> Self {
+        Self::InvalidDocument(value)
+    }
+}
+
+/// Decode exactly the supported subset of a *previously inspected* file.
+/// The caller retains the original inspected JSON, including unknown fields.
+pub fn extract_wall_slice(input: &InspectedDocument) -> Result<Document, SliceError> {
+    if input
+        .header
+        .as_ref()
+        .is_some_and(|header| header.kind != DocumentKind::Project)
+    {
+        return Err(SliceError::NotProject);
+    }
+    let root = strict_json::parse(&input.json).map_err(|_| SliceError::InvalidJson)?;
+    if root.get("SchemaVersion").and_then(Value::as_i64) != Some(15) {
+        return Err(SliceError::UnsupportedSchema);
+    }
+    let levels = array(&root, "Levels")?
+        .iter()
+        .map(|level| {
+            Ok(Level {
+                id: guid(level, "Id")?,
+                name: string(level, "Name")?.to_owned(),
+                elevation_m: number(level, "Elevation")?,
+            })
+        })
+        .collect::<Result<Vec<_>, SliceError>>()?;
+    let walls = array(&root, "Walls")?
+        .iter()
+        .map(|wall| {
+            // These C# features require different extrusion and elevation rules.
+            if ["TopProfile", "TopLevelId", "CurveGroupId"]
+                .iter()
+                .any(|key| wall.get(*key).is_some_and(|v| !v.is_null()))
+                || wall.get("CurveRadius").is_some_and(|v| v.as_f64() != Some(0.0))
+                || wall.get("TopOffset").is_some_and(|v| v.as_f64() != Some(0.0))
+            {
+                return Err(SliceError::UnsupportedWallFeature);
+            }
+            Ok(Wall {
+                id: guid(wall, "Id")?,
+                level_id: guid(wall, "LevelId")?,
+                start: point(wall, "Start")?,
+                end: point(wall, "End")?,
+                thickness_m: number(wall, "Thickness")?,
+                height_m: number(wall, "Height")?,
+                base_offset_m: optional_number(wall, "BaseOffset")?,
+            })
+        })
+        .collect::<Result<Vec<_>, SliceError>>()?;
+    let openings = match root.get("Openings") {
+        None => Vec::new(),
+        Some(value) => value
+            .as_array()
+            .ok_or(SliceError::InvalidField)?
+            .iter()
+            .map(|opening| {
+                HostedOpening::from_dotnet_dimensions(
+                    guid(opening, "Id")?,
+                    guid(opening, "WallId")?,
+                    number(opening, "Offset")?,
+                    number(opening, "Width")?,
+                    number(opening, "Sill")?,
+                    number(opening, "Height")?,
+                )
+                .map_err(SliceError::InvalidDocument)
+            })
+            .collect::<Result<Vec<_>, SliceError>>()?,
+    };
+    let doc = Document {
+        levels,
+        walls,
+        openings,
+    };
+    doc.validate()?;
+    Ok(doc)
+}
+
+fn array<'a>(root: &'a Value, key: &str) -> Result<&'a Vec<Value>, SliceError> {
+    root.get(key)
+        .and_then(Value::as_array)
+        .ok_or(SliceError::InvalidField)
+}
+
+fn string<'a>(root: &'a Value, key: &str) -> Result<&'a str, SliceError> {
+    root.get(key)
+        .and_then(Value::as_str)
+        .ok_or(SliceError::InvalidField)
+}
+
+fn number(root: &Value, key: &str) -> Result<f64, SliceError> {
+    let value = root
+        .get(key)
+        .and_then(Value::as_f64)
+        .ok_or(SliceError::InvalidField)?;
+    if !value.is_finite() {
+        return Err(SliceError::InvalidField);
+    }
+    Ok(value)
+}
+
+fn optional_number(root: &Value, key: &str) -> Result<f64, SliceError> {
+    match root.get(key) {
+        None => Ok(0.0),
+        Some(_) => number(root, key),
+    }
+}
+
+fn point(root: &Value, key: &str) -> Result<(f64, f64), SliceError> {
+    let point = root.get(key).ok_or(SliceError::InvalidField)?;
+    Ok((number(point, "X")?, number(point, "Y")?))
+}
+
+/// Parse the canonical 8-4-4-4-12 GUID notation into a stable 128-bit ID.
+/// The numeric value uses canonical textual order, not .NET's mixed-endian bytes.
+fn guid(root: &Value, key: &str) -> Result<u128, SliceError> {
+    let value = string(root, key)?;
+    let bytes = value.as_bytes();
+    if bytes.len() != 36
+        || [8, 13, 18, 23].iter().any(|&index| bytes[index] != b'-')
+    {
+        return Err(SliceError::InvalidGuid);
+    }
+    let mut value = 0u128;
+    for (index, byte) in bytes.iter().enumerate() {
+        if [8, 13, 18, 23].contains(&index) {
+            continue;
+        }
+        let digit = (*byte as char).to_digit(16).ok_or(SliceError::InvalidGuid)?;
+        value = (value << 4) | u128::from(digit);
+    }
+    if value == 0 {
+        return Err(SliceError::InvalidGuid);
+    }
+    Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::inspect_legacy_json;
+
+    const PROJECT: &str = r#"{
+      "SchemaVersion":15,
+      "Id":"00112233-4455-6677-8899-aabbccddeeff",
+      "Name":"Test BIM",
+      "Levels":[{"Id":"00000000-0000-0000-0000-000000000001","Name":"Planta","Elevation":2.0}],
+      "Walls":[{"Id":"00000000-0000-0000-0000-000000000002",
+        "LevelId":"00000000-0000-0000-0000-000000000001",
+        "Start":{"X":0,"Y":0},"End":{"X":4,"Y":0},
+        "Thickness":0.2,"Height":3,"BaseOffset":0.5}],
+      "Openings":[{"Id":"00000000-0000-0000-0000-000000000003",
+        "WallId":"00000000-0000-0000-0000-000000000002",
+        "Kind":1,"Offset":1.5,"Width":1,"Sill":1,"Height":1}],
+      "RenderMaterials":[{"CustomSetting":"preserve-original"}]
+    }"#;
+
+    #[test]
+    fn extracts_typed_wall_and_opening_without_mutating_native_json() {
+        let inspected = inspect_legacy_json(PROJECT.as_bytes()).unwrap();
+        let original = inspected.json.clone();
+        let slice = extract_wall_slice(&inspected).unwrap();
+        assert_eq!(slice.levels[0].id, 1);
+        assert_eq!(slice.walls[0].id, 2);
+        assert_eq!(slice.openings[0].from_m, 1.0);
+        assert_eq!(slice.openings[0].to_m, 2.0);
+        assert!((slice.wall_mesh(2).unwrap().signed_volume() - 1.8).abs() < 1e-9);
+        assert_eq!(inspected.json, original);
+    }
+
+    #[test]
+    fn refuses_unsupported_curves_without_silently_flattening_them() {
+        let curved = PROJECT.replace(
+            "\"BaseOffset\":0.5",
+            "\"BaseOffset\":0.5,\"CurveRadius\":5.0",
+        );
+        let inspected = inspect_legacy_json(curved.as_bytes()).unwrap();
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::UnsupportedWallFeature)
+        );
+    }
+
+    #[test]
+    fn refuses_stale_schemas_and_unhosted_openings() {
+        let old = PROJECT.replace("\"SchemaVersion\":15", "\"SchemaVersion\":14");
+        let inspected = inspect_legacy_json(old.as_bytes()).unwrap();
+        assert_eq!(extract_wall_slice(&inspected), Err(SliceError::UnsupportedSchema));
+        let missing = PROJECT.replace(
+            "\"WallId\":\"00000000-0000-0000-0000-000000000002\"",
+            "\"WallId\":\"00000000-0000-0000-0000-000000000009\"",
+        );
+        let inspected = inspect_legacy_json(missing.as_bytes()).unwrap();
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::InvalidDocument(DocumentError::MissingWall))
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_guid_and_duplicate_ids() {
+        let bad = PROJECT.replace(
+            "\"Id\":\"00000000-0000-0000-0000-000000000001\"",
+            "\"Id\":\"not-a-guid\"",
+        );
+        let inspected = inspect_legacy_json(bad.as_bytes()).unwrap();
+        assert_eq!(extract_wall_slice(&inspected), Err(SliceError::InvalidGuid));
+        let duplicate = PROJECT.replace(
+            "\"Id\":\"00000000-0000-0000-0000-000000000003\"",
+            "\"Id\":\"00000000-0000-0000-0000-000000000002\"",
+        );
+        let inspected = inspect_legacy_json(duplicate.as_bytes()).unwrap();
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::InvalidDocument(DocumentError::DuplicateId))
+        );
+    }
+}
