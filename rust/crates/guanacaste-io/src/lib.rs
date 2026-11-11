@@ -169,7 +169,7 @@ pub fn inspect_native(bytes: &[u8]) -> Result<InspectedDocument, FileError> {
     let mut expected_hash = [0u8; 32];
     expected_hash.copy_from_slice(&bytes[49..81]);
     let mut json = Vec::new();
-    let mut reader = GzDecoder::new(&bytes[HEADER_LEN..]);
+    let reader = GzDecoder::new(&bytes[HEADER_LEN..]);
     reader
         .take(raw_size as u64 + 1)
         .read_to_end(&mut json)
@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn rejects_payload_identity_mismatch() {
-        let json = project_json().into_iter().map(|b| b).collect::<Vec<_>>();
+        let json = project_json();
         let mut changed = native_with_json(1, &json);
         changed[17] ^= 1;
         assert_eq!(
