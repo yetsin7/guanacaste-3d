@@ -50,7 +50,12 @@ pub fn mesh_wall_with_openings(
     let dx = end.0 - start.0;
     let dy = end.1 - start.1;
     let length = dx.hypot(dy);
-    if !length.is_finite() || length <= 0.0 || !thickness.is_finite() || thickness <= 0.0 || top_z <= bottom_z {
+    if !length.is_finite()
+        || length <= 0.0
+        || !thickness.is_finite()
+        || thickness <= 0.0
+        || top_z <= bottom_z
+    {
         return Err(WallMeshError::InvalidWall);
     }
 
@@ -183,7 +188,12 @@ mod tests {
     use super::*;
 
     fn area_opening() -> WallOpening {
-        WallOpening { from: 1.0, to: 2.0, bottom: 1.0, top: 2.0 }
+        WallOpening {
+            from: 1.0,
+            to: 2.0,
+            bottom: 1.0,
+            top: 2.0,
+        }
     }
 
     #[test]
@@ -195,9 +205,9 @@ mod tests {
 
     #[test]
     fn opening_removes_exact_volume_and_creates_jambs() {
-        let mesh = mesh_wall_with_openings(
-            (0.0, 0.0), (4.0, 0.0), 0.0, 3.0, 0.2, &[area_opening()],
-        ).unwrap();
+        let mesh =
+            mesh_wall_with_openings((0.0, 0.0), (4.0, 0.0), 0.0, 3.0, 0.2, &[area_opening()])
+                .unwrap();
         assert!((mesh.signed_volume() - 2.2).abs() < 1e-9);
         assert!(mesh.triangle_count() > 12);
     }
@@ -218,7 +228,12 @@ mod tests {
     #[test]
     fn rejects_invalid_and_overlapping_openings() {
         let open = area_opening();
-        let overlap = WallOpening { from: 1.5, to: 2.5, bottom: 1.5, top: 2.5 };
+        let overlap = WallOpening {
+            from: 1.5,
+            to: 2.5,
+            bottom: 1.5,
+            top: 2.5,
+        };
         assert_eq!(
             mesh_wall_with_openings((0.0, 0.0), (4.0, 0.0), 0.0, 3.0, 0.2, &[open, overlap]),
             Err(WallMeshError::OverlappingOpenings)
