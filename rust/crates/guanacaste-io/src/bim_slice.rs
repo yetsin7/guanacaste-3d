@@ -16,6 +16,7 @@ pub enum SliceError {
     UnsupportedWallFeature,
     InvalidField,
     InvalidGuid,
+    InvalidOpeningRules,
     InvalidDocument(DocumentError),
 }
 
@@ -95,6 +96,7 @@ pub fn extract_wall_slice(input: &InspectedDocument) -> Result<Document, SliceEr
             })
             .collect::<Result<Vec<_>, SliceError>>()?,
     };
+    validate_dotnet_opening_rules(&walls, &openings, &root)?;
     let doc = Document {
         levels,
         walls,
@@ -102,6 +104,54 @@ pub fn extract_wall_slice(input: &InspectedDocument) -> Result<Document, SliceEr
     };
     doc.validate()?;
     Ok(doc)
+}
+
+/// Mirrors the subset of C# WallGeometry.Validate that depends on straight,
+/// flat-top wall and opening dimensions. The geometry crate deliberately keeps
+/// its own lower-level invariants; the persistence adapter applies BIM rules.
+fn validate_dotnet_opening_rules(
+    walls: &[Wall],
+    openings: &[HostedOpening],
+    root: &Value,
+) -> Result<(), SliceError> {
+    let raw = match root.get("Openings") {
+        None => return Ok(()),
+        Some(value) => value.as_array().ok_or(SliceError::InvalidField)?,
+    };
+    if raw.len() > 200_000 {
+        return Err(SliceError::InvalidOpeningRules);
+    }
+    for (item, opening) in raw.iter().zip(openings) {
+        let kind = item.get("Kind").and_then(Value::as_i64);
+        if !matches!(kind, Some(0 | 1)) {
+            return Err(SliceError::InvalidOpeningRules);
+        }
+        let wall = walls
+            .iter()
+            .find(|wall| wall.id == opening.wall_id)
+            .ok_or(SliceError::InvalidDocument(DocumentError::MissingWall))?;
+        let length = (wall.end.0 - wall.start.0).hypot(wall.end.1 - wall.start.1);
+        if opening.to_m - opening.from_m < 0.3
+            || opening.head_m - opening.sill_m < 0.3
+            || opening.from_m < 0.05
+            || opening.to_m > length - 0.05
+            || opening.head_m > wall.height_m - 0.05
+            || (kind == Some(0) && opening.sill_m != 0.0)
+        {
+            return Err(SliceError::InvalidOpeningRules);
+        }
+    }
+    // C# rejects gaps below 0.05 m between openings on the same wall.
+    for (index, opening) in openings.iter().enumerate() {
+        if openings[..index].iter().any(|previous| {
+            previous.wall_id == opening.wall_id
+                && previous.from_m < opening.to_m + 0.05
+                && opening.from_m < previous.to_m + 0.05
+        }) {
+            return Err(SliceError::InvalidOpeningRules);
+        }
+    }
+    Ok(())
 }
 
 fn array<'a>(root: &'a Value, key: &str) -> Result<&'a Vec<Value>, SliceError> {
@@ -225,6 +275,43 @@ mod tests {
         assert_eq!(
             extract_wall_slice(&inspected),
             Err(SliceError::InvalidDocument(DocumentError::MissingWall))
+        );
+    }
+
+    #[test]
+    fn enforces_csharp_wall_geometry_opening_clearances_and_door_sills() {
+        let cases = [
+            ("\"Width\":1", "\"Width\":0.2"),
+            ("\"Height\":1}", "\"Height\":0.2}"),
+            ("\"Offset\":1.5", "\"Offset\":0.5"),
+            ("\"Sill\":1", "\"Sill\":2.1"),
+            ("\"Kind\":1", "\"Kind\":0"),
+            ("\"Kind\":1", "\"Kind\":99"),
+        ];
+        for (from, to) in cases {
+            let payload = PROJECT.replace(from, to);
+            let inspected = inspect_legacy_json(payload.as_bytes()).unwrap();
+            assert_eq!(
+                extract_wall_slice(&inspected),
+                Err(SliceError::InvalidOpeningRules),
+                "unexpected acceptance: {to}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_nearby_openings_even_when_they_do_not_overlap() {
+        let extra = r#",{"Id":"00000000-0000-0000-0000-000000000004",
+            "WallId":"00000000-0000-0000-0000-000000000002",
+            "Kind":1,"Offset":2.54,"Width":1,"Sill":1,"Height":1}"#;
+        let payload = PROJECT.replace(
+            "\"Sill\":1,\"Height\":1}],",
+            &format!("\"Sill\":1,\"Height\":1}{extra}],"),
+        );
+        let inspected = inspect_legacy_json(payload.as_bytes()).unwrap();
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::InvalidOpeningRules)
         );
     }
 
