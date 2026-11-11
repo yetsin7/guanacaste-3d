@@ -67,8 +67,8 @@ impl TriangleMesh {
 
 /// Build a closed prism of a simple footprint polygon between two elevations.
 /// Indices reference the original input points duplicated for bottom and top.
-/// Polygon holes, self-intersections and duplicated consecutive vertices are
-/// not supported; callers must ensure a simple, non-degenerate outline.
+/// Polygon holes are not supported; self-intersections, repeated coordinates,
+/// and collinear consecutive edges are rejected before mesh generation.
 pub fn extrude_footprint(
     footprint: &[Point2],
     bottom_z: f64,
@@ -80,6 +80,7 @@ pub fn extrude_footprint(
     if top_z <= bottom_z {
         return Err(GeometryError::DegeneratePolygon);
     }
+    crate::topology::validate_extrusion_footprint(footprint)?;
     let caps = triangulate(footprint)?;
     let count = footprint.len();
     let mut positions = Vec::with_capacity(count * 2);
