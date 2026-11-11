@@ -417,6 +417,46 @@ mod tests {
         assert_eq!(legacy.json, json);
     }
 
+
+    #[test]
+    fn populated_straight_wall_matches_csharp_net_volume_across_all_envelopes() {
+        use crate::bim_slice::extract_wall_slice;
+
+        // Mirrors WallGeometry.NetVolume for a 4m x 3m x 0.2m wall
+        // with a 1m x 1m window and a base 0.5m above its level:
+        // (4 * (3 - 0.5) - 1 * 1) * 0.2 = 1.8 cubic meters.
+        // The JSON fixture is synthetic; C# executable parity remains pending.
+        let json = format!(
+            r#"{{"SchemaVersion":15,"Id":"{GUID}","Name":"Straight wall",
+            "Levels":[{{"Id":"00000000-0000-0000-0000-000000000001","Name":"Level","Elevation":2}}],
+            "Walls":[{{"Id":"00000000-0000-0000-0000-000000000002",
+              "LevelId":"00000000-0000-0000-0000-000000000001",
+              "Start":{{"X":0,"Y":0}},"End":{{"X":4,"Y":0}},
+              "Thickness":0.2,"Height":3,"BaseOffset":0.5}}],
+            "Openings":[{{"Id":"00000000-0000-0000-0000-000000000003",
+              "WallId":"00000000-0000-0000-0000-000000000002",
+              "Kind":1,"Offset":1.5,"Width":1,"Sill":1,"Height":1}}]}}"#
+        );
+        let mut preview = PREVIEW_SIGNATURE.to_vec();
+        preview.extend_from_slice(json.as_bytes());
+        let documents = [
+            inspect_native(&native_with_json(1, json.as_bytes())).unwrap(),
+            inspect_preview(&preview).unwrap(),
+            inspect_legacy_json(json.as_bytes()).unwrap(),
+        ];
+        let expected = extract_wall_slice(&documents[0]).unwrap();
+        assert_eq!(expected.levels.len(), 1);
+        assert_eq!(expected.walls.len(), 1);
+        assert_eq!(expected.openings.len(), 1);
+        assert_eq!(expected.levels[0].elevation_m, 2.0);
+        assert_eq!(expected.walls[0].base_offset_m, 0.5);
+        assert!((expected.wall_mesh(2).unwrap().signed_volume() - 1.8).abs() < 1e-9);
+        for inspected in &documents {
+            assert_eq!(inspected.json, json.as_bytes());
+            assert_eq!(extract_wall_slice(inspected).unwrap(), expected);
+        }
+    }
+
     #[test]
     fn typed_slice_never_bypasses_native_integrity_checks() {
         use crate::bim_slice::extract_wall_slice;
