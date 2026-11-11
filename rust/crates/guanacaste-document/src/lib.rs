@@ -44,6 +44,55 @@ pub struct HostedOpening {
     pub head_m: f64,
 }
 
+impl HostedOpening {
+    /// Translate the C# WallOpening convention (center Offset, Width, Sill,
+    /// Height) into the Rust boundary representation. All heights are level-
+    /// relative, not measured from the wall's possibly raised base.
+    pub fn from_dotnet_dimensions(
+        id: ElementId,
+        wall_id: ElementId,
+        center_offset_m: f64,
+        width_m: f64,
+        sill_m: f64,
+        height_m: f64,
+    ) -> Result<Self, DocumentError> {
+        if [
+            center_offset_m,
+            width_m,
+            sill_m,
+            height_m,
+        ]
+        .iter()
+        .any(|value| !value.is_finite())
+            || width_m <= 0.0
+            || height_m <= 0.0
+            || sill_m < 0.0
+        {
+            return Err(DocumentError::InvalidOpening);
+        }
+        let half_width = width_m / 2.0;
+        let from_m = center_offset_m - half_width;
+        let to_m = center_offset_m + half_width;
+        let head_m = sill_m + height_m;
+        if !from_m.is_finite()
+            || !to_m.is_finite()
+            || !head_m.is_finite()
+            || from_m >= to_m
+            || sill_m >= head_m
+        {
+            return Err(DocumentError::InvalidOpening);
+        }
+        Ok(Self {
+            id,
+            wall_id,
+            from_m,
+            to_m,
+            sill_m,
+            head_m,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Document {
     pub levels: Vec<Level>,
@@ -254,6 +303,33 @@ mod tests {
         let mesh = doc.wall_mesh(2).unwrap();
         assert!((mesh.signed_volume() - 1.2).abs() < 1e-9);
         assert_eq!(mesh.triangle_count(), 12);
+    }
+
+    #[test]
+    fn converts_dotnet_center_width_sill_height_without_shifting_levels() {
+        let opening = HostedOpening::from_dotnet_dimensions(
+            3, 2, 1.5, 1.0, 1.0, 1.0,
+        )
+        .unwrap();
+        assert_eq!(opening.from_m, 1.0);
+        assert_eq!(opening.to_m, 2.0);
+        assert_eq!(opening.sill_m, 1.0);
+        assert_eq!(opening.head_m, 2.0);
+        let mut doc = sample();
+        doc.openings = vec![opening];
+        assert!((doc.wall_mesh(2).unwrap().signed_volume() - 1.8).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rejects_nonfinite_and_nonpositive_dotnet_opening_dimensions() {
+        assert_eq!(
+            HostedOpening::from_dotnet_dimensions(3, 2, 1.5, f64::NAN, 0.0, 2.0),
+            Err(DocumentError::InvalidOpening)
+        );
+        assert_eq!(
+            HostedOpening::from_dotnet_dimensions(3, 2, 1.5, 1.0, 0.0, 0.0),
+            Err(DocumentError::InvalidOpening)
+        );
     }
 
     #[test]
