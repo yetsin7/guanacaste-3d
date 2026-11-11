@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/guanacaste-math"]
+members = ["crates/guanacaste-math", "crates/guanacaste-geometry"]
 
 [workspace.package]
 edition = "2021"
