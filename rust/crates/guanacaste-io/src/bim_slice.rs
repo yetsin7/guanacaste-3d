@@ -56,8 +56,12 @@ pub fn extract_wall_slice(input: &InspectedDocument) -> Result<Document, SliceEr
             if ["TopProfile", "TopLevelId", "CurveGroupId"]
                 .iter()
                 .any(|key| wall.get(*key).is_some_and(|v| !v.is_null()))
-                || wall.get("CurveRadius").is_some_and(|v| v.as_f64() != Some(0.0))
-                || wall.get("TopOffset").is_some_and(|v| v.as_f64() != Some(0.0))
+                || wall
+                    .get("CurveRadius")
+                    .is_some_and(|v| v.as_f64() != Some(0.0))
+                || wall
+                    .get("TopOffset")
+                    .is_some_and(|v| v.as_f64() != Some(0.0))
             {
                 return Err(SliceError::UnsupportedWallFeature);
             }
@@ -140,9 +144,7 @@ fn point(root: &Value, key: &str) -> Result<(f64, f64), SliceError> {
 fn guid(root: &Value, key: &str) -> Result<u128, SliceError> {
     let value = string(root, key)?;
     let bytes = value.as_bytes();
-    if bytes.len() != 36
-        || [8, 13, 18, 23].iter().any(|&index| bytes[index] != b'-')
-    {
+    if bytes.len() != 36 || [8, 13, 18, 23].iter().any(|&index| bytes[index] != b'-') {
         return Err(SliceError::InvalidGuid);
     }
     let mut value = 0u128;
@@ -150,7 +152,9 @@ fn guid(root: &Value, key: &str) -> Result<u128, SliceError> {
         if [8, 13, 18, 23].contains(&index) {
             continue;
         }
-        let digit = (*byte as char).to_digit(16).ok_or(SliceError::InvalidGuid)?;
+        let digit = (*byte as char)
+            .to_digit(16)
+            .ok_or(SliceError::InvalidGuid)?;
         value = (value << 4) | u128::from(digit);
     }
     if value == 0 {
@@ -209,7 +213,10 @@ mod tests {
     fn refuses_stale_schemas_and_unhosted_openings() {
         let old = PROJECT.replace("\"SchemaVersion\":15", "\"SchemaVersion\":14");
         let inspected = inspect_legacy_json(old.as_bytes()).unwrap();
-        assert_eq!(extract_wall_slice(&inspected), Err(SliceError::UnsupportedSchema));
+        assert_eq!(
+            extract_wall_slice(&inspected),
+            Err(SliceError::UnsupportedSchema)
+        );
         let missing = PROJECT.replace(
             "\"WallId\":\"00000000-0000-0000-0000-000000000002\"",
             "\"WallId\":\"00000000-0000-0000-0000-000000000009\"",
