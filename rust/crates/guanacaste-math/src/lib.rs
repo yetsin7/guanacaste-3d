@@ -29,7 +29,11 @@ impl Vec3 {
         Ok(Self { x, y, z })
     }
 
-    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0 };
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
 
     pub fn dot(self, rhs: Self) -> f64 {
         self.x.mul_add(rhs.x, self.y.mul_add(rhs.y, self.z * rhs.z))
@@ -60,12 +64,20 @@ impl Vec3 {
 
     /// Proper rotation into WPF's Y-up coordinates (determinant +1).
     pub fn to_wpf(self) -> Self {
-        Self { x: self.x, y: self.z, z: -self.y }
+        Self {
+            x: self.x,
+            y: self.z,
+            z: -self.y,
+        }
     }
 
     /// Inverse of `to_wpf`.
     pub fn from_wpf(self) -> Self {
-        Self { x: self.x, y: -self.z, z: self.y }
+        Self {
+            x: self.x,
+            y: -self.z,
+            z: self.y,
+        }
     }
 
     pub fn approx_eq(self, rhs: Self, tolerance_m: f64) -> Result<bool, MathError> {
@@ -79,19 +91,31 @@ impl Vec3 {
 impl Add for Vec3 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        Self { x: self.x + rhs.x, y: self.y + rhs.y, z: self.z + rhs.z }
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
     }
 }
 impl Sub for Vec3 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        Self { x: self.x - rhs.x, y: self.y - rhs.y, z: self.z - rhs.z }
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
     }
 }
 impl Mul<f64> for Vec3 {
     type Output = Self;
     fn mul(self, scale: f64) -> Self {
-        Self { x: self.x * scale, y: self.y * scale, z: self.z * scale }
+        Self {
+            x: self.x * scale,
+            y: self.y * scale,
+            z: self.z * scale,
+        }
     }
 }
 
@@ -102,7 +126,10 @@ mod tests {
     #[test]
     fn rejects_non_finite_coordinates() {
         assert_eq!(Vec3::new(f64::NAN, 0.0, 0.0), Err(MathError::NonFinite));
-        assert_eq!(Vec3::new(0.0, f64::INFINITY, 0.0), Err(MathError::NonFinite));
+        assert_eq!(
+            Vec3::new(0.0, f64::INFINITY, 0.0),
+            Err(MathError::NonFinite)
+        );
     }
 
     #[test]
@@ -127,7 +154,10 @@ mod tests {
         assert_eq!(Vec3::ZERO.normalized(), Err(MathError::ZeroLength));
         let unit = Vec3::new(0.0, 3.0, 4.0).unwrap().normalized().unwrap();
         assert!((unit.length() - 1.0).abs() < 1e-12);
-        assert_eq!(unit.approx_eq(unit, 0.0), Err(MathError::NonPositiveTolerance));
+        assert_eq!(
+            unit.approx_eq(unit, 0.0),
+            Err(MathError::NonPositiveTolerance)
+        );
         assert!(unit.approx_eq(unit, 1e-9).unwrap());
     }
 }
