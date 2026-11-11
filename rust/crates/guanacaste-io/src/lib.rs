@@ -395,4 +395,38 @@ mod tests {
             FileError::InvalidJson
         );
     }
+    #[test]
+    fn typed_schema_15_slice_agrees_across_native_preview_and_legacy_envelopes() {
+        use crate::bim_slice::extract_wall_slice;
+
+        let json = project_json();
+        let native = inspect_native(&native_with_json(1, &json)).unwrap();
+        let mut preview_bytes = PREVIEW_SIGNATURE.to_vec();
+        preview_bytes.extend_from_slice(&json);
+        let preview = inspect_preview(&preview_bytes).unwrap();
+        let legacy = inspect_legacy_json(&json).unwrap();
+
+        let native_doc = extract_wall_slice(&native).unwrap();
+        assert_eq!(native_doc, extract_wall_slice(&preview).unwrap());
+        assert_eq!(native_doc, extract_wall_slice(&legacy).unwrap());
+        assert!(native_doc.levels.is_empty());
+        assert!(native_doc.walls.is_empty());
+        assert!(native_doc.openings.is_empty());
+        assert_eq!(native.json, json);
+        assert_eq!(preview.json, json);
+        assert_eq!(legacy.json, json);
+    }
+
+    #[test]
+    fn typed_slice_never_bypasses_native_integrity_checks() {
+        use crate::bim_slice::extract_wall_slice;
+
+        let json = project_json();
+        let mut corrupt = native_with_json(1, &json);
+        corrupt[49] ^= 0x80;
+        assert_eq!(inspect_native(&corrupt).unwrap_err(), FileError::InvalidChecksum);
+        let inspected = inspect_native(&native_with_json(1, &json)).unwrap();
+        assert!(extract_wall_slice(&inspected).is_ok());
+    }
+
 }
