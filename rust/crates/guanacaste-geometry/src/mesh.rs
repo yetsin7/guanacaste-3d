@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::{triangulate, GeometryError, Point2};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point3 {
@@ -51,6 +52,45 @@ impl TriangleMesh {
             max.z = max.z.max(point.z);
         }
         Some((min, max))
+    }
+
+    /// Checks that every mesh edge belongs to exactly two oppositely oriented
+    /// triangles. Rejects invalid indices, non-finite coordinates and degenerate
+    /// triangles; this is a topological check, not a self-intersection test.
+    pub fn is_closed_oriented_manifold(&self) -> bool {
+        if self.indices.is_empty() || self.positions.is_empty() || self.bounds().is_none() {
+            return false;
+        }
+        let mut edges: HashMap<(usize, usize), (u32, i32)> = HashMap::new();
+        for &[a, b, c] in &self.indices {
+            if a >= self.positions.len() || b >= self.positions.len() || c >= self.positions.len()
+                || a == b || b == c || c == a
+            {
+                return false;
+            }
+            let p = self.positions[a];
+            let q = self.positions[b];
+            let r = self.positions[c];
+            let ux = q.x - p.x;
+            let uy = q.y - p.y;
+            let uz = q.z - p.z;
+            let vx = r.x - p.x;
+            let vy = r.y - p.y;
+            let vz = r.z - p.z;
+            let cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+            if cross.iter().any(|v| !v.is_finite()) || cross.iter().all(|v| *v == 0.0) {
+                return false;
+            }
+            for (from, to) in [(a, b), (b, c), (c, a)] {
+                let key = (from.min(to), from.max(to));
+                let sign = if from < to { 1 } else { -1 };
+                let entry = edges.entry(key).or_insert((0, 0));
+                entry.0 += 1;
+                entry.1 += sign;
+                if entry.0 > 2 { return false; }
+            }
+        }
+        edges.values().all(|&(count, orientation)| count == 2 && orientation == 0)
     }
 
     /// Signed volume of an oriented closed triangular surface.
@@ -172,6 +212,23 @@ mod tests {
         let mesh = extrude_footprint(&polygon, -1.0, 2.0).unwrap();
         assert_eq!(mesh.triangle_count(), 20);
         assert!((mesh.signed_volume() - 18.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn closed_manifold_rejects_open_flipped_and_malformed_meshes() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        assert!(mesh.is_closed_oriented_manifold());
+        mesh.indices.pop();
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices[0].swap(0, 1);
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices[0][0] = mesh.positions.len();
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.positions[0].x = f64::NAN;
+        assert!(!mesh.is_closed_oriented_manifold());
     }
 
     #[test]
