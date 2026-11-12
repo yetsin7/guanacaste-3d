@@ -146,7 +146,7 @@ pub fn extract_wall_surface_areas(
         let mesh = document.wall_mesh(wall.id)?;
         let area = mesh
             .checked_closed_surface_area()
-            .map_err(|_| SliceError::InvalidField)?;
+            .ok_or(SliceError::InvalidField)?;
         result.push(WallSurfaceArea {
             wall_id: wall.id,
             surface_area_m2: area,
