@@ -108,6 +108,19 @@ impl TriangleMesh {
         self.checked_signed_volume().unwrap_or(f64::NAN)
     }
 
+    /// Volume for a closed, consistently oriented manifold mesh only.
+    ///
+    /// Unlike `checked_signed_volume`, this rejects open or non-manifold
+    /// surfaces before reporting a physically meaningful enclosed volume.
+    /// This is not a self-intersection test: overlapping closed shells can
+    /// still require additional geometric validation.
+    pub fn checked_closed_volume(&self) -> Option<f64> {
+        if !self.is_closed_oriented_manifold() {
+            return None;
+        }
+        self.checked_signed_volume()
+    }
+
     /// Checked volume for meshes received from untrusted importers or FFI callers.
     /// This validates indices and finite coordinates, not watertight topology.
     pub fn checked_signed_volume(&self) -> Option<f64> {
@@ -240,6 +253,30 @@ mod tests {
         let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
         mesh.positions[0].x = f64::NAN;
         assert!(!mesh.is_closed_oriented_manifold());
+    }
+
+    #[test]
+    fn closed_volume_requires_watertight_consistently_oriented_geometry() {
+        // The 3 x 2 x 4 m prism matches the analytical C# solid volume.
+        let mesh = extrude_footprint(&rectangle(), 1.0, 5.0).unwrap();
+        assert_eq!(mesh.checked_closed_volume(), Some(24.0));
+
+        let mut open = mesh.clone();
+        open.indices.pop();
+        assert!(open.checked_signed_volume().is_some());
+        assert_eq!(open.checked_closed_volume(), None);
+
+        let mut reversed_face = mesh.clone();
+        reversed_face.indices[0].swap(0, 1);
+        assert_eq!(reversed_face.checked_closed_volume(), None);
+
+        let mut duplicated_face = mesh.clone();
+        duplicated_face.indices.push(duplicated_face.indices[0]);
+        assert_eq!(duplicated_face.checked_closed_volume(), None);
+
+        let empty = TriangleMesh::default();
+        assert_eq!(empty.checked_signed_volume(), Some(0.0));
+        assert_eq!(empty.checked_closed_volume(), None);
     }
 
     #[test]
