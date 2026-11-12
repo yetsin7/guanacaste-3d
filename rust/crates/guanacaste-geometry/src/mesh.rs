@@ -158,11 +158,7 @@ impl TriangleMesh {
             let vx = c.x - a.x;
             let vy = c.y - a.y;
             let vz = c.z - a.z;
-            let cross = [
-                uy * vz - uz * vy,
-                uz * vx - ux * vz,
-                ux * vy - uy * vx,
-            ];
+            let cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
             let term = 0.5 * cross[0].hypot(cross[1]).hypot(cross[2]);
             if !term.is_finite() {
                 return None;
