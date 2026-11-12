@@ -340,8 +340,8 @@ mod tests {
         assert_eq!(areas.len(), 1);
         assert_eq!(areas[0].wall_id, 2);
         // A 4 x 0.2 x 3 wall with a 1 x 1 through-opening:
-        // 2*(4*3 + 4*0.2 + 3*0.2) - 2*(1*1) + 2*(1+1)*0.2 = 26.6 m².
-        assert!((areas[0].surface_area_m2 - 26.6).abs() < 1e-9);
+        // 2*(4*3 + 4*0.2 + 3*0.2) - 2*(1*1) + 2*(1+1)*0.2 = 25.6 m².
+        assert!((areas[0].surface_area_m2 - 25.6).abs() < 1e-9);
         assert_eq!(inspected.json, original);
     }
 
