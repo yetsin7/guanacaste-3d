@@ -118,7 +118,29 @@ impl TriangleMesh {
         if !self.is_closed_oriented_manifold() {
             return None;
         }
-        self.checked_signed_volume()
+        // A local origin prevents catastrophic cancellation when BIM models
+        // use large survey coordinates far from (0, 0, 0).
+        let origin = self.positions.first()?;
+        let mut volume = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            let ax = a.x - origin.x;
+            let ay = a.y - origin.y;
+            let az = a.z - origin.z;
+            let bx = b.x - origin.x;
+            let by = b.y - origin.y;
+            let bz = b.z - origin.z;
+            let cx = c.x - origin.x;
+            let cy = c.y - origin.y;
+            let cz = c.z - origin.z;
+            volume += (ax * (by * cz - bz * cy)
+                + ay * (bz * cx - bx * cz)
+                + az * (bx * cy - by * cx))
+                / 6.0;
+        }
+        volume.is_finite().then_some(volume)
     }
 
     /// Checked volume for meshes received from untrusted importers or FFI callers.
@@ -277,6 +299,22 @@ mod tests {
         let empty = TriangleMesh::default();
         assert_eq!(empty.checked_signed_volume(), Some(0.0));
         assert_eq!(empty.checked_closed_volume(), None);
+    }
+
+    #[test]
+    fn closed_volume_is_stable_under_large_survey_coordinate_translation() {
+        // Analytic 3 x 2 x 4 m prism (24 m³), matching the C# prism formula.
+        // Local-origin tetrahedra avoid cancellation of huge world coordinates.
+        let baseline = extrude_footprint(&rectangle(), 1.0, 5.0).unwrap();
+        let mut translated = baseline.clone();
+        for point in &mut translated.positions {
+            point.x += 1_000_000_000.0;
+            point.y -= 1_000_000_000.0;
+            point.z += 1_000_000_000.0;
+        }
+        assert!(translated.is_closed_oriented_manifold());
+        assert_eq!(baseline.checked_closed_volume(), Some(24.0));
+        assert_eq!(translated.checked_closed_volume(), Some(24.0));
     }
 
     #[test]
