@@ -36,3 +36,20 @@ fn duplicated_face_rejects_closed_surface_area() {
     assert!(!mesh.is_closed_oriented_manifold());
     assert_eq!(mesh.checked_closed_surface_area(), None);
 }
+
+#[test]
+fn translated_and_reversed_shell_preserves_surface_area() {
+    let mut mesh = prism(3.0, 2.0, 4.0);
+    let expected = 2.0 * (3.0 * 2.0 + 3.0 * 4.0 + 2.0 * 4.0);
+    for point in &mut mesh.positions {
+        point.x += 1_000_000.0;
+        point.y -= 1_000_000.0;
+        point.z += 1_000_000.0;
+    }
+    for triangle in &mut mesh.indices {
+        triangle.swap(1, 2);
+    }
+    assert!(mesh.is_closed_oriented_manifold());
+    assert!((mesh.checked_closed_surface_area().unwrap() - expected).abs() < 1e-9);
+    assert!((mesh.checked_closed_volume().unwrap() + 24.0).abs() < 1e-9);
+}
