@@ -286,6 +286,26 @@ mod tests {
     }
 
     #[test]
+    fn wall_volume_results_are_sorted_by_guid_not_document_order() {
+        let mut payload: Value = serde_json::from_str(PROJECT).unwrap();
+        let mut second = payload["Walls"][0].clone();
+        second["Id"] = Value::from("00000000-0000-0000-0000-000000000004");
+        second["Start"]["Y"] = Value::from(5.0);
+        second["End"]["Y"] = Value::from(5.0);
+        // The second wall is serialized before the first one on purpose.
+        payload["Walls"] = Value::from(vec![second, payload["Walls"][0].clone()]);
+        let json = serde_json::to_vec(&payload).unwrap();
+        let inspected = inspect_legacy_json(&json).unwrap();
+        let volumes = extract_wall_volumes(&inspected).unwrap();
+        assert_eq!(volumes.len(), 2);
+        assert_eq!(volumes[0].wall_id, 2);
+        assert_eq!(volumes[1].wall_id, 4);
+        assert!((volumes[0].signed_volume_m3 - 1.8).abs() < 1e-9);
+        assert!((volumes[1].signed_volume_m3 - 2.0).abs() < 1e-9);
+        assert_eq!(inspected.json, json);
+    }
+
+    #[test]
     fn refuses_unsupported_curves_without_silently_flattening_them() {
         let curved = PROJECT.replace(
             "\"BaseOffset\":0.5",
