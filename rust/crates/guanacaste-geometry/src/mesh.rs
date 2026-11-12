@@ -362,8 +362,13 @@ mod tests {
                 .map(|[a, b, c]| [a + offset, b + offset, c + offset]),
         );
         assert!(combined.is_closed_oriented_manifold());
-        let volume = combined.checked_closed_volume().expect("closed shells must have a volume");
-        assert!((volume - 12.0).abs() < 1e-10, "unexpected signed volume: {volume}");
+        let volume = combined
+            .checked_closed_volume()
+            .expect("closed shells must have a volume");
+        assert!(
+            (volume - 12.0).abs() < 1e-10,
+            "unexpected signed volume: {volume}"
+        );
     }
 
     #[test]
