@@ -22,9 +22,9 @@ fn disjoint_closed_shells_have_additive_area() {
     }
     let offset = first.positions.len();
     first.positions.extend(second.positions);
-    first.indices.extend(second.indices.into_iter().map(|[a, b, c]| {
-        [a + offset, b + offset, c + offset]
-    }));
+    for [a, b, c] in second.indices {
+        first.indices.push([a + offset, b + offset, c + offset]);
+    }
     assert!(first.is_closed_oriented_manifold());
     assert!((first.checked_closed_surface_area().unwrap() - 74.0).abs() < 1e-10);
 }
