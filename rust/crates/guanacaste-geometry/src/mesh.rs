@@ -135,10 +135,9 @@ impl TriangleMesh {
             let cx = c.x - origin.x;
             let cy = c.y - origin.y;
             let cz = c.z - origin.z;
-            volume += (ax * (by * cz - bz * cy)
-                + ay * (bz * cx - bx * cz)
-                + az * (bx * cy - by * cx))
-                / 6.0;
+            volume +=
+                (ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx))
+                    / 6.0;
         }
         volume.is_finite().then_some(volume)
     }
@@ -315,6 +314,20 @@ mod tests {
         assert!(translated.is_closed_oriented_manifold());
         assert_eq!(baseline.checked_closed_volume(), Some(24.0));
         assert_eq!(translated.checked_closed_volume(), Some(24.0));
+    }
+
+    #[test]
+    fn closed_volume_preserves_sign_when_every_face_is_reversed() {
+        // Negative signed volume is preserved: callers can detect inward shells
+        // instead of silently accepting them as outward solids.
+        let outward = extrude_footprint(&rectangle(), -2.0, 2.0).unwrap();
+        let mut inward = outward.clone();
+        for face in &mut inward.indices {
+            face.swap(0, 1);
+        }
+        assert!(inward.is_closed_oriented_manifold());
+        assert_eq!(outward.checked_closed_volume(), Some(24.0));
+        assert_eq!(inward.checked_closed_volume(), Some(-24.0));
     }
 
     #[test]
