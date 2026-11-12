@@ -106,6 +106,29 @@ pub fn extract_wall_slice(input: &InspectedDocument) -> Result<Document, SliceEr
     Ok(doc)
 }
 
+/// Deterministic, read-only per-wall volume report for future C# golden fixtures.
+/// IDs are canonical numeric GUIDs; volumes use cubic metres and signed mesh
+/// orientation. This does not imply parity with the .NET geometry engine.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WallVolume {
+    pub wall_id: u128,
+    pub signed_volume_m3: f64,
+}
+
+pub fn extract_wall_volumes(input: &InspectedDocument) -> Result<Vec<WallVolume>, SliceError> {
+    let document = extract_wall_slice(input)?;
+    let mut result = Vec::with_capacity(document.walls.len());
+    for wall in &document.walls {
+        let mesh = document.wall_mesh(wall.id)?;
+        result.push(WallVolume {
+            wall_id: wall.id,
+            signed_volume_m3: mesh.signed_volume(),
+        });
+    }
+    result.sort_unstable_by_key(|item| item.wall_id);
+    Ok(result)
+}
+
 /// Mirrors the subset of C# WallGeometry.Validate that depends on straight,
 /// flat-top wall and opening dimensions. The geometry crate deliberately keeps
 /// its own lower-level invariants; the persistence adapter applies BIM rules.
@@ -248,6 +271,17 @@ mod tests {
         assert_eq!(slice.openings[0].from_m, 1.0);
         assert_eq!(slice.openings[0].to_m, 2.0);
         assert!((slice.wall_mesh(2).unwrap().signed_volume() - 1.8).abs() < 1e-9);
+        assert_eq!(inspected.json, original);
+    }
+
+    #[test]
+    fn produces_deterministic_wall_volumes_without_changing_original_payload() {
+        let inspected = inspect_legacy_json(PROJECT.as_bytes()).unwrap();
+        let original = inspected.json.clone();
+        let volumes = extract_wall_volumes(&inspected).unwrap();
+        assert_eq!(volumes.len(), 1);
+        assert_eq!(volumes[0].wall_id, 2);
+        assert!((volumes[0].signed_volume_m3 - 1.8).abs() < 1e-9);
         assert_eq!(inspected.json, original);
     }
 
