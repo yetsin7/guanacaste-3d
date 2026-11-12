@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::{triangulate, GeometryError, Point2};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point3 {
@@ -54,15 +54,16 @@ impl TriangleMesh {
         Some((min, max))
     }
 
-    /// Checks that every mesh edge belongs to exactly two oppositely oriented
-    /// triangles. Rejects invalid indices, non-finite coordinates and degenerate
-    /// triangles; this is a topological check, not a self-intersection test.
+    /// Checks that each edge has two opposite incident faces and each vertex
+    /// has one connected face fan. Rejects invalid and degenerate geometry.
+    /// This topological check does not detect geometric self-intersections.
     pub fn is_closed_oriented_manifold(&self) -> bool {
         if self.indices.is_empty() || self.positions.is_empty() || self.bounds().is_none() {
             return false;
         }
-        let mut edges: HashMap<(usize, usize), (u32, i32)> = HashMap::new();
-        for &[a, b, c] in &self.indices {
+        let mut edges: HashMap<(usize, usize), (u32, i32, usize, usize)> = HashMap::new();
+        let mut vertex_faces = vec![Vec::new(); self.positions.len()];
+        for (face_id, &[a, b, c]) in self.indices.iter().enumerate() {
             if a >= self.positions.len()
                 || b >= self.positions.len()
                 || c >= self.positions.len()
@@ -85,20 +86,58 @@ impl TriangleMesh {
             if cross.iter().any(|v| !v.is_finite()) || cross.iter().all(|v| *v == 0.0) {
                 return false;
             }
+            for vertex in [a, b, c] {
+                vertex_faces[vertex].push(face_id);
+            }
             for (from, to) in [(a, b), (b, c), (c, a)] {
                 let key = (from.min(to), from.max(to));
                 let sign = if from < to { 1 } else { -1 };
-                let entry = edges.entry(key).or_insert((0, 0));
+                let entry = edges.entry(key).or_insert((0, 0, face_id, face_id));
                 entry.0 += 1;
                 entry.1 += sign;
+                entry.3 = face_id;
                 if entry.0 > 2 {
                     return false;
                 }
             }
         }
-        edges
+        if !edges
             .values()
-            .all(|&(count, orientation)| count == 2 && orientation == 0)
+            .all(|&(count, orientation, _, _)| count == 2 && orientation == 0)
+        {
+            return false;
+        }
+        let mut neighbors = vec![Vec::new(); self.indices.len()];
+        for (&(a, b), &(_, _, first, second)) in &edges {
+            // Both incident faces are adjacent in the link of each endpoint.
+            for vertex in [a, b] {
+                // Store the vertex along with the adjacent face so traversals
+                // cannot cross a face through the opposite vertex.
+                neighbors[first].push((vertex, second));
+                neighbors[second].push((vertex, first));
+            }
+        }
+        for (vertex, faces) in vertex_faces.iter().enumerate() {
+            let Some(&start) = faces.first() else {
+                continue;
+            };
+            let mut visited = HashSet::new();
+            let mut stack = vec![start];
+            while let Some(face) = stack.pop() {
+                if !visited.insert(face) {
+                    continue;
+                }
+                for &(at, next) in &neighbors[face] {
+                    if at == vertex && !visited.contains(&next) {
+                        stack.push(next);
+                    }
+                }
+            }
+            if visited.len() != faces.len() {
+                return false;
+            }
+        }
+        true
     }
 
     /// Signed volume of an oriented closed triangular surface.
@@ -285,6 +324,26 @@ mod tests {
         let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
         mesh.positions[0].x = f64::NAN;
         assert!(!mesh.is_closed_oriented_manifold());
+    }
+
+    #[test]
+    fn rejects_two_closed_shells_touching_only_at_one_vertex() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        let mut other = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        // Keep one shared index, but separate all remaining vertices.
+        for point in &mut other.positions {
+            point.x += 3.0;
+            point.y += 2.0;
+            point.z += 2.0;
+        }
+        let shared = 6; // (3, 2, 2) in the first prism.
+        let offset = mesh.positions.len();
+        mesh.positions.extend(other.positions);
+        mesh.indices.extend(other.indices.into_iter().map(|face| {
+            face.map(|index| if index == 0 { shared } else { offset + index })
+        }));
+        assert!(!mesh.is_closed_oriented_manifold());
+        assert_eq!(mesh.checked_closed_volume(), None);
     }
 
     #[test]
