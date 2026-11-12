@@ -95,7 +95,9 @@ fn two_shells_touching_at_one_vertex_are_not_a_manifold() {
         .unwrap();
     first.positions.extend(second.positions);
     for triangle in second.indices {
-        first.indices.push(triangle.map(|i| if i == 0 { shared } else { i + offset }));
+        first
+            .indices
+            .push(triangle.map(|i| if i == 0 { shared } else { i + offset }));
     }
     assert!(!first.is_closed_oriented_manifold());
     assert_eq!(first.checked_closed_surface_area(), None);
