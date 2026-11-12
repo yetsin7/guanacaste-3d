@@ -22,7 +22,24 @@ fn rectangular_prisms_match_legacy_analytic_volume_at_survey_offsets() {
         }
         for mesh in [&baseline, &translated] {
             let actual = mesh.checked_closed_volume().unwrap();
-            assert!((actual - expected).abs() < 1e-8, "expected {expected}, got {actual}");
+            assert!(
+                (actual - expected).abs() < 1e-8,
+                "expected {expected}, got {actual}"
+            );
         }
     }
+}
+
+#[test]
+fn reversed_footprint_preserves_closed_volume_at_survey_offsets() {
+    let mut footprint = [
+        Point2::new(0.0, 0.0).unwrap(),
+        Point2::new(3.0, 0.0).unwrap(),
+        Point2::new(3.0, 2.0).unwrap(),
+        Point2::new(0.0, 2.0).unwrap(),
+    ];
+    footprint.reverse();
+    let mesh = extrude_footprint(&footprint, -2.0, 2.0).unwrap();
+    assert!(mesh.is_closed_oriented_manifold());
+    assert_eq!(mesh.checked_closed_volume(), Some(24.0));
 }
