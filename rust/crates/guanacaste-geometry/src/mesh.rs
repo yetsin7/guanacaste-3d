@@ -140,6 +140,45 @@ impl TriangleMesh {
         true
     }
 
+    /// Total triangle area in square metres for a closed, oriented manifold.
+    /// This does not prove that disconnected shells do not overlap.
+    pub fn checked_closed_surface_area(&self) -> Option<f64> {
+        if !self.is_closed_oriented_manifold() {
+            return None;
+        }
+        let mut sum = 0.0;
+        let mut correction = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            let ux = b.x - a.x;
+            let uy = b.y - a.y;
+            let uz = b.z - a.z;
+            let vx = c.x - a.x;
+            let vy = c.y - a.y;
+            let vz = c.z - a.z;
+            let cross = [
+                uy * vz - uz * vy,
+                uz * vx - ux * vz,
+                ux * vy - uy * vx,
+            ];
+            let term = 0.5 * cross[0].hypot(cross[1]).hypot(cross[2]);
+            if !term.is_finite() {
+                return None;
+            }
+            let next = sum + term;
+            if sum.abs() >= term.abs() {
+                correction += (sum - next) + term;
+            } else {
+                correction += (term - next) + sum;
+            }
+            sum = next;
+        }
+        let area = sum + correction;
+        area.is_finite().then_some(area)
+    }
+
     /// Signed volume of an oriented closed triangular surface.
     /// Returns NaN for invalid indices or non-finite coordinates rather than panicking.
     /// Meaningful only for consistently oriented, watertight meshes.
