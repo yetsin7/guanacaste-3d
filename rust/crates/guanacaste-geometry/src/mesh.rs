@@ -339,9 +339,12 @@ mod tests {
         let shared = 6; // (3, 2, 2) in the first prism.
         let offset = mesh.positions.len();
         mesh.positions.extend(other.positions);
-        mesh.indices.extend(other.indices.into_iter().map(|face| {
-            face.map(|index| if index == 0 { shared } else { offset + index })
-        }));
+        mesh.indices.extend(
+            other
+                .indices
+                .into_iter()
+                .map(|face| face.map(|index| if index == 0 { shared } else { offset + index })),
+        );
         assert!(!mesh.is_closed_oriented_manifold());
         assert_eq!(mesh.checked_closed_volume(), None);
     }
