@@ -129,6 +129,33 @@ pub fn extract_wall_volumes(input: &InspectedDocument) -> Result<Vec<WallVolume>
     Ok(result)
 }
 
+/// Read-only surface-area report for the same supported wall subset.
+/// Areas are measured in square metres and sorted by canonical GUID.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WallSurfaceArea {
+    pub wall_id: u128,
+    pub surface_area_m2: f64,
+}
+
+pub fn extract_wall_surface_areas(
+    input: &InspectedDocument,
+) -> Result<Vec<WallSurfaceArea>, SliceError> {
+    let document = extract_wall_slice(input)?;
+    let mut result = Vec::with_capacity(document.walls.len());
+    for wall in &document.walls {
+        let mesh = document.wall_mesh(wall.id)?;
+        let area = mesh
+            .checked_closed_surface_area()
+            .map_err(|_| SliceError::InvalidField)?;
+        result.push(WallSurfaceArea {
+            wall_id: wall.id,
+            surface_area_m2: area,
+        });
+    }
+    result.sort_unstable_by_key(|item| item.wall_id);
+    Ok(result)
+}
+
 /// Mirrors the subset of C# WallGeometry.Validate that depends on straight,
 /// flat-top wall and opening dimensions. The geometry crate deliberately keeps
 /// its own lower-level invariants; the persistence adapter applies BIM rules.
@@ -303,6 +330,19 @@ mod tests {
         assert!((volumes[0].signed_volume_m3 - 1.8).abs() < 1e-9);
         assert!((volumes[1].signed_volume_m3 - 2.0).abs() < 1e-9);
         assert_eq!(inspected.json, json);
+    }
+
+    #[test]
+    fn surface_area_report_is_deterministic_and_preserves_json() {
+        let inspected = inspect_legacy_json(PROJECT.as_bytes()).unwrap();
+        let original = inspected.json.clone();
+        let areas = extract_wall_surface_areas(&inspected).unwrap();
+        assert_eq!(areas.len(), 1);
+        assert_eq!(areas[0].wall_id, 2);
+        // A 4 x 0.2 x 3 wall with a 1 x 1 through-opening:
+        // 2*(4*3 + 4*0.2 + 3*0.2) - 2*(1*1) + 2*(1+1)*0.2 = 26.6 m².
+        assert!((areas[0].surface_area_m2 - 26.6).abs() < 1e-9);
+        assert_eq!(inspected.json, original);
     }
 
     #[test]
