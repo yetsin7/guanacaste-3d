@@ -122,6 +122,7 @@ impl TriangleMesh {
         // use large survey coordinates far from (0, 0, 0).
         let origin = self.positions.first()?;
         let mut volume = 0.0;
+        let mut correction = 0.0;
         for &[a, b, c] in &self.indices {
             let a = self.positions.get(a)?;
             let b = self.positions.get(b)?;
@@ -135,11 +136,21 @@ impl TriangleMesh {
             let cx = c.x - origin.x;
             let cy = c.y - origin.y;
             let cz = c.z - origin.z;
-            volume +=
+            let term =
                 (ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx))
                     / 6.0;
+            // Neumaier summation retains small BIM elements alongside much
+            // larger volumes, without changing the legacy signed-volume API.
+            let next = volume + term;
+            if volume.abs() >= term.abs() {
+                correction += (volume - next) + term;
+            } else {
+                correction += (term - next) + volume;
+            }
+            volume = next;
         }
-        volume.is_finite().then_some(volume)
+        let result = volume + correction;
+        result.is_finite().then_some(result)
     }
 
     /// Checked volume for meshes received from untrusted importers or FFI callers.
@@ -328,6 +339,30 @@ mod tests {
         assert!(inward.is_closed_oriented_manifold());
         assert_eq!(outward.checked_closed_volume(), Some(24.0));
         assert_eq!(inward.checked_closed_volume(), Some(-24.0));
+    }
+
+    #[test]
+    fn closed_volume_adds_disconnected_shells_with_opposite_winding() {
+        // A 3 x 2 x 4 m shell and an inward 3 x 2 x 2 m shell:
+        // signed volumes must add to 24 - 12 = 12 cubic meters.
+        let mut combined = extrude_footprint(&rectangle(), 0.0, 4.0).unwrap();
+        let mut inward = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        for point in &mut inward.positions {
+            point.x += 10.0;
+        }
+        for face in &mut inward.indices {
+            face.swap(0, 1);
+        }
+        let offset = combined.positions.len();
+        combined.positions.extend(inward.positions);
+        combined.indices.extend(
+            inward
+                .indices
+                .into_iter()
+                .map(|[a, b, c]| [a + offset, b + offset, c + offset]),
+        );
+        assert!(combined.is_closed_oriented_manifold());
+        assert_eq!(combined.checked_closed_volume(), Some(12.0));
     }
 
     #[test]
