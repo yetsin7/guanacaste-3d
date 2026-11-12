@@ -53,3 +53,50 @@ fn translated_and_reversed_shell_preserves_surface_area() {
     assert!((mesh.checked_closed_surface_area().unwrap() - expected).abs() < 1e-9);
     assert!((mesh.checked_closed_volume().unwrap() + 24.0).abs() < 1e-9);
 }
+
+#[test]
+fn opposite_oriented_disjoint_shells_keep_area_but_cancel_signed_volume() {
+    // Closed-shell area is orientation independent, unlike signed volume.
+    // A signed-volume sum must not be treated as total physical volume
+    // when independently oriented shells are imported from CAD.
+    let mut first = prism(3.0, 2.0, 4.0);
+    let mut second = prism(3.0, 2.0, 4.0);
+    for point in &mut second.positions {
+        point.x += 100.0;
+    }
+    for triangle in &mut second.indices {
+        triangle.swap(1, 2);
+    }
+    let offset = first.positions.len();
+    first.positions.extend(second.positions);
+    for [a, b, c] in second.indices {
+        first.indices.push([a + offset, b + offset, c + offset]);
+    }
+    assert!(first.is_closed_oriented_manifold());
+    assert!((first.checked_closed_surface_area().unwrap() - 104.0).abs() < 1e-10);
+    assert!(first.checked_closed_volume().unwrap().abs() < 1e-10);
+}
+
+#[test]
+fn two_shells_touching_at_one_vertex_are_not_a_manifold() {
+    let mut first = prism(3.0, 2.0, 4.0);
+    let mut second = prism(1.0, 1.0, 1.0);
+    // Merge only the shared corner index; its incident face fan is disconnected.
+    for point in &mut second.positions {
+        point.x += 3.0;
+        point.y += 2.0;
+        point.z += 4.0;
+    }
+    let offset = first.positions.len();
+    let shared = first
+        .positions
+        .iter()
+        .position(|p| p.x == 3.0 && p.y == 2.0 && p.z == 4.0)
+        .unwrap();
+    first.positions.extend(second.positions);
+    for triangle in second.indices {
+        first.indices.push(triangle.map(|i| if i == 0 { shared } else { i + offset }));
+    }
+    assert!(!first.is_closed_oriented_manifold());
+    assert_eq!(first.checked_closed_surface_area(), None);
+}
