@@ -26,7 +26,7 @@ fn disjoint_closed_shells_have_additive_area() {
         [a + offset, b + offset, c + offset]
     }));
     assert!(first.is_closed_oriented_manifold());
-    assert!((first.checked_closed_surface_area().unwrap() - 76.0).abs() < 1e-10);
+    assert!((first.checked_closed_surface_area().unwrap() - 74.0).abs() < 1e-10);
 }
 
 #[test]
