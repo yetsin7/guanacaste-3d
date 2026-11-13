@@ -27,11 +27,16 @@ fn run(path: &str) -> Result<(), String> {
     if volumes.len() != areas.len() {
         return Err("wall metric counts do not match".into());
     }
+    // Validate every pair before emitting any output: stdout is an atomic report.
+    if volumes
+        .iter()
+        .zip(&areas)
+        .any(|(volume, area)| volume.wall_id != area.wall_id)
+    {
+        return Err("wall metric IDs do not match".into());
+    }
     for (volume, area) in volumes.iter().zip(&areas) {
-        if volume.wall_id != area.wall_id {
-            return Err("wall metric IDs do not match".into());
-        }
-        println!(
+        println!
             "{:032x}, {:.12}, {:.12}",
             volume.wall_id, volume.signed_volume_m3, area.surface_area_m2
         );
