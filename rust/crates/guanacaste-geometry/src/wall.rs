@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 use crate::mesh::{Point3, TriangleMesh};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WallOpening {
@@ -32,9 +33,9 @@ const MAX_CELLS: usize = 250_000;
 /// wall thickness is symmetric about that line. Openings may touch each other
 /// at their edges, but may not overlap in area.
 ///
-/// A grid corner is duplicated for each quad for now, matching the legacy
-/// triangle-soup approach. This keeps index ranges simple but does not yet
-/// deduplicate vertices or encode material/element metadata.
+/// Quads are assembled independently, then shared corners are welded so the
+/// resulting indexed mesh can be checked for watertight manifold topology.
+/// Material and BIM element metadata are not yet encoded.
 pub fn mesh_wall_with_openings(
     start: (f64, f64),
     end: (f64, f64),
@@ -197,6 +198,28 @@ pub fn mesh_wall_with_openings(
             }
         }
     }
+    // Each quad initially owns its four corners. Reuse identical grid vertices
+    // across adjacent quads to obtain a topologically connected indexed shell.
+    // Normalizing negative zero avoids distinct keys for the same coordinate.
+    let mut unique = HashMap::new();
+    let mut positions = Vec::new();
+    let mut remap = Vec::with_capacity(mesh.positions.len());
+    for p in &mesh.positions {
+        let bits = |v: f64| if v == 0.0 { 0 } else { v.to_bits() };
+        let key = (bits(p.x), bits(p.y), bits(p.z));
+        let index = *unique.entry(key).or_insert_with(|| {
+            let index = positions.len();
+            positions.push(*p);
+            index
+        });
+        remap.push(index);
+    }
+    for triangle in &mut mesh.indices {
+        for index in triangle {
+            *index = remap[*index];
+        }
+    }
+    mesh.positions = positions;
     Ok(mesh)
 }
 
@@ -225,6 +248,8 @@ mod tests {
         let mesh = mesh_wall_with_openings((0.0, 0.0), (4.0, 0.0), 0.0, 3.0, 0.2, &[]).unwrap();
         assert_eq!(mesh.triangle_count(), 12);
         assert!((mesh.signed_volume() - 2.4).abs() < 1e-9);
+        assert!(mesh.is_closed_oriented_manifold());
+        assert!((mesh.checked_closed_surface_area().unwrap() - 26.8).abs() < 1e-9);
     }
 
     #[test]
@@ -234,6 +259,8 @@ mod tests {
                 .unwrap();
         assert!((mesh.signed_volume() - 2.2).abs() < 1e-9);
         assert!(mesh.triangle_count() > 12);
+        assert!(mesh.is_closed_oriented_manifold());
+        assert!((mesh.checked_closed_surface_area().unwrap() - 25.6).abs() < 1e-9);
     }
 
     #[test]
