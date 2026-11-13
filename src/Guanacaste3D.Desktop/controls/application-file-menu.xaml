@@ -42,7 +42,6 @@
                 <MenuItem Header="{DynamicResource Tool.Section}" Click="Command_Click" Tag="ShowSection"/>
                 <MenuItem Header="{DynamicResource Tool.Schedule}" Click="Command_Click" Tag="ShowSchedule"/>
                 <MenuItem Header="{DynamicResource Tool.Sheets}" Click="Command_Click" Tag="ShowSheet"/>
-                <MenuItem Header="{DynamicResource Tool.Render}" Click="Command_Click" Tag="ShowRender"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Action.Fit}" Click="Command_Click" Tag="FitPlan"/>
               </MenuItem>

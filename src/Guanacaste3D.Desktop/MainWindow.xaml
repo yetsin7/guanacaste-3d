@@ -416,7 +416,7 @@
                 <controls:ModelNavigation x:Name="ViewNavigation" HorizontalAlignment="Right"
                     VerticalAlignment="Top" Margin="0,16,18,40"/>
                 <controls:ModelViewToolbar x:Name="ModelToolbar" VerticalAlignment="Bottom" Margin="0"
-                    StyleChanged="ViewStyle_Changed" ResetRequested="ResetOrbit_Click" RenderRequested="StartRender_Click"/>
+                    StyleChanged="ViewStyle_Changed" ResetRequested="ResetOrbit_Click"/>
               </Grid>
             </TabItem>
             <TabItem Header="{DynamicResource View.Schedule}" Tag="{StaticResource Icon.Schedule}">
@@ -448,7 +448,7 @@
               <Canvas x:Name="SectionCanvas" Background="White" ClipToBounds="True"
                       SizeChanged="OrthographicCanvas_SizeChanged"/>
             </TabItem>
-            <TabItem Header="{DynamicResource View.Render}" Tag="{StaticResource Icon.Render}">
+            <TabItem x:Name="RenderTab" Header="{DynamicResource View.Render}" Tag="{StaticResource Icon.Render}" Visibility="Collapsed">
               <Grid/>
             </TabItem>
           </TabControl>

@@ -94,8 +94,7 @@ public partial class MainWindow : IStartScreenHost
         if (!ConfirmDiscard()) return;
         if (sample.Id == "cobogo")
         {
-            // The breeze-block house opens on its saved camera, sun and filters, ready to render.
-            if (OpenBreezeBlockHouse()) ViewTabs.SelectedIndex = RenderTabIndex;
+            if (OpenBreezeBlockHouse()) ViewTabs.SelectedIndex = Model3DTabIndex;
             return;
         }
         try

@@ -46,7 +46,6 @@ public partial class MainWindow
             case "Text": BeginKindTool(StructuralElementKind.ModelText); return true;
             case "Viewer":
             case "Model3D": ShowModel_Click(this, eventArguments); return true;
-            case "RenderView": ShowRender_Click(this, eventArguments); return true;
             case "Move": Move_Click(this, eventArguments); return true;
             case "CopyElement": Duplicate_Click(this, eventArguments); return true;
             case "CreateSimilar": CreateSimilar_Click(this, eventArguments); return true;
@@ -58,7 +57,6 @@ public partial class MainWindow
             case "PropertyLine": DefineLot(); return true;
             case "Schedule": ShowSchedule_Click(this, eventArguments); return true;
             case "Sheet": AddSheet_Click(this, eventArguments); return true;
-            case "Render": StartRender_Click(this, eventArguments); return true;
             case "Fit": FitPlan_Click(this, eventArguments); return true;
             case "ProjectParameters":
             case "WallProperties":

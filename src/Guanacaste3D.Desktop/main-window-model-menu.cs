@@ -30,7 +30,6 @@ public partial class MainWindow
         menu.Items.Add(ViewMenuItem("ViewMenu.FrameAll", (_, _) => FrameCameraToScene()));
         menu.Items.Add(ViewMenuItem("ViewMenu.Center", (_, _) => _modelNavigator?.CenterAll()));
         menu.Items.Add(new Separator());
-        menu.Items.Add(ViewMenuItem("ViewMenu.Render", (_, _) => ViewTabs.SelectedIndex = RenderTabIndex));
         menu.Items.Add(ViewMenuItem("ViewMenu.Plan", (_, _) => ViewTabs.SelectedIndex = 0));
         menu.IsOpen = true;
     }

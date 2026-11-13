@@ -46,7 +46,6 @@
     <CheckBox x:Name="ServiceSwitch" Content="{DynamicResource View3D.XRay}" IsChecked="False" VerticalAlignment="Center"
      ToolTip="{DynamicResource View3D.XRayTip}" Margin="0,0,8,0" Checked="Style_Changed" Unchecked="Style_Changed"/>
     <Button Content="{DynamicResource Model.ResetCamera}" Click="Reset_Click" Margin="0,0,6,0"/>
-    <Button Content="{DynamicResource Render.Start}" Click="Render_Click"/>
    </StackPanel>
   </ScrollViewer>
  </Border>

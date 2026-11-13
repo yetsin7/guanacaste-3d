@@ -290,20 +290,24 @@ internal static class ArchitectureUiChecks
         while (!sceneTask.IsCompleted && DateTime.UtcNow < timeout) Pump();
         Check(sceneTask.IsCompletedSuccessfully && sceneTask.Result is { TriangleCount: > 0 },
             "A family-only project builds the live and final render scene");
-        Check(Invoke("ExecuteApplicationCommand", "Materials") is true, "Materials routes to the project material editor");
-        Pump();
-        var panel = (RenderPanel)_window.FindName("RenderPanelControl");
-        Check(((StackPanel)panel.FindName("MaterialRows")).Children.Count > 0,
-            "The material command reveals the populated project material controls");
-        Check(Invoke("ExecuteApplicationCommand", "Walkthrough") is true, "Walkthrough routes to camera marks");
-        Pump();
-        Check(((Expander)panel.FindName("TourExpander")).IsExpanded, "The walkthrough command expands its camera editor");
+        Check(((TabItem)_window.FindName("RenderTab")).Visibility == Visibility.Collapsed,
+            "The BIM workspace does not display the rendering tab");
+        Check(Invoke("ExecuteApplicationCommand", "RenderView") is false &&
+              Invoke("ExecuteApplicationCommand", "Render") is false &&
+              Invoke("ExecuteApplicationCommand", "Walkthrough") is false &&
+              Invoke("ExecuteApplicationCommand", "Materials") is false,
+            "Retired rendering commands cannot navigate to the rendering workspace");
         Check(Invoke("ExecuteApplicationCommand", "Camera") is true, "Camera opens the navigable model view");
         Check(Invoke("ExecuteApplicationCommand", "ResetCamera") is true, "Reset camera frames the current project");
         var clay = (CheckBox)_window.FindName("XRayCheck");
         var previous = clay.IsChecked;
         Check(Invoke("ExecuteApplicationCommand", "VisualStyle") is true && clay.IsChecked != previous,
             "Visual style switches service visibility while preserving project colors");
+        _window.EnterRenderWorkspace();
+        Pump();
+        Check(((TabItem)_window.FindName("RenderTab")).Visibility == Visibility.Visible &&
+              ((TabControl)_window.FindName("ViewTabs")).SelectedIndex == 6,
+            "The dedicated render host can still open its rendering workspace");
     }
 
     private static void Execute(ArchitectureCommand command)

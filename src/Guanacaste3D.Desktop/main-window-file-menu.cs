@@ -75,7 +75,6 @@ public partial class MainWindow
             "ShowSection" => ShowSection_Click,
             "ShowSchedule" => ShowSchedule_Click,
             "ShowSheet" => ShowSheet_Click,
-            "ShowRender" => ShowRender_Click,
             "FitPlan" => FitPlan_Click,
             "About" => About_Click,
             "Exit" => Exit_Click,

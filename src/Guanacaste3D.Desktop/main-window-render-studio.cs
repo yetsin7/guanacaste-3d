@@ -14,6 +14,7 @@ public partial class MainWindow
     {
         WorkspaceToggleButton.Visibility = Visibility.Collapsed;
         QuickAccessHost.Visibility = Visibility.Collapsed;
+        RenderTab.Visibility = Visibility.Visible;
         ViewTabs.SelectedIndex = RenderTabIndex;
     }
 

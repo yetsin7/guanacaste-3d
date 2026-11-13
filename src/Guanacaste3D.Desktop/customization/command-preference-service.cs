@@ -50,46 +50,36 @@ public sealed class CommandPreferenceService
 
     /// <summary>Returns the initial quick access tools and familiar two-key command sequences.</summary>
     public static CommandPreferences CreateDefaults() => new(
-        ["Save", "Undo", "Redo", "Wall", "Model3D", "RenderView", "AiAssistant"],
+        ["Save", "Undo", "Redo", "Wall", "Model3D", "AiAssistant"],
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Wall"] = "WA",
             ["Door"] = "DR",
             ["Window"] = "WN",
             ["Model3D"] = "3D",
-            ["RenderView"] = "RN",
             ["AiAssistant"] = "AI",
             ["VisibilityGraphics"] = "VG"
         }, CurrentVersion);
 
-    /// <summary>The layout of the defaults: version 2 added the Render view button beside the 3D view button; version 3 added the AI assistant button.</summary>
+    /// <summary>Version 3 introduced the AI assistant in the default layout.</summary>
     private const int CurrentVersion = 3;
 
     /// <summary>Removes duplicate identifiers and canonicalizes keyboard sequences.</summary>
     private static CommandPreferences Normalize(CommandPreferences preferences)
     {
         List<string> quickAccess = preferences.QuickAccessCommandIds
-            .Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+            .Where(identifier => !string.IsNullOrWhiteSpace(identifier) && !identifier.Equals("RenderView", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.Ordinal)
             .ToList();
         Dictionary<string, string> shortcuts = preferences.Shortcuts
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value) && !pair.Key.Equals("RenderView", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(
                 pair => pair.Key,
                 pair => pair.Value.Trim().ToUpperInvariant(),
                 StringComparer.OrdinalIgnoreCase);
-        // Preferences saved before version 2 get the Render view button right after the 3D view button, once. After that
-        // the user's own choice, including removing it, is kept.
-        if (preferences.Version < 2)
-        {
-            var model = quickAccess.IndexOf("Model3D");
-            if (model >= 0 && !quickAccess.Contains("RenderView")) quickAccess.Insert(model + 1, "RenderView");
-            shortcuts.TryAdd("RenderView", "RN");
-        }
         if (preferences.Version < 3)
         {
-            var render = quickAccess.IndexOf("RenderView");
-            if (!quickAccess.Contains("AiAssistant")) quickAccess.Insert(render >= 0 ? render + 1 : quickAccess.Count, "AiAssistant");
+            if (!quickAccess.Contains("AiAssistant")) quickAccess.Add("AiAssistant");
             shortcuts.TryAdd("AiAssistant", "AI");
         }
         return new CommandPreferences(quickAccess, shortcuts, CurrentVersion);
