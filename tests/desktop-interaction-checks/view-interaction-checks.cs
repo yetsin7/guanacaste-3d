@@ -156,10 +156,20 @@ internal static partial class InteractionChecks
             var ribbon = (FrameworkElement)_window.FindName("RibbonTabControl");
             var globalStatus = (FrameworkElement)_window.FindName("MainStatusStrip");
             var return3D = (Button)_window.FindName("RenderReturn3DButton");
-            Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed &&
-                  titleBar.Visibility == Visibility.Collapsed && ribbon.Visibility == Visibility.Collapsed &&
-                  globalStatus.Visibility == Visibility.Collapsed && return3D.Visibility == Visibility.Visible,
-                "Immersive Render hides the BIM chrome and palettes while leaving a visible 3D return");
+            // Report each visibility independently: a single combined assertion hides the failing control.
+            // The diagnostic includes the selected tab so CI can distinguish a mode transition from stale layout.
+            var renderVisibility = new (string Name, FrameworkElement Element, Visibility Expected)[]
+            {
+                ("RenderPanelControl", panel, Visibility.Visible),
+                ("StandardSidebar", standardSidebar, Visibility.Collapsed),
+                ("MainTitleBar", titleBar, Visibility.Collapsed),
+                ("RibbonTabControl", ribbon, Visibility.Collapsed),
+                ("MainStatusStrip", globalStatus, Visibility.Collapsed),
+                ("RenderReturn3DButton", return3D, Visibility.Visible)
+            };
+            foreach (var (name, element, expected) in renderVisibility)
+                Check(element.Visibility == expected,
+                    $"Immersive Render {name}: expected {expected}, actual {element.Visibility}; selected tab {tabs.SelectedIndex}; loaded {element.IsLoaded}");
             Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 375) < 4,
                 "The Render studio keeps a compact resizable sidebar and a separate mode rail");
             Check(panel.Background is SolidColorBrush { Color: { R: < 60, G: < 60, B: < 70 } },
