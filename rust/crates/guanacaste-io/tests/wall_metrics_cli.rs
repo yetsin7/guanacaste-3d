@@ -184,3 +184,27 @@ fn cli_emits_metrics_for_every_wall() {
         .iter()
         .any(|line| line.starts_with("00000000000000000000000000000004,")));
 }
+
+#[test]
+fn cli_does_not_emit_partial_metrics_when_a_later_wall_is_invalid() {
+    let mut document: serde_json::Value = serde_json::from_str(JSON).unwrap();
+    let mut second = document["Walls"][0].clone();
+    second["Id"] = serde_json::json!("00000000-0000-0000-0000-000000000004");
+    second["Thickness"] = serde_json::json!(-0.2);
+    document["Walls"].as_array_mut().unwrap().push(second);
+
+    let path = unique_path();
+    let original = serde_json::to_vec(&document).unwrap();
+    fs::write(&path, &original).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_wall-metrics"))
+        .arg(&path)
+        .output()
+        .unwrap();
+    let after = fs::read(&path).unwrap();
+    let _ = fs::remove_file(&path);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty(), "partial metrics escaped on failure");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported wall subset"));
+    assert_eq!(after, original, "inspection must never rewrite input");
+}
