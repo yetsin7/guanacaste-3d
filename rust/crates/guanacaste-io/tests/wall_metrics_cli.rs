@@ -129,8 +129,16 @@ fn cli_native_envelope_matches_legacy_and_rejects_tampering() {
 
     let raw = Command::new(executable).arg(&raw_path).output().unwrap();
     let wrapped = Command::new(executable).arg(&native_path).output().unwrap();
-    assert!(raw.status.success(), "{}", String::from_utf8_lossy(&raw.stderr));
-    assert!(wrapped.status.success(), "{}", String::from_utf8_lossy(&wrapped.stderr));
+    assert!(
+        raw.status.success(),
+        "{}",
+        String::from_utf8_lossy(&raw.stderr)
+    );
+    assert!(
+        wrapped.status.success(),
+        "{}",
+        String::from_utf8_lossy(&wrapped.stderr)
+    );
     assert_eq!(raw.stdout, wrapped.stdout);
     assert_eq!(fs::read(&raw_path).unwrap(), json);
     assert_eq!(fs::read(&native_path).unwrap(), native);
