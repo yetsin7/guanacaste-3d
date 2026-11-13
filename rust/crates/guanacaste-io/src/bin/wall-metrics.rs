@@ -24,6 +24,9 @@ fn run(path: &str) -> Result<(), String> {
         .map_err(|err| format!("unsupported wall subset: {err:?}"))?;
     let areas = extract_wall_surface_areas(&inspected)
         .map_err(|err| format!("unsupported wall subset: {err:?}"))?;
+    if volumes.len() != areas.len() {
+        return Err("wall metric counts do not match".into());
+    }
     for (volume, area) in volumes.iter().zip(&areas) {
         if volume.wall_id != area.wall_id {
             return Err("wall metric IDs do not match".into());
