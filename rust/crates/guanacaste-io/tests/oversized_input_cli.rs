@@ -8,8 +8,14 @@ use std::{
 
 #[test]
 fn oversized_input_is_rejected_before_parsing_without_mutation() {
-    let nonce = SystemTime::now()\n        .duration_since(UNIX_EPOCH)\n        .unwrap()\n        .as_nanos();
-    let path = std::env::temp_dir().join(format!(\n        "guanacaste-oversized-{}-{nonce}.g3d",\n        std::process::id()\n    ));
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "guanacaste-oversized-{}-{nonce}.g3d",
+        std::process::id()
+    ));
     let file = fs::File::create(&path).unwrap();
     // Sparse extension avoids allocating a 256 MiB fixture on CI runners.
     file.set_len(MAX_NATIVE_BYTES as u64 + 1).unwrap();
