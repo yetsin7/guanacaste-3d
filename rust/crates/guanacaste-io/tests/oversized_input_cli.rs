@@ -1,13 +1,15 @@
 //! Read-only CLI guard for oversized input files.
-use std::{fs, process::Command, time::{SystemTime, UNIX_EPOCH}};
 use guanacaste_io::MAX_NATIVE_BYTES;
+use std::{
+    fs,
+    process::Command,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[test]
 fn oversized_input_is_rejected_before_parsing_without_mutation() {
-    let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-    let path = std::env::temp_dir().join(format!(
-        "guanacaste-oversized-{}-{nonce}.g3d", std::process::id()
-    ));
+    let nonce = SystemTime::now()\n        .duration_since(UNIX_EPOCH)\n        .unwrap()\n        .as_nanos();
+    let path = std::env::temp_dir().join(format!(\n        "guanacaste-oversized-{}-{nonce}.g3d",\n        std::process::id()\n    ));
     let file = fs::File::create(&path).unwrap();
     // Sparse extension avoids allocating a 256 MiB fixture on CI runners.
     file.set_len(MAX_NATIVE_BYTES as u64 + 1).unwrap();
