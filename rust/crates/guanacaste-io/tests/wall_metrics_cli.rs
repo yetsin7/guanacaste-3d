@@ -204,7 +204,10 @@ fn cli_does_not_emit_partial_metrics_when_a_later_wall_is_invalid() {
     let _ = fs::remove_file(&path);
 
     assert_eq!(output.status.code(), Some(1));
-    assert!(output.stdout.is_empty(), "partial metrics escaped on failure");
+    assert!(
+        output.stdout.is_empty(),
+        "partial metrics escaped on failure"
+    );
     assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported wall subset"));
     assert_eq!(after, original, "inspection must never rewrite input");
 }
