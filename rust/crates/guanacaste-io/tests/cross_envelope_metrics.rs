@@ -41,3 +41,43 @@ fn legacy_and_preview_metrics_match_without_rewriting_json() {
     assert!((volumes[0].signed_volume_m3 - 2.2).abs() < 1e-9);
     assert!((areas[0].surface_area_m2 - 25.6).abs() < 1e-9);
 }
+
+#[test]
+fn native_envelope_metrics_match_legacy_and_preview() {
+    use flate2::{write::GzEncoder, Compression};
+    use sha2::{Digest, Sha256};
+    use std::io::Write;
+
+    let json = JSON.as_bytes();
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(json).unwrap();
+    let compressed = encoder.finish().unwrap();
+
+    // Header GUID uses .NET Guid.ToByteArray() mixed-endian layout.
+    let guid: [u8; 16] = [
+        0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+    ];
+    let mut native = Vec::new();
+    native.extend_from_slice(b"G3DNATV1");
+    native.extend_from_slice(&1i32.to_le_bytes());
+    native.push(1); // Project
+    native.extend_from_slice(&15i32.to_le_bytes());
+    native.extend_from_slice(&guid);
+    native.extend_from_slice(&(json.len() as i64).to_le_bytes());
+    native.extend_from_slice(&(compressed.len() as i64).to_le_bytes());
+    native.extend_from_slice(&Sha256::digest(json));
+    native.extend_from_slice(&compressed);
+
+    let inspected = guanacaste_io::inspect_native(&native).unwrap();
+    let legacy = inspect_legacy_json(json).unwrap();
+    assert_eq!(inspected.json, json);
+    assert_eq!(inspected.header.as_ref().unwrap().document_guid, "00112233-4455-6677-8899-aabbccddeeff");
+    assert_eq!(extract_wall_volumes(&inspected).unwrap(), extract_wall_volumes(&legacy).unwrap());
+    assert_eq!(extract_wall_surface_areas(&inspected).unwrap(), extract_wall_surface_areas(&legacy).unwrap());
+
+    // Corrupted compressed bytes must not be accepted as equivalent geometry.
+    let last = native.len() - 1;
+    native[last] ^= 0xff;
+    assert!(guanacaste_io::inspect_native(&native).is_err());
+}
