@@ -12,8 +12,10 @@ public partial class MainWindow
     /// <summary>Exposes only measurements that have an unambiguous transactional edit for the selected element.</summary>
     private void ConfigureModelDimensionEditor(Border chip, PickedKind kind, Guid id, int index, double value)
     {
-        if (!(kind == PickedKind.Wall && index < 3) &&
-            !(kind == PickedKind.Opening && index is 0 or 2 or 3)) return;
+        if (!((kind is PickedKind.Wall or PickedKind.Column) && index is >= 0 and < 3) &&
+            !(kind == PickedKind.Opening && index is 0 or 2 or 3) &&
+            !(kind == PickedKind.Floor && index == 2 &&
+              _session.Document.Floors.Any(item => item.Id == id && !item.IsPitched && !item.IsToposolid))) return;
         var label = chip.Child;
         chip.Child = null;
         var button = new Button
@@ -71,6 +73,16 @@ public partial class MainWindow
                     _ => new WallDimensionEdit(Height: value + wall.BaseOffset)
                 };
                 _session.ApplyWallDimensions(id, edit);
+            }
+            else if (kind == PickedKind.Floor && index == 2 &&
+                _session.Document.Floors.FirstOrDefault(item => item.Id == id && !item.IsPitched && !item.IsToposolid) is { } floor)
+            {
+                _session.UpdateFloor(id, floor.Name, value, floor.ElevationOffset);
+            }
+            else if (kind == PickedKind.Column && _session.Document.Columns.FirstOrDefault(item => item.Id == id) is { } column)
+            {
+                _session.UpdateColumn(id, index == 0 ? value : column.Width, index == 1 ? value : column.Depth,
+                    index == 2 ? value : column.Height, column.Shape);
             }
             else if (kind == PickedKind.Opening && _session.Document.Openings.FirstOrDefault(item => item.Id == id) is { } opening)
             {

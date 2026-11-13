@@ -38,7 +38,10 @@ public partial class MainWindow
         if (ActiveProjectView() is not { } view) return;
         var document = ViewVisibility.Apply(_session.Document, view);
         bool OnLevel(Guid levelId) => view.Kind != ProjectViewKind.Plan || levelId == _activeLevelId;
-        _viewSelection = document.Walls.Where(wall => OnLevel(wall.LevelId)).Select(wall => wall.Id)
+        var visibleWalls = document.Walls.Where(wall => OnLevel(wall.LevelId)).ToArray();
+        var visibleWallIds = visibleWalls.Select(wall => wall.Id).ToHashSet();
+        _viewSelection = visibleWalls.Select(wall => wall.Id)
+            .Concat(document.Openings.Where(opening => visibleWallIds.Contains(opening.WallId)).Select(opening => opening.Id))
             .Concat(document.Floors.Where(floor => OnLevel(floor.LevelId)).Select(floor => floor.Id))
             .Concat(document.Columns.Where(column => OnLevel(column.LevelId)).Select(column => column.Id))
             .Concat(document.StructuralElements.Where(element => OnLevel(element.LevelId)).Select(element => element.Id))
@@ -77,12 +80,25 @@ public partial class MainWindow
             StatusText.Text = GetText("ViewSelection.NothingToSelect");
             return;
         }
-        var visible = ModelElementIds(ViewVisibility.Apply(_session.Document, view)).ToHashSet();
+        var shown = ViewVisibility.Apply(_session.Document, view);
+        var visible = view.Kind == ProjectViewKind.Plan
+            ? PlanSelectableIds(shown, _activeLevelId).ToHashSet()
+            : ModelElementIds(shown).ToHashSet();
         _viewSelection = ElementTypeSelection.SameType(_session.Document, seeds).Where(visible.Contains).ToHashSet();
         StatusText.Text = string.Format(GetText("ViewSelection.SameType"), _viewSelection.Count);
         RefreshProperties();
         RenderPlan();
         UpdateModelSelection(true);
+    }
+
+    /// <summary>Limits plan selection to elements hosted on its active level, including visible openings.</summary>
+    private static IEnumerable<Guid> PlanSelectableIds(BuildingDocument document, Guid levelId)
+    {
+        var walls = document.Walls.Where(wall => wall.LevelId == levelId).Select(wall => wall.Id).ToHashSet();
+        return walls.Concat(document.Openings.Where(opening => walls.Contains(opening.WallId)).Select(opening => opening.Id))
+            .Concat(document.Floors.Where(floor => floor.LevelId == levelId).Select(floor => floor.Id))
+            .Concat(document.Columns.Where(column => column.LevelId == levelId).Select(column => column.Id))
+            .Concat(document.StructuralElements.Where(element => element.LevelId == levelId).Select(element => element.Id));
     }
 
     /// <summary>Deletes the multiple selection (SA, Ctrl+A) as one undoable step; false when there is none.</summary>

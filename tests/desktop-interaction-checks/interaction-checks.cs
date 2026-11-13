@@ -59,6 +59,24 @@ internal static partial class InteractionChecks
             Pump();
             _canvas = (Canvas)_window.FindName("PlanCanvas");
             var session = Field<DocumentSession>("_session");
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "modeling-improvements")
+            {
+                PlanLevelSelectionChecks(session);
+                ModelDimensionChecks(session);
+                DuplicateStructuralMemberChecks(session);
+                DuplicateFloorRibbonChecks(session);
+                return 0;
+            }
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "plan-level-selection")
+            {
+                PlanLevelSelectionChecks(session);
+                return 0;
+            }
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "duplicate-floor")
+            {
+                DuplicateFloorRibbonChecks(session);
+                return 0;
+            }
             var level = session.Document.Levels[0].Id;
             var basicTypeIndex = session.Document.WallTypes.FindIndex(type => type.Id == BuiltInWallTypes.Basic200Id);
             session.Document.WallTypes[basicTypeIndex] = session.Document.WallTypes[basicTypeIndex] with
@@ -148,9 +166,12 @@ internal static partial class InteractionChecks
             WallLoopClosingChecks(session);
             WallEditCommandChecks(session);
             RotateRibbonChecks(session);
+            PlanLevelSelectionChecks(session);
             ModelDimensionChecks(session);
             DuplicateComponentRibbonChecks(session);
             DuplicateColumnRibbonChecks(session);
+            DuplicateStructuralMemberChecks(session);
+            DuplicateFloorRibbonChecks(session);
             OrthographicLevelEditingChecks(session);
             RandomizedRibbonChecks(session);
             PlantingChecks(session);

@@ -16,15 +16,20 @@ public partial class MainWindow
         return true;
     }
 
-    /// <summary>Copies a selected component through the same undoable operation used in the render workspace.</summary>
+    /// <summary>Copies a selected component or independent structural member through an undoable operation.</summary>
     private bool TryDuplicateComponent()
     {
         if (_selectedStructuralId is not Guid id ||
-            !_session.Document.StructuralElements.Any(element => element.Id == id &&
-                element.Kind == StructuralElementKind.Component)) return false;
-
-        _selectedStructuralId = _session.DuplicateRenderComponent(id);
-        StatusText.Text = GetText("Status.ComponentDuplicated");
+            _session.Document.StructuralElements.FirstOrDefault(element => element.Id == id) is not { } element)
+            return false;
+        if (element.Kind == StructuralElementKind.Component)
+            _selectedStructuralId = _session.DuplicateRenderComponent(id);
+        else if (element.Kind is StructuralElementKind.Beam or StructuralElementKind.Brace or StructuralElementKind.Truss or
+                 StructuralElementKind.WallFoundation or StructuralElementKind.IsolatedFoundation)
+            _selectedStructuralId = _session.DuplicateStructuralMember(id);
+        else return false;
+        StatusText.Text = GetText(element.Kind == StructuralElementKind.Component
+            ? "Status.ComponentDuplicated" : "Status.StructuralMemberDuplicated");
         RefreshAll();
         return true;
     }

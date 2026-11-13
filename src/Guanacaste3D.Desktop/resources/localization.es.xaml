@@ -1093,7 +1093,10 @@
   <sys:String x:Key="Status.PlanCentered">Planta centrada en el origen.</sys:String>
   <sys:String x:Key="Status.PlanFit">Planta encuadrada al nivel activo.</sys:String>
   <sys:String x:Key="Status.ColumnDuplicated">Columna duplicada a 1 metro de distancia en X e Y.</sys:String>
+  <sys:String x:Key="Transaction.DuplicateFloor">Duplicar losa</sys:String>
+  <sys:String x:Key="Status.FloorDuplicated">Elemento duplicado.</sys:String>
   <sys:String x:Key="Transaction.DuplicateColumn">Duplicar columna</sys:String>
+  <sys:String x:Key="Status.StructuralMemberDuplicated">Elemento estructural duplicado a 1 metro de distancia en X e Y.</sys:String>
   <sys:String x:Key="Status.ComponentDuplicated">Componente duplicado a 1 metro de distancia en X e Y.</sys:String>
   <sys:String x:Key="Status.WallDuplicated">Muro duplicado a 1 metro de distancia en X e Y.</sys:String>
   <sys:String x:Key="Status.SelectWallToRotate">Selecciona un muro para rotarlo.</sys:String>

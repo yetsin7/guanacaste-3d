@@ -39,5 +39,90 @@ internal static partial class InteractionChecks
             tabs.SelectedIndex = 0;
             session.RemoveWall(wallId);
         }
+        ModelColumnDimensionChecks(session);
+        ModelFloorThicknessChecks(session);
     }
+
+    /// <summary>Verifies each editable column dimension in the real 3D overlay and its undo history.</summary>
+    private static void ModelColumnDimensionChecks(DocumentSession session)
+    {
+        var level = Field<Guid>("_activeLevelId");
+        var columnId = session.AddColumn(level, new Point2(110, 110), 0.4, 0.5, 3);
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        try
+        {
+            tabs.SelectedIndex = 1;
+            SetField("_selectedWallId", null);
+            SetField("_selectedOpeningId", null);
+            SetField("_selectedColumnId", (Guid?)columnId);
+            Invoke("RefreshAll");
+            Pump();
+            var overlay = (Canvas)_window.FindName("ModelDimensionOverlay");
+            foreach (var (index, input) in new[] { (0, "0.6 m"), (1, "0.7 m"), (2, "4 m") })
+            {
+                var chip = overlay.Children.OfType<Border>().ElementAt(index);
+                ((Button)chip.Child).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var editor = (TextBox)chip.Child;
+                editor.Text = input;
+                PressKey(editor, Key.Enter);
+            }
+            var column = session.Document.Columns.Single(item => item.Id == columnId);
+            Check(Math.Abs(column.Width - 0.6) < 1e-8 && Math.Abs(column.Depth - 0.7) < 1e-8 &&
+                  Math.Abs(column.Height - 4) < 1e-8 && column.Position == new Point2(110, 110),
+                "3D column dimensions update width, depth and height while retaining the insertion point");
+            session.Undo();
+            Check(Math.Abs(session.Document.Columns.Single(item => item.Id == columnId).Height - 3) < 1e-8,
+                "Undo restores the height edited through a 3D column dimension");
+            var beforeInvalid = session.Document.Columns.Single(item => item.Id == columnId);
+            Invoke("ApplyModelDimension", Guanacaste3D.Core.Navigation.PickedKind.Column, columnId, 0, "0.01 m");
+            Check(session.Document.Columns.Single(item => item.Id == columnId) == beforeInvalid,
+                "A rejected 3D column dimension leaves the model unchanged");
+        }
+        finally
+        {
+            SetField("_selectedColumnId", null);
+            tabs.SelectedIndex = 0;
+            session.RemoveColumn(columnId);
+        }
+    }
+
+
+    /// <summary>Edits a flat slab thickness through the 3D overlay while preserving its top elevation.</summary>
+    private static void ModelFloorThicknessChecks(DocumentSession session)
+    {
+        var level = Field<Guid>("_activeLevelId");
+        var floorId = session.AddFloor(level,
+            [new Point2(120, 120), new Point2(124, 120), new Point2(124, 124), new Point2(120, 124)],
+            0.2, elevationOffset: 0.5);
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        try
+        {
+            tabs.SelectedIndex = 1;
+            SetField("_selectedWallId", null);
+            SetField("_selectedOpeningId", null);
+            SetField("_selectedColumnId", null);
+            SetField("_selectedFloorId", (Guid?)floorId);
+            Invoke("RefreshAll");
+            Pump();
+            var overlay = (Canvas)_window.FindName("ModelDimensionOverlay");
+            var chip = overlay.Children.OfType<Border>().ElementAt(2);
+            ((Button)chip.Child).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var editor = (TextBox)chip.Child;
+            editor.Text = "0.3 m";
+            PressKey(editor, Key.Enter);
+            var floor = session.Document.Floors.Single(item => item.Id == floorId);
+            Check(Math.Abs(floor.Thickness - 0.3) < 1e-8 && Math.Abs(floor.ElevationOffset - 0.5) < 1e-8,
+                "Editing a flat slab thickness in 3D preserves its top elevation");
+            session.Undo();
+            Check(Math.Abs(session.Document.Floors.Single(item => item.Id == floorId).Thickness - 0.2) < 1e-8,
+                "Undo restores the flat slab thickness edited in 3D");
+        }
+        finally
+        {
+            SetField("_selectedFloorId", null);
+            tabs.SelectedIndex = 0;
+            session.RemoveFloor(floorId);
+        }
+    }
+
 }
