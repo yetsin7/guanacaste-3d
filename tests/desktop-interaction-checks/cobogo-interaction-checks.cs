@@ -412,6 +412,15 @@ internal static partial class InteractionChecks
                 Answer("r; 4; 90");
                 Invoke("ExecuteApplicationCommand", "Array");
                 Check(session.Document.Walls.Count == count + 5, "The Array command also makes a radial array of four");
+                // A count too large for Int32 (or the BIM array limit) must be rejected before casting.
+                Answer("r; 999999999999999999999999; 90");
+                Invoke("ExecuteApplicationCommand", "Array");
+                Answer("999999999999999999999999; 0; 2");
+                Invoke("ExecuteApplicationCommand", "Array");
+                Answer("2.5; 0; 2");
+                Invoke("ExecuteApplicationCommand", "Array");
+                Check(session.Document.Walls.Count == count + 5,
+                    "The Array command rejects overflowing and fractional counts without changing the house");
                 Invoke("SelectElement", longest.Id);
                 Answer("0.5");
                 Invoke("ExecuteApplicationCommand", "Offset");
