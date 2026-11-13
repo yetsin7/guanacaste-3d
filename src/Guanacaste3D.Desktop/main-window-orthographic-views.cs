@@ -150,13 +150,7 @@ public partial class MainWindow
                 StrokeDashArray = new DoubleCollection { 5, 4 }
             };
             canvas.Children.Add(line);
-            var label = new TextBlock
-            {
-                Text = $"{level.Name}  {Units.FormatLength(level.Elevation)}",
-                Foreground = Brushes.SteelBlue,
-                FontSize = 11,
-                Background = Brushes.White
-            };
+            var label = CreateProjectedLevelLabel(level);
             Canvas.SetLeft(label, Math.Max(4, horizontalOffset - 105));
             Canvas.SetTop(label, elevationY - 18);
             canvas.Children.Add(label);

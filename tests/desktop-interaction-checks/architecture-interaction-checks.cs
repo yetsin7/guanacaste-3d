@@ -120,6 +120,23 @@ internal static partial class InteractionChecks
         Check(textured, "The 3D view previews an assigned render texture on its surfaces");
         Invoke("AssignRenderMaterial", SurfaceKind.Wall, null!, 1.0, 0.0);
         Check(session.Document.RenderMaterials.Count == 0, "Choosing the stock material clears the assignment");
+        session.SetRenderMaterial(new RenderMaterialAssignment(SurfaceKind.Wall, "stock:")
+        {
+            TintHex = "#808080", RoughnessOverride = 0.4, NormalPath = "normal.png"
+        });
+        Invoke("SetRenderMaterialMaps", SurfaceKind.Wall, null!, null!, null!, null!);
+        var retained = session.Document.RenderMaterials.Single(material => material.Category == SurfaceKind.Wall);
+        Check(retained.TintHex == "#808080" && retained.RoughnessOverride == 0.4 && retained.NormalPath is null,
+            "Removing the last map preserves independent stock material appearance settings");
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, "stock:", 2.0, 0.4);
+        retained = session.Document.RenderMaterials.Single(material => material.Category == SurfaceKind.Wall);
+        Check(retained.TintHex == "#808080" && retained.RoughnessOverride == 0.4,
+            "Editing the same material preserves its appearance overrides");
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, "builtin:ambientcg-bricks105", 1.0, 0.3);
+        var replacement = session.Document.RenderMaterials.Single(material => material.Category == SurfaceKind.Wall);
+        Check(replacement.TintHex is null && replacement.RoughnessOverride is null && replacement.NormalPath is null,
+            "Replacing a material starts with the new material's own appearance");
+        Invoke("AssignRenderMaterial", SurfaceKind.Wall, null!, 1.0, 0.0);
         Invoke("RebuildModelVisual");
         tabs.SelectedIndex = previousTab;
     }

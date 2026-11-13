@@ -256,6 +256,10 @@ static class RenderLookChecks
               !MaterialCatalogSearch.Matches("acero azul", "Acero inoxidable", "metal-steel") &&
               !MaterialCatalogSearch.Matches("ceramica", "Hormigón", "concrete"),
             "Material search matches all words across fields without matching unrelated finishes");
+        check(MaterialCatalogSearch.Matches("light-oak", "Light oak") &&
+              MaterialCatalogSearch.Matches("light_oak", "oak-light") &&
+              !MaterialCatalogSearch.Matches("---", "oak"),
+            "Material search accepts identifier separators without treating punctuation as a match");
         check(presets.Count >= 60 && presets.Select(preset => preset.Id).Distinct().Count() == presets.Count &&
               presets.All(preset => preset.Material.Roughness is >= 0 and <= 1 && preset.Material.Metallic is >= 0 and <= 1 &&
                   preset.TextureSize > 0 && Enum.IsDefined(preset.Group)),

@@ -42,7 +42,8 @@ public partial class MainWindow
         _modelNavigator = new SceneNavigator(ModelSurface, _navigation)
         {
             Bounds = SceneBounds,
-            Pick = (origin, direction) => _query?.Pick(origin, direction)
+            Pick = (origin, direction) => _query?.Pick(origin, direction),
+            Orthographic = () => _modelOrthographic
         };
         _modelNavigator.Changed += UpdateModelCamera;
         RenderPanelControl.Attach(new RenderSource(this));
@@ -260,7 +261,8 @@ public partial class MainWindow
             else
             {
                 var previous = _session.Document.RenderMaterials.FirstOrDefault(a =>
-                    a.Category == category && a.ElementId == elementId);
+                    a.Category == category && a.ElementId == elementId &&
+                    string.Equals(a.TexturePath, texturePath, StringComparison.Ordinal));
                 _session.SetRenderMaterial(new RenderMaterialAssignment(category, texturePath)
                 {
                     ElementId = elementId, TextureSize = size, Relief = relief,
@@ -310,7 +312,9 @@ public partial class MainWindow
         {
             NormalPath = normalPath, RoughnessPath = roughnessPath, MetallicPath = metallicPath
         };
-        if (updated.TexturePath == "stock:" && normalPath is null && roughnessPath is null && metallicPath is null)
+        if (updated.TexturePath == "stock:" && normalPath is null && roughnessPath is null && metallicPath is null &&
+            updated.RoughnessOverride is null && updated.MetallicOverride is null && updated.TintHex is null &&
+            updated.TextureSize == 1 && updated.Relief == 0.3)
             _session.ClearRenderMaterial(category, elementId);
         else
             _session.SetRenderMaterial(updated);
@@ -416,15 +420,7 @@ public partial class MainWindow
     /// <summary>Places the shared camera so the whole model is in view.</summary>
     private void FrameCameraToScene()
     {
-        if (_modelNavigator?.IsLocked == true) return;
-        var (min, max) = SceneBounds();
-        var framed = NavigationCamera.Frame(min, max);
-        _navigation.Position = framed.Position;
-        _navigation.YawDegrees = framed.YawDegrees;
-        _navigation.PitchDegrees = framed.PitchDegrees;
-        _navigation.FieldOfViewDegrees = framed.FieldOfViewDegrees;
-        UpdateModelCamera();
-        RenderPanelControl?.Navigator?.FrameAll();
+        _modelNavigator?.FrameAll();
     }
 
     /// <summary>Restores the three-quarter view of the whole model.</summary>

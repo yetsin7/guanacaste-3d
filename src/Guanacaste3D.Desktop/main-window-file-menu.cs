@@ -17,7 +17,7 @@ public partial class MainWindow
 
     private void Options_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new DesktopOptionsWindow(this, ApplyDesktopOptions);
+        var dialog = new DesktopOptionsWindow(this, ApplyDesktopOptions, CustomizeCommands);
         dialog.ShowDialog();
     }
 

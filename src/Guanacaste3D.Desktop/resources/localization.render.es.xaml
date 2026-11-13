@@ -181,6 +181,7 @@
   <!-- Context menu of the 3D view -->
   <sys:String x:Key="ViewMenu.EditSelection">Editar selección</sys:String>
   <sys:String x:Key="ViewMenu.FrameAll">Ver todo</sys:String>
+  <sys:String x:Key="ViewMenu.FrameSelection">Encuadrar elemento en 3D</sys:String>
   <sys:String x:Key="ViewMenu.Center">Centrar en el edificio</sys:String>
   <sys:String x:Key="ViewMenu.Render">Renderizar vista</sys:String>
   <sys:String x:Key="ViewMenu.Plan">Ir a la planta</sys:String>

@@ -36,6 +36,7 @@ public sealed class CameraViewHistory
         camera.YawDegrees = saved.YawDegrees;
         camera.PitchDegrees = saved.PitchDegrees;
         camera.FieldOfViewDegrees = saved.FieldOfViewDegrees;
+        camera.FramingTarget = saved.FramingTarget;
         return true;
     }
 
@@ -44,5 +45,6 @@ public sealed class CameraViewHistory
         System.Numerics.Vector3.DistanceSquared(first.Position, second.Position) < 1e-10f &&
         Math.Abs(first.YawDegrees - second.YawDegrees) < 1e-4f &&
         Math.Abs(first.PitchDegrees - second.PitchDegrees) < 1e-4f &&
-        Math.Abs(first.FieldOfViewDegrees - second.FieldOfViewDegrees) < 1e-4f;
+        Math.Abs(first.FieldOfViewDegrees - second.FieldOfViewDegrees) < 1e-4f &&
+        first.FramingTarget == second.FramingTarget;
 }

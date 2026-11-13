@@ -138,6 +138,7 @@ public partial class MainWindow
         var dialog = new OpenFileDialog
         {
             Filter = GetText("Dialog.FamilyFilter"),
+            InitialDirectory = FileDialogLocations.FamilyFolder(),
             CheckFileExists = true
         };
         if (dialog.ShowDialog(this) != true) return;
@@ -174,6 +175,7 @@ public partial class MainWindow
             var dialog = new SaveFileDialog
             {
                 Filter = GetText("Dialog.FamilyFilter"),
+                InitialDirectory = FileDialogLocations.FamilyFolder(),
                 FileName = SafeFileName(family.Name) + FamilyFile.Extension,
                 AddExtension = true,
                 DefaultExt = FamilyFile.Extension

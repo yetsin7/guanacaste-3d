@@ -413,6 +413,7 @@
                   <Viewport3D x:Name="ModelViewport" ClipToBounds="True" SizeChanged="ModelViewport_SizeChanged"/>
                 </Border>
                 <Canvas x:Name="ModelOverlay" IsHitTestVisible="False" ClipToBounds="True" Margin="0,0,0,36"/>
+                <Canvas x:Name="ModelDimensionOverlay" ClipToBounds="True" Margin="0,0,0,36"/>
                 <controls:ModelNavigation x:Name="ViewNavigation" HorizontalAlignment="Right"
                     VerticalAlignment="Top" Margin="0,16,18,40"/>
                 <controls:ModelViewToolbar x:Name="ModelToolbar" VerticalAlignment="Bottom" Margin="0"

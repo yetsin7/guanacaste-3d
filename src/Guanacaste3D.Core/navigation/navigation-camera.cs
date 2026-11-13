@@ -22,6 +22,9 @@ public sealed class NavigationCamera
 
     public float FieldOfViewDegrees { get; set; } = 45;
 
+    /// <summary>The last framed point, used as the scale plane for orthographic projection.</summary>
+    public Vector3? FramingTarget { get; set; }
+
     public Vector3 Forward
     {
         get
@@ -47,7 +50,8 @@ public sealed class NavigationCamera
     /// <summary>Captures an independent camera snapshot for navigation history and render requests.</summary>
     public NavigationCamera Clone() => new()
     {
-        Position = Position, YawDegrees = YawDegrees, PitchDegrees = PitchDegrees, FieldOfViewDegrees = FieldOfViewDegrees
+        Position = Position, YawDegrees = YawDegrees, PitchDegrees = PitchDegrees, FieldOfViewDegrees = FieldOfViewDegrees,
+        FramingTarget = FramingTarget
     };
 
     /// <summary>Turns the view in place. Positive <paramref name="deltaX"/> turns right, positive <paramref name="deltaY"/> looks down.</summary>
@@ -136,6 +140,7 @@ public sealed class NavigationCamera
     public void FrameBounds(Vector3 min, Vector3 max, float aspectRatio, float margin = 1.1f)
     {
         var center = (min + max) / 2;
+        FramingTarget = center;
         var halfVertical = MathF.Tan(Math.Clamp(FieldOfViewDegrees, 5, 150) * MathF.PI / 360);
         var halfHorizontal = halfVertical * Math.Clamp(aspectRatio, 0.1f, 10f);
         var distance = 0.1f;
@@ -149,6 +154,40 @@ public sealed class NavigationCamera
                 MathF.Abs(Vector3.Dot(offset, Up)) / halfVertical) * MathF.Max(1, margin) - depth);
         }
         Position = center - Forward * (distance + 0.05f);
+    }
+
+    /// <summary>Matches orthographic width to the perspective field at the current framing plane.</summary>
+    public float OrthographicWidth(Vector3 fallbackTarget, float aspectRatio)
+    {
+        var target = FramingTarget ?? fallbackTarget;
+        var depth = MathF.Max(0.05f, Vector3.Dot(target - Position, Forward));
+        var halfHeight = MathF.Tan(Math.Clamp(FieldOfViewDegrees, 5f, 150f) * MathF.PI / 360);
+        return MathF.Max(0.01f, 2 * depth * halfHeight * Math.Clamp(aspectRatio, 0.1f, 10f));
+    }
+
+    /// <summary>Projects a model point onto the parallel view using the same framing plane as the viewport.</summary>
+    public (float X, float Y) ProjectOrthographic(Vector3 point, float width, float height, Vector3 fallbackTarget)
+    {
+        width = MathF.Max(1, width);
+        height = MathF.Max(1, height);
+        var viewWidth = OrthographicWidth(fallbackTarget, width / height);
+        var viewHeight = viewWidth * height / width;
+        var relative = point - Position;
+        return ((0.5f + Vector3.Dot(relative, Right) / viewWidth) * width,
+            (0.5f - Vector3.Dot(relative, Up) / viewHeight) * height);
+    }
+
+    /// <summary>Constructs a parallel picking ray starting at the viewport's rear clipping plane.</summary>
+    public (Vector3 Origin, Vector3 Direction) OrthographicRay(float x, float y, float width, float height,
+        Vector3 fallbackTarget, float reach)
+    {
+        width = MathF.Max(1, width);
+        height = MathF.Max(1, height);
+        var viewWidth = OrthographicWidth(fallbackTarget, width / height);
+        var viewHeight = viewWidth * height / width;
+        var origin = Position - Forward * MathF.Max(0, reach) +
+                     Right * ((x / width - 0.5f) * viewWidth) + Up * ((0.5f - y / height) * viewHeight);
+        return (origin, Forward);
     }
 
     /// <summary>Restores a navigation pose and lens from a renderer camera expressed in the same Z-up space.</summary>

@@ -33,7 +33,7 @@ internal static partial class InteractionChecks
         tabs.SelectedIndex = 1;
         Pump();
         var surface = (FrameworkElement)_window.FindName("ModelSurface");
-        var overlay = (Canvas)_window.FindName("ModelOverlay");
+        var overlay = (Canvas)_window.FindName("ModelDimensionOverlay");
         var camera = Field<Guanacaste3D.Core.Navigation.NavigationCamera>("_navigation");
         var document = Field<DocumentSession>("_session").Document;
         var wall = document.Walls[0];

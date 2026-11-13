@@ -74,6 +74,9 @@ internal sealed partial class SceneNavigator
     /// <summary>Resolves the selection or whole-project pivot once when an orbit gesture starts.</summary>
     public Func<Vector3>? OrbitPivot { get; set; }
 
+    /// <summary>Reports whether this surface uses parallel projection instead of a perspective camera.</summary>
+    public Func<bool>? Orthographic { get; set; }
+
     /// <summary>Distance along a ray to the nearest surface, or null; drives cursor-centered zoom.</summary>
     public Func<Vector3, Vector3, float?>? Pick { get; set; }
 

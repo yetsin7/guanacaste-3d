@@ -111,11 +111,14 @@ public partial class MainWindow
     private void HandleViewClick(Point position, FrameworkElement surface)
     {
         if (ReferenceEquals(surface, ModelSurface) && HandleModelMoveClick(position)) return;
-        var ray = _navigation.PixelRay((float)position.X, (float)position.Y, (float)surface.ActualWidth, (float)surface.ActualHeight);
-        var hit = Picker.Pick(_navigation.Position, ray);
+        var (origin, ray) = ReferenceEquals(surface, ModelSurface)
+            ? ModelPointerRay(position)
+            : (_navigation.Position, _navigation.PixelRay((float)position.X, (float)position.Y,
+                (float)surface.ActualWidth, (float)surface.ActualHeight));
+        var hit = Picker.Pick(origin, ray);
         if (PlanToolArmed())
         {
-            PlaceFromView(ray, hit);
+            PlaceFromView(origin, ray, hit);
             return;
         }
         // A plain click replaces a multiple selection (SA, Ctrl+A) with the one element under the cursor.
@@ -189,15 +192,15 @@ public partial class MainWindow
     /// the active level's floor plane. The element under the cursor travels as the click's source, so tools that pick an
     /// existing wall or room work too. Everything the plan can create can therefore be created from the 3D view.
     /// </summary>
-    private void PlaceFromView(Vector3 ray, PickedElement? hit)
+    private void PlaceFromView(Vector3 origin, Vector3 ray, PickedElement? hit)
     {
         Vector3? point = null;
-        if (hit is { } picked) point = _navigation.Position + ray * picked.Distance;
+        if (hit is { } picked) point = origin + ray * picked.Distance;
         else if (Math.Abs(ray.Z) > 1e-4f)
         {
             var level = _session.Document.Levels.FirstOrDefault(item => item.Id == _activeLevelId);
-            var t = ((float)(level?.Elevation ?? 0) - _navigation.Position.Z) / ray.Z;
-            if (t > 0 && t < 1000) point = _navigation.Position + ray * t;
+            var t = ((float)(level?.Elevation ?? 0) - origin.Z) / ray.Z;
+            if (t > 0 && t < 100000) point = origin + ray * t;
         }
         if (point is not { } where)
         {
@@ -229,7 +232,7 @@ public partial class MainWindow
     {
         if (ModelOverlay is null || _session is null) return;
         UpdateRenderSelection();
-        if (ViewTabs.SelectedIndex != Model3DTabIndex)
+        if (!Model3DVisible)
         {
             ClearModelSelectionVisuals();
             return;
@@ -244,6 +247,7 @@ public partial class MainWindow
         foreach (var visual in _selectionVisuals) ModelViewport.Children.Remove(visual);
         _selectionVisuals.Clear();
         ModelOverlay.Children.Clear();
+        ModelDimensionOverlay.Children.Clear();
         _dimensionChips.Clear();
         _shownSelection = null;
     }
@@ -280,8 +284,9 @@ public partial class MainWindow
         AddSelectionVisual(ScenePresentation.ToWpfEdges(dimensions.Select(line => new EdgeSegment(line.A, line.B)),
             Matrix4x4.Identity, thickness * 0.6f, Color.FromRgb(30, 110, 200)));
 
-        foreach (var line in dimensions)
+        for (var dimensionIndex = 0; dimensionIndex < dimensions.Count; dimensionIndex++)
         {
+            var line = dimensions[dimensionIndex];
             var text = new TextBlock
             {
                 Text = Units.FormatLength(line.Meters), FontSize = 12, FontWeight = FontWeights.SemiBold,
@@ -293,7 +298,8 @@ public partial class MainWindow
                 Background = new SolidColorBrush(Color.FromArgb(225, 255, 255, 255)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(30, 110, 200)), BorderThickness = new Thickness(1)
             };
-            ModelOverlay.Children.Add(chip);
+            ConfigureModelDimensionEditor(chip, selection.Kind, selection.Id, dimensionIndex, line.Meters);
+            ModelDimensionOverlay.Children.Add(chip);
             _dimensionChips.Add((chip, (line.A + line.B) / 2));
         }
     }
@@ -328,9 +334,13 @@ public partial class MainWindow
     {
         var width = (float)ModelSurface.ActualWidth;
         var height = (float)ModelSurface.ActualHeight;
+        var (min, max) = SceneBounds();
         foreach (var (chip, middle) in _dimensionChips)
         {
-            if (_navigation.Project(middle, width, height) is not { } pixel || pixel.X < -50 || pixel.Y < -20 ||
+            var projected = _modelOrthographic
+                ? _navigation.ProjectOrthographic(middle, width, height, (min + max) / 2)
+                : _navigation.Project(middle, width, height);
+            if (projected is not { } pixel || pixel.X < -50 || pixel.Y < -20 ||
                 pixel.X > width + 50 || pixel.Y > height + 20)
             {
                 chip.Visibility = Visibility.Collapsed;

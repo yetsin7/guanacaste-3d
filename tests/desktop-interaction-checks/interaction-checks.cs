@@ -148,6 +148,10 @@ internal static partial class InteractionChecks
             WallLoopClosingChecks(session);
             WallEditCommandChecks(session);
             RotateRibbonChecks(session);
+            ModelDimensionChecks(session);
+            DuplicateComponentRibbonChecks(session);
+            DuplicateColumnRibbonChecks(session);
+            OrthographicLevelEditingChecks(session);
             RandomizedRibbonChecks(session);
             PlantingChecks(session);
             StairToolChecks(session);

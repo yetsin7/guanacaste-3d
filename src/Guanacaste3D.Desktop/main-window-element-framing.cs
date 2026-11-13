@@ -24,7 +24,7 @@ public partial class MainWindow
         try
         {
             _modelNavigator.Bounds = () => (box.Min - margin, box.Max + margin);
-            _modelNavigator.FrameAll();
+            _modelNavigator.CenterAll();
         }
         finally
         {

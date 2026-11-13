@@ -21,6 +21,7 @@ internal sealed partial class SceneNavigator
         var vertical = (bottom + top) / 2;
         var (min, max) = Bounds();
         var center = (min + max) / 2;
+        Camera.FramingTarget = center;
         var distance = 0.1f;
         foreach (var x in new[] { min.X, max.X })
         foreach (var y in new[] { min.Y, max.Y })

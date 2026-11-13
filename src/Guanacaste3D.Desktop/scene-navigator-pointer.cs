@@ -56,8 +56,11 @@ internal sealed partial class SceneNavigator
                 break;
             case MouseButton.Middle:
                 var (width, height) = Size();
-                var distance = PickDistance(Camera.PixelRay((float)position.X, (float)position.Y, width, height));
-                var unitsPerPixel = 2 * distance * MathF.Tan(Camera.FieldOfViewDegrees * MathF.PI / 360) / height;
+                var (min, max) = Bounds();
+                var unitsPerPixel = Orthographic?.Invoke() == true
+                    ? Camera.OrthographicWidth((min + max) / 2, width / height) / width
+                    : 2 * PickDistance(Camera.PixelRay((float)position.X, (float)position.Y, width, height)) *
+                      MathF.Tan(Camera.FieldOfViewDegrees * MathF.PI / 360) / height;
                 MoveCamera(Camera.PanDelta(horizontal, vertical, unitsPerPixel));
                 break;
         }
@@ -81,6 +84,14 @@ internal sealed partial class SceneNavigator
     private bool ProcessWheel(Point position, int wheelDelta, ModifierKeys modifiers)
     {
         if (IsLocked || wheelDelta == 0) return false;
+        if (Orthographic?.Invoke() == true && !FreeTravel)
+        {
+            _history.Record(Camera);
+            var notches = Math.Clamp(wheelDelta / 120f, -8, 8) * (modifiers.HasFlag(ModifierKeys.Shift) ? 2 : 1);
+            ZoomOrthographic(position, MathF.Pow(0.8f, notches));
+            NotifyChanged();
+            return true;
+        }
         var (width, height) = Size();
         var ray = Camera.PixelRay((float)position.X, (float)position.Y, width, height);
         if (FreeTravel)

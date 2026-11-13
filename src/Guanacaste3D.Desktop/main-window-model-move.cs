@@ -44,8 +44,8 @@ public partial class MainWindow
     private bool BeginModelDrag(Point position)
     {
         if (PlanToolArmed() || CurrentSelection() is not { } selection || SelectedMovableId() is null) return false;
-        var ray = ModelPointerRay(position);
-        if (Picker.Pick(_navigation.Position, ray) is not { } hit || hit.Id != selection.Id || hit.Kind != selection.Kind) return false;
+        var (rayOrigin, ray) = ModelPointerRay(position);
+        if (Picker.Pick(rayOrigin, ray) is not { } hit || hit.Id != selection.Id || hit.Kind != selection.Kind) return false;
         BeginMoveTool();
         if (BeginModelMove(position)) return true;
         CancelMoveTool();
@@ -67,10 +67,10 @@ public partial class MainWindow
         if (CurrentSelection() is not { } selection) return false;
         var outline = Picker.Outline(selection.Kind, selection.Id);
         if (outline.Count == 0) return false;
-        var ray = ModelPointerRay(position);
-        var hit = Picker.Pick(_navigation.Position, ray);
+        var (rayOrigin, ray) = ModelPointerRay(position);
+        var hit = Picker.Pick(rayOrigin, ray);
         var origin = hit is { } picked && picked.Id == selection.Id
-            ? _navigation.Position + ray * picked.Distance : outline[0].A;
+            ? rayOrigin + ray * picked.Distance : outline[0].A;
         var normal = Vector3.UnitZ;
         if (SelectedOpening() is { } opening)
         {
@@ -83,7 +83,7 @@ public partial class MainWindow
             normal = Vector3.Normalize(new Vector3(_navigation.Forward.X, _navigation.Forward.Y, 0));
         }
         var plane = new ModelDragPlane(origin, normal);
-        if (plane.Intersect(_navigation.Position, ray) is not Vector3 anchor)
+        if (plane.Intersect(rayOrigin, ray) is not Vector3 anchor)
         {
             StatusText.Text = GetText("Status.ModelMovePlane");
             return false;
@@ -97,8 +97,16 @@ public partial class MainWindow
     }
 
     /// <summary>Builds the pointer ray in the modeling surface's current layout, including narrow windows.</summary>
-    private Vector3 ModelPointerRay(Point position) => _navigation.PixelRay((float)position.X, (float)position.Y,
-        (float)ModelSurface.ActualWidth, (float)ModelSurface.ActualHeight);
+    private (Vector3 Origin, Vector3 Direction) ModelPointerRay(Point position)
+    {
+        var width = (float)ModelSurface.ActualWidth;
+        var height = (float)ModelSurface.ActualHeight;
+        if (!_modelOrthographic)
+            return (_navigation.Position, _navigation.PixelRay((float)position.X, (float)position.Y, width, height));
+        var (min, max) = SceneBounds();
+        var reach = MathF.Max(500, MathF.Max(3, (max - min).Length() / 2) * 40);
+        return _navigation.OrthographicRay((float)position.X, (float)position.Y, width, height, (min + max) / 2, reach);
+    }
 
     /// <summary>Repositions a translucent ghost and metric feedback; invalid placements remain visible in red.</summary>
     private void UpdateModelMove(Point position)
@@ -106,7 +114,8 @@ public partial class MainWindow
         if (!_movingElement || _modelMovePlane is not ModelDragPlane plane) return;
         ClearModelMovePreview();
         _modelMoveValid = false;
-        if (plane.Intersect(_navigation.Position, ModelPointerRay(position)) is not Vector3 point)
+        var (rayOrigin, rayDirection) = ModelPointerRay(position);
+        if (plane.Intersect(rayOrigin, rayDirection) is not Vector3 point)
         {
             StatusText.Text = GetText("Status.ModelMovePlane");
             return;
@@ -122,13 +131,13 @@ public partial class MainWindow
             var vertical = opening.Kind == OpeningKind.Door ? 0 : _modelMoveDelta.Z;
             _modelMoveDelta = axis * along + Vector3.UnitZ * vertical;
             var candidate = opening with { Offset = opening.Offset + along, Sill = opening.Sill + vertical };
-            if (Picker.Pick(_navigation.Position, ModelPointerRay(position)) is { } hit &&
+            if (Picker.Pick(rayOrigin, rayDirection) is { } hit &&
                 _session.Document.Walls.FirstOrDefault(item => item.Id == (hit.Kind == PickedKind.Opening ? hit.HostId : hit.Id)) is { } targetWall &&
                 targetWall.Id != wall.Id)
             {
                 var targetAxis = new Vector3((float)((targetWall.End.X - targetWall.Start.X) / targetWall.Length),
                     (float)((targetWall.End.Y - targetWall.Start.Y) / targetWall.Length), 0);
-                var hitPoint = _navigation.Position + ModelPointerRay(position) * hit.Distance;
+                var hitPoint = rayOrigin + rayDirection * hit.Distance;
                 var originalCenter = OpeningHosting.Center(wall, opening);
                 var grabAlong = Vector3.Dot(_modelMoveAnchor - new Vector3((float)originalCenter.X, (float)originalCenter.Y, 0), axis);
                 var offset = Vector3.Dot(hitPoint - new Vector3((float)targetWall.Start.X, (float)targetWall.Start.Y, 0), targetAxis) - grabAlong;

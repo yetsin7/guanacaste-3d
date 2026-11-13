@@ -64,6 +64,12 @@ internal sealed partial class SceneNavigator
         if (IsLocked || !float.IsFinite(factor) || factor <= 0) return;
         _history.Record(Camera);
         var (width, height) = Size();
+        if (Orthographic?.Invoke() == true)
+        {
+            ZoomOrthographic(new Point(width / 2, height / 2), 1 / factor);
+            NotifyChanged();
+            return;
+        }
         var distance = PickDistance(Camera.PixelRay(width / 2, height / 2, width, height));
         MoveCamera(Camera.Forward * distance * (1 - 1 / factor));
         NotifyChanged();
@@ -75,6 +81,16 @@ internal sealed partial class SceneNavigator
         if (IsLocked || region.Width < 6 || region.Height < 6) return;
         _history.Record(Camera);
         var (width, height) = Size();
+        if (Orthographic?.Invoke() == true)
+        {
+            var regionFraction = (float)Math.Clamp(Math.Max(region.Width / width, region.Height / height), 0.01, 1);
+            var center = new Point(region.Left + region.Width / 2, region.Top + region.Height / 2);
+            var (offset, _) = OrthographicFocus(center);
+            var appliedFraction = ZoomOrthographic(center, regionFraction);
+            MoveCamera(offset * appliedFraction);
+            NotifyChanged();
+            return;
+        }
         var ray = Camera.PixelRay((float)(region.Left + region.Width / 2), (float)(region.Top + region.Height / 2), width, height);
         var depth = PickDistance(ray);
         var focus = Camera.Position + ray * depth;
@@ -89,6 +105,14 @@ internal sealed partial class SceneNavigator
     {
         if (IsLocked) return;
         _history.Record(Camera);
+        if (Orthographic?.Invoke() == true)
+        {
+            var (offset, depth) = OrthographicFocus(point);
+            _wheelPivot = Camera.Position + offset + Camera.Forward * depth;
+            MoveCamera(offset);
+            NotifyChanged();
+            return;
+        }
         var (width, height) = Size();
         var ray = Camera.PixelRay((float)point.X, (float)point.Y, width, height);
         var distance = PickDistance(ray);

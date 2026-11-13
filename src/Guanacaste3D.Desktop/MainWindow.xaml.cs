@@ -111,6 +111,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Filter = GetText("Dialog.OpenProjectFilter"),
+            InitialDirectory = FileDialogLocations.ProjectFolder(),
             CheckFileExists = true
         };
         if (dialog.ShowDialog(this) != true) return;
@@ -220,6 +221,7 @@ public partial class MainWindow : Window
             var dialog = new SaveFileDialog
             {
                 Filter = GetText("Dialog.ProjectFilter"),
+                InitialDirectory = FileDialogLocations.ProjectFolder(),
                 FileName = _session.Document.Name + ProjectFile.NativeExtension,
                 AddExtension = true,
                 DefaultExt = ProjectFile.NativeExtension

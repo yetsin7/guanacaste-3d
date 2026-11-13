@@ -228,7 +228,7 @@ public sealed class SheetEditorWindow : Window
     /// <summary>Loads reusable .g3df family geometry and rejects other family categories with a localized error.</summary>
     private void LoadFamily_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = Text("SheetEditor.FamilyFilter") };
+        var dialog = new OpenFileDialog { Filter = Text("SheetEditor.FamilyFilter"), InitialDirectory = FileDialogLocations.FamilyFolder() };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
@@ -243,7 +243,7 @@ public sealed class SheetEditorWindow : Window
     /// <summary>Saves the editable paper family independently from its project and model views.</summary>
     private void SaveFamily_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = Text("SheetEditor.FamilyFilter"), DefaultExt = ".g3df", AddExtension = true, FileName = _family.Name };
+        var dialog = new SaveFileDialog { Filter = Text("SheetEditor.FamilyFilter"), InitialDirectory = FileDialogLocations.FamilyFolder(), DefaultExt = ".g3df", AddExtension = true, FileName = _family.Name };
         if (dialog.ShowDialog(this) != true) return;
         try { NativeDocumentStore.SaveFamily(dialog.FileName, ReadFamily()); _status.Text = Text("SheetEditor.FamilySaved"); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException) { _status.Text = LocalizedErrors.Translate(exception.Message); }

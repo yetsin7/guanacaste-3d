@@ -30,11 +30,14 @@ public partial class MainWindow
     }
 
     /// <summary>Opens the command editor and persists accepted quick access and shortcut choices.</summary>
-    private void CustomizeCommands_Click(object sender, RoutedEventArgs e)
+    private void CustomizeCommands_Click(object sender, RoutedEventArgs e) => CustomizeCommands(this);
+
+    /// <summary>Persists command assignments from either the main window or the options dialog.</summary>
+    private void CustomizeCommands(Window owner)
     {
         var editor = new CommandCustomizationWindow(_applicationCommands, _commandPreferences)
         {
-            Owner = this
+            Owner = owner
         };
         if (editor.ShowDialog() != true || editor.Preferences is null) return;
 
@@ -48,7 +51,7 @@ public partial class MainWindow
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             MessageBox.Show(
-                this,
+                owner,
                 GetText("CommandCustomization.SaveFailed"),
                 GetText("CommandCustomization.Title"),
                 MessageBoxButton.OK,

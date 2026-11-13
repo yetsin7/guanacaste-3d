@@ -13,6 +13,7 @@ public sealed class DesktopOptionsWindow : Window
     private readonly StackPanel _page = new() { Margin = new Thickness(16, 12, 18, 16) };
     private readonly ListBox _sections = new();
     private readonly Action<DesktopOptions> _apply;
+    private readonly Action<Window> _customizeCommands;
 
     private static readonly string[] Pages =
     [
@@ -21,10 +22,12 @@ public sealed class DesktopOptionsWindow : Window
         "SteeringWheels", "ViewCube", "Macros", "Modelo en la nube"
     ];
 
-    public DesktopOptionsWindow(Window owner, Action<DesktopOptions> apply)
+    /// <summary>Creates a user settings dialog and delegates command customization to its owner.</summary>
+    public DesktopOptionsWindow(Window owner, Action<DesktopOptions> apply, Action<Window> customizeCommands)
     {
         Owner = owner;
         _apply = apply;
+        _customizeCommands = customizeCommands;
         _options = DesktopOptions.Load();
         Title = "Opciones — Guanacaste 3D";
         Width = 745;
@@ -114,7 +117,7 @@ public sealed class DesktopOptionsWindow : Window
                 Group("Personalización", p =>
                 {
                     var edit = new Button { Content = "Teclas de acceso rápido: Personalizar...", HorizontalAlignment = HorizontalAlignment.Left };
-                    edit.Click += (_, _) => new ShortcutOptionsWindow(this, _options.Shortcuts).ShowDialog();
+                    edit.Click += (_, _) => _customizeCommands(this);
                     p.Children.Add(edit);
                 });
                 break;
@@ -153,7 +156,6 @@ public sealed class DesktopOptionsWindow : Window
                         s => _options.DefaultProjectFolder = s);
                     FolderField(p, "Carpeta por defecto para familias", _options.DefaultFamilyFolder,
                         s => _options.DefaultFamilyFolder = s);
-                    Note(p, "Estos directorios se guardan como preferencias; su uso por todos los diálogos de archivo se incorporará progresivamente.");
                 });
                 break;
             case 6:
@@ -279,48 +281,5 @@ public sealed class DesktopOptionsWindow : Window
         row.Children.Add(browse);
         row.Children.Add(input);
         parent.Children.Add(row);
-    }
-}
-
-/// <summary>Small shortcut editor; data is saved only on accepting its parent Options dialog.</summary>
-internal sealed class ShortcutOptionsWindow : Window
-{
-    public ShortcutOptionsWindow(Window owner, Dictionary<string, string> shortcuts)
-    {
-        Owner = owner;
-        Title = "Teclas de acceso rápido";
-        Width = 640;
-        Height = 460;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        var panel = new DockPanel { Margin = new Thickness(14) };
-        var grid = new DataGrid { AutoGenerateColumns = false, CanUserAddRows = false, IsReadOnly = true };
-        grid.Columns.Add(new DataGridTextColumn { Header = "Comando", Binding = new System.Windows.Data.Binding("Key"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Teclas asignadas", Binding = new System.Windows.Data.Binding("Value"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        grid.ItemsSource = shortcuts.ToArray();
-        var editor = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 8) };
-        var command = new ComboBox { Width = 210, ItemsSource = new[] { "Nuevo", "Abrir", "Guardar", "Guardar como", "Deshacer", "Rehacer" }, SelectedIndex = 0 };
-        var keys = new TextBox { Width = 160, Margin = new Thickness(8, 0, 8, 0), ToolTip = "Ejemplo: Ctrl+Shift+S" };
-        var assign = new Button { Content = "Asignar" };
-        assign.Click += (_, _) =>
-        {
-            var value = keys.Text.Trim();
-            if (value.Length == 0) return;
-            if (shortcuts.Any(kv => kv.Key != (string)command.SelectedItem && kv.Value.Equals(value, StringComparison.OrdinalIgnoreCase)))
-            {
-                MessageBox.Show(this, "Esa combinación ya está asignada.", "Conflicto");
-                return;
-            }
-            shortcuts[(string)command.SelectedItem] = value;
-            grid.ItemsSource = shortcuts.ToArray();
-        };
-        editor.Children.Add(command); editor.Children.Add(keys); editor.Children.Add(assign);
-        DockPanel.SetDock(editor, Dock.Bottom);
-        panel.Children.Add(editor);
-        var finish = new Button { Content = "Cerrar", Width = 96, HorizontalAlignment = HorizontalAlignment.Right };
-        finish.Click += (_, _) => Close();
-        DockPanel.SetDock(finish, Dock.Bottom);
-        panel.Children.Add(finish);
-        panel.Children.Add(grid);
-        Content = panel;
     }
 }
