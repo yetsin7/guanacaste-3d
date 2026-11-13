@@ -36,7 +36,7 @@ fn run(path: &str) -> Result<(), String> {
         return Err("wall metric IDs do not match".into());
     }
     for (volume, area) in volumes.iter().zip(&areas) {
-        println!
+        println!(
             "{:032x}, {:.12}, {:.12}",
             volume.wall_id, volume.signed_volume_m3, area.surface_area_m2
         );
