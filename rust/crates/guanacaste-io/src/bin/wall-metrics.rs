@@ -7,12 +7,14 @@ use guanacaste_io::{
 use std::{env, fs, io::Read, process};
 
 fn run(path: &str) -> Result<(), String> {
-    let metadata = fs::metadata(path).map_err(|err| format!("cannot stat input: {err}"))?;
+    // Open first, then inspect that exact handle: a path may be replaced between
+    // separate stat/open calls (including through a symlink).
+    let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;
+    let metadata = file.metadata().map_err(|err| format!("cannot stat input: {err}"))?;
     if metadata.len() > MAX_NATIVE_BYTES as u64 {
         return Err("input exceeds native document limit".into());
     }
     // Bound the read itself: a concurrent writer cannot force unbounded allocation.
-    let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;
     let mut bytes = Vec::new();
     file.take(MAX_NATIVE_BYTES as u64 + 1)
         .read_to_end(&mut bytes)
