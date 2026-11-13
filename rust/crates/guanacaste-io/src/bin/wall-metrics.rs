@@ -11,14 +11,20 @@ fn run(path: &str) -> Result<(), String> {
     if metadata.len() > MAX_NATIVE_BYTES as u64 {
         return Err("input exceeds native document limit".into());
     }
-    // Bound the read itself: a concurrent writer cannot force unbounded allocation.\n    let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;\n    let mut bytes = Vec::new();\n    file.take(MAX_NATIVE_BYTES as u64 + 1)\n        .read_to_end(&mut bytes)\n        .map_err(|err| format!("cannot read input: {err}"))?;
+    // Bound the read itself: a concurrent writer cannot force unbounded allocation.
+    let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_NATIVE_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|err| format!("cannot read input: {err}"))?;
     // Metadata can become stale if another process grows the file during the read.
     if bytes.len() > MAX_NATIVE_BYTES {
         return Err("input exceeds native document limit".into());
     }
     let inspected = if bytes.starts_with(b"G3DNATV1") {
         inspect_native(&bytes)
-    } else if bytes.starts_with(b"G3-PROJECT/1\n") {
+    } else if bytes.starts_with(b"G3-PROJECT/1
+") {
         inspect_preview(&bytes)
     } else {
         inspect_legacy_json(&bytes)
