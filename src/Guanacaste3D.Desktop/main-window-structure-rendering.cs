@@ -9,9 +9,9 @@ namespace Guanacaste3D.Desktop;
 public partial class MainWindow
 {
     /// <summary>Draws every structural element of the active level, selected ones highlighted.</summary>
-    private void RenderStructuralPlanElements()
+    private void RenderStructuralPlanElements(BuildingDocument document)
     {
-        foreach (var element in _session.Document.StructuralElements.Where(candidate => candidate.LevelId == _activeLevelId))
+        foreach (var element in document.StructuralElements.Where(candidate => candidate.LevelId == _activeLevelId))
         {
             var selected = element.Id == _selectedStructuralId;
             if (element.IsDatumLine)
@@ -51,7 +51,7 @@ public partial class MainWindow
                 var label = new TextBlock
                 {
                     Text = element.Name,
-                    FontSize = 12,
+                    FontSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500),
                     Foreground = selected ? Brushes.DarkOrange : Brushes.Black,
                     Tag = element.Id
                 };

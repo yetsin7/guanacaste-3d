@@ -137,7 +137,7 @@ public partial class MainWindow
         return true;
     }
 
-    /// <summary>Draws named project axes on every plan, with bubble heads independent of zoom.</summary>
+    /// <summary>Draws named project axes on every plan at the selected drawing scale.</summary>
     private void RenderGridAxes()
     {
         foreach (var axis in _session.Document.Grids) DrawGridAxis(axis, false);
@@ -151,6 +151,7 @@ public partial class MainWindow
         var start = WorldToCanvas(axis.Start);
         var end = WorldToCanvas(axis.End);
         var brush = preview || axis.Id == _selectedGridId ? Brushes.RoyalBlue : Brushes.SlateGray;
+        var factor = preview ? 1 : PlanAnnotationFactor();
         var menu = preview ? null : new ContextMenu();
         if (menu is not null)
         {
@@ -166,18 +167,18 @@ public partial class MainWindow
             menu.Items.Add(remove);
         }
         PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
-            Stroke = brush, StrokeThickness = 1, StrokeDashArray = [10, 3, 2, 3],
+            Stroke = brush, StrokeThickness = factor, StrokeDashArray = [10, 3, 2, 3],
             Tag = axis.Id, ContextMenu = menu, IsHitTestVisible = !preview });
         foreach (var point in new[] { start, end })
         {
-            var head = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13),
-                BorderBrush = brush, BorderThickness = new Thickness(1), Background = Brushes.White,
+            var head = new Border { Width = 26 * factor, Height = 26 * factor, CornerRadius = new CornerRadius(13 * factor),
+                BorderBrush = brush, BorderThickness = new Thickness(factor), Background = Brushes.White,
                 Tag = axis.Id, ContextMenu = menu, IsHitTestVisible = !preview,
-                Child = new TextBlock { Text = axis.Name, FontSize = 11, Foreground = brush,
+                Child = new TextBlock { Text = axis.Name, FontSize = 11 * factor, Foreground = brush,
                     HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
                     IsHitTestVisible = false } };
-            Canvas.SetLeft(head, point.X - 13);
-            Canvas.SetTop(head, point.Y - 13);
+            Canvas.SetLeft(head, point.X - 13 * factor);
+            Canvas.SetTop(head, point.Y - 13 * factor);
             PlanCanvas.Children.Add(head);
         }
     }

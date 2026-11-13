@@ -502,7 +502,7 @@ public sealed class BuildingDocument
         if (Views.Count < 1 || Views.Any(view => view.Id == Guid.Empty ||
                 string.IsNullOrWhiteSpace(view.Name) || view.Name.Length > 120 ||
                 !Enum.IsDefined(view.Kind) || !Enum.IsDefined(view.Orientation) ||
-                !Enum.IsDefined(view.SectionMode) ||
+                !Enum.IsDefined(view.SectionMode) || view.DrawingScale is < 1 or > 10000 ||
                 view.HiddenCategories is null || view.HiddenCategories.Any(category => !Enum.IsDefined(category)) ||
                 view.Filters is null || view.Filters.Count > DocumentSession.MaximumViewFilters ||
                 view.Filters.Any(filter => filter is null || !filter.IsValid) ||

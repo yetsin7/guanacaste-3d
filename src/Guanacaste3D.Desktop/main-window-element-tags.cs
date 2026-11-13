@@ -68,19 +68,21 @@ public partial class MainWindow
         foreach (var tag in ElementTags.Build(_session.Document, _activeLevelId, categories))
         {
             var center = WorldToCanvas(tag.Position);
+            var tagSize = Math.Clamp(PlanPaperPixels(4.8), 0.5, 1000);
+            var textSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500);
             var mark = new Border
             {
                 Background = Brushes.White, BorderBrush = Brushes.DarkSlateGray, BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(9), MinWidth = 18, Height = 18, Padding = new Thickness(3, 0, 3, 0),
+                CornerRadius = new CornerRadius(tagSize / 2), MinWidth = tagSize, Height = tagSize, Padding = new Thickness(tagSize / 6, 0, tagSize / 6, 0),
                 ToolTip = tag.Description, IsHitTestVisible = true,
                 Child = new TextBlock
                 {
-                    Text = tag.Mark, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.DarkSlateGray,
+                    Text = tag.Mark, FontSize = textSize, FontWeight = FontWeights.SemiBold, Foreground = Brushes.DarkSlateGray,
                     HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
                 }
             };
-            Canvas.SetLeft(mark, center.X - 9);
-            Canvas.SetTop(mark, center.Y - 9);
+            Canvas.SetLeft(mark, center.X - tagSize / 2);
+            Canvas.SetTop(mark, center.Y - tagSize / 2);
             PlanCanvas.Children.Add(mark);
         }
     }

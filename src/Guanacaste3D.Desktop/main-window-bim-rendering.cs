@@ -98,15 +98,16 @@ public partial class MainWindow
             {
                 Text = $"{room.Number}\n{room.Name}\n{Units.FormatArea(room.Area)}",
                 TextAlignment = TextAlignment.Center,
-                FontSize = 11,
+                FontSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500),
                 Foreground = Brushes.MidnightBlue,
                 Tag = room.Id
             };
-            Canvas.SetLeft(label, center.X - 45);
-            Canvas.SetTop(label, center.Y - 24);
+            label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(label, center.X - label.DesiredSize.Width / 2);
+            Canvas.SetTop(label, center.Y - label.DesiredSize.Height / 2);
             PlanCanvas.Children.Add(label);
         }
-        RenderStructuralPlanElements();
+        RenderStructuralPlanElements(document);
     }
 
 }

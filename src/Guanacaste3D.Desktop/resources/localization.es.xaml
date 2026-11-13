@@ -1062,8 +1062,12 @@
   <sys:String x:Key="Schedule.Unit">Unidad</sys:String>
   <sys:String x:Key="Status.Ready">Listo</sys:String>
   <sys:String x:Key="Status.ArchitectureCommandPlanned">{0}: el botón ya forma parte del espacio de trabajo; su operación BIM se incorporará en una siguiente fase.</sys:String>
+  <sys:String x:Key="PlanScale.Tooltip">Escala de la vista de planta</sys:String>
+  <sys:String x:Key="Transaction.UpdatePlanDrawingScale">Cambiar escala de vista</sys:String>
   <sys:String x:Key="Status.Scale">1 : 100</sys:String>
   <sys:String x:Key="Status.ProjectNew">Proyecto nuevo.</sys:String>
+  <sys:String x:Key="ProjectOpen.Title">Abriendo proyecto</sys:String>
+  <sys:String x:Key="ProjectOpen.Message">Cargando y validando {0}…</sys:String>
   <sys:String x:Key="Status.ProjectOpened">Proyecto abierto correctamente.</sys:String>
   <sys:String x:Key="Status.LegacyProjectImported">Proyecto anterior importado. Guárdalo como archivo .g3d.</sys:String>
   <sys:String x:Key="Status.QuantitiesExported">Cantidades BIM exportadas a CSV.</sys:String>
@@ -1293,4 +1297,6 @@
   <sys:String x:Key="Error.Invalid curved room separators.">Existen separadores curvos inválidos en el proyecto.</sys:String>
   <sys:String x:Key="Error.The room boundary graph is too complex.">Hay demasiados límites de habitación para detectar los recintos. Divide el plano en zonas.</sys:String>
   <sys:String x:Key="Error.The room polygon cannot be triangulated.">El perímetro no se puede triangular; revisa sus cruces y esquinas.</sys:String>
+  <sys:String x:Key="Error.The selected element cannot be duplicated as a structural member.">El elemento seleccionado no se puede duplicar como miembro estructural.</sys:String>
+  <sys:String x:Key="Error.The plan drawing scale is invalid.">La escala de dibujo de la planta no es válida; usa un valor entre 1:1 y 1:10000.</sys:String>
 </ResourceDictionary>

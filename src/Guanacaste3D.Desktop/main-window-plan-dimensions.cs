@@ -47,8 +47,10 @@ public partial class MainWindow
         var brush = permanent ? Brushes.DarkSlateGray : Brushes.RoyalBlue;
         PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
             Stroke = brush, StrokeThickness = 1, IsHitTestVisible = false });
-        AddDimensionTick(start, brush);
-        AddDimensionTick(end, brush);
+        var tickSize = permanent ? Math.Clamp(PlanPaperPixels(1), 0.2, 200) : 4;
+        var labelSize = permanent ? Math.Clamp(PlanPaperPixels(2.5), 1, 500) : 11;
+        AddDimensionTick(start, brush, tickSize);
+        AddDimensionTick(end, brush, tickSize);
         if (IsEditing(dimension))
         {
             _dimensionEditorDrawn = true;
@@ -81,13 +83,13 @@ public partial class MainWindow
             var label = new Button
             {
                 Content = measurement.IsAngle ? FormatText("Dimension.Degrees", measurement.Value) : Units.FormatLength(measurement.Value), Tag = dimension,
-                Foreground = brush, Background = Brushes.White, FontSize = 11,
+                Foreground = brush, Background = Brushes.White, FontSize = labelSize,
                 Padding = new Thickness(3, 1, 3, 1), MinWidth = 0, MinHeight = 0,
                 ToolTip = GetText("Dimension.Edit"), Cursor = Cursors.Hand
             };
             label.Click += DimensionValue_Click;
             Canvas.SetLeft(label, (start.X + end.X) / 2 + 4);
-            Canvas.SetTop(label, (start.Y + end.Y) / 2 - 25);
+            Canvas.SetTop(label, (start.Y + end.Y) / 2 - labelSize * 2);
             PlanCanvas.Children.Add(label);
         }
         var action = new Button
@@ -183,9 +185,9 @@ public partial class MainWindow
     }
 
     /// <summary>Adds a diagonal architectural tick in screen space.</summary>
-    private void AddDimensionTick(Point center, Brush brush) => PlanCanvas.Children.Add(new Line
+    private void AddDimensionTick(Point center, Brush brush, double size) => PlanCanvas.Children.Add(new Line
     {
-        X1 = center.X - 4, Y1 = center.Y + 4, X2 = center.X + 4, Y2 = center.Y - 4,
+        X1 = center.X - size, Y1 = center.Y + size, X2 = center.X + size, Y2 = center.Y - size,
         Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false
     });
 }

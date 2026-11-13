@@ -15,12 +15,13 @@ public partial class MainWindow
     private void DrawCircularViewMarker(Point center, Vector direction, Guid id, string name, string code,
         Brush brush, ContextMenu? menu, bool hitTest)
     {
-        const double radius = 14;
+        var factor = hitTest ? PlanAnnotationFactor() : 1;
+        var radius = 14 * factor;
         direction.Normalize();
         var across = new Vector(-direction.Y, direction.X);
         var circle = new Ellipse
         {
-            Width = radius * 2, Height = radius * 2, Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.7,
+            Width = radius * 2, Height = radius * 2, Fill = Brushes.White, Stroke = brush, StrokeThickness = 1.7 * factor,
             Tag = id, ContextMenu = menu, ToolTip = name, IsHitTestVisible = hitTest
         };
         Canvas.SetLeft(circle, center.X - radius);
@@ -29,30 +30,30 @@ public partial class MainWindow
 
         PlanCanvas.Children.Add(new Line
         {
-            X1 = center.X - across.X * 11, Y1 = center.Y - across.Y * 11,
-            X2 = center.X + across.X * 11, Y2 = center.Y + across.Y * 11,
-            Stroke = brush, StrokeThickness = 1, Tag = id, ContextMenu = menu,
+            X1 = center.X - across.X * 11 * factor, Y1 = center.Y - across.Y * 11 * factor,
+            X2 = center.X + across.X * 11 * factor, Y2 = center.Y + across.Y * 11 * factor,
+            Stroke = brush, StrokeThickness = factor, Tag = id, ContextMenu = menu,
             ToolTip = name, IsHitTestVisible = hitTest
         });
         PlanCanvas.Children.Add(new Polygon
         {
             Points =
             [
-                center + direction * 11,
-                center + direction * 1 + across * 6,
-                center + direction * 1 - across * 6
+                center + direction * (11 * factor),
+                center + direction * factor + across * (6 * factor),
+                center + direction * factor - across * (6 * factor)
             ],
-            Fill = brush, Stroke = brush, StrokeThickness = 0.8, Tag = id, ContextMenu = menu,
+            Fill = brush, Stroke = brush, StrokeThickness = 0.8 * factor, Tag = id, ContextMenu = menu,
             ToolTip = name, IsHitTestVisible = hitTest
         });
         var identifier = new TextBlock
         {
-            Text = code, FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = brush,
+            Text = code, FontSize = 8.5 * factor, FontWeight = FontWeights.Bold, Foreground = brush,
             TextAlignment = TextAlignment.Center, Tag = id, ContextMenu = menu, ToolTip = name,
             IsHitTestVisible = hitTest
         };
         identifier.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var textCenter = center - direction * 6;
+        var textCenter = center - direction * (6 * factor);
         Canvas.SetLeft(identifier, textCenter.X - identifier.DesiredSize.Width / 2);
         Canvas.SetTop(identifier, textCenter.Y - identifier.DesiredSize.Height / 2);
         PlanCanvas.Children.Add(identifier);

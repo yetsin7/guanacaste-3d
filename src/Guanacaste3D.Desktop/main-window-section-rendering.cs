@@ -35,7 +35,7 @@ public partial class MainWindow
         scale = Math.Max(0.1, scale);
         var left = (canvas.ActualWidth - width * scale) / 2;
         DrawProjectedLevels(canvas, 0, width, minZ, left, scale);
-        foreach (var group in contours.GroupBy(contour => contour.Kind))
+        foreach (var group in contours.GroupBy(contour => (contour.Kind, contour.ElementId)))
         {
             var closed = new StreamGeometry { FillRule = FillRule.Nonzero };
             using (var context = closed.Open())
@@ -49,13 +49,19 @@ public partial class MainWindow
                 }
             }
             closed.Freeze();
-            canvas.Children.Add(new Path { Data = closed.GetOutlinedPathGeometry(0.1, ToleranceType.Absolute),
-                Stroke = Brushes.DarkSlateGray, StrokeThickness = group.Key == SurfaceKind.Structure ? 1.8 : 1.4,
-                Fill = SectionFill(group.Key, view.SectionMode), Tag = view.Id });
+            var profile = new Path { Data = closed.GetOutlinedPathGeometry(0.1, ToleranceType.Absolute),
+                Stroke = Brushes.DarkSlateGray, StrokeThickness = group.Key.Kind == SurfaceKind.Structure ? 1.8 : 1.4,
+                Fill = SectionFill(group.Key.Kind, view.SectionMode), Tag = group.Key.ElementId };
+            if (group.Key.ElementId is Guid profileElementId) ApplyProjectedSelection(profile, profileElementId);
+            canvas.Children.Add(profile);
             foreach (var contour in group.Where(contour => !contour.Closed))
-                canvas.Children.Add(new Polyline { Points = new PointCollection(contour.Points.Select(point =>
+            {
+                var line = new Polyline { Points = new PointCollection(contour.Points.Select(point =>
                     new Point(left + point.X * scale, ProjectElevation(canvas, point.Y, minZ, scale)))),
-                    Stroke = Brushes.DarkSlateGray, StrokeThickness = 1.4 });
+                    Stroke = Brushes.DarkSlateGray, StrokeThickness = 1.4, Tag = contour.ElementId };
+                if (contour.ElementId is Guid contourElementId) ApplyProjectedSelection(line, contourElementId);
+                canvas.Children.Add(line);
+            }
         }
     }
 

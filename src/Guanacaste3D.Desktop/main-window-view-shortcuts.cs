@@ -9,16 +9,25 @@ namespace Guanacaste3D.Desktop;
 /// <summary>Coordinates the compact top bar for elevation views and the simple plan-view range editor.</summary>
 public partial class MainWindow
 {
-    /// <summary>Rebuilds one consistently styled shortcut for every elevation in the project.</summary>
+    private readonly HashSet<Guid> _closedElevationShortcuts = [];
+    private DocumentSession? _shortcutSession;
+
+    /// <summary>Rebuilds the open elevation shortcuts without modifying the project views.</summary>
     private void RefreshViewShortcuts()
     {
         if (ViewShortcutButtons is null || _session is null) return;
+        if (!ReferenceEquals(_shortcutSession, _session))
+        {
+            _closedElevationShortcuts.Clear();
+            _shortcutSession = _session;
+        }
         ViewShortcutButtons.Children.Clear();
-        foreach (var view in _session.Document.Views.Where(candidate => candidate.Kind == ProjectViewKind.Elevation))
+        foreach (var view in _session.Document.Views.Where(candidate => candidate.Kind == ProjectViewKind.Elevation &&
+                     !_closedElevationShortcuts.Contains(candidate.Id)))
             ViewShortcutButtons.Children.Add(CreateElevationShortcut(view));
     }
 
-    /// <summary>Creates an accessible elevation chip with open and delete actions.</summary>
+    /// <summary>Creates an accessible elevation shortcut with separate open and close actions.</summary>
     private FrameworkElement CreateElevationShortcut(ProjectView view)
     {
         var active = view.Id == _elevationViewId;
@@ -29,14 +38,14 @@ public partial class MainWindow
             BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 6, 0)
         };
         var panel = new DockPanel();
-        var remove = new Button
+        var close = new Button
         {
             Content = new TextBlock { Text = "\uE711", FontFamily = (FontFamily)FindResource("GlyphFont"), FontSize = 9 },
-            Width = 24, Padding = new Thickness(2), ToolTip = GetText("Elevation.Delete"),
+            Width = 24, Padding = new Thickness(2), ToolTip = GetText("View.Close"),
             Background = Brushes.Transparent, BorderThickness = new Thickness(0)
         };
-        remove.Click += (_, _) => RemoveElevationView(view.Id);
-        DockPanel.SetDock(remove, Dock.Right);
+        close.Click += (_, _) => CloseElevationShortcut(view.Id);
+        DockPanel.SetDock(close, Dock.Right);
         var open = new Button
         {
             Content = CreateShortcutContent(view, active),
@@ -44,10 +53,24 @@ public partial class MainWindow
             Background = Brushes.Transparent, BorderThickness = new Thickness(0), ToolTip = GetText("Elevation.CoverageHint")
         };
         open.Click += (_, _) => SelectProjectView(view.Id);
-        panel.Children.Add(remove);
+        panel.Children.Add(close);
         panel.Children.Add(open);
         container.Child = panel;
         return container;
+    }
+
+    /// <summary>Closes an elevation shortcut without deleting its persistent project view.</summary>
+    private void CloseElevationShortcut(Guid viewId)
+    {
+        _closedElevationShortcuts.Add(viewId);
+        if (_elevationViewId == viewId && ViewTabs.SelectedIndex == ElevationTabIndex)
+        {
+            var next = _session.Document.Views.FirstOrDefault(view => view.Kind == ProjectViewKind.Elevation &&
+                !_closedElevationShortcuts.Contains(view.Id));
+            if (next is not null) SelectProjectView(next.Id);
+            else ViewTabs.SelectedIndex = 0;
+        }
+        RefreshViewShortcuts();
     }
 
     /// <summary>Builds a compact cardinal badge and readable view name for an elevation shortcut.</summary>

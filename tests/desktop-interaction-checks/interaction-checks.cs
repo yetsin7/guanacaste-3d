@@ -59,9 +59,31 @@ internal static partial class InteractionChecks
             Pump();
             _canvas = (Canvas)_window.FindName("PlanCanvas");
             var session = Field<DocumentSession>("_session");
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "plan-workspace")
+            {
+                PlanFitChecks(session);
+                PlanScaleChecks(session);
+                PlanSelectionHighlightChecks(session);
+                return 0;
+            }
             if (Environment.GetEnvironmentVariable("G3D_ONLY") == "opening-clipboard")
             {
                 OpeningClipboardChecks(session);
+                return 0;
+            }
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "project-open-progress")
+            {
+                ProjectOpenProgressChecks(session);
+                return 0;
+            }
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "elevation-workspace")
+            {
+                ElevationWorkspaceChecks(session);
+                return 0;
+            }
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "instance-properties")
+            {
+                InstancePropertiesChecks(session);
                 return 0;
             }
             if (Environment.GetEnvironmentVariable("G3D_ONLY") == "modeling-improvements")
@@ -111,9 +133,10 @@ internal static partial class InteractionChecks
             ClickPlan();
             Check(session.Document.Openings.Count == 2, "Window placement commits to the resolved wall");
             Invoke("SetWallTool", false);
-            SetField("_selectedOpeningId", (Guid?)door.Id);
+            SetField("_selectedOpeningId", null);
             SetField("_selectedWallId", (Guid?)wallId);
             Invoke("RefreshProperties");
+            SetField("_selectedOpeningId", (Guid?)door.Id);
             var wallProperties = ((TextBlock)_window.FindName("PropertiesText")).Text;
             Check(wallProperties.Contains("CANTIDADES NETAS POR CAPA", StringComparison.Ordinal) &&
                   wallProperties.Contains("Núcleo:", StringComparison.Ordinal) &&

@@ -96,6 +96,8 @@ public partial class MainWindow
     /// <summary>Gives the elevation and section views wheel zoom toward the cursor and middle-button panning.</summary>
     private void InitializeProjectedViewZoom()
     {
+        ElevationCanvas.PreviewMouseLeftButtonDown += ProjectedElement_PreviewMouseLeftButtonDown;
+        SectionCanvas.PreviewMouseLeftButtonDown += ProjectedElement_PreviewMouseLeftButtonDown;
         foreach (var canvas in new[] { ElevationCanvas, SectionCanvas })
         {
             canvas.RenderTransform = new MatrixTransform();
@@ -129,14 +131,15 @@ public partial class MainWindow
     private void ProjectedCanvas_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         var canvas = (Canvas)sender;
-        if (e.ChangedButton == System.Windows.Input.MouseButton.Middle)
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Middle && e.ClickCount >= 2)
+        {
+            canvas.RenderTransform = new MatrixTransform();
+            e.Handled = true;
+        }
+        else if (e.ChangedButton == System.Windows.Input.MouseButton.Middle)
         {
             _projectedPanStart = e.GetPosition((IInputElement)canvas.Parent);
             Mouse.Capture(canvas);
-        }
-        else if (e.ChangedButton == System.Windows.Input.MouseButton.Left && e.ClickCount == 2)
-        {
-            canvas.RenderTransform = new MatrixTransform();
         }
     }
 

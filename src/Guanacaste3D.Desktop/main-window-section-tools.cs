@@ -87,8 +87,9 @@ public partial class MainWindow
         var end = WorldToCanvas(cut.End);
         var brush = preview ? Brushes.RoyalBlue : id == _selectedViewId ? Brushes.DarkOrange : Brushes.DarkSlateGray;
         var menu = preview ? null : CreateViewMenu(id);
+        var factor = preview ? 1 : PlanAnnotationFactor();
         PlanCanvas.Children.Add(new Line { X1 = start.X, Y1 = start.Y, X2 = end.X, Y2 = end.Y,
-            Stroke = brush, StrokeThickness = preview ? 1.2 : 1.8, StrokeDashArray = new DoubleCollection { 12, 4, 2, 4 },
+            Stroke = brush, StrokeThickness = (preview ? 1.2 : 1.8) * factor, StrokeDashArray = new DoubleCollection { 12, 4, 2, 4 },
             Tag = id, ContextMenu = menu, ToolTip = name, IsHitTestVisible = !preview });
         var axis = end - start;
         axis.Normalize();
@@ -97,9 +98,9 @@ public partial class MainWindow
         DrawCircularViewMarker(start, look, id, name, code, brush, menu, !preview);
         DrawCircularViewMarker(end, look, id, name, code, brush, menu, !preview);
         var label = new TextBlock { Text = name, Foreground = brush, Background = Brushes.White,
-            FontSize = 11, Tag = id, ContextMenu = menu, IsHitTestVisible = !preview };
-        Canvas.SetLeft(label, start.X + look.X * 20 + 8);
-        Canvas.SetTop(label, start.Y + look.Y * 20 - 8);
+            FontSize = 11 * factor, Tag = id, ContextMenu = menu, IsHitTestVisible = !preview };
+        Canvas.SetLeft(label, start.X + (look.X * 20 + 8) * factor);
+        Canvas.SetTop(label, start.Y + (look.Y * 20 - 8) * factor);
         PlanCanvas.Children.Add(label);
     }
 

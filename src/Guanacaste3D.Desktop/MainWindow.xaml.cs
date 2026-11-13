@@ -54,8 +54,17 @@ public partial class MainWindow : Window
     {
         try
         {
-            var document = ProjectFile.Load(projectPath);
+            var progress = new ProjectOpenProgressWindow(this, GetText("ProjectOpen.Title"),
+                FormatText("ProjectOpen.Message", System.IO.Path.GetFileName(projectPath)), GetText("WallOptions.Cancel"),
+                () => ProjectFile.Load(projectPath));
+            progress.ShowDialog();
+            if (progress.LoadError is { } failure) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+            if (progress.LoadedDocument is not { } document) return;
             AttachDocument(document, ProjectFile.IsNativePath(projectPath) ? projectPath : null);
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (ReferenceEquals(_session.Document, document)) FitPlan_Click(this, new RoutedEventArgs());
+            }));
             StatusText.Text = GetText(ProjectFile.IsNativePath(projectPath)
                 ? "Status.ProjectOpened"
                 : "Status.LegacyProjectImported");
@@ -115,17 +124,7 @@ public partial class MainWindow : Window
             CheckFileExists = true
         };
         if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var document = ProjectFile.Load(dialog.FileName);
-            var nativePath = ProjectFile.IsNativePath(dialog.FileName);
-            AttachDocument(document, nativePath ? dialog.FileName : null);
-            StatusText.Text = GetText(nativePath ? "Status.ProjectOpened" : "Status.LegacyProjectImported");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException)
-        {
-            MessageBox.Show(this, LocalizedErrors.Translate(ex.Message), GetText("Dialog.OpenFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        OpenProjectPath(dialog.FileName);
     }
 
     /// <summary>Exports the coordinated wall quantity schedule as UTF-8 CSV.</summary>

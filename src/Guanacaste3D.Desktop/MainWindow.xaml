@@ -382,8 +382,13 @@
           <Border DockPanel.Dock="Bottom" Background="{DynamicResource ViewControlBarBrush}" Height="22"
                   BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" Margin="10,0">
-              <TextBlock x:Name="ScaleText" Text="{DynamicResource Status.Scale}" VerticalAlignment="Center"
-                         FontSize="11" Margin="12,0,14,0"/>
+              <ComboBox x:Name="PlanScalePicker" Width="82" Height="20" MinHeight="20" Margin="12,0,14,0"
+                        VerticalAlignment="Center" SelectionChanged="PlanScalePicker_SelectionChanged"
+                        ToolTip="{DynamicResource PlanScale.Tooltip}" AutomationProperties.Name="{DynamicResource PlanScale.Tooltip}">
+                <ComboBoxItem Content="1 : 20" Tag="20"/><ComboBoxItem Content="1 : 50" Tag="50"/>
+                <ComboBoxItem Content="1 : 96" Tag="96"/><ComboBoxItem Content="1 : 100" Tag="100"/>
+                <ComboBoxItem Content="1 : 200" Tag="200"/><ComboBoxItem Content="1 : 500" Tag="500"/>
+              </ComboBox>
               <Button Click="FitPlan_Click" Style="{StaticResource BrowserToolbarButtonStyle}" Height="20" MinHeight="20"
                       Width="22" Padding="2" ToolTip="{DynamicResource Action.Fit}"
                       AutomationProperties.Name="{DynamicResource Action.Fit}">
@@ -442,12 +447,16 @@
               </Grid>
             </TabItem>
             <TabItem Header="{DynamicResource View.Elevation}" Tag="{StaticResource Icon.Elevation}">
-              <Canvas x:Name="ElevationCanvas" Background="White" ClipToBounds="True"
-                      SizeChanged="OrthographicCanvas_SizeChanged"/>
+              <Grid ClipToBounds="True" Background="White">
+                <Canvas x:Name="ElevationCanvas" Background="White" ClipToBounds="True"
+                        SizeChanged="OrthographicCanvas_SizeChanged"/>
+              </Grid>
             </TabItem>
             <TabItem Header="{DynamicResource View.Section}" Tag="{StaticResource Icon.Section}">
-              <Canvas x:Name="SectionCanvas" Background="White" ClipToBounds="True"
-                      SizeChanged="OrthographicCanvas_SizeChanged"/>
+              <Grid ClipToBounds="True" Background="White">
+                <Canvas x:Name="SectionCanvas" Background="White" ClipToBounds="True"
+                        SizeChanged="OrthographicCanvas_SizeChanged"/>
+              </Grid>
             </TabItem>
             <TabItem x:Name="RenderTab" Header="{DynamicResource View.Render}" Tag="{StaticResource Icon.Render}" Visibility="Collapsed">
               <Grid/>

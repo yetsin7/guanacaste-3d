@@ -114,9 +114,11 @@ public partial class MainWindow
     {
         var brush = selected ? Brushes.DarkOrange : MarkBrush;
         var at = WorldToCanvas(element.Start);
+        var factor = PlanAnnotationFactor();
+        /// <summary>Places a mark label with the active paper scale and the parent element identity.</summary>
         TextBlock Text(string value, double x, double y, double size = 11, FontWeight? weight = null)
         {
-            var block = new TextBlock { Text = value, FontSize = size, Foreground = brush, FontWeight = weight ?? FontWeights.Normal, Tag = element.Id };
+            var block = new TextBlock { Text = value, FontSize = size * factor, Foreground = brush, FontWeight = weight ?? FontWeights.Normal, Tag = element.Id };
             Canvas.SetLeft(block, x);
             Canvas.SetTop(block, y);
             PlanCanvas.Children.Add(block);
@@ -126,13 +128,13 @@ public partial class MainWindow
         {
             case StructuralElementKind.SpotElevation:
             case StructuralElementKind.SpotCoordinate:
-                PlanCanvas.Children.Add(new Line { X1 = at.X - 6, Y1 = at.Y, X2 = at.X + 6, Y2 = at.Y, Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false });
-                PlanCanvas.Children.Add(new Line { X1 = at.X, Y1 = at.Y - 6, X2 = at.X, Y2 = at.Y + 6, Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false });
-                var dot = new Ellipse { Width = 12, Height = 12, Stroke = brush, StrokeThickness = 1.2, Fill = Brushes.Transparent, Tag = element.Id };
-                Canvas.SetLeft(dot, at.X - 6);
-                Canvas.SetTop(dot, at.Y - 6);
+                PlanCanvas.Children.Add(new Line { X1 = at.X - 6 * factor, Y1 = at.Y, X2 = at.X + 6 * factor, Y2 = at.Y, Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false });
+                PlanCanvas.Children.Add(new Line { X1 = at.X, Y1 = at.Y - 6 * factor, X2 = at.X, Y2 = at.Y + 6 * factor, Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false });
+                var dot = new Ellipse { Width = 12 * factor, Height = 12 * factor, Stroke = brush, StrokeThickness = 1.2 * factor, Fill = Brushes.Transparent, Tag = element.Id };
+                Canvas.SetLeft(dot, at.X - 6 * factor);
+                Canvas.SetTop(dot, at.Y - 6 * factor);
                 PlanCanvas.Children.Add(dot);
-                Text(SpotMarks.Label(_session.Document, element), at.X + 10, at.Y - 18, 11, FontWeights.SemiBold);
+                Text(SpotMarks.Label(_session.Document, element), at.X + 10 * factor, at.Y - 18 * factor, 11, FontWeights.SemiBold);
                 break;
             case StructuralElementKind.SpotSlope:
                 var end = WorldToCanvas(element.End);
@@ -144,20 +146,20 @@ public partial class MainWindow
                     var side = new Vector(-along.Y, along.X);
                     foreach (var sign in new[] { -1, 1 })
                     {
-                        var head = end - along * 10 + side * (5 * sign);
+                        var head = end - along * (10 * factor) + side * (5 * factor * sign);
                         PlanCanvas.Children.Add(new Line { X1 = end.X, Y1 = end.Y, X2 = head.X, Y2 = head.Y, Stroke = brush, StrokeThickness = 1.5, IsHitTestVisible = false });
                     }
                 }
-                Text(SpotMarks.Label(_session.Document, element), (at.X + end.X) / 2 + 6, (at.Y + end.Y) / 2 - 18, 11, FontWeights.SemiBold);
+                Text(SpotMarks.Label(_session.Document, element), (at.X + end.X) / 2 + 6 * factor, (at.Y + end.Y) / 2 - 18 * factor, 11, FontWeights.SemiBold);
                 break;
             case StructuralElementKind.Keynote:
                 var flag = new Polygon
                 {
-                    Points = new PointCollection { new(at.X, at.Y), new(at.X + 14, at.Y - 10), new(at.X + 16, at.Y - 10) },
+                    Points = new PointCollection { new(at.X, at.Y), new(at.X + 14 * factor, at.Y - 10 * factor), new(at.X + 16 * factor, at.Y - 10 * factor) },
                     Fill = brush, Tag = element.Id
                 };
                 PlanCanvas.Children.Add(flag);
-                Text(element.Name, at.X + 18, at.Y - 18, 11);
+                Text(element.Name, at.X + 18 * factor, at.Y - 18 * factor, 11);
                 break;
             case StructuralElementKind.Symbol:
                 AddSymbolGlyph(element, at, brush);
@@ -168,13 +170,13 @@ public partial class MainWindow
                 for (var index = 0; index < rows.Count; index++)
                 {
                     var (r, g, b) = RoomColors.Of(rows[index].Name);
-                    var swatch = new Rectangle { Width = 14, Height = 14, Fill = new SolidColorBrush(Color.FromRgb(r, g, b)), Stroke = Brushes.DimGray, Tag = element.Id };
+                    var swatch = new Rectangle { Width = 14 * factor, Height = 14 * factor, Fill = new SolidColorBrush(Color.FromRgb(r, g, b)), Stroke = Brushes.DimGray, Tag = element.Id };
                     Canvas.SetLeft(swatch, at.X);
-                    Canvas.SetTop(swatch, at.Y + 20 + index * 20);
+                    Canvas.SetTop(swatch, at.Y + (20 + index * 20) * factor);
                     PlanCanvas.Children.Add(swatch);
-                    Text($"{rows[index].Name} · {FormatText("ColorLegend.Row", rows[index].Rooms, Units.FormatArea(rows[index].Area))}", at.X + 20, at.Y + 19 + index * 20);
+                    Text($"{rows[index].Name} · {FormatText("ColorLegend.Row", rows[index].Rooms, Units.FormatArea(rows[index].Area))}", at.X + 20 * factor, at.Y + (19 + index * 20) * factor);
                 }
-                if (rows.Count == 0) Text(GetText("ColorLegend.Empty"), at.X, at.Y + 20);
+                if (rows.Count == 0) Text(GetText("ColorLegend.Empty"), at.X, at.Y + 20 * factor);
                 break;
         }
     }

@@ -9,8 +9,8 @@ public partial class MainWindow
     /// <summary>Shows wall-specific editors only when their operations apply to the current selection.</summary>
     private void UpdateWallPropertyEditorVisibility()
     {
-        var hasWall = _session.Document.Walls.Any(wall => wall.Id == _selectedWallId);
         var hasOpening = _session.Document.Openings.Any(opening => opening.Id == _selectedOpeningId);
+        var hasWall = !hasOpening && _session.Document.Walls.Any(wall => wall.Id == _selectedWallId);
         WallInstanceExpander.Visibility = hasWall ? Visibility.Visible : Visibility.Collapsed;
         WallTransformExpander.Visibility = hasWall ? Visibility.Visible : Visibility.Collapsed;
         WallOpeningExpander.Visibility = hasOpening ? Visibility.Visible : Visibility.Collapsed;

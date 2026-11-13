@@ -216,13 +216,15 @@ public partial class MainWindow
         foreach (var (bin, elevation) in bottom.Reverse())
             outline.Add(new Point(horizontalOffset + (bin * spacing - minimumCoordinate) * scale,
                 ProjectElevation(canvas, Math.Min(elevation, top[bin] - roof.Thickness), minimumElevation, scale)));
-        canvas.Children.Add(new Polygon
+        var shape = new Polygon
         {
-            Points = outline,
+            Points = outline, Tag = roof.Id,
             Fill = new SolidColorBrush(Color.FromRgb(176, 98, 70)),
             Stroke = Brushes.DarkSlateGray,
             StrokeThickness = 1
-        });
+        };
+        ApplyProjectedSelection(shape, roof.Id);
+        canvas.Children.Add(shape);
     }
 
     /// <summary>
@@ -260,12 +262,14 @@ public partial class MainWindow
         var firstX = outline[0].X;
         outline.Add(new Point(lastX, ProjectElevation(canvas, bottom, minimumElevation, scale)));
         outline.Add(new Point(firstX, ProjectElevation(canvas, bottom, minimumElevation, scale)));
-        canvas.Children.Add(new Polygon
+        var shape = new Polygon
         {
-            Points = outline,
+            Points = outline, Tag = toposolid.Id,
             Fill = new SolidColorBrush(Color.FromRgb(196, 178, 146)),
             Stroke = new SolidColorBrush(Color.FromRgb(96, 120, 70)),
             StrokeThickness = 1.5
-        });
+        };
+        ApplyProjectedSelection(shape, toposolid.Id);
+        canvas.Children.Add(shape);
     }
 }

@@ -365,4 +365,14 @@
   <sys:String x:Key="Status.CurvedRoomSeparatorPickCenter">Selecciona el centro del arco o círculo en la planta.</sys:String>
   <sys:String x:Key="Status.CurvedRoomSeparatorInvalid">Parámetros inválidos: radio de 0,1 a 10 000 m y barrido de 1° a 360°.</sys:String>
   <sys:String x:Key="Status.CurvedRoomSeparatorCreated">Separador curvo creado, sin geometría sólida 3D.</sys:String>
+  <sys:String x:Key="InstanceProperties.OpeningSummary">Elemento: {0}&#10;Ancho: {1}&#10;Altura: {2}&#10;Antepecho: {3}</sys:String>
+  <sys:String x:Key="InstanceProperties.Width">Ancho</sys:String>
+  <sys:String x:Key="InstanceProperties.Depth">Fondo</sys:String>
+  <sys:String x:Key="InstanceProperties.Height">Altura</sys:String>
+  <sys:String x:Key="InstanceProperties.Thickness">Espesor</sys:String>
+  <sys:String x:Key="InstanceProperties.Elevation">Elevación del nivel</sys:String>
+  <sys:String x:Key="InstanceProperties.Offset">Desfase inferior</sys:String>
+  <sys:String x:Key="InstanceProperties.Apply">Aplicar cambios</sys:String>
+  <sys:String x:Key="InstanceProperties.More">Más propiedades…</sys:String>
+  <sys:String x:Key="InstanceProperties.Invalid">Revisa las medidas indicadas.</sys:String>
 </ResourceDictionary>

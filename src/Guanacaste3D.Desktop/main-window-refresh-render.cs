@@ -51,6 +51,7 @@ public partial class MainWindow
         UpdateModelSelection(false);
         UpdateDocumentationProperties();
         UpdateWallPropertyEditorVisibility();
+        UpdateInstancePropertiesEditor();
         if (TryRefreshSheetProperties()) return;
         if (TryRefreshExtendedProperties()) return;
         var selectedOpening = _session.Document.Openings.FirstOrDefault(opening => opening.Id == _selectedOpeningId);
@@ -60,6 +61,11 @@ public partial class MainWindow
             OpeningWidthInput.Text = selectedOpening.Width.ToString("0.###", CultureInfo.CurrentCulture);
             OpeningSillInput.Text = selectedOpening.Sill.ToString("0.###", CultureInfo.CurrentCulture);
             OpeningHeightInput.Text = selectedOpening.Height.ToString("0.###", CultureInfo.CurrentCulture);
+            PropertiesText.Text = FormatText("InstanceProperties.OpeningSummary",
+                GetText(selectedOpening.Kind == OpeningKind.Door ? "Entity.Door" : "Entity.Window"),
+                Units.FormatLength(selectedOpening.Width), Units.FormatLength(selectedOpening.Height),
+                Units.FormatLength(selectedOpening.Sill));
+            return;
         }
 
         var wall = _session.Document.Walls.FirstOrDefault(candidate => candidate.Id == _selectedWallId);

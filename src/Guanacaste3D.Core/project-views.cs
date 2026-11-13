@@ -77,6 +77,9 @@ public sealed record ProjectView(
     /// <summary>Persistent area labels of this plan view; generated from area objects.</summary>
     public bool ShowAreaTags { get; init; }
 
+    /// <summary>Denominator of the drawing scale used for model-space plan annotations.</summary>
+    public int DrawingScale { get; init; } = 100;
+
     /// <summary>Simple vertical visibility controls for plan views; null uses the architectural default.</summary>
     public PlanViewRange? Range { get; init; }
 

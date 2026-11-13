@@ -73,10 +73,12 @@ public partial class MainWindow
         }
         var hull = ProjectionHull(vertices);
         if (hull.Count < 3) return;
-        canvas.Children.Add(new Polygon { Points = new PointCollection(hull.Select(point =>
+        var shape = new Polygon { Points = new PointCollection(hull.Select(point =>
             new Point(left + (point.X - minX) * scale, ProjectElevation(canvas, point.Y, minZ, scale)))),
             Fill = part.Kind == SurfaceKind.Glass ? Brushes.AliceBlue : Brushes.LightGray,
-            Stroke = Brushes.DimGray, StrokeThickness = 1, Tag = id });
+            Stroke = Brushes.DimGray, StrokeThickness = 1, Tag = id };
+        ApplyProjectedSelection(shape, id);
+        canvas.Children.Add(shape);
     }
 
     /// <summary>Removes interior prism vertices so triangulation does not leave diagonal drafting seams.</summary>

@@ -29,7 +29,11 @@ public partial class MainWindow
         var view = _session.Document.Views.FirstOrDefault(candidate => candidate.Id == viewId);
         if (view is null) return;
         _selectedViewId = view.Id;
-        if (view.Kind == ProjectViewKind.Elevation) _elevationViewId = view.Id;
+        if (view.Kind == ProjectViewKind.Elevation)
+        {
+            _elevationViewId = view.Id;
+            _closedElevationShortcuts.Remove(view.Id);
+        }
         if (view.Kind == ProjectViewKind.Section) _sectionViewId = view.Id;
         _selectedWallId = null;
         _selectedColumnId = _selectedStructuralId = null;
@@ -184,15 +188,16 @@ public partial class MainWindow
             }
             var projected = floor.Boundary.Select(point => ProjectCoordinate(point, orientation)).ToArray();
             var left = horizontalOffset + (projected.Min() - minimumCoordinate) * scale;
-            var top = ProjectElevation(canvas, level.Elevation, minimumElevation, scale);
+            var top = ProjectElevation(canvas, level.Elevation + floor.ElevationOffset, minimumElevation, scale);
             var slab = new Rectangle
             {
                 Width = Math.Max(3, (projected.Max() - projected.Min()) * scale),
                 Height = Math.Max(3, floor.Thickness * scale),
                 Fill = new SolidColorBrush(Color.FromRgb(127, 143, 134)),
                 Stroke = Brushes.DarkSlateGray,
-                StrokeThickness = 1
+                StrokeThickness = 1, Tag = floor.Id
             };
+            ApplyProjectedSelection(slab, floor.Id);
             Canvas.SetLeft(slab, left);
             Canvas.SetTop(slab, top);
             canvas.Children.Add(slab);
@@ -238,8 +243,10 @@ public partial class MainWindow
         wallShape.Fill = useCutAppearance
             ? WallAppearanceRendering.CreateBrush(wallType.SectionFillColor, wallType.SectionFillPattern)
             : WallAppearanceRendering.CreateBrush(wallType.PlanFillColor, WallFillPattern.Solid, 0.58);
+        wallShape.Tag = wall.Id;
         wallShape.Stroke = Brushes.DarkSlateGray;
         wallShape.StrokeThickness = 1;
+        ApplyProjectedSelection(wallShape, wall.Id);
         canvas.Children.Add(wallShape);
 
         if (projectedLength < 0.01) return;
@@ -257,8 +264,9 @@ public partial class MainWindow
                 Height = opening.Height * scale,
                 Fill = Brushes.White,
                 Stroke = opening.Kind == OpeningKind.Window ? Brushes.SteelBlue : Brushes.DarkSlateGray,
-                StrokeThickness = 1
+                StrokeThickness = 1, Tag = opening.Id
             };
+            ApplyProjectedSelection(openingShape, opening.Id);
             Canvas.SetLeft(openingShape, openingLeft);
             Canvas.SetTop(openingShape, openingTop);
             canvas.Children.Add(openingShape);

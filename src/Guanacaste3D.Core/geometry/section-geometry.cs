@@ -3,7 +3,11 @@ using System.Numerics;
 namespace Guanacaste3D.Core.Geometry;
 
 /// <summary>A continuous model-plane contour; coordinates are distance along the cut and absolute elevation.</summary>
-public sealed record SectionContour(IReadOnlyList<Point2> Points, bool Closed, SurfaceKind Kind);
+public sealed record SectionContour(IReadOnlyList<Point2> Points, bool Closed, SurfaceKind Kind)
+{
+    /// <summary>The source element, or null when the mesh contains unowned geometry.</summary>
+    public Guid? ElementId { get; init; }
+}
 
 /// <summary>Intersects the same triangulated geometry used by 3D and rendering, including foundations and families.</summary>
 public static class SectionGeometry
@@ -17,7 +21,8 @@ public static class SectionGeometry
         if (cut is null || !cut.IsValid) throw new ArgumentException("A valid cutting line is required.", nameof(cut));
         var length = cut.Start.DistanceTo(cut.End);
         var along = new Point2((cut.End.X - cut.Start.X) / length, (cut.End.Y - cut.Start.Y) / length);
-        var segments = new Dictionary<SurfaceKind, List<(Point2 Start, Point2 End)>>();
+        var segments = new Dictionary<(SurfaceKind Kind, Guid? ElementId), List<(Point2 Start, Point2 End)>>();
+        var rangeIndex = 0;
         for (var triangle = 0; triangle < mesh.TriangleCount; triangle++)
         {
             var vertices = new[] { mesh.Positions[mesh.Indices[triangle * 3]],
@@ -48,11 +53,14 @@ public static class SectionGeometry
             var direction = (end.X - start.X) * (tangent.X * along.X + tangent.Y * along.Y) +
                 (end.Y - start.Y) * tangent.Z;
             if (direction < 0) (start, end) = (end, start);
-            var kind = mesh.TriangleKinds[triangle];
-            if (!segments.TryGetValue(kind, out var bucket)) segments[kind] = bucket = [];
+            while (rangeIndex < mesh.ElementRanges.Count && mesh.ElementRanges[rangeIndex].End <= triangle) rangeIndex++;
+            var elementId = rangeIndex < mesh.ElementRanges.Count && mesh.ElementRanges[rangeIndex].First <= triangle
+                ? mesh.ElementRanges[rangeIndex].ElementId : (Guid?)null;
+            var key = (mesh.TriangleKinds[triangle], elementId);
+            if (!segments.TryGetValue(key, out var bucket)) segments[key] = bucket = [];
             bucket.Add((start, end));
         }
-        return segments.SelectMany(pair => Join(pair.Value, pair.Key)).ToArray();
+        return segments.SelectMany(pair => Join(pair.Value, pair.Key.Kind, pair.Key.ElementId)).ToArray();
     }
 
     /// <summary>Computes the signed distance to the vertical cutting plane in plan coordinates.</summary>
@@ -85,7 +93,7 @@ public static class SectionGeometry
         ((long)Math.Round(point.X / Tolerance), (long)Math.Round(point.Y / Tolerance));
 
     /// <summary>Stitches triangle intersections into closed profiles without drawing triangle seams.</summary>
-    private static IEnumerable<SectionContour> Join(List<(Point2 Start, Point2 End)> segments, SurfaceKind kind)
+    private static IEnumerable<SectionContour> Join(List<(Point2 Start, Point2 End)> segments, SurfaceKind kind, Guid? elementId)
     {
         var vertices = new Dictionary<(long X, long Y), int>();
         var points = new List<Point2>();
@@ -120,7 +128,7 @@ public static class SectionGeometry
                 contour.Add(points[current]);
                 if (current == first) break;
             }
-            yield return new(contour, current == first, kind);
+            yield return new SectionContour(contour, current == first, kind) { ElementId = elementId };
         }
     }
 

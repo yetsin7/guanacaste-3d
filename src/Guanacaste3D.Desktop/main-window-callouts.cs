@@ -66,15 +66,16 @@ public partial class MainWindow
             Canvas.SetTop(frame, Math.Min(corner.Y, opposite.Y));
             PlanCanvas.Children.Add(frame);
             var id = callout.Id;
+            var factor = PlanAnnotationFactor();
             var tab = new Button
             {
-                Content = callout.Name, FontSize = 10, Foreground = Brushes.White, Background = Brushes.DarkOrange,
-                BorderThickness = new Thickness(0), Padding = new Thickness(5, 1, 5, 1), MinHeight = 0, MinWidth = 0,
+                Content = callout.Name, FontSize = 10 * factor, Foreground = Brushes.White, Background = Brushes.DarkOrange,
+                BorderThickness = new Thickness(0), Padding = new Thickness(5 * factor, factor, 5 * factor, factor), MinHeight = 0, MinWidth = 0,
                 Cursor = System.Windows.Input.Cursors.Hand, ToolTip = GetText("Callout.Zoom")
             };
             tab.Click += (_, _) => ZoomToCallout(id);
             Canvas.SetLeft(tab, Math.Min(corner.X, opposite.X));
-            Canvas.SetTop(tab, Math.Min(corner.Y, opposite.Y) - 18);
+            Canvas.SetTop(tab, Math.Min(corner.Y, opposite.Y) - 18 * factor);
             PlanCanvas.Children.Add(tab);
         }
     }

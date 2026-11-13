@@ -189,8 +189,8 @@ public partial class MainWindow
         StatusText.Text = GetText("Status.DrawingCancelled");
     }
 
-    /// <summary>Pixels per meter limits of the plan: the closest zoom is four times what it used to be.</summary>
-    private const double MinimumPlanScale = 8, MaximumPlanScale = 800;
+    /// <summary>Pixels per meter limits allow large sites to fit without sacrificing close editing.</summary>
+    private const double MinimumPlanScale = 0.00001, MaximumPlanScale = 800;
 
     /// <summary>Zooms the plan around the pointer position.</summary>
     private void PlanCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -223,11 +223,20 @@ public partial class MainWindow
     /// <summary>Fits the active level geometry into the available plan viewport.</summary>
     private void FitPlan_Click(object sender, RoutedEventArgs e)
     {
-        var walls = _session.Document.Walls.Where(wall => wall.LevelId == _activeLevelId).ToArray();
+        var view = _session.Document.Views.FirstOrDefault(item =>
+            item.Kind == ProjectViewKind.Plan && item.LevelId == _activeLevelId);
+        var document = ViewVisibility.Apply(_session.Document, view);
+        var range = view?.Range ?? PlanViewRange.Architectural;
+        var walls = document.Walls.Where(wall => wall.LevelId == _activeLevelId && range.Intersects(0, wall.Height)).ToArray();
         var points = walls.SelectMany(wall => new[] { wall.Start, wall.End })
-            .Concat(_session.Document.Floors.Where(floor => floor.LevelId == _activeLevelId).SelectMany(floor => floor.Boundary))
-            .Concat(_session.Document.Columns.Where(column => column.LevelId == _activeLevelId).SelectMany(column => column.Outline))
-            .Concat(_session.Document.StructuralElements.Where(element => element.LevelId == _activeLevelId && element.HasSolid)
+            .Concat(document.Floors.Where(floor => floor.LevelId == _activeLevelId &&
+                range.Intersects(floor.ElevationOffset - floor.Thickness, floor.ElevationOffset))
+                .SelectMany(floor => RoofGeometry.WithOverhang(floor).Boundary))
+            .Concat(document.Columns.Where(column => column.LevelId == _activeLevelId &&
+                range.Intersects(0, column.Height)).SelectMany(column => column.Outline))
+            .Concat(document.Rooms.Where(room => room.LevelId == _activeLevelId)
+                .SelectMany(room => RoomRegionGeometry.Outline(room)))
+            .Concat(document.StructuralElements.Where(element => element.LevelId == _activeLevelId && element.HasSolid)
                 .SelectMany(element => element.Footprint)).ToList();
         if (points.Count == 0)
         {
@@ -237,11 +246,6 @@ public partial class MainWindow
             StatusText.Text = GetText("Status.PlanCentered");
             return;
         }
-        // The elevation symbols sit just outside the building, so framing the walls alone would cut them off.
-        points.AddRange(ElevationSymbols().SelectMany(symbol => new[]
-            {
-                new Point2(symbol.Position.X - 1.4, symbol.Position.Y - 1.4), new Point2(symbol.Position.X + 1.4, symbol.Position.Y + 1.4)
-            }));
         var minimumX = points.Min(point => point.X);
         var maximumX = points.Max(point => point.X);
         var minimumY = points.Min(point => point.Y);
@@ -268,10 +272,20 @@ public partial class MainWindow
         if (PlanCanvas is not null) RenderPlan();
     }
 
+    /// <summary>Keeps the metric background grid legible and bounded when fitting very large sites.</summary>
+    private static double PlanGridSpacing(double pixelsPerMeter)
+    {
+        var required = Math.Max(1, 20 / pixelsPerMeter);
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(required)));
+        var normalized = required / magnitude;
+        return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
+    }
+
     /// <summary>Renders the active coordinated plan, including grid, BIM elements, and sketch feedback.</summary>
     private void RenderPlan()
     {
         if (PlanCanvas is null || _session is null) return;
+        SynchronizePlanScalePicker();
         PlanCanvas.Children.Clear();
         if (PlanCanvas.ActualWidth < 1 || PlanCanvas.ActualHeight < 1) return;
         var left = -PlanCanvas.ActualWidth / 2 - _panOffset.X;
@@ -280,10 +294,23 @@ public partial class MainWindow
         var bottom = PlanCanvas.ActualHeight / 2 - _panOffset.Y;
         if (ShowGridCheck.IsChecked == true)
         {
-            for (var gridX = Math.Ceiling(left / _scale); gridX <= right / _scale; gridX++)
-                AddLine(new Point2(gridX, -bottom / _scale), new Point2(gridX, -top / _scale), 0.5, Brushes.Gainsboro);
-            for (var gridY = Math.Ceiling(top / _scale); gridY <= bottom / _scale; gridY++)
-                AddLine(new Point2(left / _scale, -gridY), new Point2(right / _scale, -gridY), 0.5, Brushes.Gainsboro);
+            var spacing = PlanGridSpacing(_scale);
+            var firstX = Math.Ceiling(left / _scale / spacing);
+            var firstY = Math.Ceiling(top / _scale / spacing);
+            var columns = Math.Min(10000, (int)Math.Ceiling(PlanCanvas.ActualWidth / (spacing * _scale)) + 1);
+            var rows = Math.Min(10000, (int)Math.Ceiling(PlanCanvas.ActualHeight / (spacing * _scale)) + 1);
+            for (var index = 0; index < columns; index++)
+            {
+                var x = (firstX + index) * spacing;
+                if (x > right / _scale) break;
+                AddLine(new Point2(x, -bottom / _scale), new Point2(x, -top / _scale), 0.5, Brushes.Gainsboro);
+            }
+            for (var index = 0; index < rows; index++)
+            {
+                var y = -(firstY + index) * spacing;
+                if (-y > bottom / _scale) break;
+                AddLine(new Point2(left / _scale, y), new Point2(right / _scale, y), 0.5, Brushes.Gainsboro);
+            }
         }
         AddLine(new Point2(left / _scale, 0), new Point2(right / _scale, 0), 1, Brushes.LightSteelBlue);
         AddLine(new Point2(0, -bottom / _scale), new Point2(0, -top / _scale), 1, Brushes.LightSteelBlue);
@@ -305,14 +332,15 @@ public partial class MainWindow
         RenderJoinedWallOutline(levelWalls, joins, wallLayer);
         // Draw structural columns above masonry fills. This makes the plan cut read correctly
         // at wall/column overlaps instead of exposing block cells through a solid column.
-        foreach (var column in planDocument.Columns.Where(candidate => candidate.LevelId == _activeLevelId))
+        foreach (var column in planDocument.Columns.Where(candidate => candidate.LevelId == _activeLevelId &&
+            range.Intersects(0, candidate.Height)))
         {
             PlanCanvas.Children.Add(new Polygon
             {
                 Points = new PointCollection(column.Outline.Select(WorldToCanvas)),
                 Fill = Brushes.LightGray,
-                Stroke = column.Id == _selectedColumnId ? Brushes.DarkOrange : Brushes.DimGray,
-                StrokeThickness = column.Id == _selectedColumnId ? 2 : 1,
+                Stroke = Brushes.DimGray,
+                StrokeThickness = 1,
                 Tag = column.Id
             });
         }
@@ -339,6 +367,7 @@ public partial class MainWindow
         RenderAnalyticalOverlay();
         AddResultsFillLegend();
         AddNorthArrow();
+        RenderPlanSelectionHighlight();
         RenderTemporaryDimensions();
         RenderWallSketchOverlay();
         RenderStructuralPreview();
@@ -390,8 +419,6 @@ public partial class MainWindow
             Data = outline, Fill = Brushes.DarkSlateGray, Stroke = Brushes.DarkSlateGray, StrokeThickness = 1,
             IsHitTestVisible = false
         });
-        if (walls.FirstOrDefault(wall => wall.Id == _selectedWallId) is { } selected)
-            AddLine(selected.Start, selected.End, 1.5, Brushes.DarkOrange, selected.Id);
     }
 
     /// <summary>Adds a selectable model-space line to the plan canvas.</summary>

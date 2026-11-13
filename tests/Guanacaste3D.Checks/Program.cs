@@ -11,6 +11,7 @@ static void Check(bool valid, string explanation)
 if (Environment.GetEnvironmentVariable("G3D_ONLY") == "view-visibility")
 {
     ViewVisibilityChecks.Run(Check);
+    SectionElementIdentityChecks.Run(Check);
     PlanDimensionChecks.Run(Check);
     return;
 }
