@@ -8,7 +8,10 @@ use std::{
 const JSON: &str = r#"{"SchemaVersion":15,"Id":"00112233-4455-6677-8899-aabbccddeeff","Name":"CLI fixture","Levels":[{"Id":"00000000-0000-0000-0000-000000000001","Name":"L1","Elevation":12.5}],"Walls":[{"Id":"00000000-0000-0000-0000-000000000002","LevelId":"00000000-0000-0000-0000-000000000001","Start":{"X":-8,"Y":7},"End":{"X":-4,"Y":7},"Thickness":0.2,"Height":3,"BaseOffset":0}],"Openings":[{"Id":"00000000-0000-0000-0000-000000000003","WallId":"00000000-0000-0000-0000-000000000002","Kind":1,"Offset":1.5,"Width":1,"Sill":1,"Height":1}]}"#;
 
 fn unique_path() -> std::path::PathBuf {
-    let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     std::env::temp_dir().join(format!(
         "guanacaste-wall-metrics-{}-{nonce}.json",
         std::process::id()
@@ -36,7 +39,10 @@ fn cli_reports_deterministic_metrics_and_rejects_invalid_input() {
     assert_eq!(missing.status.code(), Some(2));
     assert!(missing.stdout.is_empty());
 
-    let extra = Command::new(executable).args(["one", "two"]).output().unwrap();
+    let extra = Command::new(executable)
+        .args(["one", "two"])
+        .output()
+        .unwrap();
     assert_eq!(extra.status.code(), Some(2));
     assert!(extra.stdout.is_empty());
 }
