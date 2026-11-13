@@ -8,6 +8,13 @@ static void Check(bool valid, string explanation)
     Console.WriteLine("OK: " + explanation);
 }
 
+if (Environment.GetEnvironmentVariable("G3D_ONLY") == "wall-dimensions")
+{
+    WallDimensionChecks.Run(Check);
+    RoofHostedElementChecks.Run(Check);
+    return;
+}
+
 var finishedType = BuiltInWallTypes.CreateDefaults()[1] with
 {
     Construction = WallConstruction.Block,

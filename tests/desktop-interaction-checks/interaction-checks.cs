@@ -59,9 +59,15 @@ internal static partial class InteractionChecks
             Pump();
             _canvas = (Canvas)_window.FindName("PlanCanvas");
             var session = Field<DocumentSession>("_session");
+            if (Environment.GetEnvironmentVariable("G3D_ONLY") == "opening-clipboard")
+            {
+                OpeningClipboardChecks(session);
+                return 0;
+            }
             if (Environment.GetEnvironmentVariable("G3D_ONLY") == "modeling-improvements")
             {
                 PlanLevelSelectionChecks(session);
+                PinnedSelectionChecks(session);
                 ModelDimensionChecks(session);
                 DuplicateStructuralMemberChecks(session);
                 DuplicateFloorRibbonChecks(session);
@@ -167,6 +173,7 @@ internal static partial class InteractionChecks
             WallEditCommandChecks(session);
             RotateRibbonChecks(session);
             PlanLevelSelectionChecks(session);
+            OpeningClipboardChecks(session);
             ModelDimensionChecks(session);
             DuplicateComponentRibbonChecks(session);
             DuplicateColumnRibbonChecks(session);

@@ -1,0 +1,36 @@
+using Guanacaste3D.Core;
+
+/// <summary>Checks that roof-hosted elements respond only to changes of their roof.</summary>
+static class RoofHostedElementChecks
+{
+    /// <summary>Exercises non-roof slab edits, roof edits, and their undo history on a shared footprint.</summary>
+    public static void Run(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Roof hosts"));
+        var level = session.Document.Levels[0].Id;
+        Point2[] boundary = [new(0, 0), new(8, 0), new(8, 6), new(0, 6)];
+        var roof = session.AddFloor(level, boundary, 0.2, kind: FloorKind.Roof, elevationOffset: 3);
+        session.SetRoofShape(roof, RoofShape.Gable, 25);
+        var dormer = session.AddDormer(level, "Dormer", new(1, 1), new(2, 2));
+        var skylight = session.AddSkylight(level, "Skylight", new(5, 1), new(6, 2));
+        var original = session.Document.StructuralElements.Where(item => item.Id == dormer || item.Id == skylight)
+            .ToDictionary(item => item.Id, item => item.Offset);
+        check(original.Count == 2, "The test roof hosts both a dormer and a skylight");
+        foreach (var kind in new[] { FloorKind.Floor, FloorKind.Ceiling, FloorKind.Toposolid })
+        {
+            var slab = session.AddFloor(level, boundary, 0.2, kind: kind);
+            session.UpdateFloor(slab, "Updated slab", 0.3, 0.5);
+            check(session.Document.StructuralElements.Where(item => original.ContainsKey(item.Id))
+                    .All(item => Math.Abs(item.Offset - original[item.Id]) < 1e-9),
+                $"Editing {kind} does not move roof-hosted elements");
+        }
+        session.UpdateFloor(roof, "Raised roof", 0.2, 4);
+        check(session.Document.StructuralElements.Where(item => original.ContainsKey(item.Id))
+                .All(item => Math.Abs(item.Offset - original[item.Id] - 1) < 1e-9),
+            "Raising the roof updates both hosted elements");
+        session.Undo();
+        check(session.Document.StructuralElements.Where(item => original.ContainsKey(item.Id))
+                .All(item => Math.Abs(item.Offset - original[item.Id]) < 1e-9),
+            "Undo restores the roof and hosted element elevations together");
+    }
+}

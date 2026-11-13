@@ -105,7 +105,13 @@ public partial class MainWindow
     private bool DeleteViewSelection()
     {
         if (_viewSelection is not { Count: > 0 } set) return false;
-        var removed = _session.RemoveElements(set);
+        int removed;
+        try { removed = _session.RemoveElements(set); }
+        catch (System.IO.InvalidDataException exception)
+        {
+            StatusText.Text = LocalizedErrors.Translate(exception.Message);
+            return true;
+        }
         _viewSelection = null;
         _selectedWallId = _selectedOpeningId = _selectedFloorId = _selectedColumnId = _selectedStructuralId = null;
         _selectedWallOffset = null;

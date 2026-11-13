@@ -39,8 +39,45 @@ internal static partial class InteractionChecks
             tabs.SelectedIndex = 0;
             session.RemoveWall(wallId);
         }
+        ModelOpeningDatumChecks(session);
         ModelColumnDimensionChecks(session);
         ModelFloorThicknessChecks(session);
+    }
+
+    /// <summary>Places a window sill on its level using its 3D datum and verifies undo.</summary>
+    private static void ModelOpeningDatumChecks(DocumentSession session)
+    {
+        var level = Field<Guid>("_activeLevelId");
+        var wallId = session.AddWall(level, new Point2(130, 130), new Point2(134, 130));
+        var openingId = session.AddOpening(wallId, OpeningKind.Window, 2);
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        try
+        {
+            tabs.SelectedIndex = 1;
+            SetField("_selectedWallId", (Guid?)wallId);
+            SetField("_selectedOpeningId", (Guid?)openingId);
+            Invoke("RefreshAll");
+            Pump();
+            var opening = session.Document.Openings.Single(item => item.Id == openingId);
+            var overlay = (Canvas)_window.FindName("ModelDimensionOverlay");
+            var chip = overlay.Children.OfType<Border>().ElementAt(3);
+            ((Button)chip.Child).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var editor = (TextBox)chip.Child;
+            editor.Text = "0 m";
+            PressKey(editor, Key.Enter);
+            Check(session.Document.Openings.Single(item => item.Id == openingId).Sill == 0,
+                "A zero 3D sill dimension places the window at its level");
+            session.Undo();
+            Check(session.Document.Openings.Single(item => item.Id == openingId).Sill == opening.Sill,
+                "Undo restores the window sill edited in 3D");
+        }
+        finally
+        {
+            SetField("_selectedOpeningId", null);
+            SetField("_selectedWallId", null);
+            tabs.SelectedIndex = 0;
+            session.RemoveWall(wallId);
+        }
     }
 
     /// <summary>Verifies each editable column dimension in the real 3D overlay and its undo history.</summary>
@@ -116,6 +153,25 @@ internal static partial class InteractionChecks
             session.Undo();
             Check(Math.Abs(session.Document.Floors.Single(item => item.Id == floorId).Thickness - 0.2) < 1e-8,
                 "Undo restores the flat slab thickness edited in 3D");
+            var datumChip = overlay.Children.OfType<Border>().ElementAt(3);
+            ((Button)datumChip.Child).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var datumEditor = (TextBox)datumChip.Child;
+            datumEditor.Text = "1.2 m";
+            PressKey(datumEditor, Key.Enter);
+            floor = session.Document.Floors.Single(item => item.Id == floorId);
+            Check(Math.Abs(floor.ElevationOffset - 1.4) < 1e-8 && Math.Abs(floor.Thickness - 0.2) < 1e-8,
+                "Editing the 3D underside dimension moves a slab while preserving its thickness");
+            session.Undo();
+            Check(Math.Abs(session.Document.Floors.Single(item => item.Id == floorId).ElevationOffset - 0.5) < 1e-8,
+                "Undo restores the slab elevation edited through its underside dimension");
+            datumChip = overlay.Children.OfType<Border>().ElementAt(3);
+            ((Button)datumChip.Child).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            datumEditor = (TextBox)datumChip.Child;
+            datumEditor.Text = "0 m";
+            PressKey(datumEditor, Key.Enter);
+            Check(Math.Abs(session.Document.Floors.Single(item => item.Id == floorId).ElevationOffset - 0.2) < 1e-8,
+                "A zero underside dimension places the slab underside on its level");
+
         }
         finally
         {

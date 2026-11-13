@@ -12,6 +12,7 @@ static class ArchitectureChecks
     {
         CheckLibrary(check);
         CheckRoofs(check);
+        RoofHostedElementChecks.Run(check);
         CheckColumnsAndMembers(check);
         CheckNewElements(check);
         CheckOperatedOpenings(check);

@@ -21,9 +21,15 @@ public partial class MainWindow
         MessageBox.Show(this, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
-    /// <summary>Duplicates a selected wall, floor, column, or component with a visible metric offset.</summary>
+    /// <summary>Duplicates the selected supported element with a visible offset.</summary>
     private void Duplicate_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedOpeningId is Guid openingId &&
+            _session.Document.Openings.FirstOrDefault(opening => opening.Id == openingId) is { } selectedOpening)
+        {
+            PasteOpeningClipboard(selectedOpening, "Status.OpeningDuplicated");
+            return;
+        }
         if (_selectedWallId is null && (TryDuplicateFloor() || TryDuplicateColumn() || TryDuplicateComponent())) return;
         if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
         _selectedWallId = _session.DuplicateWall(id, 1, 1);

@@ -17,6 +17,8 @@ public sealed partial class DocumentSession
         {
             var index = doc.Walls.FindIndex(wall => wall.Id == id);
             var resolved = WallDimensionSolver.Resolve(doc.Walls[index], edit);
+            if (resolved.Start != doc.Walls[index].Start || resolved.End != doc.Walls[index].End)
+                EnsureNotPinned(doc, id);
             var levels = doc.Levels.ToDictionary(level => level.Id);
             var offset = resolved.TopLevelId is Guid topId
                 ? levels[resolved.LevelId].Elevation + resolved.Height - levels[topId].Elevation

@@ -19,6 +19,8 @@ public sealed partial class DocumentSession
                     Document.Columns.Count(item => chosen.Contains(item.Id)) +
                     Document.StructuralElements.Count(item => chosen.Contains(item.Id));
         if (found == 0) return 0;
+        foreach (var wall in Document.Walls.Where(item => chosen.Contains(item.Id)))
+            EnsureNotPinned(Document, wall.Id);
         Commit("Transaction.RemoveElements", document =>
         {
             var levels = document.Walls.Where(item => chosen.Contains(item.Id)).Select(item => item.LevelId).ToHashSet();

@@ -104,6 +104,16 @@ static class WallDimensionChecks
             "A length that would strand a door leaves the wall unchanged");
         session.Undo();
         check(session.Document.Walls.Single() == before, "Undo restores the wall before the area edit");
+        session.SetWallsPinned([wallId], true);
+        var secondWallId = session.AddWall(session.Document.Levels[0].Id, new Point2(0, 4), new Point2(4, 4));
+        var pinned = session.Document.Walls.Single(wall => wall.Id == wallId);
+        var undoName = session.UndoName;
+        check(Rejects(() => session.ApplyWallDimensions(wallId, new WallDimensionEdit(Length: 9))) &&
+              session.Document.Walls.Single(wall => wall.Id == wallId) == pinned && session.UndoName == undoName,
+            "A pinned wall rejects dimension edits that move an endpoint without changing history");
+        check(Rejects(() => session.RemoveElements([wallId, secondWallId])) &&
+              session.Document.Walls.Single(wall => wall.Id == wallId) == pinned &&
+              session.Document.Walls.Any(wall => wall.Id == secondWallId) && session.UndoName == undoName, "Deleting a multiple selection cannot remove a pinned wall");
     }
 
     /// <summary>Returns true when the action throws the validation exception a user should see.</summary>

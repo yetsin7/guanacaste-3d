@@ -348,10 +348,15 @@
   <sys:String x:Key="Status.Navigate3D">Navegación 3D: arrastre para orbitar, botón central para desplazar, rueda para acercar.</sys:String>
   <sys:String x:Key="Status.SelectedWallFlipped">Muro volteado: sus caras interior y exterior se intercambiaron.</sys:String>
   <sys:String x:Key="Status.WallTopDetached">Muro liberado de su nivel superior; conserva su altura actual.</sys:String>
+  <sys:String x:Key="Status.OpeningCopied">Abertura copiada. Use Pegar para colocar una copia.</sys:String>
+  <sys:String x:Key="Status.OpeningCut">Abertura cortada. Use Pegar para colocarla de nuevo.</sys:String>
+  <sys:String x:Key="Status.OpeningDuplicated">Abertura duplicada en el muro.</sys:String>
+  <sys:String x:Key="Status.OpeningPasted">Abertura pegada en el muro.</sys:String>
+  <sys:String x:Key="Status.OpeningPasteUnavailable">No hay espacio disponible para pegar la abertura en este muro.</sys:String>
   <sys:String x:Key="Status.WallCopied">Muro copiado. Use Pegar para colocar una copia.</sys:String>
   <sys:String x:Key="Status.WallCut">Muro cortado. Use Pegar para colocarlo de nuevo.</sys:String>
   <sys:String x:Key="Status.WallPasted">Muro pegado.</sys:String>
-  <sys:String x:Key="Status.NothingToPaste">No hay nada que pegar: copie o corte un muro primero.</sys:String>
+  <sys:String x:Key="Status.NothingToPaste">No hay nada que pegar: copie o corte un elemento primero.</sys:String>
   <sys:String x:Key="Status.SelectElementFirst">Seleccione primero un elemento.</sys:String>
   <sys:String x:Key="Status.MeasureFirst">Haga clic en el primer punto, sobre un muro.</sys:String>
   <sys:String x:Key="Status.MeasureSecond">Ahora haga clic en el segundo punto, sobre un muro.</sys:String>

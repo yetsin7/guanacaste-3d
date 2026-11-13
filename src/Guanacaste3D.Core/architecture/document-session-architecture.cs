@@ -327,6 +327,7 @@ public sealed partial class DocumentSession
     /// <summary>Lifts dormers and skylights standing on a roof to the roof's new surface after its shape changed.</summary>
     private static void RaiseStructuresOnRoof(BuildingDocument document, FloorSlab roof)
     {
+        if (roof.Kind != FloorKind.Roof) return;
         for (var index = 0; index < document.StructuralElements.Count; index++)
         {
             var element = document.StructuralElements[index];

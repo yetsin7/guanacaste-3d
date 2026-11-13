@@ -11,6 +11,7 @@ public partial class MainWindow
 {
     /// <summary>Walls copied or cut with the Modify ribbon, waiting to be pasted.</summary>
     private WallClipboard? _wallClipboard;
+    private WallOpening? _openingClipboard;
 
     /// <summary>
     /// Routes Modify and Manage commands that work on the selection or on the whole project: clipboard, properties,
@@ -49,12 +50,18 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Copies or cuts the selected opening or its wall into the application clipboard.</summary>
     private void CopySelectedWall(bool cut)
     {
+        if (_selectedOpeningId is Guid openingId)
+        {
+            CopySelectedOpening(openingId, cut);
+            return;
+        }
         if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         try
         {
-            _wallClipboard = WallClipboard.Capture(_session.Document, [id]);
+            var clipboard = WallClipboard.Capture(_session.Document, [id]);
             if (cut)
             {
                 using var group = _session.BeginGroup("Transaction.CutWalls");
@@ -63,6 +70,8 @@ public partial class MainWindow
                 _selectedWallId = null;
                 RefreshAll();
             }
+            _wallClipboard = clipboard;
+            _openingClipboard = null;
             StatusText.Text = GetText(cut ? "Status.WallCut" : "Status.WallCopied");
         }
         catch (InvalidDataException exception)
@@ -71,8 +80,14 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Pastes the current wall or opening clipboard as an undoable edit.</summary>
     private void PasteWallClipboard()
     {
+        if (_openingClipboard is { } opening)
+        {
+            PasteOpeningClipboard(opening);
+            return;
+        }
         if (_wallClipboard is not { } clipboard) { StatusText.Text = GetText("Status.NothingToPaste"); return; }
         // On the same level the copy would sit exactly on its source, so it is moved a meter to stay visible.
         var sameLevel = clipboard.Walls.All(wall => wall.LevelId == _activeLevelId);
