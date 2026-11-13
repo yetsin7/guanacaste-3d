@@ -153,3 +153,32 @@ fn cli_native_envelope_matches_legacy_and_rejects_tampering() {
     let _ = fs::remove_file(&raw_path);
     let _ = fs::remove_file(&native_path);
 }
+
+#[test]
+fn cli_emits_metrics_for_every_wall() {
+    let mut document: serde_json::Value = serde_json::from_str(JSON).unwrap();
+    let mut second = document["Walls"][0].clone();
+    second["Id"] = serde_json::Value::String(
+        "00000000-0000-0000-0000-000000000004".to_string(),
+    );
+    second["Start"]["Y"] = serde_json::json!(12);
+    second["End"]["Y"] = serde_json::json!(12);
+    document["Walls"].as_array_mut().unwrap().push(second);
+    let path = unique_path();
+    fs::write(&path, serde_json::to_vec(&document).unwrap()).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_wall-metrics"))
+        .arg(&path)
+        .output()
+        .unwrap();
+    let _ = fs::remove_file(&path);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<_> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2, "{stdout}");
+    assert!(lines.iter().any(|line| line.starts_with("00000000000000000000000000000002,")));
+    assert!(lines.iter().any(|line| line.starts_with("00000000000000000000000000000004,")));
+}
