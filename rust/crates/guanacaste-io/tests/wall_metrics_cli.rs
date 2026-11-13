@@ -158,9 +158,7 @@ fn cli_native_envelope_matches_legacy_and_rejects_tampering() {
 fn cli_emits_metrics_for_every_wall() {
     let mut document: serde_json::Value = serde_json::from_str(JSON).unwrap();
     let mut second = document["Walls"][0].clone();
-    second["Id"] = serde_json::Value::String(
-        "00000000-0000-0000-0000-000000000004".to_string(),
-    );
+    second["Id"] = serde_json::Value::String("00000000-0000-0000-0000-000000000004".to_string());
     second["Start"]["Y"] = serde_json::json!(12);
     second["End"]["Y"] = serde_json::json!(12);
     document["Walls"].as_array_mut().unwrap().push(second);
