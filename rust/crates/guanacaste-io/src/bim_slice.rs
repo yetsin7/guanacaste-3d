@@ -339,10 +339,24 @@ mod tests {
         let areas = extract_wall_surface_areas(&inspected).unwrap();
         assert_eq!(areas.len(), 1);
         assert_eq!(areas[0].wall_id, 2);
-        // A 4 x 0.2 x 3 wall with a 1 x 1 through-opening:
-        // 2*(4*3 + 4*0.2 + 3*0.2) - 2*(1*1) + 2*(1+1)*0.2 = 25.6 m².
-        assert!((areas[0].surface_area_m2 - 25.6).abs() < 1e-9);
+        // Height=3 is relative to the level, while BaseOffset=0.5 raises
+        // the wall base: its actual solid height is 2.5 m, not 3 m.
+        // 2*(4*2.5 + 4*0.2 + 2.5*0.2) - 2*(1*1) + 2*(1+1)*0.2 = 21.4 m².
+        assert!((areas[0].surface_area_m2 - 21.4).abs() < 1e-9);
         assert_eq!(inspected.json, original);
+    }
+
+    #[test]
+    fn wall_surface_area_uses_level_relative_top_and_raised_base() {
+        let mut payload: Value = serde_json::from_str(PROJECT).unwrap();
+        payload["Walls"][0]["BaseOffset"] = Value::from(0.0);
+        let json = serde_json::to_vec(&payload).unwrap();
+        let inspected = inspect_legacy_json(&json).unwrap();
+        let areas = extract_wall_surface_areas(&inspected).unwrap();
+        assert_eq!(areas.len(), 1);
+        // A full 3 m wall with the same through-opening has area 25.6 m².
+        assert!((areas[0].surface_area_m2 - 25.6).abs() < 1e-9);
+        assert_eq!(inspected.json, json);
     }
 
     #[test]
