@@ -1,0 +1,13 @@
+[package]
+name = "guanacaste-document"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Incremental typed BIM document and geometry integration for Guanacaste 3D"
+
+[dependencies]
+guanacaste-geometry = { path = "../guanacaste-geometry" }
+
+[lib]
+path = "src/lib.rs"

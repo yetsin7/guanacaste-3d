@@ -1,0 +1,502 @@
+//! Renderer-neutral, metric Z-up indexed triangle meshes.
+//! Extrusion currently supports simple, hole-free polygons; its faces are
+//! oriented outward and its cap triangulation reuses the C#-compatible ear clipper.
+#![forbid(unsafe_code)]
+
+use crate::{triangulate, GeometryError, Point2};
+use std::collections::{HashMap, HashSet};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Point3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+impl Point3 {
+    pub fn new(x: f64, y: f64, z: f64) -> Result<Self, GeometryError> {
+        if !x.is_finite() || !y.is_finite() || !z.is_finite() {
+            return Err(GeometryError::NonFiniteCoordinate);
+        }
+        Ok(Self { x, y, z })
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TriangleMesh {
+    pub positions: Vec<Point3>,
+    pub indices: Vec<[usize; 3]>,
+}
+
+impl TriangleMesh {
+    pub fn triangle_count(&self) -> usize {
+        self.indices.len()
+    }
+
+    pub fn bounds(&self) -> Option<(Point3, Point3)> {
+        let first = *self.positions.first()?;
+        if !first.x.is_finite() || !first.y.is_finite() || !first.z.is_finite() {
+            return None;
+        }
+        let mut min = first;
+        let mut max = first;
+        for point in &self.positions[1..] {
+            if !point.x.is_finite() || !point.y.is_finite() || !point.z.is_finite() {
+                return None;
+            }
+            min.x = min.x.min(point.x);
+            min.y = min.y.min(point.y);
+            min.z = min.z.min(point.z);
+            max.x = max.x.max(point.x);
+            max.y = max.y.max(point.y);
+            max.z = max.z.max(point.z);
+        }
+        Some((min, max))
+    }
+
+    /// Checks that each edge has two opposite incident faces and each vertex
+    /// has one connected face fan. Rejects invalid and degenerate geometry.
+    /// This topological check does not detect geometric self-intersections.
+    pub fn is_closed_oriented_manifold(&self) -> bool {
+        if self.indices.is_empty() || self.positions.is_empty() || self.bounds().is_none() {
+            return false;
+        }
+        let mut edges: HashMap<(usize, usize), (u32, i32, usize, usize)> = HashMap::new();
+        let mut vertex_faces = vec![Vec::new(); self.positions.len()];
+        for (face_id, &[a, b, c]) in self.indices.iter().enumerate() {
+            if a >= self.positions.len()
+                || b >= self.positions.len()
+                || c >= self.positions.len()
+                || a == b
+                || b == c
+                || c == a
+            {
+                return false;
+            }
+            let p = self.positions[a];
+            let q = self.positions[b];
+            let r = self.positions[c];
+            let ux = q.x - p.x;
+            let uy = q.y - p.y;
+            let uz = q.z - p.z;
+            let vx = r.x - p.x;
+            let vy = r.y - p.y;
+            let vz = r.z - p.z;
+            let cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+            if cross.iter().any(|v| !v.is_finite()) || cross.iter().all(|v| *v == 0.0) {
+                return false;
+            }
+            for vertex in [a, b, c] {
+                vertex_faces[vertex].push(face_id);
+            }
+            for (from, to) in [(a, b), (b, c), (c, a)] {
+                let key = (from.min(to), from.max(to));
+                let sign = if from < to { 1 } else { -1 };
+                let entry = edges.entry(key).or_insert((0, 0, face_id, face_id));
+                entry.0 += 1;
+                entry.1 += sign;
+                entry.3 = face_id;
+                if entry.0 > 2 {
+                    return false;
+                }
+            }
+        }
+        if !edges
+            .values()
+            .all(|&(count, orientation, _, _)| count == 2 && orientation == 0)
+        {
+            return false;
+        }
+        let mut neighbors = vec![Vec::new(); self.indices.len()];
+        for (&(a, b), &(_, _, first, second)) in &edges {
+            // Both incident faces are adjacent in the link of each endpoint.
+            for vertex in [a, b] {
+                // Store the vertex along with the adjacent face so traversals
+                // cannot cross a face through the opposite vertex.
+                neighbors[first].push((vertex, second));
+                neighbors[second].push((vertex, first));
+            }
+        }
+        for (vertex, faces) in vertex_faces.iter().enumerate() {
+            let Some(&start) = faces.first() else {
+                continue;
+            };
+            let mut visited = HashSet::new();
+            let mut stack = vec![start];
+            while let Some(face) = stack.pop() {
+                if !visited.insert(face) {
+                    continue;
+                }
+                for &(at, next) in &neighbors[face] {
+                    if at == vertex && !visited.contains(&next) {
+                        stack.push(next);
+                    }
+                }
+            }
+            if visited.len() != faces.len() {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Total triangle area in square metres for a closed, oriented manifold.
+    /// This does not prove that disconnected shells do not overlap.
+    pub fn checked_closed_surface_area(&self) -> Option<f64> {
+        if !self.is_closed_oriented_manifold() {
+            return None;
+        }
+        let mut sum = 0.0;
+        let mut correction = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            let ux = b.x - a.x;
+            let uy = b.y - a.y;
+            let uz = b.z - a.z;
+            let vx = c.x - a.x;
+            let vy = c.y - a.y;
+            let vz = c.z - a.z;
+            let cross = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+            let term = 0.5 * cross[0].hypot(cross[1]).hypot(cross[2]);
+            if !term.is_finite() {
+                return None;
+            }
+            let next = sum + term;
+            if sum.abs() >= term.abs() {
+                correction += (sum - next) + term;
+            } else {
+                correction += (term - next) + sum;
+            }
+            sum = next;
+        }
+        let area = sum + correction;
+        area.is_finite().then_some(area)
+    }
+
+    /// Signed volume of an oriented closed triangular surface.
+    /// Returns NaN for invalid indices or non-finite coordinates rather than panicking.
+    /// Meaningful only for consistently oriented, watertight meshes.
+    pub fn signed_volume(&self) -> f64 {
+        self.checked_signed_volume().unwrap_or(f64::NAN)
+    }
+
+    /// Volume for a closed, consistently oriented manifold mesh only.
+    ///
+    /// Unlike `checked_signed_volume`, this rejects open or non-manifold
+    /// surfaces before reporting a physically meaningful enclosed volume.
+    /// This is not a self-intersection test: overlapping closed shells can
+    /// still require additional geometric validation.
+    pub fn checked_closed_volume(&self) -> Option<f64> {
+        if !self.is_closed_oriented_manifold() {
+            return None;
+        }
+        // A local origin prevents catastrophic cancellation when BIM models
+        // use large survey coordinates far from (0, 0, 0).
+        let origin = self.positions.first()?;
+        let mut volume = 0.0;
+        let mut correction = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            let ax = a.x - origin.x;
+            let ay = a.y - origin.y;
+            let az = a.z - origin.z;
+            let bx = b.x - origin.x;
+            let by = b.y - origin.y;
+            let bz = b.z - origin.z;
+            let cx = c.x - origin.x;
+            let cy = c.y - origin.y;
+            let cz = c.z - origin.z;
+            let term =
+                (ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx))
+                    / 6.0;
+            // Neumaier summation retains small BIM elements alongside much
+            // larger volumes, without changing the legacy signed-volume API.
+            let next = volume + term;
+            if volume.abs() >= term.abs() {
+                correction += (volume - next) + term;
+            } else {
+                correction += (term - next) + volume;
+            }
+            volume = next;
+        }
+        let result = volume + correction;
+        result.is_finite().then_some(result)
+    }
+
+    /// Checked volume for meshes received from untrusted importers or FFI callers.
+    /// This validates indices and finite coordinates, not watertight topology.
+    pub fn checked_signed_volume(&self) -> Option<f64> {
+        let mut volume = 0.0;
+        for &[a, b, c] in &self.indices {
+            let a = self.positions.get(a)?;
+            let b = self.positions.get(b)?;
+            let c = self.positions.get(c)?;
+            if [a, b, c]
+                .iter()
+                .any(|p| !p.x.is_finite() || !p.y.is_finite() || !p.z.is_finite())
+            {
+                return None;
+            }
+            volume += (a.x * (b.y * c.z - b.z * c.y)
+                + a.y * (b.z * c.x - b.x * c.z)
+                + a.z * (b.x * c.y - b.y * c.x))
+                / 6.0;
+        }
+        volume.is_finite().then_some(volume)
+    }
+}
+
+/// Build a closed prism of a simple footprint polygon between two elevations.
+/// Indices reference the original input points duplicated for bottom and top.
+/// Polygon holes are not supported; self-intersections, repeated coordinates,
+/// and collinear consecutive edges are rejected before mesh generation.
+pub fn extrude_footprint(
+    footprint: &[Point2],
+    bottom_z: f64,
+    top_z: f64,
+) -> Result<TriangleMesh, GeometryError> {
+    if !bottom_z.is_finite() || !top_z.is_finite() {
+        return Err(GeometryError::NonFiniteCoordinate);
+    }
+    if top_z <= bottom_z {
+        return Err(GeometryError::DegeneratePolygon);
+    }
+    crate::topology::validate_extrusion_footprint(footprint)?;
+    let caps = triangulate(footprint)?;
+    let count = footprint.len();
+    let mut positions = Vec::with_capacity(count * 2);
+    for &point in footprint {
+        positions.push(Point3::new(point.x, point.y, bottom_z)?);
+    }
+    for &point in footprint {
+        positions.push(Point3::new(point.x, point.y, top_z)?);
+    }
+    let mut indices = Vec::with_capacity(caps.len() * 2 + count * 2);
+    for [a, b, c] in caps {
+        indices.push([c, b, a]);
+        indices.push([a + count, b + count, c + count]);
+    }
+    // Side quads must follow CCW boundary order irrespective of input winding.
+    let ccw = crate::signed_double_area(footprint) > 0.0;
+    for i in 0..count {
+        let j = (i + 1) % count;
+        let (a, b) = if ccw { (i, j) } else { (j, i) };
+        indices.push([a, b, b + count]);
+        indices.push([a, b + count, a + count]);
+    }
+    Ok(TriangleMesh { positions, indices })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::signed_double_area;
+
+    fn rectangle() -> Vec<Point2> {
+        vec![
+            Point2::new(0.0, 0.0).unwrap(),
+            Point2::new(3.0, 0.0).unwrap(),
+            Point2::new(3.0, 2.0).unwrap(),
+            Point2::new(0.0, 2.0).unwrap(),
+        ]
+    }
+
+    #[test]
+    fn rectangular_prism_has_expected_volume_bounds_and_triangles() {
+        let mesh = extrude_footprint(&rectangle(), 1.0, 5.0).unwrap();
+        assert_eq!(mesh.positions.len(), 8);
+        assert_eq!(mesh.triangle_count(), 12);
+        let (min, max) = mesh.bounds().unwrap();
+        assert_eq!(min, Point3::new(0.0, 0.0, 1.0).unwrap());
+        assert_eq!(max, Point3::new(3.0, 2.0, 5.0).unwrap());
+        assert!((mesh.signed_volume() - 24.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn reversed_winding_keeps_positive_volume() {
+        let mut outline = rectangle();
+        outline.reverse();
+        assert!(signed_double_area(&outline) < 0.0);
+        let mesh = extrude_footprint(&outline, 0.0, 2.0).unwrap();
+        assert!((mesh.signed_volume() - 12.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn concave_footprint_produces_correct_volume() {
+        let polygon = [
+            (0.0, 0.0),
+            (4.0, 0.0),
+            (4.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 3.0),
+            (0.0, 3.0),
+        ]
+        .map(|(x, y)| Point2::new(x, y).unwrap());
+        let mesh = extrude_footprint(&polygon, -1.0, 2.0).unwrap();
+        assert_eq!(mesh.triangle_count(), 20);
+        assert!((mesh.signed_volume() - 18.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn closed_manifold_rejects_open_flipped_and_malformed_meshes() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        assert!(mesh.is_closed_oriented_manifold());
+        mesh.indices.pop();
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices.push(mesh.indices[0]);
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices[0].swap(0, 1);
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.indices[0][0] = mesh.positions.len();
+        assert!(!mesh.is_closed_oriented_manifold());
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.positions[0].x = f64::NAN;
+        assert!(!mesh.is_closed_oriented_manifold());
+    }
+
+    #[test]
+    fn rejects_two_closed_shells_touching_only_at_one_vertex() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        let mut other = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        // Keep one shared index, but separate all remaining vertices.
+        for point in &mut other.positions {
+            point.x += 3.0;
+            point.y += 2.0;
+            point.z += 2.0;
+        }
+        let shared = 6; // (3, 2, 2) in the first prism.
+        let offset = mesh.positions.len();
+        mesh.positions.extend(other.positions);
+        mesh.indices.extend(
+            other
+                .indices
+                .into_iter()
+                .map(|face| face.map(|index| if index == 0 { shared } else { offset + index })),
+        );
+        assert!(!mesh.is_closed_oriented_manifold());
+        assert_eq!(mesh.checked_closed_volume(), None);
+    }
+
+    #[test]
+    fn closed_volume_requires_watertight_consistently_oriented_geometry() {
+        // The 3 x 2 x 4 m prism matches the analytical C# solid volume.
+        let mesh = extrude_footprint(&rectangle(), 1.0, 5.0).unwrap();
+        assert_eq!(mesh.checked_closed_volume(), Some(24.0));
+
+        let mut open = mesh.clone();
+        open.indices.pop();
+        assert!(open.checked_signed_volume().is_some());
+        assert_eq!(open.checked_closed_volume(), None);
+
+        let mut reversed_face = mesh.clone();
+        reversed_face.indices[0].swap(0, 1);
+        assert_eq!(reversed_face.checked_closed_volume(), None);
+
+        let mut duplicated_face = mesh.clone();
+        duplicated_face.indices.push(duplicated_face.indices[0]);
+        assert_eq!(duplicated_face.checked_closed_volume(), None);
+
+        let empty = TriangleMesh::default();
+        assert_eq!(empty.checked_signed_volume(), Some(0.0));
+        assert_eq!(empty.checked_closed_volume(), None);
+    }
+
+    #[test]
+    fn closed_volume_is_stable_under_large_survey_coordinate_translation() {
+        // Analytic 3 x 2 x 4 m prism (24 m³), matching the C# prism formula.
+        // Local-origin tetrahedra avoid cancellation of huge world coordinates.
+        let baseline = extrude_footprint(&rectangle(), 1.0, 5.0).unwrap();
+        let mut translated = baseline.clone();
+        for point in &mut translated.positions {
+            point.x += 1_000_000_000.0;
+            point.y -= 1_000_000_000.0;
+            point.z += 1_000_000_000.0;
+        }
+        assert!(translated.is_closed_oriented_manifold());
+        assert_eq!(baseline.checked_closed_volume(), Some(24.0));
+        assert_eq!(translated.checked_closed_volume(), Some(24.0));
+    }
+
+    #[test]
+    fn closed_volume_preserves_sign_when_every_face_is_reversed() {
+        // Negative signed volume is preserved: callers can detect inward shells
+        // instead of silently accepting them as outward solids.
+        let outward = extrude_footprint(&rectangle(), -2.0, 2.0).unwrap();
+        let mut inward = outward.clone();
+        for face in &mut inward.indices {
+            face.swap(0, 1);
+        }
+        assert!(inward.is_closed_oriented_manifold());
+        assert_eq!(outward.checked_closed_volume(), Some(24.0));
+        assert_eq!(inward.checked_closed_volume(), Some(-24.0));
+    }
+
+    #[test]
+    fn closed_volume_adds_disconnected_shells_with_opposite_winding() {
+        // A 3 x 2 x 4 m shell and an inward 3 x 2 x 2 m shell:
+        // signed volumes must add to 24 - 12 = 12 cubic meters.
+        let mut combined = extrude_footprint(&rectangle(), 0.0, 4.0).unwrap();
+        let mut inward = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        for point in &mut inward.positions {
+            point.x += 10.0;
+        }
+        for face in &mut inward.indices {
+            face.swap(0, 1);
+        }
+        let offset = combined.positions.len();
+        combined.positions.extend(inward.positions);
+        combined.indices.extend(
+            inward
+                .indices
+                .into_iter()
+                .map(|[a, b, c]| [a + offset, b + offset, c + offset]),
+        );
+        assert!(combined.is_closed_oriented_manifold());
+        let volume = combined
+            .checked_closed_volume()
+            .expect("closed shells must have a volume");
+        assert!(
+            (volume - 12.0).abs() < 1e-10,
+            "unexpected signed volume: {volume}"
+        );
+    }
+
+    #[test]
+    fn malformed_mesh_volume_is_checked_without_panicking() {
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        assert_eq!(mesh.checked_signed_volume(), Some(12.0));
+        mesh.indices[0][0] = mesh.positions.len();
+        assert_eq!(mesh.checked_signed_volume(), None);
+        assert!(mesh.signed_volume().is_nan());
+        mesh.indices[0][0] = 0;
+        mesh.positions[0].x = f64::NAN;
+        assert_eq!(mesh.checked_signed_volume(), None);
+        assert!(mesh.signed_volume().is_nan());
+    }
+
+    #[test]
+    fn rejects_invalid_elevations_and_empty_mesh_bounds() {
+        assert_eq!(
+            extrude_footprint(&rectangle(), 2.0, 2.0),
+            Err(GeometryError::DegeneratePolygon)
+        );
+        assert_eq!(
+            extrude_footprint(&rectangle(), f64::NAN, 2.0),
+            Err(GeometryError::NonFiniteCoordinate)
+        );
+        assert_eq!(TriangleMesh::default().bounds(), None);
+        let mut mesh = extrude_footprint(&rectangle(), 0.0, 2.0).unwrap();
+        mesh.positions[0].x = f64::NAN;
+        assert_eq!(mesh.bounds(), None);
+        mesh.positions[0].x = 0.0;
+        mesh.positions[1].z = f64::INFINITY;
+        assert_eq!(mesh.bounds(), None);
+    }
+}
