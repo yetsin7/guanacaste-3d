@@ -12,6 +12,10 @@ fn run(path: &str) -> Result<(), String> {
         return Err("input exceeds native document limit".into());
     }
     let bytes = fs::read(path).map_err(|err| format!("cannot read input: {err}"))?;
+    // Metadata can become stale if another process grows the file during the read.
+    if bytes.len() > MAX_NATIVE_BYTES {
+        return Err("input exceeds native document limit".into());
+    }
     let inspected = if bytes.starts_with(b"G3DNATV1") {
         inspect_native(&bytes)
     } else if bytes.starts_with(b"G3-PROJECT/1\n") {
