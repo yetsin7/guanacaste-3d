@@ -42,7 +42,7 @@ public partial class MainWindow
     private void Rotate_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is null && TryRotateComponent()) return;
-        if (_selectedWallId is not Guid id)
+        if (SelectedWallForWallCommand() is not Guid id)
         {
             StatusText.Text = GetText("Status.SelectWallToRotate");
             return;
@@ -66,7 +66,7 @@ public partial class MainWindow
     /// <summary>Applies the metric translation entered in the properties panel.</summary>
     private void MovePrecise_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
         if (!double.TryParse(MoveXInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var deltaX) ||
             !double.TryParse(MoveYInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var deltaY) ||
             !double.IsFinite(deltaX) || !double.IsFinite(deltaY))
@@ -89,7 +89,7 @@ public partial class MainWindow
     /// <summary>Applies the arbitrary rotation entered in the properties panel.</summary>
     private void RotatePrecise_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWall"); return; }
         if (!double.TryParse(RotationInput.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var angle) ||
             !double.IsFinite(angle))
         {

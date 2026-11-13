@@ -997,7 +997,8 @@ public static class BuildingMesher
                     floorElevation <= elevations[element.LevelId] + ElevatorGeometry.Travel(element) + 1e-6) ||
                 // A dormer opens the roof it stands on; other slabs keep their solid top.
                 (element.Kind is StructuralElementKind.Dormer or StructuralElementKind.Skylight && floor.Kind == FloorKind.Roof &&
-                    element.LevelId == floor.LevelId))
+                    element.LevelId == floor.LevelId &&
+                    RoofElementHost.Resolve(document, element.LevelId, Geometry.PlanRectangle.Of(element.Footprint))?.Id == floor.Id))
             .Select(element => Geometry.PlanRectangle.Of(element.Footprint))
             .Where(rectangle => Geometry.SlabOpenings.ContainsRectangle(floor.Boundary, rectangle))
             .ToArray();

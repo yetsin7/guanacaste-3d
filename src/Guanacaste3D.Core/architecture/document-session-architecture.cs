@@ -313,8 +313,7 @@ public sealed partial class DocumentSession
     public Guid? AddSkylight(Guid levelId, string name, Point2 first, Point2 opposite)
     {
         var extent = Geometry.PlanRectangle.Of([first, opposite]);
-        var roof = Document.Floors.FirstOrDefault(floor => floor.LevelId == levelId && floor.Kind == FloorKind.Roof &&
-            Geometry.SlabOpenings.ContainsRectangle(floor.Boundary, extent));
+        var roof = RoofElementHost.Resolve(Document, levelId, extent);
         if (roof is null) return null;
 
         var id = Guid.NewGuid();
@@ -334,7 +333,7 @@ public sealed partial class DocumentSession
             if (element.LevelId != roof.LevelId ||
                 element.Kind is not (StructuralElementKind.Dormer or StructuralElementKind.Skylight)) continue;
             var extent = Geometry.PlanRectangle.Of([element.Start, element.End]);
-            if (!Geometry.SlabOpenings.ContainsRectangle(roof.Boundary, extent)) continue;
+            if (RoofElementHost.Resolve(document, element.LevelId, extent)?.Id != roof.Id) continue;
             document.StructuralElements[index] = element with
             {
                 Offset = roof.ElevationOffset + RoofGeometry.LowestRiseOver(roof, Geometry.SlabOpenings.Corners(extent))

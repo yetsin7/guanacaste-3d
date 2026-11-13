@@ -14,6 +14,20 @@ internal static partial class InteractionChecks
         {
             SetField("_selectedWallId", (Guid?)wall);
             SetField("_selectedOpeningId", (Guid?)opening);
+            var originalWall = session.Document.Walls.Single(item => item.Id == wall);
+            var historyBeforeWallCommands = session.UndoName;
+            foreach (var command in new[] { "Rotate", "FlipWall", "Pin", "DisallowJoin", "AttachTop" })
+                Invoke("ExecuteApplicationCommand", command);
+            Check(session.Document.Walls.Single(item => item.Id == wall) == originalWall &&
+                session.UndoName == historyBeforeWallCommands,
+                "Wall-only commands do not alter a door's host while the door is selected");
+            SetField("_selectedOpeningId", null);
+            Invoke("ExecuteApplicationCommand", "FlipWall");
+            Check(session.Document.Walls.Single(item => item.Id == wall).Start == originalWall.End,
+                "A wall-only command still works when the wall itself is selected");
+            session.Undo();
+            SetField("_selectedWallId", (Guid?)wall);
+            SetField("_selectedOpeningId", (Guid?)opening);
             Invoke("ExecuteApplicationCommand", "Copy");
             Invoke("ExecuteApplicationCommand", "Paste");
             var copyId = Field<Guid?>("_selectedOpeningId");

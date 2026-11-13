@@ -8,6 +8,13 @@ static void Check(bool valid, string explanation)
     Console.WriteLine("OK: " + explanation);
 }
 
+if (Environment.GetEnvironmentVariable("G3D_ONLY") == "view-visibility")
+{
+    ViewVisibilityChecks.Run(Check);
+    PlanDimensionChecks.Run(Check);
+    return;
+}
+
 if (Environment.GetEnvironmentVariable("G3D_ONLY") == "wall-dimensions")
 {
     WallDimensionChecks.Run(Check);

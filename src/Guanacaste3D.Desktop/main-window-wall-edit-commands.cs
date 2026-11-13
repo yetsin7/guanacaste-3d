@@ -34,6 +34,9 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Returns the selected wall only when a hosted opening is not the primary selection.</summary>
+    private Guid? SelectedWallForWallCommand() => _selectedOpeningId is null ? _selectedWallId : null;
+
     /// <summary>Runs an edit, reporting a refused one in the status line instead of changing anything.</summary>
     private bool RunWallEdit(Action edit, string statusKey)
     {
@@ -61,7 +64,7 @@ public partial class MainWindow
 
     private void OffsetSelectedWall()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var text = TextPrompt.Ask(this, GetText("Prompt.Offset.Title"), GetText("Prompt.Offset.Label"),
             GetText("Prompt.Accept"), GetText("Prompt.Cancel"), "1");
         if (text is null) return;
@@ -71,7 +74,7 @@ public partial class MainWindow
 
     private void ArraySelectedWall()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var text = TextPrompt.Ask(this, GetText("Prompt.Array.Title"), GetText("Prompt.Array.Label"),
             GetText("Prompt.Accept"), GetText("Prompt.Cancel"), "3; 0; 3");
         if (text is null) return;
@@ -100,27 +103,27 @@ public partial class MainWindow
     /// <summary>Ties the selected wall's top to the underside of the slab or roof above it.</summary>
     private void AttachSelectedWallTop()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         RunWallEdit(() => _session.AttachWallTopToSlabAbove(id), "Status.WallTopAttached");
     }
 
     /// <summary>Takes the base of the selected wall to the top of the slab under it.</summary>
     private void AttachSelectedWallBase()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         RunWallEdit(() => _session.AttachWallBaseToSlab(id), "Status.WallBaseAttached");
     }
 
     private void FlipSelectedWall()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         RunWallEdit(() => _session.FlipWalls([id]), "Status.SelectedWallFlipped");
     }
 
     /// <summary>Releases the top constraint of the selected wall; it keeps its current height.</summary>
     private void DetachSelectedWallTop()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         RunWallEdit(() =>
         {
             var mark = _session.MarkHistory();
@@ -132,14 +135,14 @@ public partial class MainWindow
 
     private void TogglePinSelectedWall()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var pinned = !_session.Document.Walls.Single(wall => wall.Id == id).Pinned;
         RunWallEdit(() => _session.SetWallsPinned([id], pinned), pinned ? "Status.WallPinned" : "Status.WallUnpinned");
     }
 
     private void BeginMirrorPick()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         BeginWallPick(axis =>
         {
             var line = _session.Document.Walls.Single(wall => wall.Id == axis);

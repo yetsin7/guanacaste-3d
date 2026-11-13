@@ -43,6 +43,17 @@ internal static class PlanDimensionChecks
         var gap = PlanDimensions.ForSelection(session.Document, columnId).Single(item => item.Kind == PlanDimensionKind.Below);
         session.EditDimension(gap, 5);
         check(Math.Abs(PlanDimensions.Resolve(session.Document, gap)!.Value.Value - 5) < 1e-9, "Column gap edit solves the clear distance to a wall face");
+        session.EditDimension(gap, 0);
+        check(Math.Abs(PlanDimensions.Resolve(session.Document, gap)!.Value.Value) < 1e-8 &&
+              PlanDimensions.ForSelection(session.Document, columnId).Any(item => item.Kind == gap.Kind && item.ReferenceId == gap.ReferenceId),
+            "A zero clear distance aligns the column and remains available for further editing");
+        session.Undo();
+        check(Math.Abs(PlanDimensions.Resolve(session.Document, gap)!.Value.Value - 5) < 1e-9,
+            "Undo restores the column before aligning its face with the wall");
+        var length = new PlanDimension(Guid.Empty, level, wallId, null, PlanDimensionKind.WallLength);
+        before = session.Document;
+        try { session.EditDimension(length, 0); } catch (InvalidDataException) { }
+        check(ReferenceEquals(session.Document, before), "Zero is rejected for a wall's own length");
         session.AddDimension(gap);
         check(TemplateRules.StripModelContent(session.Document).Dimensions.Count == 0, "Templates remove annotations with their model owners");
         DimensionExportChecks.Run(check);

@@ -217,8 +217,7 @@ public sealed partial class DocumentSession
     public Guid? AddDormer(Guid levelId, string name, Point2 first, Point2 opposite)
     {
         var extent = Geometry.PlanRectangle.Of([first, opposite]);
-        var roof = Document.Floors.FirstOrDefault(floor => floor.LevelId == levelId && floor.Kind == FloorKind.Roof &&
-            Geometry.SlabOpenings.ContainsRectangle(floor.Boundary, extent));
+        var roof = RoofElementHost.Resolve(Document, levelId, extent);
         if (roof is null) return null;
 
         var id = Guid.NewGuid();

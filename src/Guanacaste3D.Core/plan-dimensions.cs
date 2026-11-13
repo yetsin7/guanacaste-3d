@@ -12,6 +12,10 @@ public readonly record struct PlanMeasurement(Point2 From, Point2 To, double Val
 /// <summary>Builds and resolves plan dimensions for walls, openings and other supported BIM elements.</summary>
 public static partial class PlanDimensions
 {
+    /// <summary>Identifies clear distances that can reach zero when two faces meet.</summary>
+    public static bool AllowsZero(PlanDimensionKind kind) =>
+        kind is PlanDimensionKind.Left or PlanDimensionKind.Right or PlanDimensionKind.Below or PlanDimensionKind.Above;
+
     /// <summary>Gets the active-level bounding rectangle; opening bounds follow their host axis.</summary>
     public static (Guid LevelId, PlanBounds Bounds)? Bounds(BuildingDocument document, Guid id)
     {
@@ -64,7 +68,7 @@ public static partial class PlanDimensions
                     : target.MaxX <= owner.Bounds.MinX || target.MinX >= owner.Bounds.MaxX) continue;
                 var candidate = new PlanDimension(Guid.Empty, owner.LevelId, ownerId, referenceId, kind);
                 var value = Resolve(document, candidate)?.Value ?? -1;
-                if (value < 0.01 || value >= minimum) continue;
+                if (value < -1e-8 || value >= minimum) continue;
                 nearest = candidate;
                 minimum = value;
             }

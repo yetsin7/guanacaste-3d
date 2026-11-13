@@ -22,7 +22,7 @@ public sealed partial class DocumentSession
     /// <summary>Solves a metric edit against a fixed reference, rejecting collisions atomically.</summary>
     public void EditDimension(PlanDimension dimension, double value)
     {
-        if (!double.IsFinite(value) || value <= 0)
+        if (!double.IsFinite(value) || value < 0 || (value == 0 && !PlanDimensions.AllowsZero(dimension.Kind)))
             throw new InvalidDataException("Dimension value must be positive and finite.");
         var measurement = PlanDimensions.Resolve(Document, dimension)
             ?? throw new InvalidDataException("Invalid plan dimension references.");

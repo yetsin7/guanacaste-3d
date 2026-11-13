@@ -25,7 +25,7 @@ public partial class MainWindow
             case "UnjoinGeometry": chosen = WallJoinSetting.Disallowed; break;
             default: return false;
         }
-        if (_selectedWallId is not Guid wallId)
+        if (SelectedWallForWallCommand() is not Guid wallId)
         {
             StatusText.Text = GetText("Status.SelectWallToJoin");
             return true;

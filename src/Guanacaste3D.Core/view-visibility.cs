@@ -39,10 +39,15 @@ public static class ViewVisibility
         if (hiddenWorksets.Count > 0)
             stageHidden.UnionWith(document.WorksetAssignments.Where(item => hiddenWorksets.Contains(item.WorksetId)).Select(item => item.Id));
 
+        var isolated = view.IsolatedElementIds.ToHashSet();
+        // Hosted openings need their wall in the view to provide geometry and placement context.
+        isolated.UnionWith(document.Openings.Where(opening => isolated.Contains(opening.Id))
+            .Select(opening => opening.WallId));
+
         bool CategoryShown(ViewCategory category) => !view.HiddenCategories.Contains(category);
 
         bool Shown(Guid id) => !view.HiddenElementIds.Contains(id) && !stageHidden.Contains(id) &&
-                               (view.IsolatedElementIds.Count == 0 || view.IsolatedElementIds.Contains(id));
+                               (view.IsolatedElementIds.Count == 0 || isolated.Contains(id));
 
         copy.Walls.RemoveAll(wall => !Shown(wall.Id) || !CategoryShown(ViewCategory.Walls) ||
                                      view.Filters.Any(filter => filter.Matches(document, wall)));

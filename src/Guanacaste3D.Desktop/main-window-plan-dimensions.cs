@@ -153,7 +153,8 @@ public partial class MainWindow
     private void ApplyDimensionText(PlanDimension dimension, string input)
     {
         // A plain number is in the project's unit; a unit after it (m, cm, mm, ft, in) says otherwise.
-        if (!Units.TryParseLength(input, out var value) || value <= 0)
+        if (!Units.TryParseLength(input, out var value) || value < 0 ||
+            (value == 0 && !PlanDimensions.AllowsZero(dimension.Kind)))
         {
             StatusText.Text = GetText("Dimension.Invalid");
             RenderPlan();

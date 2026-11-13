@@ -37,6 +37,31 @@ static class ViewVisibilityChecks
         }
         finally { File.Delete(path); }
         RunSameTypeChecks(check);
+        RunHostedIsolationChecks(check);
+    }
+
+    /// <summary>Ensures an isolated opening retains its required host without exposing unrelated elements.</summary>
+    private static void RunHostedIsolationChecks(Action<bool, string> check)
+    {
+        var session = new DocumentSession(BuildingDocument.Create("Hosted isolation"));
+        var level = session.Document.Levels[0].Id;
+        var wall = session.AddWall(level, new(0, 0), new(6, 0));
+        var other = session.AddWall(level, new(0, 4), new(6, 4));
+        var door = session.AddOpening(wall, OpeningKind.Door, 2);
+        var otherDoor = session.AddOpening(wall, OpeningKind.Door, 4);
+        var viewId = session.Document.Views.First(view => view.Kind == ProjectViewKind.Model3D).Id;
+        session.SetViewVisibility(viewId, [], [door]);
+        var view = session.Document.Views.Single(item => item.Id == viewId);
+        var visible = ViewVisibility.Apply(session.Document, view);
+        check(visible.Walls.Select(item => item.Id).SequenceEqual([wall]) &&
+              visible.Openings.Select(item => item.Id).SequenceEqual([door]),
+            "Isolating a hosted opening retains its host and excludes unrelated elements");
+        check(session.Document.Walls.Any(item => item.Id == other) && session.Document.Openings.Any(item => item.Id == otherDoor),
+            "View isolation leaves the original document unchanged");
+        session.SetViewVisibility(viewId, [wall], [door]);
+        visible = ViewVisibility.Apply(session.Document, session.Document.Views.Single(item => item.Id == viewId));
+        check(visible.Walls.Count == 0 && visible.Openings.Count == 0,
+            "An explicitly hidden host stays hidden even when its opening is isolated");
     }
 
     /// <summary>Checks Revit-style "select all of the same type" and the batch removal that follows it.</summary>

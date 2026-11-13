@@ -52,7 +52,7 @@ public partial class MainWindow
 
     private void ScaleSelectedWall()
     {
-        if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
+        if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var text = TextPrompt.Ask(this, GetText("Prompt.Scale.Title"), GetText("Prompt.Scale.Label"),
             GetText("Prompt.Accept"), GetText("Prompt.Cancel"), "2");
         if (text is null) return;
