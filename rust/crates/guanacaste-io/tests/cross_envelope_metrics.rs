@@ -55,8 +55,8 @@ fn native_envelope_metrics_match_legacy_and_preview() {
 
     // Header GUID uses .NET Guid.ToByteArray() mixed-endian layout.
     let guid: [u8; 16] = [
-        0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66,
-        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+        0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd,
+        0xee, 0xff,
     ];
     let mut native = Vec::new();
     native.extend_from_slice(b"G3DNATV1");
@@ -72,9 +72,18 @@ fn native_envelope_metrics_match_legacy_and_preview() {
     let inspected = guanacaste_io::inspect_native(&native).unwrap();
     let legacy = inspect_legacy_json(json).unwrap();
     assert_eq!(inspected.json, json);
-    assert_eq!(inspected.header.as_ref().unwrap().document_guid, "00112233-4455-6677-8899-aabbccddeeff");
-    assert_eq!(extract_wall_volumes(&inspected).unwrap(), extract_wall_volumes(&legacy).unwrap());
-    assert_eq!(extract_wall_surface_areas(&inspected).unwrap(), extract_wall_surface_areas(&legacy).unwrap());
+    assert_eq!(
+        inspected.header.as_ref().unwrap().document_guid,
+        "00112233-4455-6677-8899-aabbccddeeff"
+    );
+    assert_eq!(
+        extract_wall_volumes(&inspected).unwrap(),
+        extract_wall_volumes(&legacy).unwrap()
+    );
+    assert_eq!(
+        extract_wall_surface_areas(&inspected).unwrap(),
+        extract_wall_surface_areas(&legacy).unwrap()
+    );
 
     // Corrupted compressed bytes must not be accepted as equivalent geometry.
     let last = native.len() - 1;
