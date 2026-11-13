@@ -72,14 +72,25 @@ fn cli_preview_envelope_matches_legacy_json_without_rewriting_input() {
     fs::write(&preview_path, &preview).unwrap();
 
     let raw = Command::new(executable).arg(&raw_path).output().unwrap();
-    let wrapped = Command::new(executable).arg(&preview_path).output().unwrap();
+    let wrapped = Command::new(executable)
+        .arg(&preview_path)
+        .output()
+        .unwrap();
     let raw_after = fs::read(&raw_path).unwrap();
     let preview_after = fs::read(&preview_path).unwrap();
     let _ = fs::remove_file(&raw_path);
     let _ = fs::remove_file(&preview_path);
 
-    assert!(raw.status.success(), "{}", String::from_utf8_lossy(&raw.stderr));
-    assert!(wrapped.status.success(), "{}", String::from_utf8_lossy(&wrapped.stderr));
+    assert!(
+        raw.status.success(),
+        "{}",
+        String::from_utf8_lossy(&raw.stderr)
+    );
+    assert!(
+        wrapped.status.success(),
+        "{}",
+        String::from_utf8_lossy(&wrapped.stderr)
+    );
     assert_eq!(raw.stdout, wrapped.stdout);
     assert_eq!(raw_after, JSON.as_bytes());
     assert_eq!(preview_after, preview);
