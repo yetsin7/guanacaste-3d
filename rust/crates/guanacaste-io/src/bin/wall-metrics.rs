@@ -4,14 +4,14 @@ use guanacaste_io::{
     bim_slice::{extract_wall_surface_areas, extract_wall_volumes},
     inspect_legacy_json, inspect_native, inspect_preview, MAX_NATIVE_BYTES,
 };
-use std::{env, fs, process};
+use std::{env, fs, io::Read, process};
 
 fn run(path: &str) -> Result<(), String> {
     let metadata = fs::metadata(path).map_err(|err| format!("cannot stat input: {err}"))?;
     if metadata.len() > MAX_NATIVE_BYTES as u64 {
         return Err("input exceeds native document limit".into());
     }
-    let bytes = fs::read(path).map_err(|err| format!("cannot read input: {err}"))?;
+    // Bound the read itself: a concurrent writer cannot force unbounded allocation.\n    let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;\n    let mut bytes = Vec::new();\n    file.take(MAX_NATIVE_BYTES as u64 + 1)\n        .read_to_end(&mut bytes)\n        .map_err(|err| format!("cannot read input: {err}"))?;
     // Metadata can become stale if another process grows the file during the read.
     if bytes.len() > MAX_NATIVE_BYTES {
         return Err("input exceeds native document limit".into());
