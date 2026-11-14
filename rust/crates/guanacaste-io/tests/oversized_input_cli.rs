@@ -28,8 +28,6 @@ fn oversized_input_is_rejected_before_parsing_without_mutation() {
     fs::remove_file(&path).unwrap();
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty(), "oversized input leaked metrics");
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("input exceeds native document limit")
-    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("input exceeds native document limit"));
     assert_eq!(after, MAX_NATIVE_BYTES as u64 + 1);
 }
