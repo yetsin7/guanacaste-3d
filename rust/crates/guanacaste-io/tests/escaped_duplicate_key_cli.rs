@@ -28,8 +28,6 @@ fn escaped_duplicate_wall_property_is_rejected_without_output_or_mutation() {
     fs::remove_file(&path).unwrap();
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty(), "invalid JSON emitted metrics");
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("invalid document envelope")
-    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("invalid document envelope"));
     assert_eq!(after, input, "read-only inspection mutated its input");
 }
