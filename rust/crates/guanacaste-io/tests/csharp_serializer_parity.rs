@@ -38,7 +38,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let csharp_report = String::from_utf8(generated.stdout).unwrap();
     let csharp_report = csharp_report.trim();
     assert_eq!(
-        csharp_report, "00000000000000000000000000000002, 2.400000000000, 26.800000000000",
+        csharp_report,
+        concat!(
+            "00000000000000000000000000000002, 2.400000000000, 26.800000000000\n",
+            "00000000000000000000000000000003, 3.000000000000, 33.200000000000"
+        ),
         "C# fixture dimensions or GUID changed unexpectedly"
     );
 
