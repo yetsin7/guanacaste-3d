@@ -659,6 +659,7 @@ MaterialTakeoffChecks.Run(Check);
 ViewDisciplineChecks.Run(Check);
 RoomFaceJoinChecks.Run(Check);
 FamilyAuthoringChecks.Run(Check);
+EngineeringTableChecks.Run(Check);
 RevitExchangeChecks.Run(Check);
 AnnotationChecks.Run(Check);
 CalloutChecks.Run(Check);

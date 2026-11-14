@@ -137,7 +137,8 @@ public static class BuiltInProjectViews
     public static readonly Guid LocationId = Guid.Parse("b41c9e07-6d25-4f83-8a1e-3c7d5f9b0e12");
 
     /// <summary>Whether a view is a generated drawing that sheets can place without a model scale of its own.</summary>
-    public static bool IsGeneratedSheetView(ProjectView view) => view.Id == AreaScheduleId || view.Id == LocationId;
+    public static bool IsGeneratedSheetView(ProjectView view) =>
+        view.Id == AreaScheduleId || view.Id == LocationId || EngineeringTables.IsEngineeringTable(view.Id);
 
     public static readonly Guid SouthElevationId = Guid.Parse("7a1f0c52-5d4b-4f0e-8a9c-2b6e1d3f4a05");
     public static readonly Guid EastElevationId = Guid.Parse("c3d8e1b7-92a4-4c6f-b5e0-0f7a2d9c4b16");
@@ -163,6 +164,7 @@ public static class BuiltInProjectViews
         EnsureElevations(views);
         EnsureAreaSchedule(views);
         EnsureLocation(views);
+        EngineeringTables.Ensure(views);
         return views;
     }
 

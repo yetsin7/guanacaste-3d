@@ -299,14 +299,20 @@ internal static partial class InteractionChecks
             var polygonsFlat = elevationCanvas.Children.OfType<System.Windows.Shapes.Polygon>().Count();
             tabs.SelectedIndex = 0;
             Pump();
-            session.SetWallProfile(angleA, WallProfiles.Gable(4, 3));
+            // The gable goes on the house's longest wall seen face-on in the elevation on show: a small wall far from the
+            // house would be drawn a few pixels wide, and below 4 px a profile is rightly drawn as a plain rectangle.
+            var (shownOrientation, _) = ((ViewOrientation, string))Invoke("CurrentElevation")!;
+            var acrossX = shownOrientation is ViewOrientation.North or ViewOrientation.South;
+            // A wall without doors or windows: a gable may not cut below an opening, and the program rightly refuses it.
+            var gabled = session.Document.Walls.Where(wall => wall.LevelId == activeLevel &&
+                    session.Document.Openings.All(opening => opening.WallId != wall.Id))
+                .MaxBy(wall => acrossX ? Math.Abs(wall.End.X - wall.Start.X) : Math.Abs(wall.End.Y - wall.Start.Y))!;
+            session.SetWallProfile(gabled.Id, WallProfiles.Gable(gabled.Length, gabled.Height));
             tabs.SelectedIndex = 4;
             Pump();
-            // The views redraw once the edit settles; a slow machine (the CI runner) can need a few more frames.
-            for (var frame = 0; frame < 50 && elevationCanvas.Children.OfType<System.Windows.Shapes.Polygon>().Count() <= polygonsFlat; frame++) Pump();
             Check(elevationCanvas.Children.OfType<System.Windows.Shapes.Polygon>().Count() > polygonsFlat,
                 "A wall with a profile is drawn in the elevation as the polygon under its top, not as a rectangle");
-            session.ResetWallProfiles([angleA]);
+            session.ResetWallProfiles([gabled.Id]);
             var sectionCanvas = (Canvas)opened.FindName("SectionCanvas");
             tabs.SelectedIndex = 5;
             Pump();

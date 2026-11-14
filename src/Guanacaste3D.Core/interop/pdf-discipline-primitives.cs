@@ -72,29 +72,32 @@ public static partial class PdfPlanExporter
             yield return new SheetPolyline([device.Position, panel.Position], 0.18, ElectricalInk, true);
         }
         foreach (var device in devices)
-        foreach (var primitive in ElectricalSymbol(device))
+        foreach (var primitive in ElectricalSymbolPrimitives(device.Kind, device.Position, device.Name))
             yield return primitive;
     }
 
-    /// <summary>A plan symbol per device: receptacle, switch, luminaire, panel or air conditioner.</summary>
-    private static IEnumerable<SheetPrimitive> ElectricalSymbol(ElectricalDevice device)
+    /// <summary>
+    /// The plan symbol of a device kind: receptacle, switch, luminaire or panel (an air conditioner is drawn by the
+    /// mechanical layer). The symbol legend draws the same primitives, so legend and plans always agree.
+    /// </summary>
+    public static IEnumerable<SheetPrimitive> ElectricalSymbolPrimitives(ElectricalDeviceKind kind, Point2 at, string name = "")
     {
-        var at = device.Position;
-        if (device.Kind == ElectricalDeviceKind.MiniSplit) yield break;
-        if (device.Kind == ElectricalDeviceKind.Panel)
+        var probe = new ElectricalDevice(Guid.Empty, Guid.Empty, kind, name, at, 0);
+        if (kind == ElectricalDeviceKind.MiniSplit) yield break;
+        if (kind == ElectricalDeviceKind.Panel)
         {
             yield return new SheetPolygon(Box(at, 0.35, 0.12), 0.35, ElectricalInk, ElectricalInk);
-            yield return new SheetText(new Point2(at.X + 0.3, at.Y + 0.2), device.Name, 2.2, ElectricalInk, true);
+            if (name.Length > 0) yield return new SheetText(new Point2(at.X + 0.3, at.Y + 0.2), name, 2.2, ElectricalInk, true);
             yield break;
         }
-        if (device.IsLuminaire)
+        if (probe.IsLuminaire)
         {
             yield return new SheetPolygon(Circle(at, 0.2), 0.3, ElectricalInk, null);
             yield return new SheetPolyline([new(at.X - 0.14, at.Y - 0.14), new(at.X + 0.14, at.Y + 0.14)], 0.3, ElectricalInk);
             yield return new SheetPolyline([new(at.X - 0.14, at.Y + 0.14), new(at.X + 0.14, at.Y - 0.14)], 0.3, ElectricalInk);
             yield break;
         }
-        if (device.IsSwitch)
+        if (probe.IsSwitch)
         {
             yield return new SheetPolygon(Circle(at, 0.08), 0.3, ElectricalInk, ElectricalInk);
             yield return new SheetText(new Point2(at.X + 0.12, at.Y + 0.08), "S", 2.2, ElectricalInk, true);
@@ -123,6 +126,9 @@ public static partial class PdfPlanExporter
             yield return new SheetText(new Point2(point.Position.X + 0.3, point.Position.Y + 0.25), point.Name, 2.2, (0.1, 0.25, 0.6), true);
         }
     }
+
+    /// <summary>The colour a plumbing system prints in, shared by the plans and the symbol legend.</summary>
+    public static (double, double, double) PipeColor(PlumbingSystemKind kind) => PipeInk(kind);
 
     private static (double, double, double) PipeInk(PlumbingSystemKind kind) => kind switch
     {

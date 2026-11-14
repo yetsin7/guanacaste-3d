@@ -39,4 +39,8 @@
   <data name="ScheduleColumn.Count" xml:space="preserve"><value>Cantidad</value></data>
   <data name="ScheduleColumn.Yes" xml:space="preserve"><value>Sí</value></data>
   <data name="ScheduleColumn.No" xml:space="preserve"><value>No</value></data>
+  <data name="PanelSchedule.Title" xml:space="preserve"><value>Cuadro de cargas</value></data>
+  <data name="PlumbingSchedule.Title" xml:space="preserve"><value>Cuadro hidrosanitario</value></data>
+  <data name="SymbolLegend.Title" xml:space="preserve"><value>Simbología</value></data>
+  <data name="BudgetTable.Title" xml:space="preserve"><value>Presupuesto de obra</value></data>
 </root>

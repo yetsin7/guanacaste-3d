@@ -107,7 +107,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-12 | P1 | «La cubierta no aparece en los alzados» | no era fallo: la captura se tomó antes de dibujar la cubierta; la casa pequeña ahora comprueba que la cubierta se dibuja en el alzado Norte | `house-from-scratch-checks.cs` |
 | C-13 | P2 | Sin respuesta visible: Eliminar sin selección, Informes, Análisis estructural, Análisis de sistemas, Parámetros compartidos, Coordenadas, Transmitir modelo, Configuración CES | abierto | ver inventario |
 | C-14 | P2 | Tablas de puertas/ventanas/habitaciones: se crean por código en la muestra; falta el flujo por botones (nueva tabla por categoría) | abierto | `SchedulesWindow` |
-| C-15 | P1 | Láminas sin cuadro de cargas, cuadro de plomería, leyendas de símbolos ni tablas de presupuesto como vistas colocables | abierto | `SheetEditorWindow` (`_views`) |
+| C-15 | P1 | Las láminas no tenían cuadro de cargas, cuadro hidrosanitario, simbología ni presupuesto | corregido: cuatro tablas generadas (vistas del navegador) que se colocan en láminas y se mantienen al día: cuadro de cargas con conductor y caída de tensión, cuadro hidrosanitario, simbología con los mismos símbolos de los planos y presupuesto por rubros; los proyectos antiguos las reciben al abrirse | `sheets/engineering-tables.cs` |
 | C-16 | P2 | Ventilación: solo hay rejilla, ducto y minisplit; faltan caudales, renovaciones por hora y dimensionado de ductos | abierto | MEP |
 | C-17 | P2 | Estructura: hay cimientos, zapatas, vigas y columnas, pero no armado (varillas, estribos) dibujado ni cuadros de armado en lámina | abierto | `reinforcement.cs` |
 | C-18 | P3 | Presupuesto: no cuenta escalera, barandillas, celosía, muro cortina, aparatos sanitarios ni instalaciones eléctricas/hidráulicas | abierto | `budget/material-takeoff.cs` |
@@ -122,6 +122,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-28 | P1 | Con un edificio grande cada cambio tardaba ~1 s: el navegador del proyecto (999 nodos) se reconstruía siempre | corregido: solo se reconstruye si cambia lo que muestra; niveles plegados. Cambiar de nivel 1.0 s → 0.24 s | `main-window-project-sidebar.cs` |
 | C-29 | P2 | Ctrl+A y Supr no borraban aparatos eléctricos ni puntos de plomería | corregido: se borran con sus circuitos, enlaces de apagador, sistemas y bomba, en un solo paso de deshacer | `RemoveElements`, `RemoveInstallation` |
 | C-30 | P1 | CI de `main` en rojo desde a84dda4: la prueba de documentación esperaba cabezas de sección de 28 px fijos | corregido (6a139e8) | `desktop-documentation-checks.cs` |
+| C-31 | P2 | Pruebas frágiles en CI: el perfil de muro se probaba en un muro de 4 m a 500 m de la casa (menos de 4 px en pantallas pequeñas) | corregido: se usa el muro más largo de la casa visto de frente | `cobogo-interaction-checks.cs` |
 | C-19 | P2 | Hay dos tipos de cuadro de diálogo de texto (PromptWindow y TextPrompt) con comportamientos distintos | abierto | `PromptWindow.cs`, `text-prompt.cs` |
 
 Brechas anteriores ya corregidas en esta línea de trabajo (ver `MEJORAS.md` sección 6): U-03 eje de Arquitectura,
@@ -132,7 +133,7 @@ U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
 
 0. **Familias (C-24/C-25):** revolución, barrido y extrusión por boceto en el editor; material por sólido; símbolo de planta propio.
 
-1. **C-15** cuadros (cargas, plomería), leyendas de símbolos y presupuesto como vistas colocables en láminas: completa E-101, H-101 y M-101.
+1. **C-24** familias más ricas (revolución, barrido, materiales) y **C-25** muebles propios en presupuesto.
 2. **C-05/C-06** referencia a cara de muro y control de las guías: dibujar exacto sin trucos de zoom.
 3. **C-12** cubierta en alzados y **C-10** seleccionar vanos con clic.
 4. **C-08** propiedades de ejemplar de muro y elementos lineales.

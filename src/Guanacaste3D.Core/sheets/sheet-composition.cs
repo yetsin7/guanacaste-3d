@@ -42,7 +42,7 @@ public static class SheetComposition
             else graphics.Add(new SheetPolyline([graphic.Start, graphic.End], graphic.Weight, Ink));
         }
         var mesh = sheet.Viewports.Any(viewport => document.Views.Any(view => view.Id == viewport.ViewId &&
-            view.Kind != ProjectViewKind.Plan && view.Id != BuiltInProjectViews.AreaScheduleId && view.Id != BuiltInProjectViews.LocationId)) ? BuildingMesher.Build(document) : null;
+            view.Kind != ProjectViewKind.Plan && !BuiltInProjectViews.IsGeneratedSheetView(view))) ? BuildingMesher.Build(document) : null;
         var viewports = new List<ComposedViewport>();
         foreach (var placement in sheet.Viewports)
         {
@@ -52,10 +52,12 @@ public static class SheetComposition
                 continue;
             }
             var view = document.Views.Single(view => view.Id == placement.ViewId);
-            if (view.Id == BuiltInProjectViews.AreaScheduleId)
+            if (view.Id == BuiltInProjectViews.AreaScheduleId || EngineeringTables.IsEngineeringTable(view.Id))
             {
                 // A table is drawn straight in paper millimeters: it has no model scale to fit.
-                viewports.Add(new(placement, 1, AreaSchedule.Primitives(document, placement)));
+                viewports.Add(new(placement, 1, view.Id == BuiltInProjectViews.AreaScheduleId
+                    ? AreaSchedule.Primitives(document, placement)
+                    : EngineeringTables.Primitives(document, view.Id, placement)));
                 var tableY = placement.Y + placement.Height - 10;
                 graphics.Add(new SheetPolyline([new(placement.X + 8, tableY + 4), new(placement.X + placement.Width, tableY + 4)], 0.25, Ink));
                 graphics.Add(new SheetText(new(placement.X + 2, tableY + 0.5), placement.Number, 2.5, Ink));

@@ -204,7 +204,8 @@ public static class ProjectFile
             document.SheetFamilies ??= [];
             SheetFamilies.Ensure(document);
         }
-
+        // Every version: projects made before the engineering tables existed get them, ready to place on sheets.
+        if (document.Views is { Count: > 0 }) EngineeringTables.Ensure(document.Views);
     }
 
     /// <summary>

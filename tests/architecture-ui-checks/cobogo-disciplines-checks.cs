@@ -305,36 +305,46 @@ internal static partial class HouseFromScratchChecks
         }
         yield return ("9.5 Láminas por disciplina con sus vistas", () =>
         {
-            var wanted = new[] { ("A-101", "Planta baja", Ground), ("A-102", "Planta alta", Upper), ("A-201", "Alzados", "Vista Norte"),
-                ("A-301", "Secciones", "Sección"), ("S-101", "Cimentaciones", "Estructural"), ("E-101", "Eléctrica", "Eléctrica"),
-                ("I-101", "Iluminación", "Iluminación"), ("H-101", "Hidrosanitaria", "Hidrosanitaria"), ("M-101", "Ventilación", "Ventilación") };
+            // Engineering sheets carry their tables and the symbol legend next to the plan, as a permit set needs.
+            var wanted = new (string Number, string Name, string[] Views)[]
+            {
+                ("A-101", "Planta baja", [Ground]), ("A-102", "Planta alta", [Upper]), ("A-201", "Alzados", ["Vista Norte"]),
+                ("A-301", "Secciones", ["Sección"]), ("S-101", "Cimentaciones", ["Estructural"]),
+                ("E-101", "Eléctrica", ["Eléctrica", "Cuadro de cargas", "Simbología"]), ("I-101", "Iluminación", ["Iluminación", "Simbología"]),
+                ("H-101", "Hidrosanitaria", ["Hidrosanitaria", "Cuadro hidrosanitario", "Simbología"]), ("M-101", "Ventilación", ["Ventilación"]),
+                ("P-001", "Presupuesto", ["Presupuesto de obra"])
+            };
             var made = new List<string>();
             var missing = new List<string>();
-            foreach (var (number, name, view) in wanted)
+            foreach (var (number, name, views) in wanted)
             {
                 App("Sheet");
                 var sheet = Doc.Sheets[^1];
-                var added = false;
+                var added = 0;
                 ExpectDialog("SheetEditorWindow", dialog =>
                 {
                     ((TextBox)dialog.GetType().GetField("_name", Private)!.GetValue(dialog)!).Text = name;
                     ((TextBox)dialog.GetType().GetField("_number", Private)!.GetValue(dialog)!).Text = number;
-                    var views = (ComboBox)dialog.GetType().GetField("_views", Private)!.GetValue(dialog)!;
-                    var choice = views.Items.Cast<object>().FirstOrDefault(item =>
-                        item.GetType().GetProperty("Label")?.GetValue(item)?.ToString()?.Contains(view, StringComparison.OrdinalIgnoreCase) == true);
-                    if (choice is not null)
+                    var picker = (ComboBox)dialog.GetType().GetField("_views", Private)!.GetValue(dialog)!;
+                    foreach (var view in views)
                     {
-                        views.SelectedItem = choice;
+                        var choice = picker.Items.Cast<object>().FirstOrDefault(item =>
+                            item.GetType().GetProperty("Label")?.GetValue(item)?.ToString()?.Contains(view, StringComparison.OrdinalIgnoreCase) == true);
+                        if (choice is null) continue;
+                        picker.SelectedItem = choice;
                         Call(dialog, "AddView_Click");
-                        added = true;
+                        added++;
                     }
                     Call(dialog, "Apply_Click");
                 });
                 typeof(MainWindow).GetField("_selectedSheetId", Private)!.SetValue(_window, (Guid?)sheet.Id);
                 Invoke("EditSheet_Click", _window, new RoutedEventArgs());
                 var updated = Doc.Sheets.Single(candidate => candidate.Id == sheet.Id);
-                if (added && updated.Number == number && updated.Viewports.Count > 0) made.Add(number);
-                else missing.Add($"{number} (sin vista «{view}»)");
+                var placed = updated.Viewports.Select(viewport => Doc.Views.FirstOrDefault(view => view.Id == viewport.ViewId)?.Name
+                    ?? Doc.Schedules.FirstOrDefault(schedule => schedule.Id == viewport.ViewId)?.Name ?? "").ToList();
+                if (added == views.Length && updated.Number == number &&
+                    views.All(view => placed.Any(name => name.Contains(view, StringComparison.OrdinalIgnoreCase)))) made.Add(number);
+                else missing.Add($"{number} ({added} de {views.Length} vistas: {string.Join(", ", views)})");
             }
             Expect(missing.Count == 0, $"láminas completas: {string.Join(", ", made)}; incompletas: {string.Join(", ", missing)}");
             return string.Join(", ", made);
