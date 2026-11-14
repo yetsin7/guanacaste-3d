@@ -44,7 +44,10 @@ fn later_curved_wall_rejects_entire_report_without_mutating_document() {
     fs::remove_file(&path).unwrap();
 
     assert_eq!(output.status.code(), Some(1));
-    assert!(output.stdout.is_empty(), "unsupported geometry leaked metrics");
+    assert!(
+        output.stdout.is_empty(),
+        "unsupported geometry leaked metrics"
+    );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("unsupported wall subset"),
         "unexpected error: {}",
