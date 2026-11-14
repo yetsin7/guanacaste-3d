@@ -10,7 +10,9 @@ fn run(path: &str) -> Result<(), String> {
     // Open first, then inspect that exact handle: a path may be replaced between
     // separate stat/open calls (including through a symlink).
     let file = fs::File::open(path).map_err(|err| format!("cannot read input: {err}"))?;
-    let metadata = file.metadata().map_err(|err| format!("cannot stat input: {err}"))?;
+    let metadata = file
+        .metadata()
+        .map_err(|err| format!("cannot stat input: {err}"))?;
     if metadata.len() > MAX_NATIVE_BYTES as u64 {
         return Err("input exceeds native document limit".into());
     }
@@ -25,8 +27,10 @@ fn run(path: &str) -> Result<(), String> {
     }
     let inspected = if bytes.starts_with(b"G3DNATV1") {
         inspect_native(&bytes)
-    } else if bytes.starts_with(b"G3-PROJECT/1
-") {
+    } else if bytes.starts_with(
+        b"G3-PROJECT/1
+",
+    ) {
         inspect_preview(&bytes)
     } else {
         inspect_legacy_json(&bytes)
