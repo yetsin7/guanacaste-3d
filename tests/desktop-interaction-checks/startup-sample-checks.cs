@@ -51,9 +51,11 @@ internal static partial class InteractionChecks
                   session.Document.Sheets.Count == 6 &&
                   typeof(MainWindow).GetField("_filePath", PrivateInstance)!.GetValue(opened) is null,
                 "The breeze-block house opens from Home, with its families and sheets, as an untitled copy");
-            Check(tabs.SelectedIndex == 6 && Math.Abs(camera.Position.Y - setup.CameraY) < 1e-3 &&
+            Check(tabs.SelectedIndex == 1 && Math.Abs(camera.Position.Y - setup.CameraY) < 1e-3 &&
                   Math.Abs(camera.PitchDegrees - setup.PitchDegrees) < 1e-3,
-                "The sample opens on the Render tab from its saved camera");
+                "The sample opens on the 3D view from its saved camera");
+            // The Render workspace is no longer a BIM tab; it is entered explicitly by the Render host.
+            typeof(MainWindow).GetMethod("EnterRenderWorkspace")!.Invoke(opened, null);
             var panel = (RenderPanel)opened.FindName("RenderPanelControl");
             var viewport = (System.Windows.Controls.Viewport3D)panel.FindName("InteractiveViewport");
             var previewToggle = (System.Windows.Controls.Primitives.ToggleButton)panel.FindName("PreviewToggle");

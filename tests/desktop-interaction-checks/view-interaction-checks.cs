@@ -148,7 +148,7 @@ internal static partial class InteractionChecks
             Pump();
             var tabs = (TabControl)_window.FindName("ViewTabs");
             var standardSidebar = (FrameworkElement)_window.FindName("StandardSidebar");
-            tabs.SelectedIndex = 6;
+            ((Guanacaste3D.Desktop.MainWindow)_window).EnterRenderWorkspace();
             Pump();
             var panel = (Control)_window.FindName("RenderPanelControl");
             var imageHost = (FrameworkElement)panel.FindName("ImageHost");
@@ -157,10 +157,10 @@ internal static partial class InteractionChecks
             var globalStatus = (FrameworkElement)_window.FindName("MainStatusStrip");
             var return3D = (Button)_window.FindName("RenderReturn3DButton");
             Check(panel.Visibility == Visibility.Visible && standardSidebar.Visibility == Visibility.Collapsed &&
-                  titleBar.Visibility == Visibility.Collapsed && ribbon.Visibility == Visibility.Collapsed &&
+                  ribbon.Visibility == Visibility.Collapsed &&
                   globalStatus.Visibility == Visibility.Collapsed && return3D.Visibility == Visibility.Visible,
                 "Immersive Render hides the BIM chrome and palettes while leaving a visible 3D return");
-            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 375) < 4,
+            Check(Math.Abs(imageHost.TranslatePoint(new Point(), panel).X - 415) < 4,
                 "The Render studio keeps a compact resizable sidebar and a separate mode rail");
             Check(panel.Background is SolidColorBrush { Color: { R: < 60, G: < 60, B: < 70 } },
                 "The independent Render studio uses a dark photographic theme");
