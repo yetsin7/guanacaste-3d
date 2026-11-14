@@ -17,10 +17,8 @@ fn csharp_serializers_match_rust_wall_metrics() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let directory = std::env::temp_dir().join(format!(
-        "g3d-csharp-parity-{}-{nonce}",
-        std::process::id()
-    ));
+    let directory =
+        std::env::temp_dir().join(format!("g3d-csharp-parity-{}-{nonce}", std::process::id()));
     fs::create_dir(&directory).unwrap();
     let project =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../interop-fixtures/WallFixture.csproj");
@@ -40,8 +38,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let csharp_report = String::from_utf8(generated.stdout).unwrap();
     let csharp_report = csharp_report.trim();
     assert_eq!(
-        csharp_report,
-        "00000000000000000000000000000002, 2.400000000000, 26.800000000000",
+        csharp_report, "00000000000000000000000000000002, 2.400000000000, 26.800000000000",
         "C# fixture dimensions or GUID changed unexpectedly"
     );
 
@@ -81,7 +78,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
     *last ^= 0x01;
     let corrupt_path = directory.join("corrupt-wall.g3d");
     fs::write(&corrupt_path, corrupted).unwrap();
-    let rejected = Command::new(executable).arg(&corrupt_path).output().unwrap();
+    let rejected = Command::new(executable)
+        .arg(&corrupt_path)
+        .output()
+        .unwrap();
     assert!(
         !rejected.status.success(),
         "Rust must reject a corrupted C# native fixture"
