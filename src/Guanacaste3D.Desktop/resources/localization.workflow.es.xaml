@@ -20,6 +20,12 @@
   <sys:String x:Key="Floor.FromWallOutline">Por contorno de muros del nivel (primer tipo)</sys:String>
   <sys:String x:Key="Status.LevelAddedStayOnPlan">Se creó «{0}» a {1}, con su planta. Sigue trabajando en «{2}»; para dibujar en el nuevo, cámbielo en «Nivel activo» o ábralo en el navegador.</sys:String>
   <sys:String x:Key="Status.HostAlreadyHasRailings">Esta escalera o rampa ya tiene sus barandillas; se ajustan solas cuando cambia. Para cambiarlas, selecciónelas y edítelas.</sys:String>
+  <sys:String x:Key="InstanceProperties.BaseOffset">Desfase inferior</sys:String>
+  <sys:String x:Key="InstanceProperties.TopConstraint">Restricción superior</sys:String>
+  <sys:String x:Key="InstanceProperties.TopOffset">Desfase superior</sys:String>
+  <sys:String x:Key="InstanceProperties.Unconnected">Sin conexión (altura propia)</sys:String>
+  <sys:String x:Key="InstanceProperties.UpToLevel">Hasta nivel: {0}</sys:String>
+  <sys:String x:Key="Transaction.WallConstraints">Restricciones del muro</sys:String>
   <sys:String x:Key="WallSnap.Face">Cara de muro</sys:String>
   <sys:String x:Key="RibbonCommand.PasteToLevels">Pegar en niveles</sys:String>
   <sys:String x:Key="PasteToLevels.Title">Pegar alineado en niveles</sys:String>

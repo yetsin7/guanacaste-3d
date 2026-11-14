@@ -146,11 +146,41 @@ internal static partial class HouseFromScratchChecks
             Expect(elapsed < 4000, $"pegar tardó {elapsed:0} ms");
             return $"{Doc.Walls.Count} muros, {Doc.Openings.Count} vanos, {Doc.Rooms.Count} habitaciones en {elapsed:0} ms";
         });
+        yield return ("E.6b Un muro de fachada baja a la cimentación y sube hasta el Piso 2 (propiedades)", () =>
+        {
+            ActiveLevel("Piso 1");
+            Escape();
+            // A free stretch of the facade, between a window (2.5) and the partition (5); a column stands at 10.
+            Click(4, 0);
+            var picked = (Guid?)typeof(MainWindow).GetField("_selectedWallId", Private)!.GetValue(_window);
+            Expect(picked is not null, "el clic sobre la fachada no seleccionó el muro");
+            var wall = Doc.Walls.Single(candidate => candidate.Id == picked);
+            Invoke("RefreshProperties");
+            var inputs = (Dictionary<string, TextBox>)typeof(MainWindow).GetField("_instancePropertyInputs", Private)!.GetValue(_window)!;
+            var picker = (ComboBox?)typeof(MainWindow).GetField("_wallTopPicker", Private)!.GetValue(_window);
+            Expect(inputs.ContainsKey("BaseOffset") && inputs.ContainsKey("TopOffset") && picker is not null,
+                "las propiedades del muro no ofrecen desfase inferior ni restricción superior");
+            inputs["BaseOffset"].Text = (-0.4).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture);
+            picker!.SelectedItem = picker.Items.OfType<ComboBoxItem>().First(item => item.Tag is Guid id && Doc.Levels.Single(level => level.Id == id).Name == "Piso 2");
+            var steps = Session.CanUndo;
+            Invoke("ApplyInstanceProperties_Click", _window, new RoutedEventArgs());
+            var changed = Doc.Walls.Single(candidate => candidate.Id == wall.Id);
+            Expect(Math.Abs(changed.BaseOffset + 0.4) < 1e-6 && changed.TopLevelId == Doc.Levels.Single(level => level.Name == "Piso 2").Id,
+                $"el muro quedó con desfase {changed.BaseOffset:0.00} y restricción {(changed.TopLevelId is null ? "ninguna" : "a un nivel")}");
+            Expect(Math.Abs(changed.NetHeight - 3.4) < 1e-6, $"el muro mide {changed.NetHeight:0.00} m de alto, se esperaban 3.40 (de −0.40 a Piso 2)");
+            App("Undo");
+            var undone = Doc.Walls.Single(candidate => candidate.Id == wall.Id);
+            Expect(undone.BaseOffset == wall.BaseOffset && undone.TopLevelId == wall.TopLevelId, "deshacer no devolvió el muro en un solo paso");
+            App("Redo");
+            return "desfase −0.40 m, hasta Piso 2 (3.40 m), un paso de deshacer";
+        });
         yield return ("E.7 Cada piso deshace en un paso (Ctrl+Z) y se rehace", () =>
         {
             var walls = Doc.Walls.Count;
-            App("Undo");
+            App("Undo");   // the wall constraints of E.6b
+            App("Undo");   // the paste to levels
             var undone = Doc.Walls.Count;
+            App("Redo");
             App("Redo");
             Expect(undone == 12 && Doc.Walls.Count == walls, $"deshacer dejó {undone} muros, rehacer {Doc.Walls.Count}");
             return "un solo paso";

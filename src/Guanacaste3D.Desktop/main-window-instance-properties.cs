@@ -28,7 +28,10 @@ public partial class MainWindow
         var floor = _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId);
         var component = _session.Document.StructuralElements.FirstOrDefault(item => item.Id == _selectedStructuralId &&
             item.Kind == StructuralElementKind.Component);
-        if (column is null && floor is null && component is null)
+        // A wall (not one of its doors or windows) shows its base offset and top constraint, as in the reference palette.
+        var wall = _selectedOpeningId is null ? _session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) : null;
+        _wallTopPicker = null;
+        if (column is null && floor is null && component is null && wall is null)
         {
             _instancePropertiesEditor.Visibility = Visibility.Collapsed;
             return;
@@ -51,6 +54,12 @@ public partial class MainWindow
             AddInstanceProperty("Height", component.Height);
             AddInstanceProperty("Offset", component.Offset);
         }
+        else if (wall is not null)
+        {
+            AddInstanceProperty("BaseOffset", wall.BaseOffset);
+            AddWallTopConstraint(wall);
+            AddInstanceProperty("TopOffset", wall.TopOffset);
+        }
         var apply = new Button { Content = GetText("InstanceProperties.Apply"), Tag = "ApplyInstanceProperties",
             HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 8, 0, 2) };
         apply.Click += ApplyInstanceProperties_Click;
@@ -59,6 +68,26 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 2, 0, 2) };
         more.Click += (_, _) => TryEditSelectedElementType();
         _instancePropertiesEditor.Children.Add(more);
+    }
+
+    /// <summary>The top constraint of the selected wall: unconnected, or one of the levels above its own.</summary>
+    private ComboBox? _wallTopPicker;
+
+    private void AddWallTopConstraint(Wall wall)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
+        var label = new TextBlock { Text = GetText("InstanceProperties.TopConstraint"), Width = 110, VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(label, Dock.Left);
+        row.Children.Add(label);
+        _wallTopPicker = new ComboBox { MinWidth = 50 };
+        _wallTopPicker.Items.Add(new ComboBoxItem { Content = GetText("InstanceProperties.Unconnected"), Tag = null });
+        var own = _session.Document.Levels.First(level => level.Id == wall.LevelId);
+        foreach (var level in _session.Document.Levels.Where(level => level.Elevation > own.Elevation).OrderBy(level => level.Elevation))
+            _wallTopPicker.Items.Add(new ComboBoxItem { Content = FormatText("InstanceProperties.UpToLevel", level.Name), Tag = level.Id });
+        _wallTopPicker.SelectedItem = _wallTopPicker.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, wall.TopLevelId))
+            ?? _wallTopPicker.Items[0];
+        row.Children.Add(_wallTopPicker);
+        _instancePropertiesEditor!.Children.Add(row);
     }
 
     /// <summary>Creates a unit-aware length input using a stable identifier for the current selection.</summary>
@@ -125,6 +154,20 @@ public partial class MainWindow
                          item.Kind == StructuralElementKind.Component) is { } component && values.ContainsKey("Offset"))
                 _session.UpdateStructuralElement(component.Id, component.Name, values["Width"], values["Height"],
                     values["Offset"], component.Style);
+            else if (_session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) is { } wall &&
+                     values.TryGetValue("BaseOffset", out var baseOffset))
+            {
+                // Read every field before changing anything: each change refreshes this palette and would rebuild the
+                // level picker with the old value. Base and top then change together as one undoable step.
+                var top = (_wallTopPicker?.SelectedItem as ComboBoxItem)?.Tag as Guid?;
+                var topOffset = values["TopOffset"];
+                using var group = _session.BeginGroup("Transaction.WallConstraints");
+                if (Math.Abs(baseOffset - wall.BaseOffset) > 1e-9) _session.SetWallBaseOffset(wall.Id, baseOffset);
+                if (top != wall.TopLevelId || Math.Abs(topOffset - wall.TopOffset) > 1e-9)
+                    _session.SetWallTopConstraint(wall.Id, top, topOffset);
+                group.Assimilate();
+                RefreshAll();
+            }
             else return;
             StatusText.Text = GetText("Status.ElementUpdated");
         }
