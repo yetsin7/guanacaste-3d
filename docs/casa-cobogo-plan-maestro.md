@@ -104,7 +104,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-09 | P2 | Los nombres de tipos de losa y cubierta en los menús están en inglés («Porcelain Tile Floor 200 mm») | abierto | `ShowSlabPresetMenu`, catálogo |
 | C-10 | P2 | Un vano o ventana sobre un eje no se podía seleccionar: el clic seleccionaba la línea del eje, dibujada encima | corregido: puertas, ventanas y vanos tienen prioridad sobre los ejes al hacer clic | `OpeningUnderPointer`, `TrySelectGridAxis` |
 | C-11 | P2 | «Cota alineada» acota todo el nivel de golpe; no pide dos referencias y la posición | abierto (U-09) | `AutoDimensionActiveLevel` |
-| C-12 | P1 | La cubierta no aparece en los alzados | abierto (U-12) | `RenderProjectedView` / visibilidad |
+| C-12 | P1 | «La cubierta no aparece en los alzados» | no era fallo: la captura se tomó antes de dibujar la cubierta; la casa pequeña ahora comprueba que la cubierta se dibuja en el alzado Norte | `house-from-scratch-checks.cs` |
 | C-13 | P2 | Sin respuesta visible: Eliminar sin selección, Informes, Análisis estructural, Análisis de sistemas, Parámetros compartidos, Coordenadas, Transmitir modelo, Configuración CES | abierto | ver inventario |
 | C-14 | P2 | Tablas de puertas/ventanas/habitaciones: se crean por código en la muestra; falta el flujo por botones (nueva tabla por categoría) | abierto | `SchedulesWindow` |
 | C-15 | P1 | Láminas sin cuadro de cargas, cuadro de plomería, leyendas de símbolos ni tablas de presupuesto como vistas colocables | abierto | `SheetEditorWindow` (`_views`) |
@@ -117,7 +117,11 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-23 | P1 | Una familia cargada se colocaba en el origen (0, 0); no había herramienta de clic para colocarla | corregido: cada clic coloca una, Espacio gira 90°, Esc termina | `main-window-family-editor.cs` |
 | C-24 | P2 | Familias: solo cajas (extrusión rectangular). Faltan en la geometría: extrusión por boceto libre, revolución (patas torneadas, lámparas), barrido (molduras), fusión, vacíos, y material por sólido | abierto | `family-geometry.cs` (solo `SolidExtrusion`) |
 | C-25 | P2 | Los muebles propios no entran en el presupuesto ni tienen símbolo de planta propio (usan la silueta genérica) | abierto | `PlanShape`, `material-takeoff.cs` |
-| C-26 | P2 | La planta arquitectónica se satura: rótulos de lux, tuberías y cableado se montan sobre los nombres de habitación y las cotas (captura `casa-cobogo/59.png`). Falta una plantilla de vista arquitectónica que oculte o atenúe instalaciones y que los rótulos se aparten entre sí | abierto | plantillas de vista, colocación de rótulos |
+| C-26 | P2 | La planta arquitectónica se saturaba con circuitos, rótulos de lux, números de circuito y tuberías | corregido: esas capas se dibujan en vistas Eléctrica/Fontanería/Coordinación o mientras se usa su herramienta; la arquitectónica muestra solo los aparatos | `ShowsEngineeringOverlay` |
+| C-27 | P1 | No había forma de copiar un piso a otros niveles: un edificio se dibujaba piso por piso | corregido: Modificar › Pegar en niveles (Ctrl+A incluye habitaciones e instalaciones; un paso de deshacer) | `main-window-paste-to-levels.cs` |
+| C-28 | P1 | Con un edificio grande cada cambio tardaba ~1 s: el navegador del proyecto (999 nodos) se reconstruía siempre | corregido: solo se reconstruye si cambia lo que muestra; niveles plegados. Cambiar de nivel 1.0 s → 0.24 s | `main-window-project-sidebar.cs` |
+| C-29 | P2 | Ctrl+A y Supr no borran aparatos eléctricos ni puntos de plomería (tienen circuitos y sistemas que los referencian) | abierto | `RemoveElements` |
+| C-30 | P1 | CI de `main` en rojo desde a84dda4: la prueba de documentación esperaba cabezas de sección de 28 px fijos | corregido (6a139e8) | `desktop-documentation-checks.cs` |
 | C-19 | P2 | Hay dos tipos de cuadro de diálogo de texto (PromptWindow y TextPrompt) con comportamientos distintos | abierto | `PromptWindow.cs`, `text-prompt.cs` |
 
 Brechas anteriores ya corregidas en esta línea de trabajo (ver `MEJORAS.md` sección 6): U-03 eje de Arquitectura,
@@ -143,6 +147,7 @@ U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
 | 2026-11-14 (1.ª) | 31 de 56 | Primera vuelta: muchas brechas de la propia prueba (nombres localizados, diálogos) y reales (C-01…C-04) |
 | 2026-11-14 (2.ª) | 43 de 56 | Corregidos C-01, C-02, C-04 (parte), C-07; quedan muros desviados (C-05/C-06) |
 | 2026-11-14 (3.ª) | 52 de 56 | Muros con longitud tecleada y zoom, como en Revit; C-04 completo; 0 habitaciones detectadas (C-20) |
+| 2026-11-14 (8.ª) | 62/62 + edificio 12/12 | Edificio de 6 pisos por botones y torre de 10 pisos con límites de tiempo; todo subido a GitHub main (7beb6dd, 6a139e8) |
 | 2026-11-14 (7.ª) | 62 de 62 | Fase 11: mesa y silla paramétricas hechas en el Editor de familias, colocadas en el comedor. Suite de interfaz completa en verde |
 | 2026-11-14 (6.ª) | 56 de 56 | C-10 corregido: la casa del cobogó se construye entera por botones |
 | 2026-11-14 (5.ª) | 55 de 56 | Regresión completa limpia (casa pequeña 30/30, presupuesto, interfaz). Solo falla C-10 |

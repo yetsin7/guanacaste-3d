@@ -34,6 +34,10 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Whether the plan in use draws a discipline's analysis overlays: in that discipline's views and in coordination.</summary>
+    private bool ShowsEngineeringOverlay(ViewDiscipline discipline) =>
+        CurrentPlanTagView()?.Discipline is { } current && (current == discipline || current == ViewDiscipline.Coordination);
+
     /// <summary>Duplicates the plan in use, opens the copy and selects it in the browser so F2 renames it.</summary>
     private void DuplicateCurrentView()
     {

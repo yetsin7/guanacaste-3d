@@ -188,15 +188,29 @@ internal static partial class HouseFromScratchChecks
         });
 
         // ---------------------------------------------------------------- 7. Lighting
-        yield return ("7.1 Nivel de iluminación (lux) de cada habitación en el plano", () =>
+        yield return ("7.1 La planta arquitectónica queda limpia y una planta eléctrica muestra los lux de cada habitación", () =>
         {
+            ActiveLevel(Ground);
             Invoke("RenderPlan");
             _pump();
-            var labels = PlanCanvas.Children.OfType<TextBlock>().Count(block => block.Text.Contains("lx", StringComparison.Ordinal));
-            Expect(labels >= 4, $"el plano muestra {labels} rótulos de iluminación; se esperaba uno por habitación con luminaria");
-            return $"{labels} habitaciones con su nivel de iluminación";
+            int Lux() => PlanCanvas.Children.OfType<TextBlock>().Count(block => block.Text.Contains("lx", StringComparison.Ordinal));
+            var architectural = Lux();
+            Expect(architectural == 0, $"la planta arquitectónica muestra {architectural} rótulos de lux encima de los nombres");
+            var plan = Doc.Views.First(view => view.Kind == ProjectViewKind.Plan && view.LevelId == LevelId(Ground));
+            Invoke("SelectProjectView", plan.Id);
+            App("DuplicateView");
+            App("ViewDiscipline");
+            PickMenu(item => Equals(item.Tag, ViewDiscipline.Electrical));
+            ExpectDialog("PromptWindow", dialog => Answer(dialog, $"{Ground} - Cálculo de luz"));
+            ExpectDialog("Window", dialog => Answer(dialog, $"{Ground} - Cálculo de luz"));
+            Key(System.Windows.Input.Key.F2);
+            Invoke("RenderPlan");
+            _pump();
+            var labels = Lux();
+            Expect(labels >= 4, $"la planta eléctrica muestra {labels} rótulos de iluminación; se esperaba uno por habitación con luminaria");
+            Invoke("SelectProjectView", plan.Id);
+            return $"arquitectónica sin lux; eléctrica con {labels} habitaciones calculadas";
         });
-
         // ---------------------------------------------------------------- 8. Ventilation and air conditioning
         yield return ("8.1 Extracción del medio baño: rejilla y ducto al exterior", () =>
         {

@@ -319,7 +319,19 @@ internal static partial class HouseFromScratchChecks
             return "el último paso se deshace y se rehace";
         });
         yield return ("Vista 3D", () => ShowsView("Model3D"));
-        yield return ("Alzado", () => ShowsView("Elevation"));
+        yield return ("Alzado con la cubierta", () =>
+        {
+            var shown = ShowsView("Elevation");
+            var roof = Doc.Floors.FirstOrDefault(floor => floor.Kind == FloorKind.Roof);
+            Invoke("SelectProjectView", BuiltInProjectViews.NorthElevationId);
+            _pump();
+            var canvas = (Canvas)_window.FindName("ElevationCanvas");
+            var drawn = roof is not null && canvas.Children.OfType<FrameworkElement>().Any(element => Equals(element.Tag, roof.Id));
+            ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 0;
+            _pump();
+            Expect(roof is not null && drawn, $"la cubierta no se dibuja en el alzado (cubierta: {(roof is null ? "no hay" : $"{roof.Shape}, pendiente {roof.Pitch:0}°, IsPitched {roof.IsPitched}")})");
+            return shown + ", con la cubierta";
+        });
         yield return ("Sección con dos clics", () =>
         {
             var before = Doc.Views.Count(view => view.Kind == ProjectViewKind.Section);

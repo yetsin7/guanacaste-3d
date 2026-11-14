@@ -374,11 +374,16 @@ public partial class MainWindow
         var devices = _session.Document.ElectricalDevices.Where(device => device.LevelId == _activeLevelId).ToArray();
         if (devices.Length == 0 && _electricalTool is null) return;
         var analysis = ElectricalAnalysis.Analyze(_session.Document);
+        // Circuits, switch legs, circuit numbers and lux belong to the electrical drawings: an architectural plan shows
+        // the devices only, so room names and dimensions stay readable (the overlays return while wiring or placing).
+        var engineering = ShowsEngineeringOverlay(ViewDiscipline.Electrical) || _wiring || _electricalTool is not null;
+        if (engineering)
         foreach (var panel in analysis.Panels.Where(panel => panel.Panel.LevelId == _activeLevelId))
             foreach (var circuit in panel.Circuits)
                 for (var index = 0; index + 1 < circuit.Route.Count; index++)
                     AddPlanPath(circuit.Route[index], circuit.Route[index + 1], StatusBrush(circuit.Status), 1.1,
                         new DoubleCollection { 5, 3 }, bend: 0);
+        if (engineering)
         foreach (var device in devices.Where(device => device.IsSwitch))
             foreach (var target in device.Controls)
             {
@@ -393,10 +398,11 @@ public partial class MainWindow
                 : report is null ? ElectricalInk : StatusBrush(report.Status);
             var lit = device.IsLuminaire && analysis.Brightness(device.Id) > 0;
             DrawElectricalSymbol(device.Kind, device.Position, device.Facing, brush, lit, device.IsOn, device.Id);
-            if (report is not null)
+            if (report is not null && engineering)
                 AddPlanLabel(device.Position, $"C{report.Circuit.Number}", brush, 9, 8, 6);
         }
         // Lighting: each room's average illuminance against what its use needs, and bedrooms missing a smoke alarm.
+        if (engineering)
         foreach (var room in LightingAnalysis.Analyze(_session.Document, analysis).Where(room => room.Room.LevelId == _activeLevelId))
         {
             var corner = new Point2(Math.Min(room.Room.FirstCorner.X, room.Room.SecondCorner.X) + 0.15,

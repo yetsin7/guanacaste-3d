@@ -293,6 +293,8 @@ public partial class MainWindow
         if (document.PlumbingPoints.Count == 0 && document.PlumbingSystems.Count == 0 && _plumbingPointTool is null && !_piping) return;
         var analysis = PlumbingAnalysis.Analyze(document);
         var level = document.Levels.FirstOrDefault(candidate => candidate.Id == _activeLevelId)?.Elevation ?? 0;
+        // Pipe runs with their sizes and slopes belong to the plumbing drawings; an architectural plan keeps the fixtures.
+        if (ShowsEngineeringOverlay(ViewDiscipline.Plumbing) || _piping || _plumbingPointTool is not null)
         foreach (var report in analysis.Systems)
         {
             var brush = PlumbingBrush(report.System.Kind);
