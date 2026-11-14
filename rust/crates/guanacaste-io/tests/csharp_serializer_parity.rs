@@ -72,5 +72,25 @@ fn csharp_serializers_match_rust_wall_metrics() {
         csharp_report,
         "Rust GUID, volume or area differ from the C# fixture oracle"
     );
+    // A real C# native envelope must reject payload tampering. Mutate a copy only;
+    // the original fixture remains byte-for-byte unchanged.
+    let native_path = directory.join("wall.g3d");
+    let native_bytes = fs::read(&native_path).unwrap();
+    let mut corrupted = native_bytes.clone();
+    let last = corrupted.last_mut().expect("nonempty C# native fixture");
+    *last ^= 0x01;
+    let corrupt_path = directory.join("corrupt-wall.g3d");
+    fs::write(&corrupt_path, corrupted).unwrap();
+    let rejected = Command::new(executable).arg(&corrupt_path).output().unwrap();
+    assert!(
+        !rejected.status.success(),
+        "Rust must reject a corrupted C# native fixture"
+    );
+    assert!(
+        rejected.stdout.is_empty(),
+        "failed inspection must not emit partial wall metrics"
+    );
+    assert_eq!(fs::read(&native_path).unwrap(), native_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
