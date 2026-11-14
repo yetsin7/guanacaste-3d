@@ -22,5 +22,5 @@ document.Validate();
 var json = ProjectFile.SerializeDocument(document);
 File.WriteAllText(Path.Combine(directory, "wall.g3d.json"), json);
 NativeDocumentStore.SaveProject(Path.Combine(directory, "wall.g3d"), document);
-Console.WriteLine($"{wallId:N}, {2.4:F12}, {26.8:F12}");
+Console.WriteLine(FormattableString.Invariant($"{wallId:N}, {2.4:F12}, {26.8:F12}"));
 return 0;
