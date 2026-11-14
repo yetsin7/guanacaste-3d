@@ -152,6 +152,9 @@ public partial class MainWindow
         else BeginSlabSketch(preset, false);
     }
 
+    /// <summary>The name a catalog floor, roof, ceiling or column type shows in the interface language.</summary>
+    internal string PresetLabel(string catalogName) => TryFindResource("Preset." + catalogName) as string ?? catalogName;
+
     /// <summary>
     /// The floor tool: pick a type, then sketch its boundary (close it on the first point), as in the reference
     /// application. The last entry keeps the quick floor from the outline of the level's walls.
@@ -169,8 +172,8 @@ public partial class MainWindow
         var recipes = ArchitecturalLibrary.SlabPresets.Where(candidate => candidate.Kind == kind).ToList();
         foreach (var preset in recipes)
         {
-            var recipe = preset;
-            var item = new MenuItem { Header = preset.Name };
+            var recipe = preset with { Name = PresetLabel(preset.Name) };
+            var item = new MenuItem { Header = recipe.Name, Tag = preset.Name };
             item.Click += (_, _) => { if (onPick is null) CreateEnclosureSlab(kind, recipe); else onPick(recipe); };
             menu.Items.Add(item);
         }

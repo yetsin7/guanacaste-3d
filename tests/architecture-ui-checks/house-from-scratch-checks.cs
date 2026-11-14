@@ -254,7 +254,7 @@ internal static partial class HouseFromScratchChecks
         yield return ("Cubierta por perímetro, cerrando en el primer punto", () =>
         {
             Arch(ArchitectureCommand.RoofByFootprint);
-            PickMenu(menu => menu.Header?.ToString()?.Contains("Gable", StringComparison.OrdinalIgnoreCase) == true);
+            PickMenu(menu => (menu.Tag as string)?.Contains("Gable", StringComparison.OrdinalIgnoreCase) == true);
             foreach (var (x, y) in new[] { (-0.5, -0.5), (10.5, -0.5), (10.5, 8.5), (-0.5, 8.5), (-0.5, -0.5) }) Click(x, y);
             var roofs = Doc.Floors.Where(floor => floor.Kind == FloorKind.Roof).ToList();
             Expect(roofs.Count == 1, $"al volver al primer punto no se cerró el contorno (estado: {Status})");

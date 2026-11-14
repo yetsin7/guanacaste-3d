@@ -453,7 +453,7 @@ internal static partial class HouseFromScratchChecks
     {
         var before = Doc.Floors.Count;
         Arch(ArchitectureCommand.Floor);
-        PickMenu(item => item.Header?.ToString() == type);
+        PickMenu(item => item.Tag as string == type);
         foreach (var (x, y) in corners.Append(corners[0])) Click(x, y);
         Expect(Doc.Floors.Count == before + 1, $"el boceto de «{type}» no creó el piso (estado: {Status})");
         return Doc.Floors[^1].Id;

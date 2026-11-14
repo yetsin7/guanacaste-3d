@@ -120,13 +120,13 @@ internal sealed class ArchitecturalLibraryWindow : Window
                 openings.Contains(type.Id), () => PlaceOpening(type));
         foreach (var slab in ArchitecturalLibrary.SlabPresets)
             yield return new Entry(slab.Kind switch { FloorKind.Floor => "Floors", FloorKind.Ceiling => "Ceilings", FloorKind.Toposolid or FloorKind.Water => "Site", _ => "Roofs" },
-                slab.Name, $"{Mm(slab.Thickness)} mm" +
+                _main.PresetLabel(slab.Name), $"{Mm(slab.Thickness)} mm" +
                 (slab.Shape == RoofShape.Flat ? string.Empty : $" · {Text($"RoofShape.{slab.Shape}")} {slab.Pitch:0}°"),
-                true, () => { _main.PlaceLibrarySlab(slab); Close(); });
+                true, () => { _main.PlaceLibrarySlab(slab with { Name = _main.PresetLabel(slab.Name) }); Close(); });
         yield return new Entry("Roofs", Text("Entity.Skylight"), Text("Library.SkylightDetail"), true,
             () => { _main.BeginKindToolFromLibrary(StructuralElementKind.Skylight); Close(); });
         foreach (var column in ArchitecturalLibrary.ColumnPresets)
-            yield return new Entry("Columns", column.Name,
+            yield return new Entry("Columns", _main.PresetLabel(column.Name),
                 $"{Mm(column.Width)} × {Mm(column.Depth)} mm · {Text($"ColumnShape.{column.Shape}")}", true,
                 () => { _main.PlaceLibraryColumn(column); Close(); });
         foreach (var preset in ArchitecturalLibrary.ElementPresets)

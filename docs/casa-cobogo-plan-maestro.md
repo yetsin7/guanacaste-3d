@@ -101,7 +101,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-06 | P2 | Las guías de alineación «pegan» puntos a 15 cm de distancia con zoom normal (tolerancia en píxeles sin tecla para soltar) | abierto | `AlignmentTolerancePixels` |
 | C-07 | P2 | Ejes: el siguiente no continuaba la serie (tras renombrar a «A» seguía «5») | corregido: A→B, 1→2, Z→AA | `grid-axis-naming.cs` |
 | C-08 | P2 | Faltaban el desfase inferior y la restricción superior del muro en Propiedades (largo, alto, espesor y acabado sí existían) | corregido: Desfase inferior, Restricción superior (hasta un nivel) y Desfase superior, aplicados en un solo paso; quedan sin propiedades de ejemplar el muro cortina, la viga y la celosía | `main-window-instance-properties.cs` |
-| C-09 | P2 | Los nombres de tipos de losa y cubierta en los menús están en inglés («Porcelain Tile Floor 200 mm») | abierto | `ShowSlabPresetMenu`, catálogo |
+| C-09 | P2 | Los tipos de piso, cubierta, cielo y columna se veían en inglés | corregido: menús, biblioteca y elementos creados usan el nombre en español; el catálogo conserva su nombre interno como clave | `PresetLabel`, `localization.workflow.es.xaml` |
 | C-10 | P2 | Un vano o ventana sobre un eje no se podía seleccionar: el clic seleccionaba la línea del eje, dibujada encima | corregido: puertas, ventanas y vanos tienen prioridad sobre los ejes al hacer clic | `OpeningUnderPointer`, `TrySelectGridAxis` |
 | C-11 | P2 | «Cota alineada» acota todo el nivel de golpe; no pide dos referencias y la posición | abierto (U-09) | `AutoDimensionActiveLevel` |
 | C-12 | P1 | «La cubierta no aparece en los alzados» | no era fallo: la captura se tomó antes de dibujar la cubierta; la casa pequeña ahora comprueba que la cubierta se dibuja en el alzado Norte | `house-from-scratch-checks.cs` |
@@ -148,6 +148,7 @@ U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
 | 2026-11-14 (1.ª) | 31 de 56 | Primera vuelta: muchas brechas de la propia prueba (nombres localizados, diálogos) y reales (C-01…C-04) |
 | 2026-11-14 (2.ª) | 43 de 56 | Corregidos C-01, C-02, C-04 (parte), C-07; quedan muros desviados (C-05/C-06) |
 | 2026-11-14 (3.ª) | 52 de 56 | Muros con longitud tecleada y zoom, como en Revit; C-04 completo; 0 habitaciones detectadas (C-20) |
+| 2026-11-14 (9.ª) | 62/62, edificio 13/13, CI verde | Tablas de ingeniería en láminas, ajuste a caras, borrar instalaciones, restricciones de muro, nombres en español; `main` verde en GitHub desde b808a63 |
 | 2026-11-14 (8.ª) | 62/62 + edificio 12/12 | Edificio de 6 pisos por botones y torre de 10 pisos con límites de tiempo; todo subido a GitHub main (7beb6dd, 6a139e8) |
 | 2026-11-14 (7.ª) | 62 de 62 | Fase 11: mesa y silla paramétricas hechas en el Editor de familias, colocadas en el comedor. Suite de interfaz completa en verde |
 | 2026-11-14 (6.ª) | 56 de 56 | C-10 corregido: la casa del cobogó se construye entera por botones |
