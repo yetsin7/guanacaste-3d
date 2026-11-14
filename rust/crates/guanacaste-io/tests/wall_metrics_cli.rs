@@ -211,3 +211,25 @@ fn cli_does_not_emit_partial_metrics_when_a_later_wall_is_invalid() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("unsupported wall subset"));
     assert_eq!(after, original, "inspection must never rewrite input");
 }
+
+#[test]
+fn cli_rejects_a_later_invalid_wall_guid_without_partial_output() {
+    let mut document: serde_json::Value = serde_json::from_str(JSON).unwrap();
+    let mut second = document["Walls"][0].clone();
+    second["Id"] = serde_json::json!("not-a-guid");
+    document["Walls"].as_array_mut().unwrap().push(second);
+
+    let path = unique_path();
+    let original = serde_json::to_vec(&document).unwrap();
+    fs::write(&path, &original).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_wall-metrics"))
+        .arg(&path)
+        .output()
+        .unwrap();
+    let after = fs::read(&path).unwrap();
+    let _ = fs::remove_file(&path);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty(), "invalid later GUID leaked metrics");
+    assert_eq!(after, original, "read-only CLI must preserve input");
+}
