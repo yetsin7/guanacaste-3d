@@ -16,14 +16,22 @@ public enum WallSnapKind
     /// <summary>The closest point on an existing wall centerline, where a new wall meets it in a tee.</summary>
     Nearest,
     /// <summary>The first point of the active chain: placing there closes the loop.</summary>
-    ChainStart
+    ChainStart,
+    /// <summary>A point on the face of an existing wall, where a new wall stops against it (6.70 against a 30 cm wall on 6.55).</summary>
+    Face
 }
 
 /// <summary>Describes the model point and reference kind selected by object snapping.</summary>
 public readonly record struct WallSnapResult(Point2 Point, WallSnapKind Kind);
 
-/// <summary>Represents the model centerline generated from a wall drawing reference.</summary>
-public readonly record struct WallCenterline(Point2 Start, Point2 End);
+/// <summary>
+/// Represents the model centerline generated from a wall drawing reference. With its half thickness, snapping also
+/// reaches the wall's two faces and their corners, as in the reference application.
+/// </summary>
+public readonly record struct WallCenterline(Point2 Start, Point2 End)
+{
+    public double HalfThickness { get; init; }
+}
 
 /// <summary>Contains the four ordered plan corners of a straight wall body.</summary>
 public readonly record struct WallFootprint(Point2 StartLeft, Point2 EndLeft, Point2 EndRight, Point2 StartRight)
@@ -78,6 +86,12 @@ public static class WallPlacementGeometry
             EvaluateCandidate(wall.Start, WallSnapKind.Endpoint);
             EvaluateCandidate(wall.End, WallSnapKind.Endpoint);
             EvaluateCandidate(midpoint, WallSnapKind.Midpoint);
+            foreach (var face in Faces(wall))
+            {
+                // A face's corners are precise points too: the outside corner of a building, the end of a partition.
+                EvaluateCandidate(face.Start, WallSnapKind.Endpoint);
+                EvaluateCandidate(face.End, WallSnapKind.Endpoint);
+            }
         }
         if (nearest is not null) return nearest;
 
@@ -85,13 +99,20 @@ public static class WallPlacementGeometry
         // are in reach, and the nearest point on a centerline only catches the pointer when nothing better is near.
         foreach (var wall in existingWalls)
         {
-            var onLine = ClosestPointOnSegment(candidate, wall);
-            var distanceSquared = Math.Pow(onLine.X - candidate.X, 2) + Math.Pow(onLine.Y - candidate.Y, 2);
-            if (distanceSquared > maximumDistanceSquared || distanceSquared >= nearestDistanceSquared) continue;
-            nearest = new WallSnapResult(onLine, WallSnapKind.Nearest);
-            nearestDistanceSquared = distanceSquared;
+            Consider(wall, WallSnapKind.Nearest);
+            foreach (var face in Faces(wall)) Consider(face, WallSnapKind.Face);
         }
         return nearest;
+
+        // The centerline and both faces compete: whichever the pointer is closest to catches it.
+        void Consider(WallCenterline line, WallSnapKind kind)
+        {
+            var onLine = ClosestPointOnSegment(candidate, line);
+            var distanceSquared = Math.Pow(onLine.X - candidate.X, 2) + Math.Pow(onLine.Y - candidate.Y, 2);
+            if (distanceSquared > maximumDistanceSquared || distanceSquared >= nearestDistanceSquared) return;
+            nearest = new WallSnapResult(onLine, kind);
+            nearestDistanceSquared = distanceSquared;
+        }
 
         /// <summary>Retains a nearby snap candidate using distance and kind as stable ordering rules.</summary>
         void EvaluateCandidate(Point2 point, WallSnapKind kind)
@@ -230,6 +251,17 @@ public static class WallPlacementGeometry
 
     private static double DistanceToSegment(Point2 point, WallCenterline segment) =>
         point.DistanceTo(ClosestPointOnSegment(point, segment));
+
+    /// <summary>The two faces of a wall with a thickness, as lines parallel to its centerline; none for a bare centerline.</summary>
+    private static IEnumerable<WallCenterline> Faces(WallCenterline wall)
+    {
+        var length = wall.Start.DistanceTo(wall.End);
+        if (wall.HalfThickness <= 0 || length < 1e-9) yield break;
+        var (nx, ny) = (-(wall.End.Y - wall.Start.Y) / length * wall.HalfThickness, (wall.End.X - wall.Start.X) / length * wall.HalfThickness);
+        foreach (var side in new[] { 1, -1 })
+            yield return new WallCenterline(new Point2(wall.Start.X + nx * side, wall.Start.Y + ny * side),
+                new Point2(wall.End.X + nx * side, wall.End.Y + ny * side));
+    }
 
     private static Point2 ClosestPointOnSegment(Point2 point, WallCenterline segment)
     {

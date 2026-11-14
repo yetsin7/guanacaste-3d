@@ -20,6 +20,7 @@
   <sys:String x:Key="Floor.FromWallOutline">Por contorno de muros del nivel (primer tipo)</sys:String>
   <sys:String x:Key="Status.LevelAddedStayOnPlan">Se creó «{0}» a {1}, con su planta. Sigue trabajando en «{2}»; para dibujar en el nuevo, cámbielo en «Nivel activo» o ábralo en el navegador.</sys:String>
   <sys:String x:Key="Status.HostAlreadyHasRailings">Esta escalera o rampa ya tiene sus barandillas; se ajustan solas cuando cambia. Para cambiarlas, selecciónelas y edítelas.</sys:String>
+  <sys:String x:Key="WallSnap.Face">Cara de muro</sys:String>
   <sys:String x:Key="RibbonCommand.PasteToLevels">Pegar en niveles</sys:String>
   <sys:String x:Key="PasteToLevels.Title">Pegar alineado en niveles</sys:String>
   <sys:String x:Key="PasteToLevels.Selection">Copiar los {0} elementos seleccionados de «{1}», en la misma posición, a los niveles marcados:</sys:String>

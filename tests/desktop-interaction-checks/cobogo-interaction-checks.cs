@@ -302,6 +302,8 @@ internal static partial class InteractionChecks
             session.SetWallProfile(angleA, WallProfiles.Gable(4, 3));
             tabs.SelectedIndex = 4;
             Pump();
+            // The views redraw once the edit settles; a slow machine (the CI runner) can need a few more frames.
+            for (var frame = 0; frame < 50 && elevationCanvas.Children.OfType<System.Windows.Shapes.Polygon>().Count() <= polygonsFlat; frame++) Pump();
             Check(elevationCanvas.Children.OfType<System.Windows.Shapes.Polygon>().Count() > polygonsFlat,
                 "A wall with a profile is drawn in the elevation as the polygon under its top, not as a rectangle");
             session.ResetWallProfiles([angleA]);

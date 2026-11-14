@@ -36,5 +36,24 @@ static class RoomFaceJoinChecks
             .Concat(tower.Document.Rooms.Where(room => room.LevelId == floor2).Select(room => room.Id)).ToList());
         check(tower.Document.Rooms.All(room => room.LevelId != floor2) && tower.Document.Walls.All(wall => wall.LevelId != floor2),
             "Rooms: deleting a selection removes its rooms with its walls");
+
+        // Ctrl+A and Delete on an installed storey: the panel and a light go, nothing is left pointing at them.
+        var wired = new DocumentSession(BuildingDocument.Create("Instalación"));
+        var installed = wired.Document.Levels[0].Id;
+        var panel = wired.AddElectricalDevice(installed, ElectricalDeviceKind.Panel, "TP", new Point2(0, 0));
+        var outlet = wired.AddElectricalDevice(installed, ElectricalDeviceKind.Outlet, "T1", new Point2(2, 0));
+        var light = wired.AddElectricalDevice(installed, ElectricalDeviceKind.CeilingFixture, "L1", new Point2(3, 2));
+        var toggle = wired.AddElectricalDevice(installed, ElectricalDeviceKind.Switch, "S1", new Point2(1, 2));
+        var circuit = wired.AddCircuit(panel, "Tomas");
+        wired.AssignCircuit(outlet, circuit);
+        wired.ToggleSwitchLink(toggle, light);
+        var before = ProjectFile.SerializeDocument(wired.Document);
+        wired.RemoveElements([panel, light]);
+        var left = wired.Document;
+        check(left.ElectricalCircuits.Count == 0 && left.ElectricalDevices.Single(device => device.Id == outlet).CircuitId is null &&
+              left.ElectricalDevices.Single(device => device.Id == toggle).Controls.Count == 0 && left.ElectricalDevices.Count == 2,
+            "Deleting a selected panel and light removes their circuits and links, leaving no dangling references");
+        wired.Undo();
+        check(ProjectFile.SerializeDocument(wired.Document) == before, "Deleting an installation is one undoable step");
     }
 }

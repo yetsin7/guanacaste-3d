@@ -260,7 +260,7 @@ public partial class MainWindow
         {
             var wallCenterlines = _session.Document.Walls
                 .Where(wall => wall.LevelId == _activeLevelId)
-                .Select(wall => new WallCenterline(wall.Start, wall.End));
+                .Select(wall => new WallCenterline(wall.Start, wall.End) { HalfThickness = wall.Thickness / 2 });
             _activeWallSnap = WallPlacementGeometry.FindNearestSnap(
                 point, wallCenterlines, Math.Max(0.02, WallObjectSnapPixels / _scale));
             if (_activeWallSnap is WallSnapResult snap) return snap.Point;

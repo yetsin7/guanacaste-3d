@@ -6,6 +6,17 @@ static class WallPlacementChecks
     /// <summary>Verifies orthogonal constraints, face references, offsets, and connected rectangle loops.</summary>
     public static void Run(Action<bool, string> check)
     {
+        // A 30 cm wall on x = 6.55: a pointer near its east face snaps to the face (6.70), not to the axis.
+        var thick = new[] { new WallCenterline(new Point2(6.55, 0), new Point2(6.55, 10)) { HalfThickness = 0.15 } };
+        var face = WallPlacementGeometry.FindNearestSnap(new Point2(6.72, 4.3), thick, 0.1);
+        check(face is { Kind: WallSnapKind.Face } && Math.Abs(face.Value.Point.X - 6.70) < 1e-9 && Math.Abs(face.Value.Point.Y - 4.3) < 1e-9,
+            "Wall snapping reaches the face of a thick wall, where a partition stops against it");
+        var axis = WallPlacementGeometry.FindNearestSnap(new Point2(6.57, 4.3), thick, 0.1);
+        check(axis is { Kind: WallSnapKind.Nearest } && Math.Abs(axis.Value.Point.X - 6.55) < 1e-9,
+            "Near the axis, the axis still wins over the faces");
+        var corner = WallPlacementGeometry.FindNearestSnap(new Point2(6.68, 10.02), thick, 0.1);
+        check(corner is { Kind: WallSnapKind.Endpoint } && Math.Abs(corner.Value.Point.X - 6.70) < 1e-9 && Math.Abs(corner.Value.Point.Y - 10) < 1e-9,
+            "A face corner is a precise snap point, like the wall end");
         var horizontal = WallPlacementGeometry.ConstrainEndpoint(
             new Point2(0, 0), new Point2(4, 1), orthogonal: true);
         var vertical = WallPlacementGeometry.ConstrainEndpoint(

@@ -102,6 +102,7 @@ public partial class MainWindow
                 WallSnapKind.Endpoint => "WallSnap.Endpoint",
                 WallSnapKind.Midpoint => "WallSnap.Midpoint",
                 WallSnapKind.Nearest => "WallSnap.Nearest",
+                WallSnapKind.Face => "WallSnap.Face",
                 _ => "WallSnap.ChainStart"
             }),
             Foreground = accent,
