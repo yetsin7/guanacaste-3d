@@ -27,9 +27,15 @@ jobs:
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - name: Select stable toolchain
         run: rustup default stable
+      - name: Install .NET 10 for C# serializer parity
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Tests
+      - name: Tests and C# serializer parity
+        env:
+          GUANACASTE_CSHARP_PARITY: '1'
         run: cargo test --workspace --all-targets
