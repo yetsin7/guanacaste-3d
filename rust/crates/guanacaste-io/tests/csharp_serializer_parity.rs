@@ -92,5 +92,19 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&native_path).unwrap(), native_bytes);
 
+    // A truncated copy of a genuine C# container must fail without partial output.
+    let truncated_path = directory.join("truncated-wall.g3d");
+    fs::write(&truncated_path, &native_bytes[..native_bytes.len() / 2]).unwrap();
+    let truncated = Command::new(executable)
+        .arg(&truncated_path)
+        .output()
+        .unwrap();
+    assert!(
+        !truncated.status.success(),
+        "Rust must reject a truncated C# native fixture"
+    );
+    assert!(truncated.stdout.is_empty());
+    assert_eq!(fs::read(&native_path).unwrap(), native_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
