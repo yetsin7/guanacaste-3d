@@ -230,6 +230,9 @@ fn cli_rejects_a_later_invalid_wall_guid_without_partial_output() {
     let _ = fs::remove_file(&path);
 
     assert_eq!(output.status.code(), Some(1));
-    assert!(output.stdout.is_empty(), "invalid later GUID leaked metrics");
+    assert!(
+        output.stdout.is_empty(),
+        "invalid later GUID leaked metrics"
+    );
     assert_eq!(after, original, "read-only CLI must preserve input");
 }
