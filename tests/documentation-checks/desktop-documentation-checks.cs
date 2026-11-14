@@ -77,8 +77,10 @@ internal static partial class DocumentationChecks
             Pump();
             var sectionCanvas = (Canvas)_window.FindName("SectionCanvas");
             Check(sectionCanvas.Children.OfType<System.Windows.Shapes.Path>().Any(), "The section canvas renders mesh intersection profiles");
+            // Annotation heads keep their size on paper: 28 px at the reference scale, times the plan's annotation factor.
+            var factor = (double)typeof(MainWindow).GetMethod("PlanAnnotationFactor", PrivateInstance)!.Invoke(_window, null)!;
             var planHeads = ((Canvas)_window.FindName("PlanCanvas")).Children.OfType<System.Windows.Shapes.Ellipse>()
-                .Count(head => head.Tag is Guid id && id == section.Id && Math.Abs(head.Width - 28) < 0.1);
+                .Count(head => head.Tag is Guid id && id == section.Id && Math.Abs(head.Width - 28 * factor) < 0.1);
             Check(planHeads == 2, "The structural section axis uses two conventional circular reference heads");
             Check(((TabItem)((TabControl)_window.FindName("ViewTabs")).Items[5]).Header.ToString()!.Contains(section.Name),
                 "The structural section tab retains the saved view name");
