@@ -1,13 +1,16 @@
 name: Rust migration validation
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'rust/**'
       - '.github/workflows/rust-migration.yml'
+      - 'Plan de migración.md'
   pull_request:
     paths:
       - 'rust/**'
       - '.github/workflows/rust-migration.yml'
+      - 'Plan de migración.md'
 jobs:
   rust:
     strategy:
