@@ -1,0 +1,368 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using Guanacaste3D.Core;
+using Guanacaste3D.Desktop;
+using Guanacaste3D.Desktop.Controls;
+
+/// <summary>
+/// The engineering and documentation phases of the cobogó house: structure, plumbing, electrical, lighting,
+/// ventilation, the drawing set per discipline and the budget, each done with the program's own tools.
+/// </summary>
+internal static partial class HouseFromScratchChecks
+{
+    private static IEnumerable<(string Name, Func<string> Action)> CobogoDisciplineSteps()
+    {
+        // ---------------------------------------------------------------- 4. Structure
+        yield return ("4.1 Cimentación corrida bajo los muros de carga", () =>
+        {
+            ActiveLevel(Ground);
+            var before = Count(StructuralElementKind.WallFoundation);
+            foreach (var (a, b) in new[] { ((0.15, 0.4), (0.15, 12.0)), ((6.55, -0.4), (6.55, 12.0)), ((15.05, -0.4), (15.05, 12.0)), ((0.15, 11.85), (15.05, 11.85)) })
+            {
+                App("WallFoundation");
+                Click(a.Item1, a.Item2);
+                Click(b.Item1, b.Item2);
+                Escape();
+            }
+            Expect(Count(StructuralElementKind.WallFoundation) == before + 4, $"hay {Count(StructuralElementKind.WallFoundation) - before} de 4 cimientos corridos (estado: {Status})");
+            return "4 cimientos corridos";
+        });
+        yield return ("4.2 Zapatas aisladas bajo el pórtico", () =>
+        {
+            var before = Count(StructuralElementKind.IsolatedFoundation);
+            foreach (var (x, y) in new[] { (6.55, -0.4), (15.05, -0.4) })
+            {
+                App("IsolatedFoundation");
+                Click(x, y);
+                Escape();
+            }
+            Expect(Count(StructuralElementKind.IsolatedFoundation) == before + 2, $"hay {Count(StructuralElementKind.IsolatedFoundation) - before} de 2 zapatas (estado: {Status})");
+            return "2 zapatas";
+        });
+        yield return ("4.3 Vigas de entrepiso en el perímetro", () =>
+        {
+            ActiveLevel(Upper);
+            var before = Count(StructuralElementKind.Beam);
+            foreach (var (a, b) in new[] { ((0.0, 0.0), (15.2, 0.0)), ((15.2, 0.0), (15.2, 12.0)), ((15.2, 12.0), (0.0, 12.0)), ((0.0, 12.0), (0.0, 0.0)) })
+            {
+                App("Beam");
+                Click(a.Item1, a.Item2);
+                Click(b.Item1, b.Item2);
+                Escape();
+            }
+            Expect(Count(StructuralElementKind.Beam) == before + 4, $"hay {Count(StructuralElementKind.Beam) - before} de 4 vigas (estado: {Status})");
+            return "4 vigas perimetrales";
+        });
+
+        // ---------------------------------------------------------------- 5. Plumbing and drainage
+        yield return ("5.1 Aparatos de Planta alta: inodoro, lavamanos y ducha", () =>
+        {
+            ActiveLevel(Upper);
+            var placed = 0;
+            foreach (var (name, x, y) in new[] { ("Toilet", 7.2, 11.4), ("Bathroom Vanity", 8.2, 11.5), ("Shower Enclosure", 7.3, 7.1) })
+            {
+                var before = Doc.StructuralElements.Count;
+                Library(entry => entry == name);
+                Click(x, y);
+                Escape();
+                if (Doc.StructuralElements.Count > before) placed++;
+            }
+            Expect(placed == 3, $"se colocaron {placed} de 3 aparatos");
+            return "3 aparatos en el baño";
+        });
+        yield return ("5.2 Calentador de agua en la lavandería", () =>
+        {
+            ActiveLevel(Ground);
+            var before = Doc.StructuralElements.Count;
+            Library(entry => entry == "Water Heater");
+            Click(14.5, 5.7);
+            Expect(Doc.StructuralElements.Count > before, "no se colocó el calentador");
+            return "calentador colocado";
+        });
+        yield return ("5.3 Medidor de agua en la acera y salida a cloaca al fondo", () =>
+        {
+            App("PlumbingService");
+            Click(16.5, -5.0);
+            Escape();
+            App("PlumbingService");
+            // Space cycles: meter, cistern with pump, elevated tank, sewer outlet.
+            for (var press = 0; press < 3; press++) Key(System.Windows.Input.Key.Space);
+            Click(16.5, 13.0);
+            Escape();
+            var kinds = Doc.PlumbingPoints.Select(point => point.Kind).ToList();
+            Expect(kinds.Contains(PlumbingPointKind.WaterMeter) && kinds.Contains(PlumbingPointKind.SewerOutlet),
+                "faltan medidor o salida a cloaca: " + string.Join(", ", kinds));
+            return string.Join(", ", kinds);
+        });
+        yield return ("5.4 Conectar la plomería de toda la casa", () =>
+        {
+            App("ConnectPlumbing");
+            Expect(Doc.PlumbingSystems.Count >= 2, $"hay {Doc.PlumbingSystems.Count} sistemas de plomería (estado: {Status})");
+            Expect(!Status.Contains("no cumplen", StringComparison.Ordinal) || Status.Contains(" 0 aparatos no cumplen", StringComparison.Ordinal),
+                "hay aparatos que no cumplen: " + Status);
+            return Status;
+        });
+        yield return ("5.5 Cuadro de plomería", () =>
+        {
+            App("PlumbingSchedule");
+            Expect(Dialogs.Any(dialog => dialog.Contains("PlumbingScheduleWindow")), "no se abrió el cuadro de plomería");
+            return "cuadro abierto";
+        });
+
+        // ---------------------------------------------------------------- 6. Electrical
+        yield return ("6.1 Tablero eléctrico en la lavandería", () =>
+        {
+            ActiveLevel(Ground);
+            App("ElectricalEquipment");
+            Click(14.95, 6.6);
+            Escape();
+            Expect(Doc.ElectricalDevices.Any(device => device.Kind == ElectricalDeviceKind.Panel), $"no se colocó el tablero (estado: {Status})");
+            return "tablero colocado";
+        });
+        yield return ("6.2 Tomacorrientes", () =>
+        {
+            var before = Doc.ElectricalDevices.Count;
+            App("ElectricalDevice");
+            foreach (var (x, y) in new[] { (0.35, 4.0), (0.35, 9.0), (6.4, 10.0), (14.9, 10.5), (12.0, 11.7) }) Click(x, y);
+            Escape();
+            var placed = Doc.ElectricalDevices.Count - before;
+            Expect(placed == 5, $"se colocaron {placed} de 5 tomacorrientes (estado: {Status})");
+            return "5 tomacorrientes";
+        });
+        yield return ("6.3 Luminarias de techo por habitación", () =>
+        {
+            var before = Doc.ElectricalDevices.Count;
+            App("LightingFixture");
+            foreach (var (x, y) in new[] { (3.2, 6.0), (8.7, 8.5), (12.8, 9.8), (11.8, 6.5), (13.8, 6.5), (10.8, 2.5) }) Click(x, y);
+            Escape();
+            var placed = Doc.ElectricalDevices.Count - before;
+            Expect(placed == 6, $"se colocaron {placed} de 6 luminarias (estado: {Status})");
+            return "6 luminarias";
+        });
+        yield return ("6.4 Apagadores junto a las puertas", () =>
+        {
+            var before = Doc.ElectricalDevices.Count;
+            App("LightSwitch");
+            foreach (var (x, y) in new[] { (6.4, 7.0), (10.65, 9.0), (11.0, 8.0) }) Click(x, y);
+            Escape();
+            var placed = Doc.ElectricalDevices.Count - before;
+            Expect(placed == 3, $"se colocaron {placed} de 3 apagadores (estado: {Status})");
+            return "3 apagadores";
+        });
+        yield return ("6.5 Circuitos: tomas y alumbrado desde el tablero; apagador a sus luces", () =>
+        {
+            var panel = Doc.ElectricalDevices.First(device => device.Kind == ElectricalDeviceKind.Panel).Position;
+            App("Wire");
+            Click(panel.X, panel.Y);
+            foreach (var outlet in Doc.ElectricalDevices.Where(device => device.Kind == ElectricalDeviceKind.Outlet).ToList()) Click(outlet.Position.X, outlet.Position.Y);
+            Escape();
+            App("Wire");
+            Click(panel.X, panel.Y);
+            foreach (var light in Doc.ElectricalDevices.Where(device => device.IsLuminaire).ToList()) Click(light.Position.X, light.Position.Y);
+            Escape();
+            var living = Doc.ElectricalDevices.First(device => device.IsSwitch).Position;
+            App("Wire");
+            Click(living.X, living.Y);
+            Click(3.2, 6.0);
+            Escape();
+            var unassigned = Doc.ElectricalDevices.Count(device => device.Kind != ElectricalDeviceKind.Panel && !device.IsSwitch && device.CircuitId is null);
+            Expect(Doc.ElectricalCircuits.Count >= 2 && unassigned == 0,
+                $"{Doc.ElectricalCircuits.Count} circuitos y {unassigned} aparatos sin circuito (estado: {Status})");
+            return $"{Doc.ElectricalCircuits.Count} circuitos";
+        });
+        yield return ("6.6 Cuadro de cargas del tablero", () =>
+        {
+            string? title = null;
+            var rows = 0;
+            ExpectDialog("ElectricalPanelWindow", window =>
+            {
+                title = window.Title;
+                rows = Descendants<TextBlock>(window).Count();
+            });
+            App("PanelSchedule");
+            for (var wait = 0; wait < 20 && title is null; wait++) _pump();
+            Expect(title is not null, "no se abrió el cuadro de cargas: " + Status);
+            return $"{title} ({rows} textos)";
+        });
+
+        // ---------------------------------------------------------------- 7. Lighting
+        yield return ("7.1 Nivel de iluminación (lux) de cada habitación en el plano", () =>
+        {
+            Invoke("RenderPlan");
+            _pump();
+            var labels = PlanCanvas.Children.OfType<TextBlock>().Count(block => block.Text.Contains("lx", StringComparison.Ordinal));
+            Expect(labels >= 4, $"el plano muestra {labels} rótulos de iluminación; se esperaba uno por habitación con luminaria");
+            return $"{labels} habitaciones con su nivel de iluminación";
+        });
+
+        // ---------------------------------------------------------------- 8. Ventilation and air conditioning
+        yield return ("8.1 Extracción del medio baño: rejilla y ducto al exterior", () =>
+        {
+            var terminals = Doc.StructuralElements.Count;
+            App("AirTerminal");
+            Click(11.8, 6.5);
+            Escape();
+            App("Duct");
+            Click(11.8, 6.5);
+            Click(11.8, 4.9);
+            Escape();
+            Expect(Doc.StructuralElements.Count >= terminals + 2, $"se crearon {Doc.StructuralElements.Count - terminals} de 2 elementos (rejilla y ducto) (estado: {Status})");
+            return "rejilla y ducto";
+        });
+        yield return ("8.2 Aire acondicionado minisplit en la sala", () =>
+        {
+            var before = Doc.ElectricalDevices.Count(device => device.Kind == ElectricalDeviceKind.MiniSplit);
+            App("MechanicalEquipment");
+            Click(0.35, 6.0);
+            Escape();
+            Expect(Doc.ElectricalDevices.Count(device => device.Kind == ElectricalDeviceKind.MiniSplit) > before, $"no se colocó el minisplit (estado: {Status})");
+            return "minisplit en la sala";
+        });
+
+        // ---------------------------------------------------------------- 9. Documentation
+        yield return ("9.1 Cotas automáticas en las dos plantas", () =>
+        {
+            var before = Doc.Dimensions.Count;
+            foreach (var level in new[] { Ground, Upper })
+            {
+                ActiveLevel(level);
+                App("AlignedDimension");
+            }
+            Expect(Doc.Dimensions.Count > before, "no se crearon cotas");
+            return $"{Doc.Dimensions.Count - before} cotas";
+        });
+        yield return ("9.2 Etiquetar puertas, ventanas y habitaciones", () =>
+        {
+            ActiveLevel(Ground);
+            App("TagAll");
+            Arch(ArchitectureCommand.TagAllRooms);
+            var tags = PlanCanvas.Children.OfType<Border>().Count();
+            Expect(tags >= 6, $"el plano muestra {tags} etiquetas");
+            return $"{tags} etiquetas en Planta baja";
+        });
+        yield return ("9.3 Secciones A-A y B-B", () =>
+        {
+            var before = Doc.Views.Count(view => view.Kind == ProjectViewKind.Section && view.Cut is not null);
+            foreach (var (a, b) in new[] { ((-1.5, 2.8), (16.7, 2.8)), ((9.6, -2.5), (9.6, 13.0)) })
+            {
+                ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 0;
+                _pump();
+                App("Section");
+                Click(a.Item1, a.Item2);
+                Click(b.Item1, b.Item2);
+            }
+            var after = Doc.Views.Count(view => view.Kind == ProjectViewKind.Section && view.Cut is not null);
+            Expect(after == before + 2, $"se crearon {after - before} de 2 secciones");
+            ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 0;
+            return "2 secciones";
+        });
+        foreach (var (discipline, word) in new[] { ("Estructural", "Estructural"), ("Eléctrica", "Eléctrica"), ("Iluminación", "Iluminación"),
+                     ("Hidrosanitaria", "Hidrosanitaria"), ("Ventilación", "Ventilación") })
+        {
+            yield return ($"9.4 Vista de planta {discipline} (duplicar vista y disciplina)", () =>
+            {
+                ActiveLevel(Ground);
+                var groundPlan = Doc.Views.First(view => view.Kind == ProjectViewKind.Plan && view.LevelId == LevelId(Ground));
+                Invoke("SelectProjectView", groundPlan.Id);
+                var plans = Doc.Views.Count(view => view.Kind == ProjectViewKind.Plan);
+                App("DuplicateView");
+                Expect(Doc.Views.Count(view => view.Kind == ProjectViewKind.Plan) == plans + 1,
+                    "no hay forma de duplicar la vista de planta para hacer la planta " + discipline);
+                var copy = Doc.Views.Single(view => view.Id == (Guid?)typeof(MainWindow).GetField("_selectedViewId", Private)!.GetValue(_window));
+                var target = discipline switch
+                {
+                    "Estructural" => ViewDiscipline.Structural, "Eléctrica" or "Iluminación" => ViewDiscipline.Electrical,
+                    "Hidrosanitaria" => ViewDiscipline.Plumbing, _ => ViewDiscipline.Mechanical
+                };
+                App("ViewDiscipline");
+                PickMenu(item => Equals(item.Tag, target));
+                ExpectDialog("PromptWindow", dialog => Answer(dialog, $"{Ground} - {word}"));
+                ExpectDialog("Window", dialog => Answer(dialog, $"{Ground} - {word}"));
+                Key(System.Windows.Input.Key.F2);
+                var view = Doc.Views.Single(candidate => candidate.Id == copy.Id);
+                Expect(view.Discipline == target, $"la vista quedó con disciplina {view.Discipline}, no {target}");
+                Expect(view.Name == $"{Ground} - {word}", $"F2 no renombró la vista: se llama «{view.Name}»");
+                var dimmed = PlanCanvas.Children.OfType<FrameworkElement>().Count(element => element.Opacity < 0.5);
+                Expect(dimmed > 0, "la planta de disciplina no atenúa lo de otras disciplinas");
+                return $"«{view.Name}» ({target}), {dimmed} elementos atenuados";
+            });
+        }
+        yield return ("9.5 Láminas por disciplina con sus vistas", () =>
+        {
+            var wanted = new[] { ("A-101", "Planta baja", Ground), ("A-102", "Planta alta", Upper), ("A-201", "Alzados", "Vista Norte"),
+                ("A-301", "Secciones", "Sección"), ("S-101", "Cimentaciones", "Estructural"), ("E-101", "Eléctrica", "Eléctrica"),
+                ("I-101", "Iluminación", "Iluminación"), ("H-101", "Hidrosanitaria", "Hidrosanitaria"), ("M-101", "Ventilación", "Ventilación") };
+            var made = new List<string>();
+            var missing = new List<string>();
+            foreach (var (number, name, view) in wanted)
+            {
+                App("Sheet");
+                var sheet = Doc.Sheets[^1];
+                var added = false;
+                ExpectDialog("SheetEditorWindow", dialog =>
+                {
+                    ((TextBox)dialog.GetType().GetField("_name", Private)!.GetValue(dialog)!).Text = name;
+                    ((TextBox)dialog.GetType().GetField("_number", Private)!.GetValue(dialog)!).Text = number;
+                    var views = (ComboBox)dialog.GetType().GetField("_views", Private)!.GetValue(dialog)!;
+                    var choice = views.Items.Cast<object>().FirstOrDefault(item =>
+                        item.GetType().GetProperty("Label")?.GetValue(item)?.ToString()?.Contains(view, StringComparison.OrdinalIgnoreCase) == true);
+                    if (choice is not null)
+                    {
+                        views.SelectedItem = choice;
+                        Call(dialog, "AddView_Click");
+                        added = true;
+                    }
+                    Call(dialog, "Apply_Click");
+                });
+                typeof(MainWindow).GetField("_selectedSheetId", Private)!.SetValue(_window, (Guid?)sheet.Id);
+                Invoke("EditSheet_Click", _window, new RoutedEventArgs());
+                var updated = Doc.Sheets.Single(candidate => candidate.Id == sheet.Id);
+                if (added && updated.Number == number && updated.Viewports.Count > 0) made.Add(number);
+                else missing.Add($"{number} (sin vista «{view}»)");
+            }
+            Expect(missing.Count == 0, $"láminas completas: {string.Join(", ", made)}; incompletas: {string.Join(", ", missing)}");
+            return string.Join(", ", made);
+        });
+        yield return ("9.6 Exportar el juego de planos a PDF", () =>
+        {
+            var path = Path.Combine(Path.GetTempPath(), "casa-cobogo-" + Guid.NewGuid().ToString("N") + ".pdf");
+            var exported = Doc.Sheets.Count;
+            var bytes = Guanacaste3D.Core.Interop.PdfPlanExporter.ExportDocumentation(Doc, SheetPaperSize.A1, DateTimeOffset.Now);
+            File.WriteAllBytes(path, bytes);
+            var text = System.Text.Encoding.Latin1.GetString(bytes);
+            var pages = System.Text.RegularExpressions.Regex.Matches(text, "/Type\\s*/Page[^s]").Count;
+            File.Delete(path);
+            Expect(pages >= exported, $"el PDF tiene {pages} páginas para {exported} láminas");
+            return $"PDF de {pages} páginas";
+        });
+
+        foreach (var step in CobogoFamilySteps()) yield return step;
+
+        // ---------------------------------------------------------------- 10. Budget and file
+        yield return ("10.1 Presupuesto de obra de la casa", () =>
+        {
+            App("MaterialBudget");
+            var budget = ConstructionBudget.Build(Doc, Session.GetBudgetSettings());
+            var trades = budget.ByCategory().Select(trade => trade.Category).ToList();
+            Expect(trades.Contains(MaterialCategory.Masonry) && trades.Contains(MaterialCategory.Structure) && trades.Contains(MaterialCategory.Drywall) &&
+                   trades.Contains(MaterialCategory.DoorsAndWindows) && trades.Contains(MaterialCategory.Foundations),
+                "faltan rubros: " + string.Join(", ", Enum.GetValues<MaterialCategory>().Except(trades)));
+            return $"₡{budget.Total:#,0} en {trades.Count} rubros";
+        });
+        yield return ("10.2 Guardar y volver a abrir", () =>
+        {
+            var path = Path.Combine(Path.GetTempPath(), "casa-cobogo-" + Guid.NewGuid().ToString("N") + ProjectFile.NativeExtension);
+            typeof(MainWindow).GetField("_filePath", Private)!.SetValue(_window, path);
+            Expect((bool)Invoke("SaveProject", false)!, "no se guardó");
+            var counts = Counts(Doc) + $", {Doc.ElectricalDevices.Count} eléctricos, {Doc.PlumbingPoints.Count} plomería, {Doc.Sheets.Count} láminas";
+            Invoke("OpenProjectPath", path);
+            string Now() => Counts(Doc) + $", {Doc.ElectricalDevices.Count} eléctricos, {Doc.PlumbingPoints.Count} plomería, {Doc.Sheets.Count} láminas";
+            for (var wait = 0; wait < 60 && Now() != counts; wait++) _pump();
+            File.Delete(path);
+            Expect(Now() == counts, $"al reabrir cambió: {counts} → {Now()}");
+            return counts;
+        });
+    }
+}

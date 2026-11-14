@@ -28,8 +28,13 @@ public static class RoomPlanarBoundaryDetection
                     return Enumerable.Range(0, samples.Count - 1)
                         .Select(i => new Segment(samples[i], samples[i + 1], 0));
                 }))
+            // Curtain walls bound rooms, as in the reference application: a glazed living room is still a room.
+            .Concat(document.StructuralElements.Where(element =>
+                    element.LevelId == levelId && element.Kind == StructuralElementKind.CurtainWall)
+                .Select(element => new Segment(element.Start, element.End, element.Width / 2)))
             .Where(segment => segment.Start.DistanceTo(segment.End) > Tolerance)
             .ToList();
+        segments = ExtendToFaces(segments);
         if (segments.Count < 3) return [];
         if (segments.Count > MaximumSegments)
             throw new InvalidDataException("The room boundary graph is too complex.");
@@ -167,6 +172,62 @@ public static class RoomPlanarBoundaryDetection
             });
         }
         return result.OrderBy(region => region.Min.X).ThenBy(region => region.Min.Y).ToArray();
+    }
+
+    /// <summary>Extra reach beyond the half thickness when a wall end is taken to stop at another wall's face.</summary>
+    private const double FaceReach = 0.03;
+
+    /// <summary>
+    /// A wall drawn to the face of another (a partition stopping at 6.70 against a 30 cm wall on 6.55) ends short of that
+    /// wall's centerline, so the boundary graph would leave it loose and the room would not close. Each loose end is
+    /// carried forward along its own wall until it meets the centerline in front of it, when that centerline is within
+    /// the other wall's half thickness. Joined corners and walls that already cross are left as they are.
+    /// </summary>
+    private static List<Segment> ExtendToFaces(List<Segment> segments)
+    {
+        bool Loose(Point2 end, int self)
+        {
+            for (var index = 0; index < segments.Count; index++)
+                if (index != self && Distance(end, segments[index]) <= 1e-4) return false;
+            return true;
+        }
+
+        Point2 Extend(Point2 end, Point2 opposite, int self)
+        {
+            if (!Loose(end, self)) return end;
+            var length = end.DistanceTo(opposite);
+            if (length <= Tolerance) return end;
+            var (dx, dy) = ((end.X - opposite.X) / length, (end.Y - opposite.Y) / length);
+            var best = double.MaxValue;
+            for (var index = 0; index < segments.Count; index++)
+            {
+                if (index == self) continue;
+                var other = segments[index];
+                var (ex, ey) = (other.End.X - other.Start.X, other.End.Y - other.Start.Y);
+                var denominator = dx * ey - dy * ex;
+                if (Math.Abs(denominator) < 1e-9) continue;
+                var (wx, wy) = (other.Start.X - end.X, other.Start.Y - end.Y);
+                var t = (wx * ey - wy * ex) / denominator;
+                var u = (wx * dy - wy * dx) / denominator;
+                if (t < -1e-9 || t > other.HalfThickness + FaceReach || u < -1e-6 || u > 1 + 1e-6) continue;
+                best = Math.Min(best, t);
+            }
+            return best == double.MaxValue ? end : new Point2(end.X + dx * best, end.Y + dy * best);
+        }
+
+        return segments.Select((segment, index) => segment with
+        {
+            Start = Extend(segment.Start, segment.End, index),
+            End = Extend(segment.End, segment.Start, index)
+        }).ToList();
+    }
+
+    private static double Distance(Point2 point, Segment segment)
+    {
+        var (dx, dy) = (segment.End.X - segment.Start.X, segment.End.Y - segment.Start.Y);
+        var squared = dx * dx + dy * dy;
+        var t = squared < 1e-12 ? 0 : Math.Clamp(((point.X - segment.Start.X) * dx + (point.Y - segment.Start.Y) * dy) / squared, 0, 1);
+        return point.DistanceTo(new Point2(segment.Start.X + dx * t, segment.Start.Y + dy * t));
     }
 
     private static void SplitIntersections(Segment a, Segment b, List<Point2> onA, List<Point2> onB)

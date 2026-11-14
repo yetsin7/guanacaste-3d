@@ -947,6 +947,14 @@
     <GeometryDrawing Brush="#CBD6E1" Pen="{StaticResource ArchNPen}" Geometry="M16.59,15.79 L8.3,2.61 L7.03,3.35 L15.32,16.53 Z"/>
     <GeometryDrawing Brush="#9FB0C2" Pen="{StaticResource ArchNPen}" Geometry="M7.03,11.74 L15.32,16.53 L7.03,3.35 Z"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.DuplicateView"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M4,2 H19 V21 H4 Z"/>
+    <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M7,6 H21 V23 H7 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchNPen}" Geometry="M7,9 L13,9 L13,14 L21,14 M16,6 L16,10"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeGreen}" Geometry="M16.4,18.4 L20.4,18.4 M18.4,16.4 L18.4,20.4"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.DwfMarkups"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M3,4 H21 V18 H3 Z"/>
@@ -1071,6 +1079,13 @@
     <GeometryDrawing Brush="#BFE5F8" Pen="{StaticResource ArchNPen}" Geometry="M3,4 L11,8 L3,12 Z"/>
     <GeometryDrawing Brush="#F8D7A8" Pen="{StaticResource ArchNPen}" Geometry="M21,12 L13,16 L21,20 Z"/>
     <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M18.13,6.86 A8,8 0 0 1 18.13,17.14"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.FamilyEditor"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M3,8 L8,3 L15,3 L15,8 L20,3 L22,4 L22,19 L17,22 L3,22 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M3,8 L10,8 L15,3 L15,15 L10,20 L10,8 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeOrange}" Geometry="M16.4,20.4 L16.4,18.599999999999998 L20.2,16.4 L20.599999999999998,17.2 L16.799999999999997,19.4"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.FilledRegion"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
@@ -1445,10 +1460,28 @@
     <GeometryDrawing Pen="{StaticResource ArchRPen}" Geometry="M12,2 L12,22"/>
     <GeometryDrawing Brush="#E5484D" Geometry="M11.1,5 A0.9,0.9 0 1 0 12.9,5 A0.9,0.9 0 1 0 11.1,5 Z M11.1,12 A0.9,0.9 0 1 0 12.9,12 A0.9,0.9 0 1 0 11.1,12 Z M11.1,19 A0.9,0.9 0 1 0 12.9,19 A0.9,0.9 0 1 0 11.1,19 Z"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.MaterialBudget"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#BDE8CB" Pen="{StaticResource ArchNPen}" Geometry="M2,5 H18 V15 H2 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M7.4,10 A2.6,2.6 0 1 0 12.6,10 A2.6,2.6 0 1 0 7.4,10 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M4.5,7.5 L4.5,12.5"/>
+    <GeometryDrawing Brush="#FFE08A" Pen="{StaticResource ArchNPen}" Geometry="M12,16 A5,5 0 1 0 22,16 A5,5 0 1 0 12,16 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M14.6,16 A2.4,2.4 0 1 0 19.4,16 A2.4,2.4 0 1 0 14.6,16 Z"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.MaterialTag"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M2,12 A10,10 0 1 0 22,12 A10,10 0 1 0 2,12 Z"/>
     <GeometryDrawing Brush="#1F3B57" Geometry="M7,3 H12 V7 H17 V3 L21,7 H17 V12 H22 V17 H17 V21 H12 V17 H7 V21 L3,17 H7 V12 H2 V7 H7 Z M7,7 V12 H12 V7 Z M12,12 V17 H17 V12 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeOrange}" Geometry="M16.4,18.4 L18.4,16.4 L20.4,16.4 L20.4,18.4 L18.4,20.4 Z"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.MaterialTakeoff"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M3,3 H21 V21 H3 Z"/>
+    <GeometryDrawing Brush="#BFE5F8" Pen="{StaticResource ArchNPen}" Geometry="M3,3 H21 V7.5 H3 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M3,12 L21,12"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M3,16.5 L21,16.5"/>
+    <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M9.5,3 L9.5,21"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
     <GeometryDrawing Pen="{StaticResource CmdBadgeOrange}" Geometry="M16.4,18.4 L18.4,16.4 L20.4,16.4 L20.4,18.4 L18.4,20.4 Z"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
@@ -1661,6 +1694,14 @@
     <GeometryDrawing Brush="#FFE08A" Pen="{StaticResource ArchNPen}" Geometry="M4,5 H20 V21 H4 Z"/>
     <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M8,3 H16 V7 H8 Z"/>
     <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchBPen}" Geometry="M8,10 H16 V18 H8 Z"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.PasteToLevels"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFE08A" Pen="{StaticResource ArchNPen}" Geometry="M4,5 H20 V21 H4 Z"/>
+    <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M8,3 H16 V7 H8 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchBPen}" Geometry="M8,10 H16 V18 H8 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeAccent}" Geometry="M18.4,20.4 L18.4,16.4 M19.66,18.20 L18.4,16.4 L17.14,18.20"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.Perspective"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
@@ -2601,6 +2642,14 @@
     <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M4,7.5 L12,12 L12,21 L4,16.5 Z"/>
     <GeometryDrawing Brush="#BFE5F8" Pen="{StaticResource ArchNPen}" Geometry="M12,12 L20,7.5 L20,16.5 L12,21 Z"/>
     <GeometryDrawing Pen="{StaticResource ArchBPen}" Geometry="M7,8 L12,10.5 L17,8"/>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <DrawingImage x:Key="CmdIcon.ViewDiscipline"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource ArchNPen}" Geometry="M4,2 H19 V21 H4 Z"/>
+    <GeometryDrawing Brush="#DDE6EF" Pen="{StaticResource ArchNPen}" Geometry="M7,6 H21 V23 H7 Z"/>
+    <GeometryDrawing Pen="{StaticResource ArchNPen}" Geometry="M7,9 L13,9 L13,14 L21,14 M16,6 L16,10"/>
+    <GeometryDrawing Brush="#FFFFFF" Pen="{StaticResource CmdBadgeRing}" Geometry="M13.799999999999999,18.4 A4.6,4.6 0 1 0 23.0,18.4 A4.6,4.6 0 1 0 13.799999999999999,18.4 Z"/>
+    <GeometryDrawing Pen="{StaticResource CmdBadgeAccent}" Geometry="M15.999999999999998,18.4 C17.4,16.4 19.4,16.4 20.799999999999997,18.4 C19.4,20.4 17.4,20.4 15.999999999999998,18.4 Z"/>
   </DrawingGroup></DrawingImage.Drawing></DrawingImage>
   <DrawingImage x:Key="CmdIcon.ViewReference"><DrawingImage.Drawing><DrawingGroup>
     <GeometryDrawing Brush="Transparent" Geometry="M0,0 H24 V24 H0 Z"/>

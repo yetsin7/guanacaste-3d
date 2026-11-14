@@ -53,6 +53,10 @@ public sealed partial class DocumentSession
         var host = Document.StructuralElements.FirstOrDefault(candidate => candidate.Id == hostId &&
                 candidate.Kind is StructuralElementKind.Stair or StructuralElementKind.Ramp)
             ?? throw new InvalidDataException("The element does not exist.");
+        // A host keeps one set of guards: they follow it when it changes, so placing them again would only stack
+        // duplicates on top of the first ones (and count them twice in takeoffs).
+        if (Document.StructuralElements.Any(element => element.Kind == StructuralElementKind.Railing && element.RailingHostId == host.Id))
+            return 0;
         if (host.Kind == StructuralElementKind.Stair)
         {
             // Every flight gets a guard on each side, the landing on its open sides, a spiral along its outer edge.

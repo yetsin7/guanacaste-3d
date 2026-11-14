@@ -17,7 +17,8 @@ public sealed partial class DocumentSession
                     Document.Openings.Count(item => chosen.Contains(item.Id)) +
                     Document.Floors.Count(item => chosen.Contains(item.Id)) +
                     Document.Columns.Count(item => chosen.Contains(item.Id)) +
-                    Document.StructuralElements.Count(item => chosen.Contains(item.Id));
+                    Document.StructuralElements.Count(item => chosen.Contains(item.Id)) +
+                    Document.Rooms.Count(item => chosen.Contains(item.Id));
         if (found == 0) return 0;
         foreach (var wall in Document.Walls.Where(item => chosen.Contains(item.Id)))
             EnsureNotPinned(Document, wall.Id);
@@ -37,6 +38,8 @@ public sealed partial class DocumentSession
             document.Walls.RemoveAll(item => chosen.Contains(item.Id));
             document.Floors.RemoveAll(item => chosen.Contains(item.Id));
             document.Columns.RemoveAll(item => chosen.Contains(item.Id));
+            // Rooms selected with everything else (Ctrl+A, then Delete) go too, as in the reference application.
+            document.Rooms.RemoveAll(item => chosen.Contains(item.Id));
             document.StructuralElements.RemoveAll(item => removedStructural.Contains(item.Id) ||
                 (item.RailingHostId is Guid host && removedStructural.Contains(host)));
             foreach (var level in levels) RefreshRoomBoundariesIfNeeded(document, level);

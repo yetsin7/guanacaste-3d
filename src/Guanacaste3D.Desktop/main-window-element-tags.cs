@@ -65,25 +65,36 @@ public partial class MainWindow
         if (selected?.ShowRoomTags == true) categories.Add(TagCategory.Room);
         if (selected?.ShowAreaTags == true) categories.Add(TagCategory.Area);
         if (categories.Count == 0) return;
+        // A tagged room's label is drawn as its tag (see the room rendering), so a second bubble would sit on top of it.
+        categories.Remove(TagCategory.Room);
+        if (categories.Count == 0) return;
         foreach (var tag in ElementTags.Build(_session.Document, _activeLevelId, categories))
         {
             var center = WorldToCanvas(tag.Position);
-            var tagSize = Math.Clamp(PlanPaperPixels(4.8), 0.5, 1000);
-            var textSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500);
-            var mark = new Border
-            {
-                Background = Brushes.White, BorderBrush = Brushes.DarkSlateGray, BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(tagSize / 2), MinWidth = tagSize, Height = tagSize, Padding = new Thickness(tagSize / 6, 0, tagSize / 6, 0),
-                ToolTip = tag.Description, IsHitTestVisible = true,
-                Child = new TextBlock
-                {
-                    Text = tag.Mark, FontSize = textSize, FontWeight = FontWeights.SemiBold, Foreground = Brushes.DarkSlateGray,
-                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
-                }
-            };
-            Canvas.SetLeft(mark, center.X - tagSize / 2);
-            Canvas.SetTop(mark, center.Y - tagSize / 2);
+            var mark = CreateTagBubble(tag.Mark, tag.Description);
+            Canvas.SetLeft(mark, center.X - TagBubbleSize() / 2);
+            Canvas.SetTop(mark, center.Y - TagBubbleSize() / 2);
             PlanCanvas.Children.Add(mark);
         }
+    }
+
+    /// <summary>Diameter of a tag bubble on screen, a fixed size on paper.</summary>
+    private double TagBubbleSize() => Math.Clamp(PlanPaperPixels(4.8), 0.5, 1000);
+
+    /// <summary>The round tag bubble shared by room, door, window and material tags.</summary>
+    private Border CreateTagBubble(string mark, string? description, object? tag = null)
+    {
+        var tagSize = TagBubbleSize();
+        return new Border
+        {
+            Background = Brushes.White, BorderBrush = Brushes.DarkSlateGray, BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(tagSize / 2), MinWidth = tagSize, Height = tagSize, Padding = new Thickness(tagSize / 6, 0, tagSize / 6, 0),
+            ToolTip = description, IsHitTestVisible = true, Tag = tag,
+            Child = new TextBlock
+            {
+                Text = mark, FontSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500), FontWeight = FontWeights.SemiBold, Foreground = Brushes.DarkSlateGray,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+            }
+        };
     }
 }

@@ -67,6 +67,9 @@ public sealed record ProjectView(
     Guid? LevelId,
     ViewOrientation Orientation)
 {
+    /// <summary>The discipline the view is drawn for; other disciplines are drawn halftone (see <see cref="ViewDisciplines"/>).</summary>
+    public ViewDiscipline Discipline { get; init; }
+
     /// <summary>Finite cutting line in model coordinates; null preserves the legacy centered section.</summary>
     public SectionCut? Cut { get; init; }
     public ViewGraphicsSettings? Graphics { get; init; }

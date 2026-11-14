@@ -46,8 +46,8 @@ public partial class MainWindow
         RenderPlan();
     }
 
-    /// <summary>Creates a floor from the bounding rectangle of active-level walls.</summary>
-    private void Floor_Click(object sender, RoutedEventArgs e) => ShowSlabPresetMenu(FloorKind.Floor);
+    /// <summary>Picks a floor type and sketches its boundary.</summary>
+    private void Floor_Click(object sender, RoutedEventArgs e) => ShowFloorSketchMenu();
 
     /// <summary>Creates a ceiling hung at the wall top of the active level.</summary>
     private void Ceiling_Click(object sender, RoutedEventArgs e) => ShowSlabPresetMenu(FloorKind.Ceiling);

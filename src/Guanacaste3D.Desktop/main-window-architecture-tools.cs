@@ -65,7 +65,8 @@ public partial class MainWindow
     /// </summary>
     private bool TryRotateComponent()
     {
-        if (_structuralTool is { Kind: StructuralElementKind.Component })
+        // Space turns the next family to place by 90°, as it does for catalog components.
+        if (_structuralTool is { Kind: StructuralElementKind.Component } || _placingFamilyId is not null)
         {
             _componentRotation = (_componentRotation + Math.PI / 2) % (2 * Math.PI);
             RenderPlan();
@@ -141,19 +142,44 @@ public partial class MainWindow
         StatusText.Text = FormatText("Status.PresetArmed", preset.Name);
     }
 
-    /// <summary>Creates a floor, ceiling or roof from the walls of the active level with a catalog recipe.</summary>
-    internal void PlaceLibrarySlab(SlabPreset preset) => CreateEnclosureSlab(preset.Kind, preset);
+    /// <summary>
+    /// Places a floor, ceiling or roof with a catalog recipe: a ceiling fills the walls of the active level, anything else
+    /// starts the boundary sketch, as the floor and roof tools do.
+    /// </summary>
+    internal void PlaceLibrarySlab(SlabPreset preset)
+    {
+        if (preset.Kind == FloorKind.Ceiling) CreateEnclosureSlab(preset.Kind, preset);
+        else BeginSlabSketch(preset, false);
+    }
 
-    /// <summary>Shows the catalog recipes for a slab role at the pointer, so the user picks a type before it is created.</summary>
-    private void ShowSlabPresetMenu(FloorKind kind, Action<SlabPreset>? onPick = null)
+    /// <summary>
+    /// The floor tool: pick a type, then sketch its boundary (close it on the first point), as in the reference
+    /// application. The last entry keeps the quick floor from the outline of the level's walls.
+    /// </summary>
+    private void ShowFloorSketchMenu() =>
+        ShowSlabPresetMenu(FloorKind.Floor, preset => BeginSlabSketch(preset, false), GetText("Floor.FromWallOutline"));
+
+    /// <summary>
+    /// Shows the catalog recipes for a slab role at the pointer, so the user picks a type before it is created. With
+    /// <paramref name="fromWallsLabel"/>, a last entry creates the slab from the walls of the level with the first recipe.
+    /// </summary>
+    private void ShowSlabPresetMenu(FloorKind kind, Action<SlabPreset>? onPick = null, string? fromWallsLabel = null)
     {
         var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
-        foreach (var preset in ArchitecturalLibrary.SlabPresets.Where(candidate => candidate.Kind == kind))
+        var recipes = ArchitecturalLibrary.SlabPresets.Where(candidate => candidate.Kind == kind).ToList();
+        foreach (var preset in recipes)
         {
             var recipe = preset;
             var item = new MenuItem { Header = preset.Name };
             item.Click += (_, _) => { if (onPick is null) CreateEnclosureSlab(kind, recipe); else onPick(recipe); };
             menu.Items.Add(item);
+        }
+        if (fromWallsLabel is not null && recipes.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            var fromWalls = new MenuItem { Header = fromWallsLabel };
+            fromWalls.Click += (_, _) => CreateEnclosureSlab(kind, recipes[0]);
+            menu.Items.Add(fromWalls);
         }
         menu.IsOpen = true;
     }

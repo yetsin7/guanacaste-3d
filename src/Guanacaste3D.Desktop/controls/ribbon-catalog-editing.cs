@@ -36,6 +36,7 @@ public static partial class RibbonCatalog
         G("RibbonGroup.Properties", L("Properties", "RibbonCommand.Properties", "Icon.Parameters")),
         G("RibbonGroup.Clipboard",
             L("Paste", "RibbonCommand.Paste", "Icon.Paste"),
+            S("PasteToLevels", "RibbonCommand.PasteToLevels", "Icon.Paste"),
             S("Cut", "RibbonCommand.Cut", "Icon.Section"),
             S("Copy", "RibbonCommand.Copy", "Icon.Paste"),
             S("MatchProperties", "RibbonCommand.MatchProperties", "Icon.Apply")),

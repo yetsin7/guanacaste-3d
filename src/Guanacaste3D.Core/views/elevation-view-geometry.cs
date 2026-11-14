@@ -52,13 +52,16 @@ public static class ElevationViewGeometry
         return new ElevationMarker(position, Math.Max(0.5, width), Math.Max(0.5, depth));
     }
 
-    /// <summary>Returns the unit plan direction in which an elevation looks.</summary>
+    /// <summary>
+    /// Returns the unit plan direction in which an elevation looks. An elevation is named after the facade it shows,
+    /// as in the reference BIM application: the North elevation stands north of the building and looks south.
+    /// </summary>
     public static Point2 Direction(ViewOrientation orientation) => orientation switch
     {
-        ViewOrientation.North => new(0, 1),
-        ViewOrientation.South => new(0, -1),
-        ViewOrientation.East => new(1, 0),
-        ViewOrientation.West => new(-1, 0),
+        ViewOrientation.North => new(0, -1),
+        ViewOrientation.South => new(0, 1),
+        ViewOrientation.East => new(-1, 0),
+        ViewOrientation.West => new(1, 0),
         _ => throw new InvalidDataException("An elevation requires an orientation.")
     };
 
@@ -74,7 +77,7 @@ public static class ElevationViewGeometry
                 points.Max(point => point.X), points.Max(point => point.Y));
     }
 
-    /// <summary>Creates a marker outside the relevant facade with enough depth to include the opposite side.</summary>
+    /// <summary>Creates a marker outside the facade the elevation shows, with enough depth to include the opposite side.</summary>
     private static ElevationMarker Fit(PlanBounds bounds, ViewOrientation orientation)
     {
         var centerX = (bounds.MinX + bounds.MaxX) / 2;
@@ -83,13 +86,13 @@ public static class ElevationViewGeometry
         var verticalWidth = bounds.MaxY - bounds.MinY + FieldMargin * 2;
         return orientation switch
         {
-            ViewOrientation.North => new(new(centerX, bounds.MinY - MarkerClearance), horizontalWidth,
+            ViewOrientation.North => new(new(centerX, bounds.MaxY + MarkerClearance), horizontalWidth,
                 bounds.MaxY - bounds.MinY + MarkerClearance + FieldMargin),
-            ViewOrientation.South => new(new(centerX, bounds.MaxY + MarkerClearance), horizontalWidth,
+            ViewOrientation.South => new(new(centerX, bounds.MinY - MarkerClearance), horizontalWidth,
                 bounds.MaxY - bounds.MinY + MarkerClearance + FieldMargin),
-            ViewOrientation.East => new(new(bounds.MinX - MarkerClearance, centerY), verticalWidth,
+            ViewOrientation.East => new(new(bounds.MaxX + MarkerClearance, centerY), verticalWidth,
                 bounds.MaxX - bounds.MinX + MarkerClearance + FieldMargin),
-            ViewOrientation.West => new(new(bounds.MaxX + MarkerClearance, centerY), verticalWidth,
+            ViewOrientation.West => new(new(bounds.MinX - MarkerClearance, centerY), verticalWidth,
                 bounds.MaxX - bounds.MinX + MarkerClearance + FieldMargin),
             _ => throw new InvalidDataException("An elevation requires an orientation.")
         };

@@ -173,7 +173,7 @@ public sealed partial class DocumentSession
         Commit("Transaction.AddRoom", document =>
         {
             var number = (document.Rooms.Count + 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture);
-            document.Rooms.Add(new Room(id, levelId, number, name ?? $"Room {number}", firstCorner, secondCorner));
+            document.Rooms.Add(new Room(id, levelId, number, name ?? DefaultRoomName(number), firstCorner, secondCorner));
         });
         return id;
     }

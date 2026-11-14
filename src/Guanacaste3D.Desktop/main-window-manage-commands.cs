@@ -24,6 +24,7 @@ public partial class MainWindow
             case "Copy": CopySelectedWall(cut: false); return true;
             case "Cut": CopySelectedWall(cut: true); return true;
             case "Paste": PasteWallClipboard(); return true;
+            case "PasteToLevels": PasteToLevels(); return true;
             case "Properties": ShowSelectionProperties(); return true;
             case "Measure": BeginMeasureBetweenPoints(); return true;
             case "MeasureAlong": BeginMeasureWall(); return true;

@@ -485,6 +485,13 @@ def _():
             (L((9.5, 3), (9.5, 21)), None, "A")]
 
 
+@base("budget")
+def _():
+    # A banknote with a coin in front: the construction budget priced from the model.
+    return [(R(2, 5, 16, 10), "green", "I"), (C(10, 10, 2.6), None, "A"), (L((4.5, 7.5), (4.5, 12.5)), None, "A"),
+            (C(17, 16, 5), "yellow", "I"), (C(17, 16, 2.4), None, "A")]
+
+
 @base("sheet")
 def _():
     return [(P((5, 2), (15, 2), (19, 6), (19, 22), (5, 22)), "white", "I"), (L((15, 2), (15, 6), (19, 6)), None, "I"), (R(8, 10, 8, 7), "blue", "A"),

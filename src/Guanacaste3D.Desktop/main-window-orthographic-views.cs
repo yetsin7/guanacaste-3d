@@ -276,9 +276,9 @@ public partial class MainWindow
     /// <summary>Projects a plan coordinate onto the horizontal axis of a generated view.</summary>
     private static double ProjectCoordinate(Point2 point, ViewOrientation orientation) => orientation switch
     {
-        // Seen from the opposite side the left-to-right axis runs backwards, so south and west mirror north and east.
+        // An elevation shows the facade it is named after, seen from outside: from the north, east is on the left.
+        ViewOrientation.North => -point.X,
         ViewOrientation.East => point.Y,
-        ViewOrientation.South => -point.X,
         ViewOrientation.West => -point.Y,
         _ => point.X
     };

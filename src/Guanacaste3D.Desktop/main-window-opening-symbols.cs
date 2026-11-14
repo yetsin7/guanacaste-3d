@@ -122,15 +122,39 @@ public partial class MainWindow
     /// <summary>Selects the hosted instance instead of its wall when its plan symbol is clicked.</summary>
     private bool TrySelectOpeningSymbol(MouseButtonEventArgs e)
     {
-        if ((e.OriginalSource as FrameworkElement)?.Tag is not Guid id ||
-            _session.Document.Openings.FirstOrDefault(opening => opening.Id == id) is not { } opening) return false;
-        _selectedOpeningId = id;
+        var id = (e.OriginalSource as FrameworkElement)?.Tag is Guid tagged && _session.Document.Openings.Any(opening => opening.Id == tagged)
+            ? tagged
+            : OpeningUnderPointer(PlanPosition(e));
+        if (id is null || _session.Document.Openings.FirstOrDefault(opening => opening.Id == id) is not { } opening) return false;
+        _selectedOpeningId = opening.Id;
         _selectedWallId = opening.WallId;
         _selectedWallOffset = opening.Offset;
-        _selectedFloorId = _selectedRoomId = _selectedViewId = null;
+        // Clear every other selection: a grid, column or device left selected would keep Properties on it, and the door or
+        // window fields would stay empty ("enter four valid dimensions").
+        _selectedFloorId = _selectedRoomId = _selectedViewId = _selectedSheetId = null;
+        _selectedColumnId = _selectedStructuralId = _selectedGridId = _selectedElectricalId = _selectedPlumbingId = null;
         RefreshProperties();
         RenderPlan();
         return true;
+    }
+
+    /// <summary>
+    /// The door, window or opening drawn under a plan point, looking through everything stacked there (a grid line or a
+    /// dimension drawn on top does not hide it); null when there is none.
+    /// </summary>
+    private Guid? OpeningUnderPointer(Point canvasPoint)
+    {
+        Guid? found = null;
+        VisualTreeHelper.HitTest(PlanCanvas, null, result =>
+        {
+            if (result.VisualHit is FrameworkElement { Tag: Guid id } && _session.Document.Openings.Any(opening => opening.Id == id))
+            {
+                found = id;
+                return HitTestResultBehavior.Stop;
+            }
+            return HitTestResultBehavior.Continue;
+        }, new PointHitTestParameters(canvasPoint));
+        return found;
     }
 
     /// <summary>Returns a frozen brush so static symbol colours can be shared across renders.</summary>

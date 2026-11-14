@@ -7,6 +7,11 @@ namespace Guanacaste3D.Core;
 public sealed partial class DocumentSession
 {
     /// <summary>
+    /// Name a new room gets, as a Spanish template calls it. Rooms already in a project keep the name they have.
+    /// </summary>
+    public static string DefaultRoomName(string number) => $"Habitación {number}";
+
+    /// <summary>
     /// Discover new rooms and reconcile existing automatic rooms in one undoable transaction.
     /// Matching uses the largest shared floor area to preserve a room's GUID, number and edited name
     /// when a separator moves. When two rooms merge, the best-matching identity survives.
@@ -120,7 +125,7 @@ public sealed partial class DocumentSession
             } while (!usedNumbers.Add(number));
 
             var region = regions[index];
-            kept.Add(new Room(Guid.NewGuid(), levelId, number, $"Room {number}", region.Min, region.Max)
+            kept.Add(new Room(Guid.NewGuid(), levelId, number, DefaultRoomName(number), region.Min, region.Max)
             {
                 IsAutomatic = true,
                 Boundary = [.. region.Boundary],

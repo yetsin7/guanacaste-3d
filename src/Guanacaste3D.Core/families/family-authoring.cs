@@ -1,0 +1,131 @@
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace Guanacaste3D.Core;
+
+/// <summary>
+/// Building one's own families — furniture, casework, fixtures — the way the reference family editor does it: a
+/// reference plane at the floor, length parameters (Ancho, Fondo, Alto), types that give them values, and solids whose
+/// outline, height and start offset are numbers, parameter names or formulas. A family is loaded into a project by
+/// regenerating one of its types into the mesh the project places (<see cref="Bake"/>).
+/// </summary>
+public static class FamilyAuthoring
+{
+    /// <summary>The horizontal reference plane at the family's floor, where boxes are drawn.</summary>
+    public const string FloorPlaneName = "Nivel de referencia";
+
+    /// <summary>A new, empty family of a category, with its floor reference plane and a first type.</summary>
+    public static FamilyDocument Create(string name, FamilyCategory category)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 120) throw new InvalidDataException("The family name is not valid.");
+        if (!Enum.IsDefined(category)) throw new InvalidDataException("The family category is not valid.");
+        return new FamilyDocument
+        {
+            Name = name.Trim(),
+            Category = category,
+            WorkPlanes = [new FamilyWorkPlane(Guid.NewGuid(), FloorPlaneName, new(0, 0, 0), new(0, 0, 1), new(1, 0, 0))],
+            Types = [new FamilyTypeDefinition(Guid.NewGuid(), "Tipo 1", [])]
+        };
+    }
+
+    /// <summary>Adds a length parameter with a default value in meters; its name must be new in the family.</summary>
+    public static Guid AddLengthParameter(FamilyDocument family, string name, double value, FamilyParameterScope scope = FamilyParameterScope.Type)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        name = (name ?? string.Empty).Trim();
+        if (name.Length is 0 or > 64 || family.Parameters.Any(parameter => string.Equals(parameter.Name, name, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("The parameter name is empty or already used.");
+        if (!double.IsFinite(value) || value <= 0) throw new InvalidDataException("A length must be positive.");
+        var id = Guid.NewGuid();
+        family.Parameters.Add(new FamilyParameterDefinition(id, name, FamilyParameterKind.Length, scope) { DefaultNumber = value });
+        return id;
+    }
+
+    /// <summary>Adds a type, copying the values of an existing one so it only needs the values that change.</summary>
+    public static Guid AddType(FamilyDocument family, string name, Guid? copyFrom = null)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        name = (name ?? string.Empty).Trim();
+        if (name.Length is 0 or > 64 || family.Types.Any(type => string.Equals(type.Name, name, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("The type name is empty or already used.");
+        var source = family.Types.FirstOrDefault(type => type.Id == copyFrom);
+        var id = Guid.NewGuid();
+        family.Types.Add(new FamilyTypeDefinition(id, name, source is null ? [] : [.. source.Values]));
+        return id;
+    }
+
+    /// <summary>Sets a parameter's value in one type.</summary>
+    public static void SetValue(FamilyDocument family, Guid typeId, string parameter, double value)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        var definition = family.Parameters.FirstOrDefault(candidate => string.Equals(candidate.Name, parameter, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidDataException("The family parameter does not exist.");
+        var index = family.Types.FindIndex(type => type.Id == typeId);
+        if (index < 0) throw new InvalidDataException("A family type is invalid.");
+        if (!double.IsFinite(value)) throw new InvalidDataException("A length must be positive.");
+        var type = family.Types[index];
+        var values = type.Values.Where(item => item.ParameterId != definition.Id).Append(new FamilyParameterValue(definition.Id, value, null)).ToList();
+        family.Types[index] = type with { Values = values };
+    }
+
+    /// <summary>
+    /// Adds a box on the floor reference plane: its corner (x, y), size (width, depth), start offset and height are
+    /// expressions — a number such as "0.05", a parameter such as "Alto", or a formula such as "Alto - 0.03".
+    /// </summary>
+    public static Guid AddBox(FamilyDocument family, string name, string x, string y, string width, string depth, string offset, string height)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        var plane = family.WorkPlanes.FirstOrDefault(candidate => candidate.Name == FloorPlaneName) ?? family.WorkPlanes.FirstOrDefault()
+            ?? throw new InvalidDataException("An extrusion refers to a work plane that does not exist.");
+        var id = Guid.NewGuid();
+        var operation = new FamilyOperation(id, string.IsNullOrWhiteSpace(name) ? $"Caja {family.Operations.Count + 1}" : name.Trim(),
+            FamilyOperationKind.SolidExtrusion)
+        {
+            WorkPlaneId = plane.Id,
+            Expressions = new(StringComparer.Ordinal)
+            {
+                [FamilyGeometry.ProfileXKey] = x, [FamilyGeometry.ProfileYKey] = y,
+                [FamilyGeometry.ProfileWidthKey] = width, [FamilyGeometry.ProfileDepthKey] = depth,
+                [FamilyGeometry.OffsetKey] = offset, [FamilyGeometry.DepthKey] = height
+            }
+        };
+        // The drawn outline is the first type's rectangle; the parametric one is what regenerates per type.
+        var outline = FamilyGeometry.ProfileOf(family, operation with { Profile = [new(0, 0), new(1, 0), new(1, 1)] });
+        family.Operations.Add(operation with { Profile = [.. outline] });
+        try { family.Validate(); }
+        catch { family.Operations.RemoveAll(candidate => candidate.Id == id); throw; }
+        return id;
+    }
+
+    /// <summary>
+    /// The family as a project loads one of its types: its solids regenerated for that type, centred on the insertion
+    /// point with its base on the floor, under a stable id per family and type so loading it again replaces it.
+    /// </summary>
+    public static FamilyDocument Bake(FamilyDocument family, Guid typeId)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        family.Validate();
+        var type = family.Types.FirstOrDefault(candidate => candidate.Id == typeId) ?? throw new InvalidDataException("A family type is invalid.");
+        var mesh = FamilyGeometry.Tessellate(family, typeId);
+        if (mesh.TriangleCount == 0) throw new InvalidDataException("The family has no solids to place.");
+        var min = new Vector3(mesh.Positions.Min(point => point.X), mesh.Positions.Min(point => point.Y), mesh.Positions.Min(point => point.Z));
+        var max = new Vector3(mesh.Positions.Max(point => point.X), mesh.Positions.Max(point => point.Y), mesh.Positions.Max(point => point.Z));
+        var shift = new Vector3((min.X + max.X) / 2, (min.Y + max.Y) / 2, min.Z);
+        var baked = family.Clone();
+        baked.Id = StableId(family.Id, typeId);
+        baked.Name = family.Types.Count > 1 ? $"{family.Name} : {type.Name}" : family.Name;
+        baked.Types = [type];
+        baked.Metadata["SourceFamily"] = family.Id.ToString();
+        baked.Metadata["SourceType"] = typeId.ToString();
+        baked.Mesh = FamilyMesh.Create(mesh.Positions.Select(point => point - shift).ToList(), mesh.Indices, mesh.TriangleKinds);
+        baked.Validate();
+        return baked;
+    }
+
+    private static Guid StableId(Guid family, Guid type)
+    {
+        var bytes = MD5.HashData(Encoding.UTF8.GetBytes($"{family:N}:{type:N}"));
+        return new Guid(bytes);
+    }
+}

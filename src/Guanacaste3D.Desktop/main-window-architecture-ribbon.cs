@@ -148,7 +148,9 @@ public partial class MainWindow
                 ApplyWallType_Click(this, eventArguments);
                 break;
             case ArchitectureCommand.Grid:
-                ToggleGrid_Click(this, eventArguments);
+                // Places a named grid line with two clicks, as Reference › Grid does; showing the background grid is
+                // Show Work Plane's job.
+                BeginGridTool();
                 break;
             case ArchitectureCommand.Viewer:
                 ShowModel_Click(this, eventArguments);

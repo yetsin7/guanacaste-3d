@@ -111,7 +111,7 @@ public partial class MainWindow
         return true;
     }
 
-    /// <summary>Accepts two endpoints and automatically offers the next unused numeric reference.</summary>
+    /// <summary>Accepts two endpoints and names the grid after the last one (A → B, 1 → 2), else the first free number.</summary>
     private bool TryHandleGridPlacement(MouseButtonEventArgs e)
     {
         if (!_creatingGrid) return false;
@@ -128,9 +128,8 @@ public partial class MainWindow
             StatusText.Text = GetText("Documentation.SectionTooShort");
             return true;
         }
-        var number = 1;
-        while (_session.Document.Grids.Any(axis => string.Equals(axis.Name.Trim(), number.ToString(), StringComparison.OrdinalIgnoreCase))) number++;
-        _selectedGridId = _session.AddGridAxis(number.ToString(), start, point);
+        // Continues the last grid's sequence (A → B, 1 → 2) as the reference application does.
+        _selectedGridId = _session.AddGridAxis(GridAxisNaming.Next(_session.Document.Grids), start, point);
         _gridStart = _gridPointer = null;
         RefreshAll();
         StatusText.Text = GetText("Documentation.GridFirstPoint");
@@ -189,6 +188,9 @@ public partial class MainWindow
         _selectedGridId = null;
         if ((e.OriginalSource as FrameworkElement)?.Tag is not Guid id ||
             !_session.Document.Grids.Any(axis => axis.Id == id)) return false;
+        // Grid lines run through wall axes, over the doors and windows in them: a click on a door or window picks it,
+        // and the grid is picked where it is alone.
+        if (OpeningUnderPointer(PlanPosition(e)) is not null) return false;
         _selectedGridId = id;
         _selectedElectricalId = _selectedPlumbingId = null;
         _selectedViewId = _selectedWallId = _selectedOpeningId = _selectedColumnId = _selectedStructuralId = null;

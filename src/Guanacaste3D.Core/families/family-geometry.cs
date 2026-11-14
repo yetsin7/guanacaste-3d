@@ -17,6 +17,30 @@ public static class FamilyGeometry
     /// <summary>Expression key of the start offset along the work-plane normal, in meters.</summary>
     public const string OffsetKey = "Desfase";
 
+    /// <summary>
+    /// Expression keys of a parametric rectangular profile: its corner and its size in the work plane. When an
+    /// extrusion has all four, its outline follows the family's parameters per type (a table top driven by Ancho and
+    /// Fondo), and <see cref="FamilyOperation.Profile"/> only keeps the first type's outline for display.
+    /// </summary>
+    public const string ProfileXKey = "PerfilX", ProfileYKey = "PerfilY", ProfileWidthKey = "PerfilAncho", ProfileDepthKey = "PerfilFondo";
+
+    /// <summary>The outline of an extrusion for a type: the parametric rectangle when it has one, otherwise its drawn profile.</summary>
+    public static IReadOnlyList<Point2> ProfileOf(FamilyDocument family, FamilyOperation operation, Guid? typeId = null)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        ArgumentNullException.ThrowIfNull(operation);
+        if (!new[] { ProfileXKey, ProfileYKey, ProfileWidthKey, ProfileDepthKey }.All(operation.Expressions.ContainsKey))
+            return operation.Profile;
+        var type = FindType(family, typeId);
+        var x = Length(family, operation, ProfileXKey, type)!.Value;
+        var y = Length(family, operation, ProfileYKey, type)!.Value;
+        var width = Length(family, operation, ProfileWidthKey, type)!.Value;
+        var depth = Length(family, operation, ProfileDepthKey, type)!.Value;
+        if (!(width >= MinimumDepth && depth >= MinimumDepth) || !double.IsFinite(x) || !double.IsFinite(y) || width > MaximumDepth || depth > MaximumDepth)
+            throw new InvalidDataException("A parametric profile must be at least 1 mm wide and deep.");
+        return [new(x, y), new(x + width, y), new(x + width, y + depth), new(x, y + depth)];
+    }
+
     /// <summary>Smallest accepted extrusion depth, in meters (1 mm).</summary>
     public const double MinimumDepth = 0.001;
 
@@ -43,6 +67,7 @@ public static class FamilyGeometry
             InPlaceProfileRules.Validate(operation.Profile);
             foreach (var type in family.Types)
             {
+                InPlaceProfileRules.Validate(ProfileOf(family, operation, type.Id));
                 var depth = Depth(family, operation, type.Id);
                 if (!double.IsFinite(depth) || depth < MinimumDepth || depth > MaximumDepth)
                     throw new InvalidDataException(
@@ -171,7 +196,7 @@ public static class FamilyGeometry
         var plane = PlaneOf(family, operation);
         var depth = Depth(family, operation, typeId);
         var offset = Offset(family, operation, typeId);
-        var profile = InPlaceProfileRules.CounterClockwise(operation.Profile);
+        var profile = InPlaceProfileRules.CounterClockwise(ProfileOf(family, operation, typeId).ToList());
         IReadOnlyList<(int A, int B, int C)> triangles;
         try
         {

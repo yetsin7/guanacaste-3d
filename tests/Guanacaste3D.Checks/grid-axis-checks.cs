@@ -4,6 +4,13 @@ static class GridAxisChecks
 {
     public static void Run(Action<bool, string> check)
     {
+        check(GridAxisNaming.Successor("A") == "B" && GridAxisNaming.Successor("Z") == "AA" && GridAxisNaming.Successor("3") == "4" &&
+              GridAxisNaming.Successor("A9") == "A10" && GridAxisNaming.Successor("01") == "02" && GridAxisNaming.Successor("b") == "c",
+            "Grid names continue their sequence: A→B, Z→AA, 3→4, A9→A10, 01→02");
+        GridAxis Axis(string name) => new(Guid.NewGuid(), name, new Point2(0, 0), new Point2(0, 1));
+        check(GridAxisNaming.Next([]) == "1" && GridAxisNaming.Next([Axis("1"), Axis("A")]) == "B" &&
+              GridAxisNaming.Next([Axis("A"), Axis("B"), Axis("A")]) == "1",
+            "A new grid follows the last one, or takes the first free number when the follower is taken");
         var session = new DocumentSession(BuildingDocument.Create("Ejes asociativos"));
         var level = session.Document.Levels[0].Id;
         var id = session.AddGridAxis("A", new Point2(0, 0), new Point2(10, 0));

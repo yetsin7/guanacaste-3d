@@ -40,14 +40,27 @@ internal static class ArchitectureUiChecks
         {
             _window.Show();
             Pump();
-            IconResourceChecks.Run(Check);
-            CheckLayout();
-            CheckCompactWindowLayout();
-            CheckEveryCommandResponds();
-            CheckFaceAndHostCommands();
-            CheckShowcaseRenders();
-            CheckInPlaceFamilyPlans();
-            CheckPresentationCommands();
+            // G3D_SCENARIOS_ONLY=1 runs only the opt-in scenarios below (inventory, cobogó house) while working on them.
+            if (Environment.GetEnvironmentVariable("G3D_SCENARIOS_ONLY") != "1")
+            {
+                IconResourceChecks.Run(Check);
+                CheckLayout();
+                CheckCompactWindowLayout();
+                CheckEveryCommandResponds();
+                CheckFaceAndHostCommands();
+                CheckShowcaseRenders();
+                CheckInPlaceFamilyPlans();
+                CheckPresentationCommands();
+                BudgetUiChecks.Run(_window, Check, Pump);
+                HouseFromScratchChecks.Run(_window, Check, Pump);
+            }
+            if (Environment.GetEnvironmentVariable("G3D_RIBBON_INVENTORY") == "1") HouseFromScratchChecks.RunRibbonInventory(_window, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_COBOGO") == "1") HouseFromScratchChecks.RunCobogoHouse(_window, Check, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_BUILDING") == "1")
+            {
+                HouseFromScratchChecks.RunBuildingFromScratch(_window, Check, Pump);
+                HouseFromScratchChecks.RunBuildingPerformance(_window, Check, Pump);
+            }
             Console.WriteLine("Architecture UI checks passed.");
             Environment.ExitCode = 0;
             return 0;

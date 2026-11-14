@@ -96,7 +96,7 @@ public static class SheetComposition
     private static IReadOnlyList<SheetPrimitive> ViewGraphics(BuildingDocument document, ProjectView view, SceneMesh? mesh)
     {
         if (view.Id == BuiltInProjectViews.LocationId) return LocationPlan.Primitives(document);
-        if (view.Kind == ProjectViewKind.Plan) return PdfPlanExporter.PlanPrimitives(document, view.LevelId!.Value);
+        if (view.Kind == ProjectViewKind.Plan) return PdfPlanExporter.PlanPrimitives(document, view.LevelId!.Value, view.Discipline);
         if (view.Kind != ProjectViewKind.Model3D) return PdfPlanExporter.GeneratedViewPrimitives(document, view, mesh);
         mesh ??= BuildingMesher.Build(document);
         /// <summary>Projects model coordinates onto fixed orthographic isometric drawing axes.</summary>

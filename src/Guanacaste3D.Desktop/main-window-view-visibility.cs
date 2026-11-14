@@ -18,7 +18,8 @@ public partial class MainWindow
     /// <summary>The view the user is looking at: the plan of the active level, the 3D or render view, or an elevation or section.</summary>
     private ProjectView? ActiveProjectView() => ViewTabs.SelectedIndex switch
     {
-        0 => _session.Document.Views.FirstOrDefault(view => view.Kind == ProjectViewKind.Plan && view.LevelId == _activeLevelId),
+        // The plan open for the active level: a duplicated plan keeps its own visibility.
+        0 => CurrentPlanTagView(),
         1 or RenderTabIndex => Model3DView(),
         4 => ProjectViewById(_elevationViewId),
         5 => ProjectViewById(_sectionViewId),
@@ -32,7 +33,7 @@ public partial class MainWindow
         return CurrentSelection() is { } selection ? [selection.Id] : [];
     }
 
-    /// <summary>Selects every wall, floor, column and structural element the active view shows (only the level in a plan).</summary>
+    /// <summary>Selects every element the active view shows — walls, openings, floors, columns, structure, rooms and installation (only the level in a plan).</summary>
     private void SelectAllInView()
     {
         if (ActiveProjectView() is not { } view) return;
@@ -45,6 +46,10 @@ public partial class MainWindow
             .Concat(document.Floors.Where(floor => OnLevel(floor.LevelId)).Select(floor => floor.Id))
             .Concat(document.Columns.Where(column => OnLevel(column.LevelId)).Select(column => column.Id))
             .Concat(document.StructuralElements.Where(element => OnLevel(element.LevelId)).Select(element => element.Id))
+            // Rooms and the installation belong to the storey too: without them Paste to Levels left the copies empty.
+            .Concat(document.Rooms.Where(room => OnLevel(room.LevelId)).Select(room => room.Id))
+            .Concat(document.ElectricalDevices.Where(device => OnLevel(device.LevelId)).Select(device => device.Id))
+            .Concat(document.PlumbingPoints.Where(point => OnLevel(point.LevelId)).Select(point => point.Id))
             .ToHashSet();
         StatusText.Text = string.Format(GetText("ViewSelection.Count"), _viewSelection.Count);
         UpdateModelSelection(true);

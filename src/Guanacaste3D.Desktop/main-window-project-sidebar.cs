@@ -19,6 +19,11 @@ public partial class MainWindow
     /// <summary>Builds the scoped project-browser hierarchy and updates its visible result count.</summary>
     private void RefreshTree()
     {
+        // The browser lists hundreds of walls on a large building: rebuilding it cost about a second on every refresh,
+        // even on a level change that alters nothing in it. It is rebuilt only when what it shows changed.
+        var signature = ProjectTreeSignature();
+        if (signature == _projectTreeSignature && ProjectTree.Items.Count > 0) return;
+        _projectTreeSignature = signature;
         ProjectTree.Items.Clear();
         var project = new TreeViewItem { Header = _session.Document.Name, IsExpanded = true };
         var scope = GetProjectBrowserScope();
@@ -31,6 +36,30 @@ public partial class MainWindow
         ProjectBrowserCountText.Text = FormatText("Browser.ResultCount", resultCount);
         ProjectTree.Visibility = resultCount == 0 ? Visibility.Collapsed : Visibility.Visible;
         ProjectBrowserEmptyState.Visibility = resultCount == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>What the browser was last built from; null forces the next rebuild.</summary>
+    private string? _projectTreeSignature;
+
+    /// <summary>
+    /// A cheap fingerprint of everything the browser shows: names, sizes and hosts of its views, levels, walls, openings,
+    /// types, rooms, floors, sheets and callouts, plus the search text and scope. Equal fingerprints mean an equal tree.
+    /// </summary>
+    private string ProjectTreeSignature()
+    {
+        var document = _session.Document;
+        var text = new System.Text.StringBuilder(4096);
+        text.Append(document.Name).Append('|').Append(GetProjectBrowserScope()).Append('|').Append(ProjectSearchInput?.Text).Append('|');
+        foreach (var view in document.Views) text.Append(view.Id).Append(view.Name).Append(';');
+        foreach (var level in document.Levels) text.Append(level.Id).Append(level.Name).Append(level.Elevation).Append(';');
+        foreach (var wall in document.Walls) text.Append(wall.Id).Append(wall.LevelId).Append(Math.Round(wall.Length, 4)).Append(';');
+        foreach (var opening in document.Openings) text.Append(opening.Id).Append(opening.WallId).Append(opening.Kind).Append(opening.Width).Append(';');
+        foreach (var type in document.WallTypes) text.Append(type.Id).Append(type.Name).Append(';');
+        foreach (var room in document.Rooms) text.Append(room.Id).Append(room.Number).Append(room.Name).Append(';');
+        foreach (var floor in document.Floors) text.Append(floor.Id).Append(floor.Name).Append(';');
+        foreach (var sheet in document.Sheets) text.Append(sheet.Id).Append(sheet.Number).Append(sheet.Name).Append(';');
+        foreach (var callout in document.Callouts) text.Append(callout.Id).Append(callout.Name).Append(';');
+        return text.ToString();
     }
 
     /// <summary>Adds coordinated views and callouts that match the current project-browser query.</summary>
@@ -59,7 +88,8 @@ public partial class MainWindow
             var levelMatches = MatchesProjectSearch(levelLabel);
             var levelBranch = new TreeViewItem
             {
-                Header = levelLabel, Tag = level.Id, IsExpanded = !hasQuery || levelMatches
+                // Levels open only while searching: a building's walls would otherwise all be laid out in the browser.
+                Header = levelLabel, Tag = level.Id, IsExpanded = hasQuery
             };
             AppendWallBranches(levelBranch, level.Id, hasQuery, levelMatches);
             if (hasQuery && !levelMatches && levelBranch.Items.Count == 0) continue;

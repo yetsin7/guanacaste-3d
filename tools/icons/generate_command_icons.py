@@ -97,7 +97,7 @@ MAP = {
     # Analyze
     "AnalyticalMember": ("beam", "gear"), "AnalyticalPanel": ("floor", "gear"), "AnalyticalLink": ("link", "gear"), "AnalyticalBoundary": ("area_boundary", "gear"),
     "AnalyticalOpening": ("opening_wall", "gear"), "Space": ("space", None), "SpaceSeparator": ("separator", None), "SpaceTag": ("space", "tag"),
-    "Zone": ("zone", None), "Reports": ("reports", None), "ModelCheck": ("model_check", None), "StructuralAnalysis": ("structural_analysis", None),
+    "Zone": ("zone", None), "Reports": ("reports", None), "MaterialBudget": ("budget", None), "MaterialTakeoff": ("schedule", "tag"), "DuplicateView": ("view_plan", "plus"), "FamilyEditor": ("family", "pencil"), "PasteToLevels": ("paste", "up"), "ViewDiscipline": ("view_plan", "eye"), "ModelCheck": ("model_check", None), "StructuralAnalysis": ("structural_analysis", None),
     "SystemsAnalysis": ("systems_analysis", None), "EnergyOptimization": ("energy", None), "FormCreation": ("form_creation", None),
     "SolarAnalysis": ("sun", "gear"), "ResultsFill": ("results_fill", None),
     # Mass and site

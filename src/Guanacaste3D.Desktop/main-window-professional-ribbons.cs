@@ -63,6 +63,11 @@ public partial class MainWindow
             case "WallTypes": ProjectParameters_Click(this, eventArguments); return true;
             case "Levels": Levels_Click(this, eventArguments); return true;
             case "Schedules": Schedules_Click(this, eventArguments); return true;
+            case "FamilyEditor": OpenFamilyEditor(); return true;
+            case "DuplicateView": DuplicateCurrentView(); return true;
+            case "ViewDiscipline": ShowViewDisciplineMenu(); return true;
+            case "MaterialTakeoff":
+            case "MaterialBudget": ShowMaterialBudget(); return true;
             case "OpeningTypes":
             case "WallOpenings": OpeningTypes_Click(this, eventArguments); return true;
             case "ImportCad":

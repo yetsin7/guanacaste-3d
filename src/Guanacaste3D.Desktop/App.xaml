@@ -33,6 +33,8 @@
         <ResourceDictionary Source="resources/localization.sheets.es.xaml"/>
         <ResourceDictionary Source="resources/localization.electrical.es.xaml"/>
         <ResourceDictionary Source="resources/localization.plumbing.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.budget.es.xaml"/>
+        <ResourceDictionary Source="resources/localization.workflow.es.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <Style TargetType="{x:Type ToolTip}">
         <Setter Property="StaysOpen" Value="True"/>

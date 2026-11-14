@@ -88,7 +88,7 @@ public partial class MainWindow
         _awaitingSimilarWallPick || _awaitingGroupPick || _groupToPlace is not null || _pickingWorkPlane ||
         _pickWallAction is not null || _structuralTool is not null || _slabSketch is not null ||
         _curvedRoomSeparatorDraft is not null || _placingTopoPoints ||
-        _electricalTool is not null || _wiring || _plumbingPointTool is not null || _piping;
+        _electricalTool is not null || _wiring || _plumbingPointTool is not null || _piping || _placingFamilyId is not null;
 
     // Clicks in the 3D view pick only what that view shows, so an element hidden in it cannot be selected there.
     private ElementPicker Picker => _picker ??= new ElementPicker(ModelDisplayDocument(_revealHidden));

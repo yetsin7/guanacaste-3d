@@ -13,8 +13,14 @@ public partial class MainWindow
     /// <summary>Adds a level and makes it the active plan.</summary>
     private void AddLevel_Click(object sender, RoutedEventArgs e)
     {
-        _activeLevelId = _session.AddLevel();
+        // The new level gets its plan, but work stays on the plan in use, as in the reference application: someone
+        // who sets up the levels first and then draws must not build the house on the top level without noticing.
+        var created = _session.AddLevel();
         RefreshAll();
+        var level = _session.Document.Levels.Single(candidate => candidate.Id == created);
+        var active = _session.Document.Levels.FirstOrDefault(candidate => candidate.Id == _activeLevelId);
+        StatusText.Text = FormatText("Status.LevelAddedStayOnPlan", level.Name, Units.FormatLength(level.Elevation),
+            active?.Name ?? level.Name);
     }
 
     /// <summary>Switches the active plan when the level selector changes.</summary>
@@ -80,6 +86,7 @@ public partial class MainWindow
         if (TryHandleSectionPlacement(e)) return;
         if (TryHandleCurvedRoomSeparatorClick(e)) return;
         if (TryPlaceOpening(e)) return;
+        if (TryPlaceFamilyClick(e)) return;
         RecordPlanPress(e);
         if (_movingElement)
         {
@@ -122,6 +129,7 @@ public partial class MainWindow
             _selectedColumnId = null;
             _selectedElectricalId = null;
             _selectedPlumbingId = null;
+            _selectedGridId = null;
             if (_selectedWallId is Guid wallId)
             {
                 var wall = _session.Document.Walls.First(candidate => candidate.Id == wallId);
@@ -282,7 +290,7 @@ public partial class MainWindow
     }
 
     /// <summary>Renders the active coordinated plan, including grid, BIM elements, and sketch feedback.</summary>
-    private void RenderPlan()
+    private void RenderPlanContent()
     {
         if (PlanCanvas is null || _session is null) return;
         SynchronizePlanScalePicker();

@@ -1,0 +1,158 @@
+# Casa del cobogó — plan maestro (empezar aquí)
+
+> **Si es una conversación nueva sobre Guanacaste 3D, lea primero este archivo.** Resume el objetivo, cómo se
+> mide el avance, qué falta y en qué orden. Se actualiza al final de cada sesión de trabajo.
+
+## 1. El objetivo (palabras del usuario, 14/11/2026)
+
+Diseñar **la casa del cobogó** (la casa de ejemplo de Guanacaste 3D) **desde cero**, como lo haría una persona, usando
+solo los botones y comandos del programa, y obtener el **juego completo de planos**: arquitectónicos, estructurales,
+eléctricos, de iluminación, hidrosanitarios, de ventilación, etc., más el presupuesto. Al hacerlo se descubre qué le
+falta al programa; eso es lo que hay que mejorar. La ambición: que Guanacaste 3D sea **más capaz que Revit 2028** para
+diseñar.
+
+**Ampliación (14/11/2026):** el usuario usará Guanacaste 3D **de ahora en adelante para todos sus planos
+arquitectónicos y para cualquier cosa que imagine, por ejemplo muebles (apartado de familias)**. Por tanto: todas las
+vistas, todos los planos y todos los diseños completos, sin fallas ni errores, y un **editor de familias** capaz de
+crear muebles y componentes propios (geometría, parámetros, tipos, materiales) que luego se colocan en la casa. La
+casa del cobogó debe terminar amueblada con familias creadas en el propio programa (fase 11, por escribir).
+
+## 2. Cómo se mide: la prueba «casa del cobogó desde cero»
+
+La casa se construye con una prueba automática que actúa como una persona: pulsa botones de la cinta, hace clic en el
+plano por los mismos manejadores del ratón (con *hit-test* del elemento bajo el puntero), escribe con el teclado,
+elige tipos en los menús y la biblioteca, rellena diálogos (niveles, renombrar, etiquetar, láminas) y aplica
+propiedades. Cada paso que falla dice qué le falta al programa.
+
+| Archivo | Qué es |
+|---|---|
+| `tests/architecture-ui-checks/cobogo-house-checks.cs` | Fases 0–3: proyecto, niveles, ejes, planta baja, interiores, planta alta, cubiertas |
+| `tests/architecture-ui-checks/cobogo-disciplines-checks.cs` | Fases 4–10: estructura, hidrosanitario, eléctrico, iluminación, ventilación, documentación, presupuesto |
+| `tests/architecture-ui-checks/house-from-scratch-checks.cs` | El «conductor humano» (clics, teclas, menús, diálogos, evidencia) y la casa pequeña de 30 pasos |
+| `tests/architecture-ui-checks/ribbon-inventory-checks.cs` | Pulsa **todos** los botones de todas las pestañas y anota qué hace cada uno |
+| `src/Guanacaste3D.Core/architecture/breeze-block-house-*.cs` | La casa de referencia hecha por código: coordenadas y tipos que la prueba reproduce a mano |
+
+Ejecutar (PowerShell o bash, desde la raíz):
+
+```bash
+dotnet build Guanacaste3D.slnx
+```
+
+```bash
+G3D_SCENARIOS_ONLY=1 G3D_COBOGO=1 dotnet run --project tests/architecture-ui-checks --no-build
+```
+
+```bash
+G3D_SCENARIOS_ONLY=1 G3D_RIBBON_INVENTORY=1 dotnet run --project tests/architecture-ui-checks --no-build
+```
+
+Resultados: `artifacts/interaction-evidence/casa-cobogo/report.md` (tabla de pasos) y una imagen del plano por paso;
+`artifacts/interaction-evidence/ribbon-inventory.md` (qué hace cada botón). Sin variables, la suite de interfaz corre
+todo lo demás y la casa pequeña; la casa del cobogó es opcional hasta que pase entera, luego será obligatoria.
+
+**Regla:** ninguna brecha se da por cerrada sin una comprobación en `tests/Guanacaste3D.Checks` (núcleo) y un paso de
+la casa del cobogó que la ejercite como una persona. Revise también las imágenes: varios fallos (marcas de alzado,
+etiquetas encimadas, casa en el nivel equivocado) solo se vieron mirando las capturas.
+
+## 3. Estado por fase (última ejecución: ver sección 7)
+
+| Fase | Pasos | Qué cubre |
+|---|---|---|
+| 0. Proyecto, niveles, ejes | 0.1–0.3 | Proyecto nuevo, «Gestionar niveles» (Planta baja 0.00, Planta alta 3.90), ejes A–D y 1–3 |
+| 1. Envolvente planta baja | 1.1–1.5 | Muros de concreto 300, pórtico de cochera 3.10 m, muro cortina, muro de listones y puerta pivotante, muro posterior |
+| 2. Interiores planta baja | 2.1–2.7 | Tabiques de yeso, puertas, ventanas con tamaño y antepecho, vano ancho, pisos por boceto, habitaciones con nombre, muebles y sanitarios |
+| 3. Planta alta y cubiertas | 3.1–3.12 | Entrepiso, muros blancos, celosía de cobogó, balcón, tabiques y puertas, escalera, hueco, barandilla de vidrio, cubierta a 3.30, marquesina a 3.85 con columnas, losa de cochera, habitaciones |
+| 4. Estructura | 4.1–4.3 | Cimiento corrido, zapatas aisladas, vigas perimetrales |
+| 5. Hidrosanitario | 5.1–5.5 | Aparatos del baño, calentador, medidor y salida a cloaca, conectar plomería, cuadro de plomería |
+| 6. Eléctrico | 6.1–6.6 | Tablero, tomacorrientes, luminarias, apagadores, circuitos con el cableado, cuadro de cargas |
+| 7. Iluminación | 7.1 | Lux por habitación en el plano |
+| 8. Ventilación y A/C | 8.1–8.2 | Rejilla y ducto de extracción, minisplit |
+| 9. Documentación | 9.1–9.6 | Cotas, etiquetas, secciones A-A y B-B, plantas por disciplina (duplicar vista + disciplina + F2), láminas por disciplina, PDF |
+| 11. Familias propias | 11.1–11.6 | Mesa paramétrica (2 tipos) y silla hechas en el Editor de familias, guardar .g3df, colocar con clics y Espacio, verlas en 3D |
+| 10. Presupuesto y archivo | 10.1–10.2 | Presupuesto de obra por rubros, guardar y reabrir sin pérdida |
+
+## 4. Juego de planos objetivo
+
+| Lámina | Contenido | Hoy |
+|---|---|---|
+| A-000 Portada | Vista 3D, localización, cuadro de áreas | Lo hace la muestra por código; falta por botones |
+| A-101 / A-102 | Plantas arquitectónicas PB y PA con cotas, ejes, etiquetas | Sí (por botones) |
+| A-201 | Alzados N, S, E, O | Sí; falta la cubierta en el alzado (U-12) |
+| A-301 | Secciones A-A y B-B | Sí |
+| A-401 | Tablas: puertas, ventanas, acabados, áreas | Parcial: tablas por código, no por botones |
+| S-101 / S-102 | Cimentaciones; entrepiso, vigas y columnas; cuadro de columnas y vigas | Planta estructural por disciplina sí; faltan armados y cuadros |
+| E-101 | Fuerza: tomacorrientes, circuitos, tablero, cuadro de cargas | Planta por disciplina sí; falta el cuadro en la lámina |
+| E-102 / I-101 | Alumbrado: luminarias, apagadores, lux por recinto | Planta por disciplina sí; falta leyenda de símbolos |
+| H-101 / H-102 | Agua potable; aguas negras y pluviales; isométrico | Planta sí; falta el isométrico y la lámina con el cuadro |
+| M-101 | Ventilación y aire acondicionado | Planta sí; faltan cálculo y tabla de equipos |
+| Presupuesto | Cómputo de materiales y presupuesto por rubros | Sí (ventana y CSV); falta como lámina |
+
+## 5. Brechas encontradas y su prioridad
+
+Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace incómoda; P3 es pulido o ventaja.
+
+| ID | P | Brecha | Estado | Dónde |
+|---|---|---|---|---|
+| C-01 | P1 | El botón Suelo creaba un rectángulo alrededor de todos los muros; no había boceto de piso | corregido: tipo y luego boceto (cierra en el primer punto); «Por contorno de muros» queda en el menú | `main-window-architecture-tools.cs` `ShowFloorSketchMenu` |
+| C-02 | P1 | No existía «Duplicar vista» ni la disciplina de la vista: imposible hacer plantas eléctrica, estructural, hidrosanitaria, mecánica | corregido: Vista › Crear vistas › Duplicar vista y Disciplina; lo ajeno se atenúa en la planta | `views/view-discipline.cs`, `main-window-view-discipline.cs` |
+| C-03 | P1 | Las láminas y el PDF no dibujaban **ningún** dispositivo eléctrico, circuito ni tubería, y no aplicaban la disciplina | corregido: cada disciplina imprime su trabajo sobre la arquitectura atenuada; Coordinación imprime todo. Falta: leyenda de símbolos y cableado de apagadores | `interop/pdf-discipline-primitives.cs` |
+| C-04 | P1 | Selección «pegada»: al terminar un piso o elegir una puerta/ventana quedaban seleccionados el eje, la columna o el dispositivo anterior; Propiedades mostraba otro elemento y «Aplicar» fallaba con «cuatro dimensiones» | corregido | `FinishSlabSketch`, `TrySelectOpeningSymbol`, clic de plano |
+| C-05 | P1 | No hay **referencia a cara de muro** al dibujar (solo eje: extremo, punto medio, más cercano). Muros que arrancan en la cara de otro (6.70 = 6.55 + 0.15) se desvían 15 cm salvo que se escriba la longitud con mucho zoom | abierto | `SnapWallPoint`, `WallPlacementGeometry` |
+| C-06 | P2 | Las guías de alineación «pegan» puntos a 15 cm de distancia con zoom normal (tolerancia en píxeles sin tecla para soltar) | abierto | `AlignmentTolerancePixels` |
+| C-07 | P2 | Ejes: el siguiente no continuaba la serie (tras renombrar a «A» seguía «5») | corregido: A→B, 1→2, Z→AA | `grid-axis-naming.cs` |
+| C-08 | P2 | Propiedades de ejemplar solo para columnas, losas y componentes: no hay altura/desfases de **muro**, ni de muro cortina, viga o celosía | abierto | `main-window-instance-properties.cs` |
+| C-09 | P2 | Los nombres de tipos de losa y cubierta en los menús están en inglés («Porcelain Tile Floor 200 mm») | abierto | `ShowSlabPresetMenu`, catálogo |
+| C-10 | P2 | Un vano o ventana sobre un eje no se podía seleccionar: el clic seleccionaba la línea del eje, dibujada encima | corregido: puertas, ventanas y vanos tienen prioridad sobre los ejes al hacer clic | `OpeningUnderPointer`, `TrySelectGridAxis` |
+| C-11 | P2 | «Cota alineada» acota todo el nivel de golpe; no pide dos referencias y la posición | abierto (U-09) | `AutoDimensionActiveLevel` |
+| C-12 | P1 | La cubierta no aparece en los alzados | abierto (U-12) | `RenderProjectedView` / visibilidad |
+| C-13 | P2 | Sin respuesta visible: Eliminar sin selección, Informes, Análisis estructural, Análisis de sistemas, Parámetros compartidos, Coordenadas, Transmitir modelo, Configuración CES | abierto | ver inventario |
+| C-14 | P2 | Tablas de puertas/ventanas/habitaciones: se crean por código en la muestra; falta el flujo por botones (nueva tabla por categoría) | abierto | `SchedulesWindow` |
+| C-15 | P1 | Láminas sin cuadro de cargas, cuadro de plomería, leyendas de símbolos ni tablas de presupuesto como vistas colocables | abierto | `SheetEditorWindow` (`_views`) |
+| C-16 | P2 | Ventilación: solo hay rejilla, ducto y minisplit; faltan caudales, renovaciones por hora y dimensionado de ductos | abierto | MEP |
+| C-17 | P2 | Estructura: hay cimientos, zapatas, vigas y columnas, pero no armado (varillas, estribos) dibujado ni cuadros de armado en lámina | abierto | `reinforcement.cs` |
+| C-18 | P3 | Presupuesto: no cuenta escalera, barandillas, celosía, muro cortina, aparatos sanitarios ni instalaciones eléctricas/hidráulicas | abierto | `budget/material-takeoff.cs` |
+| C-20 | P1 | Las habitaciones no se detectaban si los muros terminan en la **cara** de otro muro (se dibujan así en la casa real) ni con muro cortina; la casa del cobogó tenía 0 habitaciones | corregido: los extremos sueltos se prolongan hasta el eje del muro de enfrente si están dentro de su medio espesor; el muro cortina delimita | `room-planar-boundary-detection.cs` `ExtendToFaces` |
+| C-21 | P3 | Cochera y descansillo abiertos: hace falta un separador de habitación, como en Revit (no es fallo, queda en la prueba como paso humano) | documentado | — |
+| C-22 | P1 | No existía editor de familias: imposible crear muebles propios (el núcleo ya tenía el modelo paramétrico, sin interfaz) | corregido (primera versión): Insertar › Editor de familias con parámetros, tipos, cajas con fórmulas, vista previa en planta e isométrico, guardar .g3df, cargar y colocar | `FamilyEditorWindow.cs`, `families/family-authoring.cs` |
+| C-23 | P1 | Una familia cargada se colocaba en el origen (0, 0); no había herramienta de clic para colocarla | corregido: cada clic coloca una, Espacio gira 90°, Esc termina | `main-window-family-editor.cs` |
+| C-24 | P2 | Familias: solo cajas (extrusión rectangular). Faltan en la geometría: extrusión por boceto libre, revolución (patas torneadas, lámparas), barrido (molduras), fusión, vacíos, y material por sólido | abierto | `family-geometry.cs` (solo `SolidExtrusion`) |
+| C-25 | P2 | Los muebles propios no entran en el presupuesto ni tienen símbolo de planta propio (usan la silueta genérica) | abierto | `PlanShape`, `material-takeoff.cs` |
+| C-26 | P2 | La planta arquitectónica se satura: rótulos de lux, tuberías y cableado se montan sobre los nombres de habitación y las cotas (captura `casa-cobogo/59.png`). Falta una plantilla de vista arquitectónica que oculte o atenúe instalaciones y que los rótulos se aparten entre sí | abierto | plantillas de vista, colocación de rótulos |
+| C-19 | P2 | Hay dos tipos de cuadro de diálogo de texto (PromptWindow y TextPrompt) con comportamientos distintos | abierto | `PromptWindow.cs`, `text-prompt.cs` |
+
+Brechas anteriores ya corregidas en esta línea de trabajo (ver `MEJORAS.md` sección 6): U-03 eje de Arquitectura,
+U-04 cerrar boceto en el primer punto, U-05 barandillas duplicadas, U-06 nombres de habitación, U-07 marcas de alzado,
+U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
+
+## 6. Orden de trabajo recomendado
+
+0. **Familias (C-24/C-25):** revolución, barrido y extrusión por boceto en el editor; material por sólido; símbolo de planta propio.
+
+1. **C-15** cuadros (cargas, plomería), leyendas de símbolos y presupuesto como vistas colocables en láminas: completa E-101, H-101 y M-101.
+2. **C-05/C-06** referencia a cara de muro y control de las guías: dibujar exacto sin trucos de zoom.
+3. **C-12** cubierta en alzados y **C-10** seleccionar vanos con clic.
+4. **C-08** propiedades de ejemplar de muro y elementos lineales.
+5. **C-14** tablas por botones; **C-11** cota alineada clic-clic-clic.
+6. **C-17/C-16** armados y ventilación con cálculo; **C-18** presupuesto completo.
+7. Cuando la casa pase entera: volver obligatoria la prueba (quitar `G3D_COBOGO`) y añadir la portada A-000 por botones.
+
+## 7. Registro de ejecuciones
+
+| Fecha | Pasos que funcionan | Notas |
+|---|---|---|
+| 2026-11-14 (1.ª) | 31 de 56 | Primera vuelta: muchas brechas de la propia prueba (nombres localizados, diálogos) y reales (C-01…C-04) |
+| 2026-11-14 (2.ª) | 43 de 56 | Corregidos C-01, C-02, C-04 (parte), C-07; quedan muros desviados (C-05/C-06) |
+| 2026-11-14 (3.ª) | 52 de 56 | Muros con longitud tecleada y zoom, como en Revit; C-04 completo; 0 habitaciones detectadas (C-20) |
+| 2026-11-14 (7.ª) | 62 de 62 | Fase 11: mesa y silla paramétricas hechas en el Editor de familias, colocadas en el comedor. Suite de interfaz completa en verde |
+| 2026-11-14 (6.ª) | 56 de 56 | C-10 corregido: la casa del cobogó se construye entera por botones |
+| 2026-11-14 (5.ª) | 55 de 56 | Regresión completa limpia (casa pequeña 30/30, presupuesto, interfaz). Solo falla C-10 |
+| 2026-11-14 (4.ª) | 53 de 56 | C-20 y C-03 corregidos; faltan separadores de cochera y descansillo (paso humano añadido) y C-10 |
+
+## 8. Más allá de Revit 2028 (ideas propias del programa)
+
+- **Presupuesto en vivo** ligado al modelo, con precios locales en colones y CSV (ya existe; ampliar a todas las disciplinas).
+- **Verificación normativa costarricense** en el propio plano: iluminación por uso (ya muestra lux), detectores en dormitorios,
+  cuadro de cargas, presiones y diámetros de plomería (ya calcula), pendientes de desagüe, accesibilidad (Ley 7600).
+- **Planos por disciplina automáticos**: un clic que cree las plantas E/I/H/M/S duplicadas, con disciplina, nombre y lámina.
+- **Prueba de usabilidad incorporada**: el propio programa puede reproducir la casa del cobogó como tutorial guiado.
+- **Comparación de opciones** con costo: dos variantes de diseño con su presupuesto lado a lado.

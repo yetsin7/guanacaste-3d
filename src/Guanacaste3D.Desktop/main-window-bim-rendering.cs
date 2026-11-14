@@ -64,6 +64,7 @@ public partial class MainWindow
             });
         }
         var colourByName = document.StructuralElements.Any(item => item.LevelId == _activeLevelId && item.Kind == StructuralElementKind.ColorLegend);
+        var roomsTagged = CurrentPlanTagView()?.ShowRoomTags == true;
         foreach (var room in document.Rooms.Where(room => room.LevelId == _activeLevelId))
         {
             // Even-odd fill renders real footprints and leaves an inner courtyard unfilled.
@@ -96,15 +97,30 @@ public partial class MainWindow
             var center = WorldToCanvas(room.Center);
             var label = new TextBlock
             {
-                Text = $"{room.Number}\n{room.Name}\n{Units.FormatArea(room.Area)}",
+                Text = roomsTagged ? $"{room.Name}\n{Units.FormatArea(room.Area)}" : $"{room.Number}\n{room.Name}\n{Units.FormatArea(room.Area)}",
                 TextAlignment = TextAlignment.Center,
                 FontSize = Math.Clamp(PlanPaperPixels(2.5), 1, 500),
                 Foreground = Brushes.MidnightBlue,
                 Tag = room.Id
             };
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var top = center.Y - label.DesiredSize.Height / 2;
+            if (roomsTagged)
+            {
+                // A tagged room shows one tag, as in the reference application: the number in its bubble, then the
+                // name and area beneath, centred together on the room so nothing covers anything else.
+                var bubbleSize = TagBubbleSize();
+                var gap = bubbleSize * 0.15;
+                top = center.Y - (bubbleSize + gap + label.DesiredSize.Height) / 2;
+                var bubble = CreateTagBubble(room.Number, $"{room.Name}, {Units.FormatArea(room.Area)}", room.Id);
+                bubble.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(bubble, center.X - Math.Max(bubbleSize, bubble.DesiredSize.Width) / 2);
+                Canvas.SetTop(bubble, top);
+                PlanCanvas.Children.Add(bubble);
+                top += bubbleSize + gap;
+            }
             Canvas.SetLeft(label, center.X - label.DesiredSize.Width / 2);
-            Canvas.SetTop(label, center.Y - label.DesiredSize.Height / 2);
+            Canvas.SetTop(label, top);
             PlanCanvas.Children.Add(label);
         }
         RenderStructuralPlanElements(document);

@@ -484,4 +484,8 @@
   <sys:String x:Key="Error.The IES file is too large.">El archivo IES supera el tamaño permitido.</sys:String>
   <sys:String x:Key="Error.The IES photometric table is too large.">La tabla fotométrica IES supera el límite permitido.</sys:String>
   <sys:String x:Key="Error.The IES candela table contains an invalid intensity.">La tabla de candelas IES contiene una intensidad no válida.</sys:String>
+  <sys:String x:Key="Error.The budget currency is invalid.">La moneda del presupuesto no es válida.</sys:String>
+  <sys:String x:Key="Error.The labor rate must be between 0 % and 500 %.">La mano de obra debe estar entre 0 % y 500 % de los materiales.</sys:String>
+  <sys:String x:Key="Error.The contingency rate must be between 0 % and 100 %.">Los imprevistos deben estar entre 0 % y 100 %.</sys:String>
+  <sys:String x:Key="Error.The budget settings are empty.">La configuración del presupuesto está vacía.</sys:String>
 </ResourceDictionary>

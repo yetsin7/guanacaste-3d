@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <sys:String x:Key="RibbonCommand.MaterialBudget">Presupuesto de obra</sys:String>
+  <sys:String x:Key="RibbonCommand.MaterialTakeoff">Cómputo de materiales</sys:String>
+
+  <sys:String x:Key="Budget.Title">Cómputo de materiales y presupuesto</sys:String>
+  <sys:String x:Key="Budget.Hint">Se calcula del modelo: dibuje o cambie muros, losas, techos, columnas, puertas y ventanas y vuelva a esta ventana. Haga doble clic en un precio unitario para cambiarlo; se guarda en el proyecto y se puede deshacer.</sys:String>
+  <sys:String x:Key="Budget.Labor">Mano de obra (% de materiales):</sys:String>
+  <sys:String x:Key="Budget.Contingency">Imprevistos (%):</sys:String>
+  <sys:String x:Key="Budget.Apply">Aplicar</sys:String>
+  <sys:String x:Key="Budget.ExportTakeoff">Exportar cómputo (CSV)</sys:String>
+  <sys:String x:Key="Budget.ExportBudget">Exportar presupuesto (CSV)</sys:String>
+  <sys:String x:Key="Budget.ResetPrices">Restablecer precios de referencia</sys:String>
+  <sys:String x:Key="Budget.Column.Trade">Rubro</sys:String>
+  <sys:String x:Key="Budget.Column.Material">Material</sys:String>
+  <sys:String x:Key="Budget.Column.Unit">Unidad</sys:String>
+  <sys:String x:Key="Budget.Column.Net">Neto</sys:String>
+  <sys:String x:Key="Budget.Column.Purchase">A comprar</sys:String>
+  <sys:String x:Key="Budget.Column.Price">Precio unitario</sys:String>
+  <sys:String x:Key="Budget.Column.Total">Total</sys:String>
+  <sys:String x:Key="Budget.Column.Sources">Proviene de</sys:String>
+  <sys:String x:Key="Budget.Totals">Materiales {0}   +   Mano de obra {1}   +   Imprevistos {2}   =   TOTAL {3}</sys:String>
+  <sys:String x:Key="Budget.Empty">El modelo todavía no tiene elementos que cuantificar. Dibuje muros, losas o techos.</sys:String>
+  <sys:String x:Key="Budget.ReferencePrices">Los precios por defecto son de referencia (Costa Rica, colones) y deben confirmarse con su proveedor. «A comprar» incluye el desperdicio de cada material.</sys:String>
+  <sys:String x:Key="Budget.ModelError">No se pudo cuantificar el modelo:</sys:String>
+  <sys:String x:Key="Budget.InvalidPrice">Escriba un precio mayor o igual a cero.</sys:String>
+  <sys:String x:Key="Budget.InvalidRate">La mano de obra debe estar entre 0 y 500 % y los imprevistos entre 0 y 100 %.</sys:String>
+  <sys:String x:Key="Budget.CsvFilter">Hoja de cálculo CSV (*.csv)|*.csv</sys:String>
+  <sys:String x:Key="Budget.TakeoffFileName">computo-materiales.csv</sys:String>
+  <sys:String x:Key="Budget.BudgetFileName">presupuesto-obra.csv</sys:String>
+  <sys:String x:Key="Budget.Category.Foundations">Cimentación</sys:String>
+  <sys:String x:Key="Budget.Category.Structure">Estructura y concreto</sys:String>
+  <sys:String x:Key="Budget.Category.Masonry">Mampostería</sys:String>
+  <sys:String x:Key="Budget.Category.Drywall">Tabla yeso y divisiones</sys:String>
+  <sys:String x:Key="Budget.Category.Plaster">Repellos y finos</sys:String>
+  <sys:String x:Key="Budget.Category.Roofing">Techos</sys:String>
+  <sys:String x:Key="Budget.Category.Ceilings">Cielos</sys:String>
+  <sys:String x:Key="Budget.Category.Floors">Pisos</sys:String>
+  <sys:String x:Key="Budget.Category.Paint">Pintura</sys:String>
+  <sys:String x:Key="Budget.Category.DoorsAndWindows">Puertas y ventanas</sys:String>
+</ResourceDictionary>

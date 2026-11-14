@@ -330,11 +330,22 @@ static class NavigationChecks
         var ground = session.Document.Levels.Single(level => level.Role == LevelRole.BaseFloor);
         session.AddWall(ground.Id, new Point2(-2, 0), new Point2(4, 0));
         var addedView = session.Document.Views.Single(view => view.Id == added);
-        var marker = ElevationViewGeometry.AtPosition(session.Document, addedView.Orientation, new Point2(1, -4));
+        var marker = ElevationViewGeometry.AtPosition(session.Document, addedView.Orientation, new Point2(1, 4));
         session.UpdateElevationMarker(added, marker);
         check(ElevationViewGeometry.Resolve(session.Document, session.Document.Views.Single(view => view.Id == added)) == marker &&
               ElevationViewGeometry.Coverage(marker, ViewOrientation.North).Count == 4,
             "views: a manually positioned elevation remains fixed while its field covers the building");
+        var sides = new DocumentSession(BuildingDocument.Create("Elevation sides"));
+        sides.AddWall(sides.Document.Levels[0].Id, new Point2(0, 0), new Point2(10, 8));
+        var house = sides.Document;
+        bool Faces(ViewOrientation orientation, Func<Point2, bool> side, Point2 look)
+        {
+            var fitted = ElevationViewGeometry.Resolve(house, new ProjectView(Guid.NewGuid(), "x", ProjectViewKind.Elevation, null, orientation));
+            return side(fitted.Position) && ElevationViewGeometry.Direction(orientation) == look;
+        }
+        check(Faces(ViewOrientation.North, p => p.Y > 8, new(0, -1)) && Faces(ViewOrientation.South, p => p.Y < 0, new(0, 1)) &&
+              Faces(ViewOrientation.East, p => p.X > 10, new(-1, 0)) && Faces(ViewOrientation.West, p => p.X < 0, new(1, 0)),
+            "views: each elevation stands on the side it is named after and looks back at that facade");
         session.AddWall(ground.Id, new Point2(20, 0), new Point2(24, 0));
         check(ElevationViewGeometry.Resolve(session.Document, session.Document.Views.Single(view => view.Id == added)) != marker,
             "views: an elevation automatically refits only after the building grows outside its field");

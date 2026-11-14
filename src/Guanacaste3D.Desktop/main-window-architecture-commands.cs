@@ -23,6 +23,9 @@ public partial class MainWindow
         public int MinimumPoints => Open ? 2 : 3;
     }
 
+    /// <summary>How close, in screen pixels, a click must land to the first sketch point to close the loop.</summary>
+    private const double SketchCloseReachPixels = 10;
+
     private SlabSketch? _slabSketch;
     private Point2? _sketchPointer;
     private Func<Guid, bool>? _pickWallAction;
@@ -63,7 +66,7 @@ public partial class MainWindow
             case ArchitectureCommand.RoofGutter: BeginKindTool(StructuralElementKind.Gutter); return true;
             case ArchitectureCommand.CeilingAutomatic: ShowSlabPresetMenu(FloorKind.Ceiling); return true;
             case ArchitectureCommand.CeilingSketch: ShowSlabPresetMenu(FloorKind.Ceiling, preset => BeginSlabSketch(preset, false)); return true;
-            case ArchitectureCommand.FloorArchitectural: ShowSlabPresetMenu(FloorKind.Floor); return true;
+            case ArchitectureCommand.FloorArchitectural: ShowFloorSketchMenu(); return true;
             case ArchitectureCommand.FloorStructural:
                 CreateEnclosureSlab(FloorKind.Floor, ArchitecturalLibrary.SlabPresets.Single(preset => preset.Name == "Concrete Slab 200 mm")); return true;
             case ArchitectureCommand.FloorByFace: ShowSlabPresetMenu(FloorKind.Floor, preset => SlabByFace(preset, 0)); return true;
@@ -154,7 +157,8 @@ public partial class MainWindow
         var host = _session.Document.StructuralElements.FirstOrDefault(element => element.Id == _selectedStructuralId &&
             element.Kind is StructuralElementKind.Stair or StructuralElementKind.Ramp);
         if (host is null) { StatusText.Text = GetText("Status.SelectStairFirst"); return; }
-        StatusText.Text = FormatText("Status.RailingsCreated", _session.AddRailingsOnHost(host.Id));
+        var added = _session.AddRailingsOnHost(host.Id);
+        StatusText.Text = added > 0 ? FormatText("Status.RailingsCreated", added) : GetText("Status.HostAlreadyHasRailings");
         RefreshAll();
     }
 
@@ -301,6 +305,14 @@ public partial class MainWindow
             FinishSlabSketch();
             return true;
         }
+        // Clicking the first point again closes a boundary loop and finishes it, as the reference sketch mode does.
+        // The reach is in screen pixels so it feels the same at every zoom.
+        if (!sketch.Rectangle && !sketch.Open && sketch.Points.Count >= sketch.MinimumPoints &&
+            point.DistanceTo(sketch.Points[0]) <= SketchCloseReachPixels / _scale)
+        {
+            FinishSlabSketch();
+            return true;
+        }
         if (sketch.Points.Count == 0 || point.DistanceTo(sketch.Points[^1]) > 1e-6) sketch.Points.Add(point);
         if (sketch.Rectangle && sketch.Points.Count == 2) { FinishSlabSketch(); return true; }
         StatusText.Text = GetText("Status.SketchNext");
@@ -336,8 +348,10 @@ public partial class MainWindow
         }
         try
         {
-            _selectedFloorId = _session.AddSlabFromPreset(_activeLevelId, boundary.ToArray(), sketch.Preset,
+            var created = _session.AddSlabFromPreset(_activeLevelId, boundary.ToArray(), sketch.Preset,
                 _session.SlabElevation(_activeLevelId, sketch.Preset));
+            // The new slab becomes the only selection, so Properties shows it and not what was selected before.
+            SelectExtendedElement(floorId: created);
             StatusText.Text = GetText(sketch.Preset.Kind switch
             {
                 FloorKind.Roof => "Status.RoofCreated", FloorKind.Ceiling => "Status.CeilingCreated",
@@ -392,6 +406,7 @@ public partial class MainWindow
     {
         _slabSketch = null;
         _sketchPointer = null;
+        _placingFamilyId = null;
         _pickWallAction = null;
         _awaitingGroupPick = false;
         _groupToPlace = null;

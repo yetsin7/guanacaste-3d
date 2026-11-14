@@ -16,6 +16,9 @@ static class StairRailingChecks
         session.AddRailingsOnHost(stairId);
         var original = session.Document.StructuralElements.Where(element => element.RailingHostId == stairId).ToArray();
         check(original.Length == 2, "Generated stair railings retain their host");
+        check(session.AddRailingsOnHost(stairId) == 0 &&
+              session.Document.StructuralElements.Count(element => element.RailingHostId == stairId) == 2,
+            "Placing railings again on a stair that has them adds no duplicates");
 
         session.MoveStructuralElement(stairId, 2, 3);
         var moved = session.Document.StructuralElements.Where(element => element.RailingHostId == stairId).ToArray();
