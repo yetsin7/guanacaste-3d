@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -82,6 +82,10 @@ internal static partial class WorkspaceChecks
             session.AddWall(level, new(4, 4), new(-4, 4));
             session.AddFloor(level, [new(-4, -4), new(4, -4), new(4, 4), new(-4, 4)]);
         });
+        // In the modeling application the Render tab hands the model to Guanacaste Render; the built-in panel these
+        // checks drive is the one the render-only mode shows, so they run in that mode.
+        var renderOnly = Guanacaste3D.Desktop.App.RenderOnly;
+        Guanacaste3D.Desktop.App.RenderOnly = true;
         ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 6;
         ((TabControl)panel.FindName("SectionTabs")).SelectedIndex = 2;
         Pump();
@@ -100,5 +104,6 @@ internal static partial class WorkspaceChecks
         SaveBitmap("render-interior-navigation.png");
         ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 1;
         Pump();
+        Guanacaste3D.Desktop.App.RenderOnly = renderOnly;
     }
 }
