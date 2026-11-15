@@ -461,17 +461,17 @@ internal static partial class HouseFromScratchChecks
         _pump();
     }
 
-    /// <summary>Moves the pointer to a model point through the plan's MouseMove handler.</summary>
+    /// <summary>
+    /// Moves the pointer to a model point through the plan's MouseMove handler. The pointer stays there afterwards, as a
+    /// resting mouse does: WPF raises its own MouseMove whenever the layout changes under the real cursor, and an unpinned
+    /// pointer let that event swing a wall being drawn toward wherever the real mouse happened to be.
+    /// </summary>
     private static void Move(double x, double y)
     {
         var point = Canvas(x, y);
         SetPointer(point);
-        try
-        {
-            var move = new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = UIElement.MouseMoveEvent, Source = PlanCanvas };
-            Invoke("PlanCanvas_MouseMove", PlanCanvas, move);
-        }
-        finally { SetPointer(null); }
+        var move = new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = UIElement.MouseMoveEvent, Source = PlanCanvas };
+        Invoke("PlanCanvas_MouseMove", PlanCanvas, move);
         _pump();
     }
 
@@ -491,7 +491,7 @@ internal static partial class HouseFromScratchChecks
             var up = Button(UIElement.MouseLeftButtonUpEvent, target, clickCount);
             Invoke("PlanCanvas_MouseLeftButtonUp", PlanCanvas, up);
         }
-        finally { SetPointer(null); }
+        finally { SetPointer(point); }
         _pump();
     }
 

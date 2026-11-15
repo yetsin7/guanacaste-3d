@@ -38,5 +38,6 @@
   <sys:String x:Key="Budget.Category.Ceilings">Cielos</sys:String>
   <sys:String x:Key="Budget.Category.Floors">Pisos</sys:String>
   <sys:String x:Key="Budget.Category.Paint">Pintura</sys:String>
+  <sys:String x:Key="Budget.Category.Furnishings">Mobiliario y equipo</sys:String>
   <sys:String x:Key="Budget.Category.DoorsAndWindows">Puertas y ventanas</sys:String>
 </ResourceDictionary>

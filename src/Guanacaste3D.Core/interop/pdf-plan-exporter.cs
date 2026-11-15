@@ -134,6 +134,11 @@ public static partial class PdfPlanExporter
                 continue;
             }
             if (element.IsDatumLine || !element.HasSolid) continue;
+            if (FamilyPlanSymbol.For(document, element) is { Count: > 0 } symbol)
+            {
+                foreach (var (a, b) in symbol) items.Add(new SheetPolyline([a, b], 0.18, Grey));
+                continue;
+            }
             foreach (var part in ElementGeometry.Parts(element))
                 items.Add(new SheetPolygon(part.Footprint, 0.18, Grey, null));
             if (element.Kind == StructuralElementKind.Stair)

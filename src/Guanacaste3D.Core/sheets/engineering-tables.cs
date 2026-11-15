@@ -177,6 +177,7 @@ public static class EngineeringTables
         MaterialCategory.Ceilings => "Cielos",
         MaterialCategory.Floors => "Pisos",
         MaterialCategory.Paint => "Pintura",
+        MaterialCategory.Furnishings => "Mobiliario y equipo",
         _ => "Puertas y ventanas"
     };
 

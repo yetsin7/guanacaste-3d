@@ -116,7 +116,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-22 | P1 | No existía editor de familias: imposible crear muebles propios (el núcleo ya tenía el modelo paramétrico, sin interfaz) | corregido (primera versión): Insertar › Editor de familias con parámetros, tipos, cajas con fórmulas, vista previa en planta e isométrico, guardar .g3df, cargar y colocar | `FamilyEditorWindow.cs`, `families/family-authoring.cs` |
 | C-23 | P1 | Una familia cargada se colocaba en el origen (0, 0); no había herramienta de clic para colocarla | corregido: cada clic coloca una, Espacio gira 90°, Esc termina | `main-window-family-editor.cs` |
 | C-24 | P2 | Familias: solo cajas (extrusión rectangular). Faltan en la geometría: extrusión por boceto libre, revolución (patas torneadas, lámparas), barrido (molduras), fusión, vacíos, y material por sólido | parcial: revolución, extrusión por contorno tecleado y material por sólido (9 materiales) hechos en núcleo y editor; faltan barrido, fusión y vacíos | `family-geometry.cs`, `family-authoring.cs`, `FamilyEditorWindow.cs` |
-| C-25 | P2 | Los muebles propios no entran en el presupuesto ni tienen símbolo de planta propio (usan la silueta genérica) | abierto | `PlanShape`, `material-takeoff.cs` |
+| C-25 | P2 | Los muebles propios no entran en el presupuesto ni tienen símbolo de planta propio (usan la silueta genérica) | corregido: entran al presupuesto (rubro «Mobiliario y equipo», una línea por familia, precio de referencia por categoría, editable y guardado, sin mano de obra) y se dibujan en planta y PDF con su propia geometría vista desde arriba (`FamilyPlanSymbol`, con líneas ocultas) | `PlanShape`, `material-takeoff.cs` |
 | C-26 | P2 | La planta arquitectónica se saturaba con circuitos, rótulos de lux, números de circuito y tuberías | corregido: esas capas se dibujan en vistas Eléctrica/Fontanería/Coordinación o mientras se usa su herramienta; la arquitectónica muestra solo los aparatos | `ShowsEngineeringOverlay` |
 | C-27 | P1 | No había forma de copiar un piso a otros niveles: un edificio se dibujaba piso por piso | corregido: Modificar › Pegar en niveles (Ctrl+A incluye habitaciones e instalaciones; un paso de deshacer) | `main-window-paste-to-levels.cs` |
 | C-28 | P1 | Con un edificio grande cada cambio tardaba ~1 s: el navegador del proyecto (999 nodos) se reconstruía siempre | corregido: solo se reconstruye si cambia lo que muestra; niveles plegados. Cambiar de nivel 1.0 s → 0.24 s | `main-window-project-sidebar.cs` |
@@ -131,7 +131,7 @@ U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
 
 ## 6. Orden de trabajo recomendado
 
-0. **Familias (C-24/C-25):** ~~revolución, extrusión por boceto, material por sólido~~ hechos; faltan barrido, vacíos y símbolo de planta propio.
+0. **Familias (C-24/C-25):** ~~revolución, extrusión por boceto, material por sólido~~ hechos; faltan barrido y vacíos.
 
 1. **C-24** familias más ricas (revolución, barrido, materiales) y **C-25** muebles propios en presupuesto.
 2. **C-05/C-06** referencia a cara de muro y control de las guías: dibujar exacto sin trucos de zoom.
@@ -148,6 +148,7 @@ U-08 etiqueta encima del nombre, U-11 nivel nuevo cambiaba la planta activa.
 | 2026-11-14 (1.ª) | 31 de 56 | Primera vuelta: muchas brechas de la propia prueba (nombres localizados, diálogos) y reales (C-01…C-04) |
 | 2026-11-14 (2.ª) | 43 de 56 | Corregidos C-01, C-02, C-04 (parte), C-07; quedan muros desviados (C-05/C-06) |
 | 2026-11-14 (3.ª) | 52 de 56 | Muros con longitud tecleada y zoom, como en Revit; C-04 completo; 0 habitaciones detectadas (C-20) |
+| 2026-11-14 (11.ª) | 63/63 | C-25 corregido: 6 muebles propios en el presupuesto (9 rubros) y con símbolo de planta propio. Prueba más estable: el puntero simulado queda fijo donde lo dejó la «persona» (un MouseMove sintético de WPF desviaba muros de Planta alta al azar) |
 | 2026-11-14 (10.ª) | 63/63, núcleo y escritorio en verde | C-24 parcial: lámpara de pie por revolución en metal (paso 11.7), contornos tecleados con coma o punto decimal, material por sólido |
 | 2026-11-14 (9.ª) | 62/62, edificio 13/13, CI verde | Tablas de ingeniería en láminas, ajuste a caras, borrar instalaciones, restricciones de muro, nombres en español; `main` verde en GitHub desde b808a63 |
 | 2026-11-14 (8.ª) | 62/62 + edificio 12/12 | Edificio de 6 pisos por botones y torre de 10 pisos con límites de tiempo; todo subido a GitHub main (7beb6dd, 6a139e8) |

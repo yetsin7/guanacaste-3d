@@ -59,6 +59,18 @@ static class FamilyAuthoringChecks
             "Families: a made-up table loads, is placed in the project, and loading it again replaces it");
         check(Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document).TriangleCount > 0, "Families: the placed table appears in the 3D model");
 
+        // The furniture the person made goes into the budget: one line per family, a piece per instance, no site labor.
+        session.PlaceComponentFamily(level, id, new Point2(6, 2));
+        var furnished = ConstructionBudget.Build(session.Document, BudgetSettings.Default);
+        var tables = furnished.Lines.Single(line => line.Takeoff.Code == MaterialCatalog.FurnitureCode(id));
+        check(tables.Takeoff.PurchaseQuantity == 2 && tables.Takeoff.Material.Category == MaterialCategory.Furnishings &&
+              tables.Takeoff.Material.Description == baked.Name && tables.Total == 2 * MaterialCatalog.FurniturePrice(baked.Category) &&
+              furnished.Labor == Math.Round((furnished.Materials - tables.Total) * BudgetSettings.Default.LaborRate, 2),
+            "Budget: placed furniture is counted per piece at its reference price and carries no labor");
+        var quoted = BudgetSettings.FromJson(BudgetSettings.Default.WithPrice(MaterialCatalog.FurnitureCode(id), 310_000m).ToJson());
+        check(ConstructionBudget.Build(session.Document, quoted).Lines.Single(line => line.Takeoff.Code == MaterialCatalog.FurnitureCode(id)).Total == 620_000m,
+            "Budget: a quoted price for a piece of furniture is saved and replaces the reference price");
+
         // A floor lamp turned about its axis: base, stem and shade, in metal and light.
         var lamp = FamilyAuthoring.Create("Lámpara de pie", FamilyCategory.LightingFixtures);
         var profile = new List<Point2> { new(0, 0), new(0.15, 0), new(0.15, 0.03), new(0.02, 0.03), new(0.02, 1.4), new(0.25, 1.4), new(0.18, 1.7), new(0, 1.7) };
@@ -69,6 +81,20 @@ static class FamilyAuthoringChecks
         check(Math.Abs(width - 0.5) < 0.01 && Math.Abs(tall - 1.7) < 1e-4 && FamilyGeometry.SignedVolume(turned) > 0 &&
               turned.TriangleKinds.All(kind => kind == SurfaceKind.Metal),
             "Families: a lamp turned about its axis has its size, faces outward and renders as metal");
+        // In plan each piece draws itself as seen from above: the table its top (the legs hide under it), the lamp the
+        // two rings of its shade (the base hides under the shade), not the generic box of a component.
+        var tableSymbol = FamilyPlanSymbol.For(session.Document, session.Document.StructuralElements.Single(element => element.Id == placed));
+        var tableCorners = tableSymbol.SelectMany(segment => new[] { segment.A, segment.B }).ToList();
+        check(tableSymbol.Count == 4 && tableCorners.All(point => Math.Abs(Math.Abs(point.X - 3) - 0.8) < 1e-3 && Math.Abs(Math.Abs(point.Y - 2) - 0.45) < 1e-3),
+            "Families: in plan the table draws its top, with the legs hidden under it");
+        var lampId = session.LoadComponentFamily(FamilyAuthoring.Bake(lamp, lamp.Types[0].Id));
+        var lampPlaced = session.PlaceComponentFamily(level, lampId, new Point2(8, 2));
+        var lampSymbol = FamilyPlanSymbol.For(session.Document, session.Document.StructuralElements.Single(element => element.Id == lampPlaced));
+        var radii = lampSymbol.SelectMany(segment => new[] { segment.A, segment.B }).Select(point => point.DistanceTo(new Point2(8, 2))).ToList();
+        check(lampSymbol.Count == 2 * FamilyGeometry.RevolutionSegments &&
+              radii.All(radius => Math.Abs(radius - 0.25) < 1e-3 || Math.Abs(radius - 0.18) < 1e-3),
+            "Families: in plan the turned lamp draws the two rings of its shade, its base hidden under it");
+
         var reversed = FamilyAuthoring.Create("Lámpara invertida", FamilyCategory.LightingFixtures);
         FamilyAuthoring.AddRevolution(reversed, "Cuerpo", profile.AsEnumerable().Reverse().ToList());
         check(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(reversed)) > 0, "Families: a profile drawn the other way round still faces outward");

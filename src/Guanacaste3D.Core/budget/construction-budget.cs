@@ -57,10 +57,14 @@ public sealed record BudgetSettings(string Currency, IReadOnlyDictionary<string,
 
     public decimal PriceOf(string code) => Prices.TryGetValue(code, out var price) ? price : 0m;
 
+    /// <summary>The project's price for a line, or the line's reference price when the project sets none.</summary>
+    public decimal PriceOf(MaterialDefinition material) =>
+        Prices.TryGetValue(material.Code, out var price) ? price : material.ReferencePrice ?? 0m;
+
     /// <summary>Returns a copy with one unit price replaced.</summary>
     public BudgetSettings WithPrice(string code, decimal price)
     {
-        MaterialCatalog.Get(code);
+        if (!MaterialCatalog.IsPriceable(code)) MaterialCatalog.Get(code);
         if (price < 0) throw new InvalidDataException("A unit price cannot be negative.");
         var copy = new Dictionary<string, decimal>(Prices, StringComparer.Ordinal) { [code] = price };
         return this with { Prices = copy };
@@ -85,7 +89,7 @@ public sealed record BudgetSettings(string Currency, IReadOnlyDictionary<string,
         var stored = JsonSerializer.Deserialize<Stored>(json) ?? throw new InvalidDataException("The budget settings are empty.");
         var prices = new Dictionary<string, decimal>(CostaRicaReferencePrices, StringComparer.Ordinal);
         foreach (var (code, price) in stored.Prices ?? [])
-            if (prices.ContainsKey(code)) prices[code] = price;
+            if (prices.ContainsKey(code) || MaterialCatalog.IsFurniture(code)) prices[code] = price;
         var settings = new BudgetSettings(stored.Currency, prices, stored.LaborRate, stored.ContingencyRate);
         settings.Validate();
         return settings;
@@ -129,11 +133,13 @@ public sealed record ConstructionBudget(BudgetSettings Settings, MaterialTakeoff
         var takeoff = MaterialTakeoff.Build(document);
         var lines = takeoff.Lines.Select(line =>
         {
-            var price = settings.PriceOf(line.Code);
+            var price = settings.PriceOf(line.Material);
             return new ConstructionBudgetLine(line, price, Math.Round((decimal)line.PurchaseQuantity * price, 2));
         }).ToList();
         var materials = lines.Sum(line => line.Total);
-        var labor = Math.Round(materials * settings.LaborRate, 2);
+        // Furnishings are bought ready-made: they carry no site labor.
+        var built = lines.Where(line => line.Takeoff.Material.Category != MaterialCategory.Furnishings).Sum(line => line.Total);
+        var labor = Math.Round(built * settings.LaborRate, 2);
         var contingency = Math.Round((materials + labor) * settings.ContingencyRate, 2);
         return new ConstructionBudget(settings, takeoff, lines, materials, labor, contingency, materials + labor + contingency);
     }

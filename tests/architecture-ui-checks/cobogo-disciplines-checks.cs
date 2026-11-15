@@ -373,7 +373,12 @@ internal static partial class HouseFromScratchChecks
             Expect(trades.Contains(MaterialCategory.Masonry) && trades.Contains(MaterialCategory.Structure) && trades.Contains(MaterialCategory.Drywall) &&
                    trades.Contains(MaterialCategory.DoorsAndWindows) && trades.Contains(MaterialCategory.Foundations),
                 "faltan rubros: " + string.Join(", ", Enum.GetValues<MaterialCategory>().Except(trades)));
-            return $"₡{budget.Total:#,0} en {trades.Count} rubros";
+            // The table, chairs and lamp made in the Family editor are bought too: one line per family, a piece each.
+            var furniture = budget.Lines.Where(line => line.Takeoff.Material.Category == MaterialCategory.Furnishings).ToList();
+            var pieces = furniture.Sum(line => line.Takeoff.PurchaseQuantity);
+            Expect(furniture.Count >= 3 && pieces >= 6 && furniture.All(line => line.Total > 0),
+                $"el presupuesto trae {furniture.Count} muebles propios ({pieces} piezas)");
+            return $"₡{budget.Total:#,0} en {trades.Count} rubros, {pieces} muebles propios";
         });
         yield return ("10.2 Guardar y volver a abrir", () =>
         {

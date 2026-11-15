@@ -60,6 +60,11 @@ public partial class MainWindow
                 PlanCanvas.Children.Add(label);
                 continue;
             }
+            if (FamilyPlanSymbol.For(document, element) is { Count: > 0 } symbol)
+            {
+                AddFamilySymbol(element, symbol, selected);
+                continue;
+            }
             if (HasDetailedPlanParts(element))
             {
                 foreach (var part in ElementGeometry.Parts(element))
@@ -81,6 +86,32 @@ public partial class MainWindow
                 Tag = element.Id
             });
         }
+    }
+
+    /// <summary>
+    /// A family made in the Family editor, drawn from its own geometry seen from above. Its footprint stays underneath,
+    /// filled but without a border, so a click anywhere on the piece selects it.
+    /// </summary>
+    private void AddFamilySymbol(StructuralElement element, IReadOnlyList<(Point2 A, Point2 B)> symbol, bool selected)
+    {
+        PlanCanvas.Children.Add(new Polygon
+        {
+            Points = new PointCollection(element.Footprint.Select(WorldToCanvas)),
+            Fill = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255)), Tag = element.Id
+        });
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+            foreach (var (a, b) in symbol)
+            {
+                context.BeginFigure(WorldToCanvas(a), false, false);
+                context.LineTo(WorldToCanvas(b), true, false);
+            }
+        geometry.Freeze();
+        PlanCanvas.Children.Add(new Path
+        {
+            Data = geometry, Stroke = selected ? Brushes.DarkOrange : Brushes.DimGray, StrokeThickness = selected ? 1.5 : 1,
+            IsHitTestVisible = false
+        });
     }
 
     /// <summary>Kinds and styles whose plan symbol is more than one footprint.</summary>

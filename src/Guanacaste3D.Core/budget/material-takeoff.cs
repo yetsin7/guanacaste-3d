@@ -15,12 +15,19 @@ public enum MaterialCategory
     Ceilings,
     Floors,
     Paint,
-    DoorsAndWindows
+    DoorsAndWindows,
+
+    /// <summary>Furniture, fixtures and equipment the person placed from their own families: bought, not built.</summary>
+    Furnishings
 }
 
 /// <summary>One material of the catalog: a stable code, how it is sold and how much is lost on site.</summary>
 public sealed record MaterialDefinition(string Code, MaterialCategory Category, string Description, string Unit,
-    double WasteRate, bool SoldWhole);
+    double WasteRate, bool SoldWhole)
+{
+    /// <summary>Price used when the project sets none; only furnishings carry one, by the kind of family.</summary>
+    public decimal? ReferencePrice { get; init; }
+}
 
 /// <summary>
 /// One line of the takeoff. <see cref="NetQuantity"/> is what the model needs; <see cref="PurchaseQuantity"/> adds
@@ -168,6 +175,34 @@ public static class MaterialCatalog
 
     public static MaterialDefinition Get(string code) =>
         ByCode.TryGetValue(code, out var material) ? material : throw new KeyNotFoundException($"Unknown material '{code}'.");
+
+    /// <summary>Codes of furnishings start with this, followed by the family id: one line per family placed.</summary>
+    public const string FurniturePrefix = "MUE:";
+
+    public static bool IsFurniture(string code) => code.StartsWith(FurniturePrefix, StringComparison.Ordinal) &&
+                                                   Guid.TryParseExact(code[FurniturePrefix.Length..], "N", out _);
+
+    public static string FurnitureCode(Guid familyId) => FurniturePrefix + familyId.ToString("N");
+
+    /// <summary>A known material, or a furnishing code (whose definition comes from its family in the takeoff).</summary>
+    public static bool IsPriceable(string code) => ByCode.ContainsKey(code) || IsFurniture(code);
+
+    /// <summary>The line of one furniture family: counted in pieces, never wasted, priced by its kind until the project says otherwise.</summary>
+    public static MaterialDefinition Furniture(FamilyDocument family) =>
+        new(FurnitureCode(family.Id), MaterialCategory.Furnishings, family.Name, "u", 0.0, true) { ReferencePrice = FurniturePrice(family.Category) };
+
+    /// <summary>Reference prices in colones for a piece of each kind: mid-range Costa Rican retail, to be replaced by quotes.</summary>
+    public static decimal FurniturePrice(FamilyCategory category) => category switch
+    {
+        FamilyCategory.Furniture => 120_000m,
+        FamilyCategory.Casework => 250_000m,
+        FamilyCategory.PlumbingFixtures => 85_000m,
+        FamilyCategory.LightingFixtures => 25_000m,
+        FamilyCategory.ElectricalEquipment => 60_000m,
+        FamilyCategory.MechanicalEquipment => 300_000m,
+        FamilyCategory.Planting => 15_000m,
+        _ => 50_000m
+    };
 }
 
 /// <summary>Turns the walls, slabs, roofs, structure and openings of a document into a purchase list.</summary>
@@ -243,6 +278,16 @@ public static class MaterialTakeoff
             }
         }
 
+        // Furniture and equipment from the person's own families: one piece per placed instance. People and cars
+        // that only give the scene its scale are not bought.
+        var families = document.ComponentFamilies.ToDictionary(family => family.Id);
+        foreach (var element in document.StructuralElements)
+        {
+            if (element.FamilyId is not Guid familyId || !families.TryGetValue(familyId, out var family) ||
+                family.Category is FamilyCategory.Entourage or FamilyCategory.TitleBlocks) continue;
+            acc.Add(MaterialCatalog.Furniture(family), 1, $"{family.Name} ({Name(levelNames, element.LevelId)})");
+        }
+
         foreach (var opening in document.Openings)
         {
             if (opening.Kind == OpeningKind.Door)
@@ -265,6 +310,7 @@ public static class MaterialTakeoff
         var lines = acc.Lines()
             .OrderBy(line => line.Material.Category)
             .ThenBy(line => Array.IndexOf(MaterialCatalog.Materials.ToArray(), line.Material))
+            .ThenBy(line => line.Material.Description, StringComparer.CurrentCulture)
             .ToList();
         return new MaterialTakeoffResult(lines, assumptions.ToList());
     }
@@ -410,6 +456,15 @@ public static class MaterialTakeoff
     {
         private readonly Dictionary<string, (double Quantity, SortedSet<string> Sources)> _items = new(StringComparer.Ordinal);
 
+        private readonly Dictionary<string, MaterialDefinition> _defined = new(StringComparer.Ordinal);
+
+        /// <summary>Adds to a line whose definition is not in the catalog (a furnishing from the model).</summary>
+        public void Add(MaterialDefinition material, double quantity, string source)
+        {
+            _defined[material.Code] = material;
+            Add(material.Code, quantity, source);
+        }
+
         public void Add(string code, double quantity, string source)
         {
             if (!double.IsFinite(quantity) || quantity <= 0) return;
@@ -422,7 +477,7 @@ public static class MaterialTakeoff
 
         public IEnumerable<MaterialTakeoffLine> Lines() => _items.Select(pair =>
         {
-            var material = MaterialCatalog.Get(pair.Key);
+            var material = _defined.TryGetValue(pair.Key, out var defined) ? defined : MaterialCatalog.Get(pair.Key);
             var net = Math.Round(pair.Value.Quantity, 3);
             return new MaterialTakeoffLine(material, net, PurchaseRules.Quantity(material, net), pair.Value.Sources.ToList());
         });
