@@ -350,7 +350,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     // broad-face area; four reveal faces restore 1.2 m².
     door_lines[0] =
         "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned();
-    assert_eq!(door_report.trim().replace("\\r\\n", "\\n"), door_lines.join("\\n"));
+    assert_eq!(door_report.trim().replace("\r\n", "\n"), door_lines.join("\n"));
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
     fs::remove_dir_all(directory).unwrap();
