@@ -232,5 +232,30 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A C#-serialized wall with zero thickness is invalid geometry. Reject
+    // the entire report without changing the source fixture or emitting a
+    // partial report for the other valid walls.
+    let mut zero_thickness: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    zero_thickness["Walls"][0]["Thickness"] = serde_json::json!(0.0);
+    let zero_thickness_path = directory.join("zero-thickness-wall.g3d.json");
+    fs::write(
+        &zero_thickness_path,
+        serde_json::to_vec(&zero_thickness).unwrap(),
+    )
+    .unwrap();
+    let zero_thickness_result = Command::new(executable)
+        .arg(&zero_thickness_path)
+        .output()
+        .unwrap();
+    assert!(
+        !zero_thickness_result.status.success(),
+        "Rust must reject a zero-thickness C# wall"
+    );
+    assert!(
+        zero_thickness_result.stdout.is_empty(),
+        "invalid wall dimensions must not produce partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
