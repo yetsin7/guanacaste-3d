@@ -211,5 +211,26 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A wall referencing a non-existent level must not be accepted or reported.
+    // Change only a copy of the genuine C# serializer output.
+    let mut orphan_wall: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    orphan_wall["Walls"][0]["LevelId"] =
+        serde_json::json!("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    let orphan_path = directory.join("orphan-level-wall.g3d.json");
+    fs::write(&orphan_path, serde_json::to_vec(&orphan_wall).unwrap()).unwrap();
+    let orphan_result = Command::new(executable)
+        .arg(&orphan_path)
+        .output()
+        .unwrap();
+    assert!(
+        !orphan_result.status.success(),
+        "Rust must reject a C# wall referencing a missing level"
+    );
+    assert!(
+        orphan_result.stdout.is_empty(),
+        "invalid BIM references must not produce partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
