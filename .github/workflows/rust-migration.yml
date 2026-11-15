@@ -4,11 +4,17 @@ on:
   push:
     paths:
       - 'rust/**'
+      - 'src/Guanacaste3D.Core/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
       - '.github/workflows/rust-migration.yml'
       - 'Plan de migración.md'
   pull_request:
     paths:
       - 'rust/**'
+      - 'src/Guanacaste3D.Core/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
       - '.github/workflows/rust-migration.yml'
       - 'Plan de migración.md'
 jobs:
