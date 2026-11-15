@@ -46,14 +46,24 @@ foreach (var restored in new[] { fromJson, fromNative })
         return 1;
     }
 }
-// Independently compute the rectangular wall reference from the same C# inputs.
-// This is an analytic fixture oracle, NOT yet the production WallGeometry engine.
-var length = Math.Sqrt(Math.Pow(4.0 - 0.0, 2) + Math.Pow(0.0 - 0.0, 2));
-var volume = length * thickness * height;
-var area = 2 * (length * height + length * thickness + height * thickness);
-Console.WriteLine(FormattableString.Invariant($"{wallId:N}, {volume:F12}, {area:F12}"));
-var diagonalLength = Math.Sqrt(Math.Pow(13.0 - 10.0, 2) + Math.Pow(14.0 - 10.0, 2));
-var diagonalVolume = diagonalLength * thickness * height;
-var diagonalArea = 2 * (diagonalLength * height + diagonalLength * thickness + height * thickness);
-Console.WriteLine(FormattableString.Invariant($"{diagonalId:N}, {diagonalVolume:F12}, {diagonalArea:F12}"));
+// Calculate from the same point inputs used to construct the walls. This
+// prevents an edited fixture from silently retaining obsolete hard-coded
+// reference dimensions. This is still analytic, not production WallGeometry.
+static void PrintWallMetrics(Guid id, Point2 a, Point2 b, double wallThickness, double wallHeight)
+{
+    var dx = b.X - a.X;
+    var dy = b.Y - a.Y;
+    var length = Math.Sqrt(dx * dx + dy * dy);
+    if (!double.IsFinite(length) || length <= 0 ||
+        !double.IsFinite(wallThickness) || wallThickness <= 0 ||
+        !double.IsFinite(wallHeight) || wallHeight <= 0)
+    {
+        throw new InvalidOperationException("Fixture wall dimensions must be finite and positive");
+    }
+    var volume = length * wallThickness * wallHeight;
+    var area = 2 * (length * wallHeight + length * wallThickness + wallHeight * wallThickness);
+    Console.WriteLine(FormattableString.Invariant($"{id:N}, {volume:F12}, {area:F12}"));
+}
+PrintWallMetrics(wallId, start, end, thickness, height);
+PrintWallMetrics(diagonalId, diagonalStart, diagonalEnd, thickness, height);
 return 0;
