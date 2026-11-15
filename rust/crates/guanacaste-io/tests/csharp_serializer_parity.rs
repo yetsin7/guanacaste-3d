@@ -65,7 +65,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
             before,
             "Rust must not mutate C# output"
         );
-        reports.push(String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n"));
+        reports.push(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .replace("\r\n", "\n"),
+        );
     }
     assert_eq!(
         reports[0], reports[1],
