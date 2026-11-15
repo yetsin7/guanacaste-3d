@@ -31,6 +31,21 @@ document.Validate();
 var json = ProjectFile.SerializeDocument(document);
 File.WriteAllText(Path.Combine(directory, "wall.g3d.json"), json);
 NativeDocumentStore.SaveProject(Path.Combine(directory, "wall.g3d"), document);
+// Verify that both production C# readers can round-trip the exact fixture before
+// Rust uses it as an oracle. Do not alter either persisted artifact.
+var fromJson = ProjectFile.DeserializeDocument(json);
+var fromNative = NativeDocumentStore.LoadProject(Path.Combine(directory, "wall.g3d"));
+foreach (var restored in new[] { fromJson, fromNative })
+{
+    if (restored.Id != document.Id ||
+        restored.SchemaVersion != document.SchemaVersion ||
+        restored.Walls.Count != document.Walls.Count ||
+        !restored.Walls.Select(w => w.Id).SequenceEqual(document.Walls.Select(w => w.Id)))
+    {
+        Console.Error.WriteLine("C# serializer round-trip changed document identity or wall IDs");
+        return 1;
+    }
+}
 // Independently compute the rectangular wall reference from the same C# inputs.
 // This is an analytic fixture oracle, NOT yet the production WallGeometry engine.
 var length = Math.Sqrt(Math.Pow(4.0 - 0.0, 2) + Math.Pow(0.0 - 0.0, 2));
