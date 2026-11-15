@@ -353,5 +353,39 @@ fn csharp_serializers_match_rust_wall_metrics() {
     assert_eq!(door_report.trim().replace("\r\n", "\n"), door_lines.join("\n"));
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A window in the same genuine C#-serialized wall must reduce volume
+    // while retaining four reveal faces (including the sill).
+    let mut with_window: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    with_window["Openings"] = serde_json::json!([{
+        "Id": "00000000-0000-0000-0000-000000000008",
+        "WallId": "00000000-0000-0000-0000-000000000002",
+        "Kind": 1,
+        "Offset": 1.5,
+        "Width": 1.0,
+        "Sill": 1.0,
+        "Height": 1.0
+    }]);
+    let window_path = directory.join("window-wall.g3d.json");
+    fs::write(&window_path, serde_json::to_vec(&with_window).unwrap()).unwrap();
+    let window_result = Command::new(executable).arg(&window_path).output().unwrap();
+    assert!(
+        window_result.status.success(),
+        "supported window should be inspected: {}",
+        String::from_utf8_lossy(&window_result.stderr)
+    );
+    let mut window_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
+    // Volume: 2.4 - 1*1*0.2 = 2.2 m³.
+    // Area: 26.8 - 2*1*1 + 4*1*0.2 = 25.6 m².
+    window_lines[0] =
+        "00000000000000000000000000000002, 2.200000000000, 25.600000000000".to_owned();
+    assert_eq!(
+        String::from_utf8(window_result.stdout)
+            .unwrap()
+            .trim()
+            .replace("\\r\\n", "\\n"),
+        window_lines.join("\\n")
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
