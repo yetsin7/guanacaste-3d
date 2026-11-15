@@ -170,7 +170,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut invalid_guid: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
     invalid_guid["Walls"][0]["Id"] = serde_json::json!("not-a-guid");
     let invalid_guid_path = directory.join("invalid-guid-wall.g3d.json");
-    fs::write(&invalid_guid_path, serde_json::to_vec(&invalid_guid).unwrap()).unwrap();
+    fs::write(
+        &invalid_guid_path,
+        serde_json::to_vec(&invalid_guid).unwrap(),
+    )
+    .unwrap();
     let invalid_guid_result = Command::new(executable)
         .arg(&invalid_guid_path)
         .output()
@@ -214,14 +218,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
     // A wall referencing a non-existent level must not be accepted or reported.
     // Change only a copy of the genuine C# serializer output.
     let mut orphan_wall: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
-    orphan_wall["Walls"][0]["LevelId"] =
-        serde_json::json!("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    orphan_wall["Walls"][0]["LevelId"] = serde_json::json!("ffffffff-ffff-ffff-ffff-ffffffffffff");
     let orphan_path = directory.join("orphan-level-wall.g3d.json");
     fs::write(&orphan_path, serde_json::to_vec(&orphan_wall).unwrap()).unwrap();
-    let orphan_result = Command::new(executable)
-        .arg(&orphan_path)
-        .output()
-        .unwrap();
+    let orphan_result = Command::new(executable).arg(&orphan_path).output().unwrap();
     assert!(
         !orphan_result.status.success(),
         "Rust must reject a C# wall referencing a missing level"
