@@ -40,9 +40,15 @@ foreach (var restored in new[] { fromJson, fromNative })
     if (restored.Id != document.Id ||
         restored.SchemaVersion != document.SchemaVersion ||
         restored.Walls.Count != document.Walls.Count ||
-        !restored.Walls.Select(w => w.Id).SequenceEqual(document.Walls.Select(w => w.Id)))
+        !restored.Walls.Select(w => w.Id).SequenceEqual(document.Walls.Select(w => w.Id)) ||
+        !restored.Walls.Zip(document.Walls).All(pair =>
+            pair.First.LevelId == pair.Second.LevelId &&
+            pair.First.Start.Equals(pair.Second.Start) &&
+            pair.First.End.Equals(pair.Second.End) &&
+            pair.First.Thickness == pair.Second.Thickness &&
+            pair.First.Height == pair.Second.Height))
     {
-        Console.Error.WriteLine("C# serializer round-trip changed document identity or wall IDs");
+        Console.Error.WriteLine("C# serializer round-trip changed document identity or wall geometry");
         return 1;
     }
 }
