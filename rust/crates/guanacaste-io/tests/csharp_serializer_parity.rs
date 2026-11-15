@@ -155,8 +155,8 @@ fn csharp_serializers_match_rust_wall_metrics() {
     expected_lines[0] =
         "00000000000000000000000000000002, 3.200000000000, 35.200000000000".to_owned();
     assert_eq!(
-        changed_report.trim().replace("\\r\\n", "\\n"),
-        expected_lines.join("\\n"),
+        changed_report.trim().replace("\r\n", "\n"),
+        expected_lines.join("\n"),
         "Rust must recompute the edited wall and leave all other wall metrics unchanged"
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
