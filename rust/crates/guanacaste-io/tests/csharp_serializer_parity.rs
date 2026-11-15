@@ -383,7 +383,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
             .unwrap()
             .trim()
             .replace("\r\n", "\n"),
-        window_lines.join("\\n")
+        window_lines.join("\n")
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
