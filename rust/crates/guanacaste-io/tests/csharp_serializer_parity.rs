@@ -110,5 +110,25 @@ fn csharp_serializers_match_rust_wall_metrics() {
     assert!(truncated.stdout.is_empty());
     assert_eq!(fs::read(&native_path).unwrap(), native_bytes);
 
+    // Truncation of a genuine C# JSON document must also fail atomically.
+    // Work exclusively on a copy to protect the reference fixture.
+    let json_path = directory.join("wall.g3d.json");
+    let json_bytes = fs::read(&json_path).unwrap();
+    let truncated_json_path = directory.join("truncated-wall.g3d.json");
+    fs::write(&truncated_json_path, &json_bytes[..json_bytes.len() / 2]).unwrap();
+    let rejected_json = Command::new(executable)
+        .arg(&truncated_json_path)
+        .output()
+        .unwrap();
+    assert!(
+        !rejected_json.status.success(),
+        "Rust must reject truncated C# serialized JSON"
+    );
+    assert!(
+        rejected_json.stdout.is_empty(),
+        "failed JSON inspection must not emit partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
