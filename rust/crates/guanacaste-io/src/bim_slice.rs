@@ -122,7 +122,7 @@ pub fn extract_wall_volumes(input: &InspectedDocument) -> Result<Vec<WallVolume>
         let mesh = document.wall_mesh(wall.id)?;
         result.push(WallVolume {
             wall_id: wall.id,
-            signed_volume_m3: mesh.signed_volume(),
+            signed_volume_m3: mesh.checked_closed_volume().ok_or(SliceError::InvalidField)?,
         });
     }
     result.sort_unstable_by_key(|item| item.wall_id);
