@@ -27,6 +27,11 @@ var diagonalId = Guid.Parse("00000000-0000-0000-0000-000000000003");
 var diagonalStart = new Point2(10, 10);
 var diagonalEnd = new Point2(13, 14);
 document.Walls.Add(new Wall(diagonalId, level.Id, diagonalStart, diagonalEnd, thickness, height));
+// Reversed centerline exercises negative X/Y direction without changing metric magnitudes.
+var reversedId = Guid.Parse("00000000-0000-0000-0000-000000000004");
+var reversedStart = new Point2(13, 14);
+var reversedEnd = new Point2(10, 10);
+document.Walls.Add(new Wall(reversedId, level.Id, reversedStart, reversedEnd, thickness, height));
 document.Validate();
 var json = ProjectFile.SerializeDocument(document);
 File.WriteAllText(Path.Combine(directory, "wall.g3d.json"), json);
@@ -72,4 +77,5 @@ static void PrintWallMetrics(Guid id, Point2 a, Point2 b, double wallThickness, 
 }
 PrintWallMetrics(wallId, start, end, thickness, height);
 PrintWallMetrics(diagonalId, diagonalStart, diagonalEnd, thickness, height);
+PrintWallMetrics(reversedId, reversedStart, reversedEnd, thickness, height);
 return 0;
