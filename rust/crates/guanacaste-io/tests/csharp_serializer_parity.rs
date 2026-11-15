@@ -149,10 +149,15 @@ fn csharp_serializers_match_rust_wall_metrics() {
         "valid edited JSON should be inspected: {}",
         String::from_utf8_lossy(&changed_result.stderr)
     );
-    assert_ne!(
-        String::from_utf8(changed_result.stdout).unwrap().trim(),
-        csharp_report,
-        "Rust must recompute metrics from geometry, not reuse a cached oracle"
+    let changed_report = String::from_utf8(changed_result.stdout).unwrap();
+    let mut expected_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
+    assert_eq!(expected_lines.len(), 5, "expected five C# fixture walls");
+    expected_lines[0] =
+        "00000000000000000000000000000002, 3.200000000000, 35.200000000000".to_owned();
+    assert_eq!(
+        changed_report.trim().replace("\\r\\n", "\\n"),
+        expected_lines.join("\\n"),
+        "Rust must recompute the edited wall and leave all other wall metrics unchanged"
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
