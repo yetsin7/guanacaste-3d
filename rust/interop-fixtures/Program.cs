@@ -39,6 +39,12 @@ var variedEnd = new Point2(-2, 3);
 const double variedThickness = 0.3;
 const double variedHeight = 2.5;
 document.Walls.Add(new Wall(variedId, level.Id, variedStart, variedEnd, variedThickness, variedHeight));
+// Translation-invariance regression: survey coordinates far from the origin.
+// The 3-4-5 centreline must retain the same metrics as the local diagonal.
+var translatedId = Guid.Parse("00000000-0000-0000-0000-000000000006");
+var translatedStart = new Point2(1_000_010, -999_990);
+var translatedEnd = new Point2(1_000_013, -999_986);
+document.Walls.Add(new Wall(translatedId, level.Id, translatedStart, translatedEnd, thickness, height));
 document.Validate();
 var json = ProjectFile.SerializeDocument(document);
 File.WriteAllText(Path.Combine(directory, "wall.g3d.json"), json);
@@ -86,4 +92,5 @@ PrintWallMetrics(wallId, start, end, thickness, height);
 PrintWallMetrics(diagonalId, diagonalStart, diagonalEnd, thickness, height);
 PrintWallMetrics(reversedId, reversedStart, reversedEnd, thickness, height);
 PrintWallMetrics(variedId, variedStart, variedEnd, variedThickness, variedHeight);
+PrintWallMetrics(translatedId, translatedStart, translatedEnd, thickness, height);
 return 0;
