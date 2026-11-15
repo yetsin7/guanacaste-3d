@@ -133,5 +133,28 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A syntactically valid but geometrically altered copy must not silently
+    // reuse the original C# oracle. The production fixture stays unchanged.
+    let mut changed: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    let original_height = changed["Walls"][0]["Height"].as_f64().unwrap();
+    changed["Walls"][0]["Height"] = serde_json::json!(original_height + 1.0);
+    let changed_path = directory.join("modified-wall.g3d.json");
+    fs::write(&changed_path, serde_json::to_vec(&changed).unwrap()).unwrap();
+    let changed_result = Command::new(executable)
+        .arg(&changed_path)
+        .output()
+        .unwrap();
+    assert!(
+        changed_result.status.success(),
+        "valid edited JSON should be inspected: {}",
+        String::from_utf8_lossy(&changed_result.stderr)
+    );
+    assert_ne!(
+        String::from_utf8(changed_result.stdout).unwrap().trim(),
+        csharp_report,
+        "Rust must recompute metrics from geometry, not reuse a cached oracle"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
