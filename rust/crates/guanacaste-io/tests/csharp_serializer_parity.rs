@@ -257,5 +257,22 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A curved wall is not representable by the current straight-wall Rust
+    // adapter. Never silently flatten C# geometry into a straight segment.
+    let mut curved_wall: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    curved_wall["Walls"][0]["CurveRadius"] = serde_json::json!(2.0);
+    let curved_path = directory.join("unsupported-curved-wall.g3d.json");
+    fs::write(&curved_path, serde_json::to_vec(&curved_wall).unwrap()).unwrap();
+    let curved_result = Command::new(executable).arg(&curved_path).output().unwrap();
+    assert!(
+        !curved_result.status.success(),
+        "Rust must reject unsupported curved C# walls rather than flattening them"
+    );
+    assert!(
+        curved_result.stdout.is_empty(),
+        "unsupported C# wall geometry must not produce partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
