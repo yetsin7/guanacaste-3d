@@ -165,6 +165,34 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // Translating a real C# wall to survey coordinates must preserve its
+    // volume and surface area. Only the copied JSON is edited.
+    let mut translated: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    translated["Walls"][0]["Start"]["X"] = serde_json::json!(1_000_000.0);
+    translated["Walls"][0]["Start"]["Y"] = serde_json::json!(-1_000_000.0);
+    translated["Walls"][0]["End"]["X"] = serde_json::json!(1_000_004.0);
+    translated["Walls"][0]["End"]["Y"] = serde_json::json!(-1_000_000.0);
+    let translated_path = directory.join("translated-wall.g3d.json");
+    fs::write(&translated_path, serde_json::to_vec(&translated).unwrap()).unwrap();
+    let translated_result = Command::new(executable)
+        .arg(&translated_path)
+        .output()
+        .unwrap();
+    assert!(
+        translated_result.status.success(),
+        "translated C# wall should remain valid: {}",
+        String::from_utf8_lossy(&translated_result.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(translated_result.stdout)
+            .unwrap()
+            .trim()
+            .replace("\r\n", "\n"),
+        csharp_report,
+        "translation must not change wall metrics or other walls"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     // A well-formed C# JSON envelope with an invalid wall identity must fail
     // before printing any metrics. Preserve the original fixture on disk.
     let mut invalid_guid: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
