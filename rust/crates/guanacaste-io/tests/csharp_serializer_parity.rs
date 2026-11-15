@@ -36,7 +36,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     // Compare the actual C# fixture oracle, not only a constant duplicated in Rust.
     let csharp_report = String::from_utf8(generated.stdout).unwrap();
-    let csharp_report = csharp_report.trim();
+    let csharp_report = csharp_report.trim().replace("\r\n", "\n");
     assert_eq!(
         csharp_report,
         concat!(
@@ -65,7 +65,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
             before,
             "Rust must not mutate C# output"
         );
-        reports.push(String::from_utf8(output.stdout).unwrap());
+        reports.push(String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n"));
     }
     assert_eq!(
         reports[0], reports[1],
