@@ -183,14 +183,36 @@ fn csharp_serializers_match_rust_wall_metrics() {
         "translated C# wall should remain valid: {}",
         String::from_utf8_lossy(&translated_result.stderr)
     );
-    assert_eq!(
-        String::from_utf8(translated_result.stdout)
-            .unwrap()
-            .trim()
-            .replace("\r\n", "\n"),
-        csharp_report,
-        "translation must not change wall metrics or other walls"
-    );
+    // At survey coordinates, subtracting nearly equal f64 values during
+    // triangulation introduces sub-nanometre-scale roundoff. Compare physical
+    // metrics with a documented absolute tolerance, not decimal text equality.
+    let translated_report = String::from_utf8(translated_result.stdout).unwrap();
+    let translated_lines: Vec<_> = translated_report.trim().lines().collect();
+    let reference_lines: Vec<_> = csharp_report.lines().collect();
+    assert_eq!(translated_lines.len(), reference_lines.len());
+    for (index, (actual, expected)) in translated_lines
+        .iter()
+        .zip(reference_lines.iter())
+        .enumerate()
+    {
+        if index != 0 {
+            assert_eq!(actual, expected, "untranslated walls must remain exact");
+            continue;
+        }
+        let actual_fields: Vec<_> = actual.split(", ").collect();
+        let expected_fields: Vec<_> = expected.split(", ").collect();
+        assert_eq!(actual_fields.len(), 3);
+        assert_eq!(expected_fields.len(), 3);
+        assert_eq!(actual_fields[0], expected_fields[0], "wall GUID changed");
+        for metric in 1..3 {
+            let measured: f64 = actual_fields[metric].parse().unwrap();
+            let baseline: f64 = expected_fields[metric].parse().unwrap();
+            assert!(
+                (measured - baseline).abs() <= 1e-8,
+                "translated wall metric {metric} drifted: {measured} vs {baseline}"
+            );
+        }
+    }
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
     // A well-formed C# JSON envelope with an invalid wall identity must fail
