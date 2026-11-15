@@ -15,12 +15,15 @@ public partial class MainWindow
 {
     private bool _handingOffRender;
 
+    /// <summary>Set by <see cref="EnterRenderWorkspace"/>: this window is the render host and keeps its Render view.</summary>
+    private bool _hostsRenderWorkspace;
+
     /// <summary>Redirects selections of the built-in Render view; called once from the constructor.</summary>
     private void InitializeRenderHandoff()
     {
         ViewTabs.SelectionChanged += (_, e) =>
         {
-            if (!ReferenceEquals(e.OriginalSource, ViewTabs) || App.RenderOnly || _handingOffRender) return;
+            if (!ReferenceEquals(e.OriginalSource, ViewTabs) || App.RenderOnly || _hostsRenderWorkspace || _handingOffRender) return;
             if (ViewTabs.SelectedIndex != RenderTabIndex) return;
             _handingOffRender = true;
             try

@@ -12,6 +12,9 @@ public partial class MainWindow
     /// <summary>Opens the rendering workspace when hosted by Guanacaste Render.</summary>
     public void EnterRenderWorkspace()
     {
+        // The window was asked to be the render host itself, so it must show its own Render view instead of handing
+        // the model to Guanacaste Render.
+        _hostsRenderWorkspace = true;
         WorkspaceToggleButton.Visibility = Visibility.Collapsed;
         QuickAccessHost.Visibility = Visibility.Collapsed;
         RenderTab.Visibility = Visibility.Visible;
