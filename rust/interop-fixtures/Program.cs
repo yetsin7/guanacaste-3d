@@ -32,6 +32,13 @@ var reversedId = Guid.Parse("00000000-0000-0000-0000-000000000004");
 var reversedStart = new Point2(13, 14);
 var reversedEnd = new Point2(10, 10);
 document.Walls.Add(new Wall(reversedId, level.Id, reversedStart, reversedEnd, thickness, height));
+// Non-default thickness and height catch assumptions hidden by uniform fixtures.
+var variedId = Guid.Parse("00000000-0000-0000-0000-000000000005");
+var variedStart = new Point2(-2, 1);
+var variedEnd = new Point2(-2, 3);
+const double variedThickness = 0.3;
+const double variedHeight = 2.5;
+document.Walls.Add(new Wall(variedId, level.Id, variedStart, variedEnd, variedThickness, variedHeight));
 document.Validate();
 var json = ProjectFile.SerializeDocument(document);
 File.WriteAllText(Path.Combine(directory, "wall.g3d.json"), json);
@@ -78,4 +85,5 @@ static void PrintWallMetrics(Guid id, Point2 a, Point2 b, double wallThickness, 
 PrintWallMetrics(wallId, start, end, thickness, height);
 PrintWallMetrics(diagonalId, diagonalStart, diagonalEnd, thickness, height);
 PrintWallMetrics(reversedId, reversedStart, reversedEnd, thickness, height);
+PrintWallMetrics(variedId, variedStart, variedEnd, variedThickness, variedHeight);
 return 0;
