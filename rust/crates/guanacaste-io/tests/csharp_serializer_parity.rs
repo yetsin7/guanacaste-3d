@@ -324,5 +324,34 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A C# fixture copy with a door opening must not be treated as a plain
+    // solid wall. The adapter must account for the void in both metrics.
+    let mut with_door: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    with_door["Openings"] = serde_json::json!([{
+        "Id": "00000000-0000-0000-0000-000000000007",
+        "WallId": "00000000-0000-0000-0000-000000000002",
+        "Kind": 0,
+        "Offset": 1.5,
+        "Width": 1.0,
+        "Sill": 0.0,
+        "Height": 2.0
+    }]);
+    let door_path = directory.join("door-wall.g3d.json");
+    fs::write(&door_path, serde_json::to_vec(&with_door).unwrap()).unwrap();
+    let door_result = Command::new(executable).arg(&door_path).output().unwrap();
+    assert!(
+        door_result.status.success(),
+        "supported door opening should be inspected: {}",
+        String::from_utf8_lossy(&door_result.stderr)
+    );
+    let door_report = String::from_utf8(door_result.stdout).unwrap();
+    let mut door_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
+    // A 1 m x 2 m through-opening removes 0.4 m³ and 4 m² of
+    // broad-face area; four reveal faces restore 1.2 m².
+    door_lines[0] =
+        "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned();
+    assert_eq!(door_report.trim().replace("\\r\\n", "\\n"), door_lines.join("\\n"));
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
