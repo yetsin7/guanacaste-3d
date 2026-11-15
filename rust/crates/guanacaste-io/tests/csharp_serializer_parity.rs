@@ -387,5 +387,46 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // Two disjoint windows on the same wall exercise multi-opening topology
+    // rather than independent single-opening cases. Edit a fixture copy only.
+    let mut two_windows: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    two_windows["Openings"] = serde_json::json!([
+        {
+            "Id": "00000000-0000-0000-0000-000000000008",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 1.0, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        },
+        {
+            "Id": "00000000-0000-0000-0000-000000000009",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 3.0, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        }
+    ]);
+    let two_windows_path = directory.join("two-windows-wall.g3d.json");
+    fs::write(&two_windows_path, serde_json::to_vec(&two_windows).unwrap()).unwrap();
+    let two_windows_result = Command::new(executable)
+        .arg(&two_windows_path)
+        .output()
+        .unwrap();
+    assert!(
+        two_windows_result.status.success(),
+        "two disjoint windows should be supported: {}",
+        String::from_utf8_lossy(&two_windows_result.stderr)
+    );
+    let mut two_windows_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
+    // Two 0.6 x 1 m openings remove 0.24 m³ and 2.4 m² from
+    // broad faces, while their reveals restore 1.28 m².
+    two_windows_lines[0] =
+        "00000000000000000000000000000002, 2.160000000000, 25.680000000000"
+            .to_owned();
+    assert_eq!(
+        String::from_utf8(two_windows_result.stdout)
+            .unwrap()
+            .trim()
+            .replace("\r\n", "\n"),
+        two_windows_lines.join("\n")
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
