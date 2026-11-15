@@ -59,10 +59,13 @@ public static class FamilyGeometry
     /// </summary>
     public static void ValidateSolids(FamilyDocument family)
     {
-        foreach (var operation in family.Operations.Where(operation => operation.Profile.Count > 0))
+        foreach (var revolution in family.Operations.Where(operation => operation.Kind == FamilyOperationKind.SolidRevolution && operation.Profile.Count > 0))
+            ValidateRevolution(family, revolution);
+        foreach (var operation in family.Operations.Where(operation => operation.Profile.Count > 0 && operation.Kind != FamilyOperationKind.SolidRevolution))
         {
             if (operation.Kind is not (FamilyOperationKind.SolidExtrusion or FamilyOperationKind.VoidExtrusion))
                 throw new InvalidDataException("Only extrusions can take a profile.");
+            MaterialOf(operation);
             ValidatePlane(PlaneOf(family, operation));
             InPlaceProfileRules.Validate(operation.Profile);
             foreach (var type in family.Types)
@@ -105,9 +108,11 @@ public static class FamilyGeometry
     public static void AppendTo(SceneMesh mesh, FamilyDocument family, Guid? typeId = null)
     {
         FindType(family, typeId);
-        foreach (var operation in family.Operations.Where(operation =>
-                     operation.Kind == FamilyOperationKind.SolidExtrusion && operation.Profile.Count > 0))
-            AppendExtrusion(mesh, family, operation, typeId);
+        foreach (var operation in family.Operations.Where(operation => operation.Profile.Count > 0))
+        {
+            if (operation.Kind == FamilyOperationKind.SolidExtrusion) AppendExtrusion(mesh, family, operation, typeId);
+            else if (operation.Kind == FamilyOperationKind.SolidRevolution) AppendRevolution(mesh, family, operation, typeId);
+        }
     }
 
     /// <summary>
@@ -197,6 +202,7 @@ public static class FamilyGeometry
         var depth = Depth(family, operation, typeId);
         var offset = Offset(family, operation, typeId);
         var profile = InPlaceProfileRules.CounterClockwise(ProfileOf(family, operation, typeId).ToList());
+        var material = MaterialOf(operation);
         IReadOnlyList<(int A, int B, int C)> triangles;
         try
         {
@@ -210,13 +216,96 @@ public static class FamilyGeometry
         var top = profile.Select(point => ToVector(plane, point, offset + depth)).ToArray();
         foreach (var (a, b, c) in triangles)
         {
-            mesh.AddTriangle(top[a], top[b], top[c], SurfaceKind.Wall);
-            mesh.AddTriangle(bottom[a], bottom[c], bottom[b], SurfaceKind.Wall);
+            mesh.AddTriangle(top[a], top[b], top[c], material);
+            mesh.AddTriangle(bottom[a], bottom[c], bottom[b], material);
         }
         for (var index = 0; index < profile.Count; index++)
         {
             var next = (index + 1) % profile.Count;
-            mesh.AddQuad(bottom[index], bottom[next], top[next], top[index], SurfaceKind.Wall);
+            mesh.AddQuad(bottom[index], bottom[next], top[next], top[index], material);
+        }
+    }
+
+    /// <summary>Expression key of a solid's material: one of the names in <see cref="Materials"/>.</summary>
+    public const string MaterialKey = "Material";
+
+    /// <summary>Expression keys of a revolution's axis on the work plane, in meters (numbers, parameters or formulas).</summary>
+    public const string AxisXKey = "CentroX", AxisYKey = "CentroY";
+
+    /// <summary>Segments around a revolution: enough for a lamp or a turned leg to read as round.</summary>
+    public const int RevolutionSegments = 32;
+
+    /// <summary>The materials a family solid can take, by the name the editor shows, and the surface each renders as.</summary>
+    public static readonly IReadOnlyDictionary<string, SurfaceKind> Materials = new Dictionary<string, SurfaceKind>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Pintura blanca"] = SurfaceKind.Wall, ["Madera"] = SurfaceKind.WallWood, ["Metal"] = SurfaceKind.Metal,
+        ["Vidrio"] = SurfaceKind.Glass, ["Tela"] = SurfaceKind.Upholstery, ["Cerámica"] = SurfaceKind.Ceramic,
+        ["Concreto"] = SurfaceKind.WallConcrete, ["Piedra"] = SurfaceKind.WallStone, ["Luz"] = SurfaceKind.LightEmitter
+    };
+
+    /// <summary>The surface a solid renders as; painted white when it names no material.</summary>
+    public static SurfaceKind MaterialOf(FamilyOperation operation)
+    {
+        if (!operation.Expressions.TryGetValue(MaterialKey, out var name) || string.IsNullOrWhiteSpace(name)) return SurfaceKind.Wall;
+        return Materials.TryGetValue(name.Trim(), out var kind) ? kind : throw new InvalidDataException("The material of a family solid is not known.");
+    }
+
+    /// <summary>
+    /// A revolution's profile lies in the (radius, height) half-plane: X is the distance from the axis (never negative),
+    /// Y the height above the work plane. It turns a full circle about the vertical axis at (CentroX, CentroY).
+    /// </summary>
+    private static void ValidateRevolution(FamilyDocument family, FamilyOperation operation)
+    {
+        ValidatePlane(PlaneOf(family, operation));
+        InPlaceProfileRules.Validate(operation.Profile);
+        if (operation.Profile.Any(point => point.X < -1e-9))
+            throw new InvalidDataException("A revolution profile cannot cross its axis.");
+        if (operation.Profile.Max(point => point.X) < MinimumDepth)
+            throw new InvalidDataException("A revolution profile must reach away from its axis.");
+        MaterialOf(operation);
+        foreach (var type in family.Types)
+        {
+            var axis = Axis(family, operation, type.Id);
+            if (!double.IsFinite(axis.X) || !double.IsFinite(axis.Y) || Math.Abs(axis.X) > MaximumOffset || Math.Abs(axis.Y) > MaximumOffset)
+                throw new InvalidDataException("The axis of a revolution is out of range.");
+        }
+    }
+
+    private static Point2 Axis(FamilyDocument family, FamilyOperation operation, Guid? typeId)
+    {
+        var type = FindType(family, typeId);
+        return new Point2(Length(family, operation, AxisXKey, type) ?? 0, Length(family, operation, AxisYKey, type) ?? 0);
+    }
+
+    /// <summary>
+    /// Sweeps the profile once round its axis. Faces are built for one winding and flipped as a whole when the enclosed
+    /// volume comes out negative, so the solid faces outward however the person drew the profile.
+    /// </summary>
+    private static void AppendRevolution(SceneMesh mesh, FamilyDocument family, FamilyOperation operation, Guid? typeId)
+    {
+        var plane = PlaneOf(family, operation);
+        var axis = Axis(family, operation, typeId);
+        var material = MaterialOf(operation);
+        var profile = operation.Profile;
+        Vector3 At(Point2 point, int step)
+        {
+            var angle = step * Math.Tau / RevolutionSegments;
+            return ToVector(plane, new Point2(axis.X + point.X * Math.Cos(angle), axis.Y + point.X * Math.Sin(angle)), point.Y);
+        }
+        var quads = new List<(Vector3 A, Vector3 B, Vector3 C, Vector3 D)>();
+        for (var index = 0; index < profile.Count; index++)
+        {
+            var from = profile[index];
+            var to = profile[(index + 1) % profile.Count];
+            if (from.X < 1e-9 && to.X < 1e-9) continue;
+            for (var step = 0; step < RevolutionSegments; step++)
+                quads.Add((At(from, step), At(to, step), At(to, step + 1), At(from, step + 1)));
+        }
+        var volume = quads.Sum(quad => (Vector3.Dot(quad.A, Vector3.Cross(quad.B, quad.C)) + Vector3.Dot(quad.A, Vector3.Cross(quad.C, quad.D))) / 6.0);
+        foreach (var (a, b, c, d) in quads)
+        {
+            if (volume >= 0) mesh.AddQuad(a, b, c, d, material);
+            else mesh.AddQuad(a, d, c, b, material);
         }
     }
 

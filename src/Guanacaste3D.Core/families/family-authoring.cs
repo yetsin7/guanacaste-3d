@@ -99,6 +99,96 @@ public static class FamilyAuthoring
     }
 
     /// <summary>
+    /// Adds a solid turned about a vertical axis — a lamp, a vase, a turned leg. The profile is a closed outline of
+    /// (distance from the axis, height) points, never crossing the axis; the axis stands at (axisX, axisY), which may be
+    /// numbers, parameters or formulas.
+    /// </summary>
+    public static Guid AddRevolution(FamilyDocument family, string name, IReadOnlyList<Point2> profile, string axisX = "0", string axisY = "0",
+        string material = "")
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        var plane = FloorPlane(family);
+        var id = Guid.NewGuid();
+        family.Operations.Add(new FamilyOperation(id, string.IsNullOrWhiteSpace(name) ? $"Revolución {family.Operations.Count + 1}" : name.Trim(),
+            FamilyOperationKind.SolidRevolution)
+        {
+            WorkPlaneId = plane.Id,
+            Profile = [.. profile],
+            Expressions = new(StringComparer.Ordinal) { [FamilyGeometry.AxisXKey] = axisX, [FamilyGeometry.AxisYKey] = axisY, [FamilyGeometry.MaterialKey] = MaterialName(material) }
+        });
+        return Validated(family, id);
+    }
+
+    /// <summary>Adds an extrusion of a drawn outline (any closed shape) from a start height, with a height expression.</summary>
+    public static Guid AddExtrusion(FamilyDocument family, string name, IReadOnlyList<Point2> outline, string offset, string height, string material = "")
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        var plane = FloorPlane(family);
+        var id = Guid.NewGuid();
+        family.Operations.Add(new FamilyOperation(id, string.IsNullOrWhiteSpace(name) ? $"Extrusión {family.Operations.Count + 1}" : name.Trim(),
+            FamilyOperationKind.SolidExtrusion)
+        {
+            WorkPlaneId = plane.Id,
+            Profile = [.. outline],
+            Expressions = new(StringComparer.Ordinal) { [FamilyGeometry.OffsetKey] = offset, [FamilyGeometry.DepthKey] = height, [FamilyGeometry.MaterialKey] = MaterialName(material) }
+        });
+        return Validated(family, id);
+    }
+
+    /// <summary>A solid with no material named is painted white; the model never stores an empty expression.</summary>
+    private static string MaterialName(string? material) => string.IsNullOrWhiteSpace(material) ? "Pintura blanca" : material.Trim();
+
+    /// <summary>Sets the material of a solid by its name in <see cref="FamilyGeometry.Materials"/>.</summary>
+    public static void SetMaterial(FamilyDocument family, Guid operationId, string material)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        var index = family.Operations.FindIndex(operation => operation.Id == operationId);
+        if (index < 0) throw new InvalidDataException("The family solid does not exist.");
+        if (!string.IsNullOrWhiteSpace(material) && !FamilyGeometry.Materials.ContainsKey(material.Trim()))
+            throw new InvalidDataException("The material of a family solid is not known.");
+        var operation = family.Operations[index];
+        family.Operations[index] = operation with
+        {
+            Expressions = new Dictionary<string, string>(operation.Expressions, StringComparer.Ordinal) { [FamilyGeometry.MaterialKey] = MaterialName(material) }
+        };
+    }
+
+    /// <summary>
+    /// Reads an outline typed as points separated by semicolons, each point two numbers separated by spaces:
+    /// "0 0; 0,3 0; 0,3 0,05" — the decimal comma and the decimal point both work.
+    /// </summary>
+    public static List<Point2> ParseOutline(string text)
+    {
+        var points = new List<Point2>();
+        foreach (var part in (text ?? string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var numbers = part.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (numbers.Length != 2 ||
+                !double.TryParse(numbers[0].Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) ||
+                !double.TryParse(numbers[1].Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y))
+                throw new InvalidDataException("Write the outline as points «x y» separated by semicolons.");
+            points.Add(new Point2(x, y));
+        }
+        if (points.Count < 3) throw new InvalidDataException("An outline needs at least three points.");
+        return points;
+    }
+
+    /// <summary>Writes an outline the way <see cref="ParseOutline"/> reads it, in the interface's number format.</summary>
+    public static string FormatOutline(IReadOnlyList<Point2> points) => string.Join("; ", points.Select(point =>
+        $"{point.X.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture)} {point.Y.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture)}"));
+
+    private static FamilyWorkPlane FloorPlane(FamilyDocument family) =>
+        family.WorkPlanes.FirstOrDefault(candidate => candidate.Name == FloorPlaneName) ?? family.WorkPlanes.FirstOrDefault()
+        ?? throw new InvalidDataException("An extrusion refers to a work plane that does not exist.");
+
+    private static Guid Validated(FamilyDocument family, Guid id)
+    {
+        try { family.Validate(); }
+        catch { family.Operations.RemoveAll(candidate => candidate.Id == id); throw; }
+        return id;
+    }
+
+    /// <summary>
     /// The family as a project loads one of its types: its solids regenerated for that type, centred on the insertion
     /// point with its base on the floor, under a stable id per family and type so loading it again replaces it.
     /// </summary>

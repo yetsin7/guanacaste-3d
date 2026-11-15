@@ -72,7 +72,8 @@ internal sealed class FamilyEditorWindow : Window
         header.Children.Add(Button("FamilyEditor.NewType", (_, _) => NewType()));
 
         var parameterBox = Section("FamilyEditor.Parameters", _parameters, Button("FamilyEditor.AddParameter", (_, _) => AddParameter()));
-        var solidBox = Section("FamilyEditor.Solids", _solids, Button("FamilyEditor.AddBox", (_, _) => AddBox()));
+        var solidBox = Section("FamilyEditor.Solids", _solids, Button("FamilyEditor.AddBox", (_, _) => AddBox()),
+            Button("FamilyEditor.AddRevolution", (_, _) => AddRevolution()), Button("FamilyEditor.AddOutline", (_, _) => AddOutline()));
         var preview = new Grid();
         preview.RowDefinitions.Add(new RowDefinition());
         preview.RowDefinitions.Add(new RowDefinition());
@@ -180,14 +181,20 @@ internal sealed class FamilyEditorWindow : Window
     private void BuildSolidRows()
     {
         _solids.Children.Clear();
-        var headers = new UniformGrid { Columns = BoxFields.Length + 2 };
+        var headers = new UniformGrid { Columns = BoxFields.Length + 3 };
         headers.Children.Add(new TextBlock { Text = Text("FamilyEditor.SolidName"), FontWeight = FontWeights.SemiBold });
         foreach (var field in BoxFields) headers.Children.Add(new TextBlock { Text = Text("FamilyEditor.Field." + field), FontWeight = FontWeights.SemiBold });
+        headers.Children.Add(new TextBlock { Text = Text("FamilyEditor.Material"), FontWeight = FontWeights.SemiBold });
         headers.Children.Add(new TextBlock());
         _solids.Children.Add(headers);
-        foreach (var operation in _family.Operations.Where(operation => operation.Kind == FamilyOperationKind.SolidExtrusion))
+        foreach (var operation in _family.Operations.Where(operation => operation.Kind is FamilyOperationKind.SolidExtrusion or FamilyOperationKind.SolidRevolution))
         {
-            var row = new UniformGrid { Columns = BoxFields.Length + 2, Margin = new Thickness(0, 2, 0, 2) };
+            if (!operation.Expressions.ContainsKey(FamilyGeometry.ProfileXKey))
+            {
+                _solids.Children.Add(OutlineRow(operation));
+                continue;
+            }
+            var row = new UniformGrid { Columns = BoxFields.Length + 3, Margin = new Thickness(0, 2, 0, 2) };
             row.Children.Add(new TextBlock { Text = operation.Name, VerticalAlignment = VerticalAlignment.Center });
             foreach (var field in BoxFields)
             {
@@ -205,11 +212,74 @@ internal sealed class FamilyEditorWindow : Window
                 };
                 row.Children.Add(box);
             }
-            var remove = new Button { Content = "✕", ToolTip = Text("FamilyEditor.RemoveSolid"), Margin = new Thickness(2, 0, 0, 0) };
-            remove.Click += (_, _) => Apply(family => family.Operations.RemoveAll(candidate => candidate.Id == operation.Id));
-            row.Children.Add(remove);
+            row.Children.Add(MaterialPicker(operation));
+            row.Children.Add(RemoveButton(operation));
             _solids.Children.Add(row);
         }
+    }
+
+    /// <summary>A revolution or a drawn outline: its outline as text, its axis or its heights, its material.</summary>
+    private UIElement OutlineRow(FamilyOperation operation)
+    {
+        var revolution = operation.Kind == FamilyOperationKind.SolidRevolution;
+        var row = new WrapPanel { Margin = new Thickness(0, 4, 0, 4) };
+        row.Children.Add(new TextBlock { Text = operation.Name, FontWeight = FontWeights.SemiBold, Width = 110, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = Text(revolution ? "FamilyEditor.Profile" : "FamilyEditor.Outline"), VerticalAlignment = VerticalAlignment.Center });
+        var outline = new TextBox { Text = FamilyAuthoring.FormatOutline(operation.Profile), MinWidth = 260, Margin = new Thickness(4, 0, 8, 0), Tag = "Outline" };
+        outline.LostFocus += (_, _) =>
+        {
+            if (outline.Text == FamilyAuthoring.FormatOutline(operation.Profile)) return;
+            Apply(family =>
+            {
+                var points = FamilyAuthoring.ParseOutline(outline.Text);
+                var index = family.Operations.FindIndex(candidate => candidate.Id == operation.Id);
+                family.Operations[index] = family.Operations[index] with { Profile = points };
+            });
+        };
+        row.Children.Add(outline);
+        foreach (var field in revolution ? new[] { FamilyGeometry.AxisXKey, FamilyGeometry.AxisYKey } : new[] { FamilyGeometry.OffsetKey, FamilyGeometry.DepthKey })
+        {
+            row.Children.Add(new TextBlock { Text = Text("FamilyEditor.Field." + field), VerticalAlignment = VerticalAlignment.Center });
+            var box = new TextBox { Text = operation.Expressions.GetValueOrDefault(field, ""), Width = 80, Margin = new Thickness(4, 0, 8, 0), Tag = field };
+            box.LostFocus += (_, _) =>
+            {
+                if (operation.Expressions.GetValueOrDefault(field) == box.Text) return;
+                Apply(family =>
+                {
+                    var index = family.Operations.FindIndex(candidate => candidate.Id == operation.Id);
+                    family.Operations[index] = family.Operations[index] with
+                    {
+                        Expressions = new Dictionary<string, string>(family.Operations[index].Expressions, StringComparer.Ordinal) { [field] = box.Text.Trim() }
+                    };
+                });
+            };
+            row.Children.Add(box);
+        }
+        row.Children.Add(MaterialPicker(operation));
+        row.Children.Add(RemoveButton(operation));
+        return row;
+    }
+
+    private ComboBox MaterialPicker(FamilyOperation operation)
+    {
+        var picker = new ComboBox { Margin = new Thickness(2, 0, 2, 0), MinWidth = 110, Tag = FamilyGeometry.MaterialKey };
+        foreach (var name in FamilyGeometry.Materials.Keys) picker.Items.Add(name);
+        picker.SelectedItem = operation.Expressions.GetValueOrDefault(FamilyGeometry.MaterialKey) is { Length: > 0 } chosen
+            ? FamilyGeometry.Materials.Keys.FirstOrDefault(name => string.Equals(name, chosen, StringComparison.OrdinalIgnoreCase))
+            : "Pintura blanca";
+        picker.SelectionChanged += (_, _) =>
+        {
+            if (picker.SelectedItem is string name && name != operation.Expressions.GetValueOrDefault(FamilyGeometry.MaterialKey))
+                Apply(family => FamilyAuthoring.SetMaterial(family, operation.Id, name));
+        };
+        return picker;
+    }
+
+    private Button RemoveButton(FamilyOperation operation)
+    {
+        var remove = new Button { Content = "✕", ToolTip = Text("FamilyEditor.RemoveSolid"), Margin = new Thickness(2, 0, 0, 0) };
+        remove.Click += (_, _) => Apply(family => family.Operations.RemoveAll(candidate => candidate.Id == operation.Id));
+        return remove;
     }
 
     private void DrawPreview()
@@ -263,6 +333,22 @@ internal sealed class FamilyEditorWindow : Window
         var value = TextPrompt.Ask(this, Text("FamilyEditor.AddParameter"), Text("FamilyEditor.ParameterValue"), Text("Prompt.Accept"), Text("Prompt.Cancel"), "1");
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out var number)) { _status.Text = Text("FamilyEditor.InvalidNumber"); return; }
         Apply(family => FamilyAuthoring.AddLengthParameter(family, name, number));
+    }
+
+    /// <summary>A turned solid to start from: the profile of a small pot, which the person then reshapes.</summary>
+    private void AddRevolution()
+    {
+        var number = _family.Operations.Count + 1;
+        Apply(family => FamilyAuthoring.AddRevolution(family, $"Revolución {number}",
+            [new(0, 0), new(0.15, 0), new(0.2, 0.3), new(0.18, 0.3), new(0.13, 0.02), new(0, 0.02)], material: "Cerámica"));
+    }
+
+    /// <summary>An extrusion of a drawn outline to start from: an L-shaped plate the person then redraws.</summary>
+    private void AddOutline()
+    {
+        var number = _family.Operations.Count + 1;
+        Apply(family => FamilyAuthoring.AddExtrusion(family, $"Contorno {number}",
+            [new(0, 0), new(0.6, 0), new(0.6, 0.2), new(0.2, 0.2), new(0.2, 0.5), new(0, 0.5)], "0", "0.03", "Madera"));
     }
 
     private void AddBox()
@@ -349,11 +435,19 @@ internal sealed class FamilyEditorWindow : Window
         return button;
     }
 
-    private static GroupBox Section(string key, Panel content, Button add) => new()
+    private static GroupBox Section(string key, Panel content, params Button[] add) => new()
     {
         Header = Text(key), Margin = new Thickness(0, 0, 8, 0),
-        Content = new DockPanel { Children = { Docked(add, Dock.Bottom), new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } } }
+        Content = new DockPanel { Children = { Docked(Buttons(add), Dock.Bottom), new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } } }
     };
+
+    private static UIElement Buttons(Button[] buttons)
+    {
+        if (buttons.Length == 1) return buttons[0];
+        var panel = new WrapPanel();
+        foreach (var button in buttons) panel.Children.Add(button);
+        return panel;
+    }
 
     private static UIElement Docked(UIElement element, Dock dock)
     {

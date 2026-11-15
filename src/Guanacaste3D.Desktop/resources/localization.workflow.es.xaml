@@ -79,6 +79,13 @@
   <sys:String x:Key="FamilyEditor.ParameterValue">Valor en metros:</sys:String>
   <sys:String x:Key="FamilyEditor.Solids">Sólidos: cada campo admite un número, un parámetro o una fórmula (Alto - 0.03)</sys:String>
   <sys:String x:Key="FamilyEditor.AddBox">Añadir caja</sys:String>
+  <sys:String x:Key="FamilyEditor.AddRevolution">Añadir revolución</sys:String>
+  <sys:String x:Key="FamilyEditor.AddOutline">Añadir extrusión por contorno</sys:String>
+  <sys:String x:Key="FamilyEditor.Material">Material</sys:String>
+  <sys:String x:Key="FamilyEditor.Profile">Perfil (distancia al eje, altura):</sys:String>
+  <sys:String x:Key="FamilyEditor.Outline">Contorno (x y; x y; …):</sys:String>
+  <sys:String x:Key="FamilyEditor.Field.CentroX">Eje X</sys:String>
+  <sys:String x:Key="FamilyEditor.Field.CentroY">Eje Y</sys:String>
   <sys:String x:Key="FamilyEditor.RemoveSolid">Quitar este sólido</sys:String>
   <sys:String x:Key="FamilyEditor.SolidName">Sólido</sys:String>
   <sys:String x:Key="FamilyEditor.Field.PerfilX">X</sys:String>
@@ -114,4 +121,11 @@
   <sys:String x:Key="Error.The family parameter does not exist.">El parámetro de familia no existe.</sys:String>
   <sys:String x:Key="Error.The family has no solids to place.">La familia no tiene sólidos que colocar.</sys:String>
   <sys:String x:Key="Error.A parametric profile must be at least 1 mm wide and deep.">Un perfil paramétrico debe medir al menos 1 mm de ancho y de fondo.</sys:String>
+  <sys:String x:Key="Error.A revolution profile cannot cross its axis.">El perfil de una revolución no puede cruzar su eje (las distancias al eje no pueden ser negativas).</sys:String>
+  <sys:String x:Key="Error.A revolution profile must reach away from its axis.">El perfil de una revolución debe separarse de su eje.</sys:String>
+  <sys:String x:Key="Error.The axis of a revolution is out of range.">El eje de la revolución está fuera de rango.</sys:String>
+  <sys:String x:Key="Error.The material of a family solid is not known.">Ese material no existe; elija uno de la lista.</sys:String>
+  <sys:String x:Key="Error.The family solid does not exist.">El sólido de la familia no existe.</sys:String>
+  <sys:String x:Key="Error.Write the outline as points «x y» separated by semicolons.">Escriba el contorno como puntos «x y» separados por punto y coma, por ejemplo: 0 0; 0,3 0; 0,3 0,05</sys:String>
+  <sys:String x:Key="Error.An outline needs at least three points.">Un contorno necesita al menos tres puntos.</sys:String>
 </ResourceDictionary>

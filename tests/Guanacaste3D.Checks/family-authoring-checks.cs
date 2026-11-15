@@ -1,4 +1,5 @@
 using Guanacaste3D.Core;
+using Guanacaste3D.Core.Geometry;
 
 /// <summary>A parametric dining table made from scratch: parameters, two types, boxes driven by formulas, loaded and placed.</summary>
 static class FamilyAuthoringChecks
@@ -57,5 +58,32 @@ static class FamilyAuthoringChecks
               session.Document.StructuralElements.Any(element => element.Id == placed && element.FamilyId == id),
             "Families: a made-up table loads, is placed in the project, and loading it again replaces it");
         check(Guanacaste3D.Core.Geometry.BuildingMesher.Build(session.Document).TriangleCount > 0, "Families: the placed table appears in the 3D model");
+
+        // A floor lamp turned about its axis: base, stem and shade, in metal and light.
+        var lamp = FamilyAuthoring.Create("Lámpara de pie", FamilyCategory.LightingFixtures);
+        var profile = new List<Point2> { new(0, 0), new(0.15, 0), new(0.15, 0.03), new(0.02, 0.03), new(0.02, 1.4), new(0.25, 1.4), new(0.18, 1.7), new(0, 1.7) };
+        FamilyAuthoring.AddRevolution(lamp, "Cuerpo", profile, material: "Metal");
+        var turned = FamilyGeometry.Tessellate(lamp);
+        var width = turned.Positions.Max(p => p.X) - turned.Positions.Min(p => p.X);
+        var tall = turned.Positions.Max(p => p.Z) - turned.Positions.Min(p => p.Z);
+        check(Math.Abs(width - 0.5) < 0.01 && Math.Abs(tall - 1.7) < 1e-4 && FamilyGeometry.SignedVolume(turned) > 0 &&
+              turned.TriangleKinds.All(kind => kind == SurfaceKind.Metal),
+            "Families: a lamp turned about its axis has its size, faces outward and renders as metal");
+        var reversed = FamilyAuthoring.Create("Lámpara invertida", FamilyCategory.LightingFixtures);
+        FamilyAuthoring.AddRevolution(reversed, "Cuerpo", profile.AsEnumerable().Reverse().ToList());
+        check(FamilyGeometry.SignedVolume(FamilyGeometry.Tessellate(reversed)) > 0, "Families: a profile drawn the other way round still faces outward");
+
+        var parsed = FamilyAuthoring.ParseOutline("0 0; 0,3 0; 0.3 0,05; 0 0.05");
+        check(parsed.Count == 4 && Math.Abs(parsed[2].X - 0.3) < 1e-12 && Math.Abs(parsed[2].Y - 0.05) < 1e-12,
+            "Families: an outline typed with decimal commas or points is read the same");
+        var shelf = FamilyAuthoring.Create("Repisa", FamilyCategory.Furniture);
+        var board = FamilyAuthoring.AddExtrusion(shelf, "Tabla", parsed, "0.9", "0.05", "Madera");
+        check(FamilyGeometry.Tessellate(shelf).TriangleKinds.All(kind => kind == SurfaceKind.WallWood),
+            "Families: an extrusion of a drawn outline renders in its material");
+        bool Refused(Action action) { try { action(); return false; } catch (InvalidDataException) { return true; } }
+        check(Refused(() => FamilyAuthoring.SetMaterial(shelf, board, "Oro macizo")) &&
+              Refused(() => FamilyAuthoring.AddRevolution(shelf, "Mal", [new(-0.1, 0), new(0.2, 0), new(0.2, 0.3)])) &&
+              Refused(() => FamilyAuthoring.ParseOutline("0 0; 1")),
+            "Families: unknown materials, profiles crossing the axis and bad outlines are refused");
     }
 }

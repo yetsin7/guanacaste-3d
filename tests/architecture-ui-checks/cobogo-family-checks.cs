@@ -94,13 +94,42 @@ internal static partial class HouseFromScratchChecks
             editor.Close();
             return "4 sillas, dos giradas 180°";
         });
+        yield return ("11.7 Lámpara de pie por revolución, en metal, junto al sofá", () =>
+        {
+            var editor = OpenEditor();
+            PressEditorButton(editor, "FamilyEditor.New");
+            SetEditorText(editor, "_name", "Lámpara de pie");
+            PressEditorButton(editor, "FamilyEditor.AddRevolution");
+            var row = ((Panel)Field(editor, "_solids")).Children.OfType<WrapPanel>().Last();
+            var outline = row.Children.OfType<TextBox>().Single(box => Equals(box.Tag, "Outline"));
+            outline.Text = "0 0; 0,15 0; 0,15 0,03; 0,02 0,03; 0,02 1,4; 0,25 1,4; 0,18 1,7; 0 1,7";
+            outline.RaiseEvent(new RoutedEventArgs(UIElement.LostFocusEvent));
+            _pump();
+            row = ((Panel)Field(editor, "_solids")).Children.OfType<WrapPanel>().Last();
+            var material = row.Children.OfType<ComboBox>().Single(box => Equals(box.Tag, FamilyGeometry.MaterialKey));
+            material.SelectedItem = "Metal";
+            _pump();
+            var family = (FamilyDocument)editor.GetType().GetProperty("Family")!.GetValue(editor)!;
+            var mesh = FamilyGeometry.Tessellate(family);
+            var size = EditorSize(editor);
+            Expect(family.Operations.Single().Kind == FamilyOperationKind.SolidRevolution && Math.Abs(size.Z - 1.7) < 1e-3 && Math.Abs(size.X - 0.5) < 0.01,
+                $"la lámpara mide {size} — estado: {((TextBlock)Field(editor, "_status")).Text}");
+            Expect(mesh.TriangleKinds.All(kind => kind == Guanacaste3D.Core.Geometry.SurfaceKind.Metal), "la lámpara no quedó en metal");
+            PressEditorButton(editor, "FamilyEditor.LoadIntoProject");
+            var before = Doc.StructuralElements.Count(element => element.FamilyId is not null);
+            Click(0.8, 4.4);
+            Escape();
+            editor.Close();
+            Expect(Doc.StructuralElements.Count(element => element.FamilyId is not null) == before + 1, "no se colocó la lámpara");
+            return $"lámpara de {size.Z:0.00} m en metal, colocada";
+        });
         yield return ("11.6 Los muebles propios aparecen en la vista 3D", () =>
         {
             var families = Doc.ComponentFamilies.Count(family => family.Metadata.ContainsKey("SourceFamily"));
             var mesh = Guanacaste3D.Core.Geometry.BuildingMesher.Build(Doc);
             var placed = Doc.StructuralElements.Where(element => element.FamilyId is not null).Select(element => element.Id).ToHashSet();
             var shown = mesh.ElementRanges.Count(range => placed.Contains(range.ElementId));
-            Expect(families == 2 && shown >= 5, $"{families} familias propias cargadas, {shown} de 5 muebles en el modelo 3D");
+            Expect(families == 3 && shown >= 6, $"{families} familias propias cargadas, {shown} de 6 muebles en el modelo 3D");
             return $"{shown} muebles propios en 3D";
         });
     }
