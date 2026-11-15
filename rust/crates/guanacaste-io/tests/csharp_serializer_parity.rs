@@ -165,5 +165,29 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // A well-formed C# JSON envelope with an invalid wall identity must fail
+    // before printing any metrics. Preserve the original fixture on disk.
+    let mut invalid_guid: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    invalid_guid["Walls"][0]["Id"] = serde_json::json!("not-a-guid");
+    let invalid_guid_path = directory.join("invalid-guid-wall.g3d.json");
+    fs::write(
+        &invalid_guid_path,
+        serde_json::to_vec(&invalid_guid).unwrap(),
+    )
+    .unwrap();
+    let invalid_guid_result = Command::new(executable)
+        .arg(&invalid_guid_path)
+        .output()
+        .unwrap();
+    assert!(
+        !invalid_guid_result.status.success(),
+        "Rust must reject a malformed wall GUID in C# serialized JSON"
+    );
+    assert!(
+        invalid_guid_result.stdout.is_empty(),
+        "invalid BIM identity must not produce partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
