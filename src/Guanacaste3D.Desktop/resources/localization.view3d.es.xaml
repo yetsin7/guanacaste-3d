@@ -89,7 +89,9 @@
   <sys:String x:Key="Navigation.Home">Vista inicial</sys:String>
   <sys:String x:Key="Navigation.Left">Girar 90° a la izquierda</sys:String>
   <sys:String x:Key="Navigation.Right">Girar 90° a la derecha</sys:String>
-  <sys:String x:Key="Navigation.CubeHint">Pulsa una cara, arista o esquina para orientar. Arrastra el cubo para orbitar.</sys:String>
+  <sys:String x:Key="Navigation.CubeHint">Pulsa una cara, arista o esquina para orientar. Arrastra para orbitar, rueda para acercar, clic derecho para más opciones.</sys:String>
+  <sys:String x:Key="Navigation.TiltUp">Subir el punto de vista</sys:String>
+  <sys:String x:Key="Navigation.TiltDown">Bajar el punto de vista</sys:String>
   <sys:String x:Key="Navigation.ModelHint">Rueda: zoom · botón central: desplazar · Mayús + central: orbitar</sys:String>
   <sys:String x:Key="Status.ModelMovePlane">Gira la vista para ver de frente el plano de movimiento.</sys:String>
   <sys:String x:Key="Status.ModelMoveDestination">Indica el destino o suelta el elemento. Esc cancela. Las ventanas también se mueven en altura.</sys:String>

@@ -127,6 +127,24 @@ internal static partial class WorkspaceChecks
     }
 
     /// <summary>Writes the actual composed window so layout and visual behavior can be reviewed.</summary>
+    private static void SaveWidgetBitmap(FrameworkElement element, string name, double scale = 5)
+    {
+        element.UpdateLayout();
+        var bitmap = new RenderTargetBitmap((int)(element.ActualWidth * scale), (int)(element.ActualHeight * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+        var drawing = new DrawingVisual();
+        using (var context = drawing.RenderOpen())
+        {
+            var area = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
+            context.DrawRectangle(Brushes.White, null, area);
+            context.DrawRectangle(new VisualBrush(element) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top }, null, area);
+        }
+        bitmap.Render(drawing);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(Path.Combine(Evidence, name));
+        encoder.Save(stream);
+    }
+
     private static void SaveBitmap(string name)
     {
         _window.UpdateLayout();

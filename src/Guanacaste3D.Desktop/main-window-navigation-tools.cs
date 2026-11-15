@@ -79,6 +79,8 @@ public partial class MainWindow
             case "ZoomOut": _modelNavigator?.ZoomFactor(0.8f); break;
             case "Previous": case "Rewind": _modelNavigator?.RestoreView(false); break;
             case "Next": _modelNavigator?.RestoreView(true); break;
+            case "TiltUp": _modelNavigator?.OrbitBy(0, 37.5f); break;
+            case "TiltDown": _modelNavigator?.OrbitBy(0, -37.5f); break;
             case "Left": _modelNavigator?.OrbitBy(-225, 0); break;
             case "Right": _modelNavigator?.OrbitBy(225, 0); break;
             case "Region": case "Center": ArmNavigationRegion(command); break;
@@ -269,6 +271,7 @@ public partial class MainWindow
     /// <summary>Handles Escape and two-letter zoom shortcuts before drawing tools or navigation keys.</summary>
     private bool TryHandleViewNavigationKey(KeyEventArgs e)
     {
+        if (ViewTabs.SelectedIndex == Model3DTabIndex && Keyboard.FocusedElement is not TextBox && TryHandleNumpadView(e)) return true;
         if (ViewTabs.SelectedIndex != Model3DTabIndex || Keyboard.FocusedElement is TextBox || Keyboard.Modifiers != ModifierKeys.None) return false;
         if (e.Key == Key.Escape && (_regionPurpose is not null || _navigationWheel.Visibility == Visibility.Visible))
         { CancelNavigationOverlay(); return true; }
@@ -277,6 +280,34 @@ public partial class MainWindow
         _zoomPrefixAt = DateTime.MinValue;
         var command = e.Key switch { Key.R => "Region", Key.O => "Reduce", Key.F => "Fit", Key.A => "FitAll",
             Key.S => "SheetSize", Key.P => "Previous", Key.N => "Next", _ => null };
+        if (command is null) return false;
+        ExecuteViewNavigation(command);
+        return true;
+    }
+
+    /// <summary>
+    /// Numeric-keypad view control: 1 front, 3 right, 7 top (Ctrl for the opposite side), 0 home, 4/6 turn, 8/2 tilt,
+    /// 5 fit, plus and minus zoom. Plain digits stay free for the drawing tools.
+    /// </summary>
+    private bool TryHandleNumpadView(KeyEventArgs e)
+    {
+        var modifiers = Keyboard.Modifiers;
+        if (modifiers is not (ModifierKeys.None or ModifierKeys.Control)) return false;
+        var opposite = modifiers == ModifierKeys.Control;
+        Vector3? direction = e.Key switch
+        {
+            Key.NumPad1 => opposite ? Vector3.UnitY : -Vector3.UnitY,
+            Key.NumPad3 => opposite ? -Vector3.UnitX : Vector3.UnitX,
+            Key.NumPad7 => opposite ? -Vector3.UnitZ : Vector3.UnitZ,
+            _ => null
+        };
+        if (direction is { } look) { _modelNavigator?.LookFromAnimated(look); return true; }
+        if (opposite) return false;
+        var command = e.Key switch
+        {
+            Key.NumPad0 => "Home", Key.NumPad5 => "Fit", Key.NumPad4 => "Left", Key.NumPad6 => "Right",
+            Key.NumPad8 => "TiltUp", Key.NumPad2 => "TiltDown", Key.Add => "ZoomIn", Key.Subtract => "ZoomOut", _ => null
+        };
         if (command is null) return false;
         ExecuteViewNavigation(command);
         return true;

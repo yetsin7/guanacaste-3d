@@ -16,6 +16,10 @@
    <Button Style="{StaticResource NavigationButton}" Content="&#xE80F;" Tag="Home" Click="Command_Click"
     HorizontalAlignment="Left" ToolTip="{DynamicResource Navigation.Home}" AutomationProperties.Name="{DynamicResource Navigation.Home}"/>
    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+    <Button Style="{StaticResource NavigationButton}" Content="&#xE70E;" Tag="TiltUp" Click="Command_Click"
+     ToolTip="{DynamicResource Navigation.TiltUp}" AutomationProperties.Name="{DynamicResource Navigation.TiltUp}"/>
+    <Button Style="{StaticResource NavigationButton}" Content="&#xE70D;" Tag="TiltDown" Click="Command_Click"
+     ToolTip="{DynamicResource Navigation.TiltDown}" AutomationProperties.Name="{DynamicResource Navigation.TiltDown}"/>
     <Button Style="{StaticResource NavigationButton}" Content="&#xE7A7;" Tag="Left" Click="Command_Click"
      ToolTip="{DynamicResource Navigation.Left}" AutomationProperties.Name="{DynamicResource Navigation.Left}"/>
     <Button Style="{StaticResource NavigationButton}" Content="&#xE7A6;" Tag="Right" Click="Command_Click"
@@ -24,7 +28,8 @@
   </Grid>
   <Canvas x:Name="CubeCanvas" Width="156" Height="136" Background="Transparent"
    MouseLeftButtonDown="Cube_MouseDown" MouseMove="Cube_MouseMove" MouseLeftButtonUp="Cube_MouseUp"
-   LostMouseCapture="Cube_LostMouseCapture" ToolTip="{DynamicResource Navigation.CubeHint}"
+   LostMouseCapture="Cube_LostMouseCapture" MouseLeave="Cube_MouseLeave" MouseWheel="Cube_MouseWheel"
+   ContextMenuOpening="Cube_ContextMenuOpening" ToolTip="{DynamicResource Navigation.CubeHint}"
    AutomationProperties.Name="{DynamicResource Navigation.CubeHint}"/>
   <controls:ModelNavigationBar x:Name="NavigationBar" HorizontalAlignment="Right" Margin="0,10,0,0"/>
  </StackPanel>

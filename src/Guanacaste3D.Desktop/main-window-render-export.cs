@@ -66,10 +66,19 @@ public partial class MainWindow
             MessageBox.Show(this, GetText("RenderExport.SameFile"), GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        if (WriteRenderExport(dialog.FileName)) OfferRenderApplication(dialog.FileName);
+    }
+
+    /// <summary>
+    /// Writes the render snapshot of the current model, its model link and its linked models at
+    /// <paramref name="exportPath"/>. Returns false, after telling the person why, when it could not be written.
+    /// </summary>
+    private bool WriteRenderExport(string exportPath)
+    {
         try
         {
             var snapshot = _session.Document.Clone();
-            snapshot.RenderSetup = RenderPanelControl.CaptureSetupForProject(_navigation, dialog.FileName);
+            snapshot.RenderSetup = RenderPanelControl.CaptureSetupForProject(_navigation, exportPath);
             if (_filePath is not null)
             {
                 var sourceFolder = Path.GetDirectoryName(Path.GetFullPath(_filePath))!;
@@ -81,7 +90,7 @@ public partial class MainWindow
                     MetallicPath = RebaseRenderAsset(material.MetallicPath, sourceFolder)
                 }).ToList();
             }
-            var outcome = RenderModelExport.Write(dialog.FileName, snapshot, _filePath);
+            var outcome = RenderModelExport.Write(exportPath, snapshot, _filePath);
             var links = _links.Links.Select(link => new ModelLink
             {
                 Id = link.Id, Path = link.Path, RelativePath = link.RelativePath, Name = link.Name,
@@ -89,13 +98,14 @@ public partial class MainWindow
                 MetersPerUnit = link.MetersPerUnit, CenterHorizontally = link.CenterHorizontally,
                 PlaceOnGround = link.PlaceOnGround
             }).ToArray();
-            ModelLinkFile.Save(dialog.FileName, links);
+            ModelLinkFile.Save(exportPath, links);
             StatusText.Text = GetText(outcome == RenderExportOutcome.MergedWithRenderWork ? "RenderExport.Merged" : "RenderExport.Completed");
-            OfferRenderApplication(dialog.FileName);
+            return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             MessageBox.Show(this, LocalizedErrors.Translate(exception.Message), GetText("Dialog.ExportFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 }

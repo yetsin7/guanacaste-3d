@@ -427,6 +427,10 @@
   <sys:String x:Key="RenderExport.AlreadyOpen">Guanacaste Render ya está abierto: ábrela allí con «Abrir proyecto». Si ya la tienes abierta, guarda aquí el modelo y pulsa «Actualizar modelo» en Guanacaste Render.</sys:String>
   <sys:String x:Key="RenderExport.NotInstalled">Guanacaste Render no está instalado en este equipo o aún no se ha abierto una primera vez.</sys:String>
   <sys:String x:Key="RenderExport.LaunchFailed">No se pudo iniciar Guanacaste Render. Abre el archivo exportado desde la aplicación.</sys:String>
+  <sys:String x:Key="RenderHandoff.Title">Renderizar en Guanacaste Render</sys:String>
+  <sys:String x:Key="RenderHandoff.NotInstalled">El render fotorrealista se hace en Guanacaste Render, que no está instalado en este equipo. Instálalo y vuelve a pulsar Render: el modelo se abrirá ahí automáticamente.</sys:String>
+  <sys:String x:Key="RenderHandoff.Opened">Modelo enviado a Guanacaste Render ({0}). Cada vez que guardes aquí, el render se actualiza solo.</sys:String>
+  <sys:String x:Key="RenderHandoff.SaveForLiveLink">El modelo se abrió en Guanacaste Render. Guarda el proyecto en Guanacaste 3D para que los cambios que hagas aquí lleguen solos al render.</sys:String>
   <sys:String x:Key="Transaction.UpdateModel">Actualizar modelo</sys:String>
   <sys:String x:Key="RenderProduct.Name">Guanacaste Render</sys:String>
 </ResourceDictionary>

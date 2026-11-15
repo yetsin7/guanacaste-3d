@@ -9,7 +9,7 @@ public partial class MainWindow
         RegisterModelStyleControls();
         InitializeModelViewControls();
         ViewNavigation.Camera = _navigation;
-        ViewNavigation.DirectionRequested += direction => _modelNavigator?.LookFrom(direction);
+        ViewNavigation.DirectionRequested += direction => _modelNavigator?.LookFromAnimated(direction);
         ViewNavigation.OrbitRequested += (horizontal, vertical) => _modelNavigator?.OrbitBy(horizontal, vertical);
         ViewNavigation.CommandRequested += ExecuteViewNavigation;
         ViewNavigation.NavigationBar.HistoryAvailability = () => (_modelNavigator?.CanGoBack == true, _modelNavigator?.CanGoForward == true);

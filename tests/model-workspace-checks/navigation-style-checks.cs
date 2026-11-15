@@ -47,13 +47,70 @@ internal static partial class WorkspaceChecks
         var corner = ViewCubeDirections.FromFace(-Vector3.UnitY, Vector3.UnitX, Vector3.UnitZ, new(0.9f, 0.1f));
         Check(faceCenter == -Vector3.UnitY && corner == new Vector3(1, -1, 1),
             "Face hit regions distinguish a face center from its adjacent corner");
+        // The cube glides between orientations but must land on exactly the pose the instant snap produces.
+        var animated = navigator.GetType().GetMethod("LookFromAnimated")!;
+        var transitioning = navigator.GetType().GetProperty("IsTransitioning")!;
+        lookFrom.Invoke(navigator, [new Vector3(1, -1, 1)]);
+        var expected = camera.Clone();
+        lookFrom.Invoke(navigator, [new Vector3(-1, 1, 0.3f)]);
+        animated.Invoke(navigator, [new Vector3(1, -1, 1)]);
+        Check((bool)transitioning.GetValue(navigator)!, "A cube click starts a camera glide instead of cutting");
+        WaitFor(() => !(bool)transitioning.GetValue(navigator)!);
+        Check(Vector3.Distance(camera.Position, expected.Position) < 1e-3f &&
+              Math.Abs(camera.YawDegrees - expected.YawDegrees) < 1e-3f && Math.Abs(camera.PitchDegrees - expected.PitchDegrees) < 1e-3f,
+            "The cube glide ends exactly on the snapped orientation");
+        lookFrom.Invoke(navigator, [new Vector3(-1, 1, 0.3f)]);
+        animated.Invoke(navigator, [new Vector3(1, -1, 1)]);
+        camera.YawDegrees += 7;
+        Pump();
+        Pump();
+        Check(!(bool)transitioning.GetValue(navigator)! && Math.Abs(camera.YawDegrees - expected.YawDegrees) > 1,
+            "Moving the camera during a glide cancels it instead of fighting the user");
+        lookFrom.Invoke(navigator, [new Vector3(1, -1, 1)]);
+        var pitchBefore = camera.PitchDegrees;
+        Invoke("ExecuteViewNavigation", "TiltDown");
+        var pitchDown = camera.PitchDegrees;
+        Invoke("ExecuteViewNavigation", "TiltUp");
+        Check(pitchDown > pitchBefore && Math.Abs(camera.PitchDegrees - pitchBefore) < 0.01f,
+            "The cube's tilt arrows raise and lower the viewpoint symmetrically");
         var home = Descendants(widget).OfType<Button>().Single(button => button.Tag as string == "Home");
         home.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         widget.Redraw();
         var cube = (Canvas)widget.FindName("CubeCanvas");
-        Check(cube.Children.OfType<Polygon>().Count() == 3 && cube.Children.OfType<Border>().Count() == 3,
+        Check(cube.Children.OfType<Polygon>().Count() == 3 && cube.Children.OfType<Border>().Count(label => !label.RenderTransform.Value.IsIdentity) == 3,
             "The home view projects three cube faces with matching transformed labels");
         SaveBitmap("navigation-home.png");
+        SaveWidgetBitmap(widget, "cube-home.png");
+        var faces = cube.Children.OfType<Polygon>().ToArray();
+        var hovered = faces.Select(face => face.Points.Aggregate(new Point(), (sum, point) => new Point(sum.X + point.X / 4, sum.Y + point.Y / 4))).ToArray();
+        var cornerPoint = new Point(faces[0].Points[0].X * 0.85 + hovered[0].X * 0.15, faces[0].Points[0].Y * 0.85 + hovered[0].Y * 0.15);
+        widget.HoverAt(faces[0], cornerPoint);
+        var caption = cube.Children.OfType<Border>().Select(border => border.Child).OfType<TextBlock>().FirstOrDefault(text => text.Text.Contains('·'));
+        Check(caption is not null && caption.Text.Split('·').Length == 3,
+            "Hovering a cube corner names its three orientations in a caption");
+        SaveWidgetBitmap(widget, "cube-hover-corner.png");
+        widget.HoverAt(faces[0], hovered[0]);
+        caption = cube.Children.OfType<Border>().Select(border => border.Child).OfType<TextBlock>().FirstOrDefault(text => text.Foreground is SolidColorBrush { Color.R: 255 } && text.FontSize == 10);
+        Check(caption is { Text.Length: > 0 } && !caption.Text.Contains('·'), "Hovering a face center names just that face");
+        SaveWidgetBitmap(widget, "cube-hover-face.png");
+        widget.Redraw();
+        foreach (var (label, view) in new[] { ("top", new Vector3(0, 0, 1)), ("bottom", new Vector3(0, 0, -1)),
+                     ("back", new Vector3(0, 1, 0)), ("corner", new Vector3(-1, 1, 1)), ("flat", new Vector3(1, -1, 0.05f)) })
+        {
+            lookFrom.Invoke(navigator, [view]);
+            widget.Redraw();
+            SaveWidgetBitmap(widget, $"cube-{label}.png");
+        }
+        lookFrom.Invoke(navigator, [new Vector3(1, -1, 1)]);
+        widget.Redraw();
+        Check(cube.Children.OfType<TextBlock>().Any(text => text.Text.Split('·').Length == 3),
+            "The cube names the current standard view when the camera sits on a corner orientation");
+        lookFrom.Invoke(navigator, [new Vector3(0.3f, -1, 0.5f)]);
+        widget.Redraw();
+        Check(!cube.Children.OfType<TextBlock>().Any(),
+            "The cube shows no view name while the camera is between standard orientations");
+        home.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        widget.Redraw();
         _window.Width = 960;
         _window.Height = 640;
         Pump();
