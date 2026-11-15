@@ -5,6 +5,7 @@ on:
     paths:
       - 'rust/**'
       - 'src/Guanacaste3D.Core/**'
+      - 'src/Guanacaste3D.Desktop/resources/localization.*.xaml'
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - '.github/workflows/rust-migration.yml'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'rust/**'
       - 'src/Guanacaste3D.Core/**'
+      - 'src/Guanacaste3D.Desktop/resources/localization.*.xaml'
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - '.github/workflows/rust-migration.yml'
