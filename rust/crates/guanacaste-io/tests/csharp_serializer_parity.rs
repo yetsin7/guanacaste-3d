@@ -185,5 +185,31 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // Duplicate a valid wall identity in a copy of the genuine C# JSON.
+    // The document must be rejected atomically rather than double-counting
+    // a wall or emitting an ambiguous report keyed by the same BIM GUID.
+    let mut duplicate_id: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    let first_id = duplicate_id["Walls"][0]["Id"].clone();
+    duplicate_id["Walls"][1]["Id"] = first_id;
+    let duplicate_id_path = directory.join("duplicate-wall-id.g3d.json");
+    fs::write(
+        &duplicate_id_path,
+        serde_json::to_vec(&duplicate_id).unwrap(),
+    )
+    .unwrap();
+    let duplicate_result = Command::new(executable)
+        .arg(&duplicate_id_path)
+        .output()
+        .unwrap();
+    assert!(
+        !duplicate_result.status.success(),
+        "Rust must reject duplicate wall GUIDs in C# serialized JSON"
+    );
+    assert!(
+        duplicate_result.stdout.is_empty(),
+        "duplicate BIM identities must not produce partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
