@@ -101,7 +101,7 @@ fn unsupported_top_offset_is_rejected_across_read_only_envelopes() {
     );
     assert_ne!(modified, JSON, "fixture mutation must take effect");
     let inspected = inspect_legacy_json(modified.as_bytes()).unwrap();
-    let mut preview_bytes = b"G3-PROJECT/1\\n".to_vec();
+    let mut preview_bytes = b"G3-PROJECT/1\n".to_vec();
     preview_bytes.extend_from_slice(modified.as_bytes());
     let preview = inspect_preview(&preview_bytes).unwrap();
     for envelope in [&inspected, &preview] {
