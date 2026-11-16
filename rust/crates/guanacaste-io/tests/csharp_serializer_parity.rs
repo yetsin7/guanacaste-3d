@@ -428,5 +428,35 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // Overlapping openings on a real C#-serialized wall are invalid for the
+    // current Rust straight-wall mesh contract. Never double-subtract their
+    // intersection or emit partial metrics for an invalid BIM document.
+    // Only mutate a copy; the C# fixture remains byte-for-byte unchanged.
+    let mut overlapping: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    overlapping["Openings"] = serde_json::json!([
+        {
+            "Id": "00000000-0000-0000-0000-000000000008",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 1.5, "Width": 1.0, "Sill": 1.0, "Height": 1.0
+        },
+        {
+            "Id": "00000000-0000-0000-0000-000000000009",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 2.0, "Width": 1.0, "Sill": 1.0, "Height": 1.0
+        }
+    ]);
+    let overlap_path = directory.join("overlapping-windows-wall.g3d.json");
+    fs::write(&overlap_path, serde_json::to_vec(&overlapping).unwrap()).unwrap();
+    let overlap_result = Command::new(executable).arg(&overlap_path).output().unwrap();
+    assert!(
+        !overlap_result.status.success(),
+        "Rust must reject overlapping C#-serialized openings"
+    );
+    assert!(
+        overlap_result.stdout.is_empty(),
+        "overlapping openings must not emit partial wall metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
