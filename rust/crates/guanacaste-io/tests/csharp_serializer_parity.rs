@@ -348,9 +348,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut door_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // A 1 m x 2 m through-opening removes 0.4 m³ and 4 m² of
     // broad-face area; four reveal faces restore 1.2 m².
-    door_lines[0] =
-        "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned();
-    assert_eq!(door_report.trim().replace("\r\n", "\n"), door_lines.join("\n"));
+    door_lines[0] = "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned()
+    assert_eq!(
+        door_report.trim().replace("\r\n", "\n"),
+        door_lines.join("\n")
+    );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
     // A window in the same genuine C#-serialized wall must reduce volume
@@ -416,9 +418,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut two_windows_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // Two 0.6 x 1 m openings remove 0.24 m³ and 2.4 m² from
     // broad faces, while their reveals restore 1.28 m².
-    two_windows_lines[0] =
-        "00000000000000000000000000000002, 2.160000000000, 25.680000000000"
-            .to_owned();
+    two_windows_lines[0] = "00000000000000000000000000000002, 2.160000000000, 25.680000000000".to_owned();
     assert_eq!(
         String::from_utf8(two_windows_result.stdout)
             .unwrap()
@@ -447,7 +447,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
     ]);
     let overlap_path = directory.join("overlapping-windows-wall.g3d.json");
     fs::write(&overlap_path, serde_json::to_vec(&overlapping).unwrap()).unwrap();
-    let overlap_result = Command::new(executable).arg(&overlap_path).output().unwrap();
+    let overlap_result = Command::new(executable)
+        .arg(&overlap_path)
+        .output()
+        .unwrap();
     assert!(
         !overlap_result.status.success(),
         "Rust must reject overlapping C#-serialized openings"
@@ -500,7 +503,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
         "Kind": 2, "Offset": 1.5, "Width": 1.0, "Sill": 1.0, "Height": 1.0
     }]);
     let unknown_kind_path = directory.join("unknown-opening-kind.g3d.json");
-    fs::write(&unknown_kind_path, serde_json::to_vec(&unknown_kind).unwrap()).unwrap();
+    fs::write(
+        &unknown_kind_path,
+        serde_json::to_vec(&unknown_kind).unwrap(),
+    )
+    .unwrap();
     let unknown_kind_result = Command::new(executable)
         .arg(&unknown_kind_path)
         .output()
@@ -579,8 +586,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut mixed_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // Removed volume: (0.8*2 + 0.6*1)*0.2 = 0.44 m3.
     // Area: 26.8 - 2*(1.6+0.6) + 0.4*(0.8+2+0.6+1) = 24.16 m2.
-    mixed_lines[0] =
-        "00000000000000000000000000000002, 1.960000000000, 24.160000000000".to_owned();
+    mixed_lines[0] = "00000000000000000000000000000002, 1.960000000000, 24.160000000000".to_owned()
     assert_eq!(
         String::from_utf8(mixed_result.stdout)
             .unwrap()
