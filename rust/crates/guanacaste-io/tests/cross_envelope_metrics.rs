@@ -95,10 +95,7 @@ fn native_envelope_metrics_match_legacy_and_preview() {
 fn unsupported_top_offset_is_rejected_across_read_only_envelopes() {
     // A nonzero TopOffset changes C# wall height; the Rust straight-wall
     // subset must not silently discard it and return plausible metrics.
-    let modified = JSON.replace(
-        "\"BaseOffset\":0",
-        "\"BaseOffset\":0,\"TopOffset\":0.5",
-    );
+    let modified = JSON.replace("\"BaseOffset\":0", "\"BaseOffset\":0,\"TopOffset\":0.5");
     assert_ne!(modified, JSON, "fixture mutation must take effect");
     let inspected = inspect_legacy_json(modified.as_bytes()).unwrap();
     let mut preview_bytes = b"G3-PROJECT/1\n".to_vec();
@@ -115,5 +112,8 @@ fn unsupported_top_offset_is_rejected_across_read_only_envelopes() {
         );
         assert_eq!(envelope.json, modified.as_bytes());
     }
-    assert_eq!(JSON.as_bytes(), inspect_legacy_json(JSON.as_bytes()).unwrap().json);
+    assert_eq!(
+        JSON.as_bytes(),
+        inspect_legacy_json(JSON.as_bytes()).unwrap().json
+    );
 }
