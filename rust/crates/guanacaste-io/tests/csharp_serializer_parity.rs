@@ -418,7 +418,8 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut two_windows_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // Two 0.6 x 1 m openings remove 0.24 m³ and 2.4 m² from
     // broad faces, while their reveals restore 1.28 m².
-    two_windows_lines[0] = "00000000000000000000000000000002, 2.160000000000, 25.680000000000".to_owned();
+    two_windows_lines[0] =
+        "00000000000000000000000000000002, 2.160000000000, 25.680000000000".to_owned();
     assert_eq!(
         String::from_utf8(two_windows_result.stdout)
             .unwrap()
