@@ -348,7 +348,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut door_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // A 1 m x 2 m through-opening removes 0.4 m³ and 4 m² of
     // broad-face area; four reveal faces restore 1.2 m².
-    door_lines[0] = "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned()
+    door_lines[0] = "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned();
     assert_eq!(
         door_report.trim().replace("\r\n", "\n"),
         door_lines.join("\n")
@@ -586,7 +586,7 @@ fn csharp_serializers_match_rust_wall_metrics() {
     let mut mixed_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // Removed volume: (0.8*2 + 0.6*1)*0.2 = 0.44 m3.
     // Area: 26.8 - 2*(1.6+0.6) + 0.4*(0.8+2+0.6+1) = 24.16 m2.
-    mixed_lines[0] = "00000000000000000000000000000002, 1.960000000000, 24.160000000000".to_owned()
+    mixed_lines[0] = "00000000000000000000000000000002, 1.960000000000, 24.160000000000".to_owned();
     assert_eq!(
         String::from_utf8(mixed_result.stdout)
             .unwrap()
