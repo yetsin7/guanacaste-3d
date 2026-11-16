@@ -90,3 +90,30 @@ fn native_envelope_metrics_match_legacy_and_preview() {
     native[last] ^= 0xff;
     assert!(guanacaste_io::inspect_native(&native).is_err());
 }
+
+#[test]
+fn unsupported_top_offset_is_rejected_across_read_only_envelopes() {
+    // A nonzero TopOffset changes C# wall height; the Rust straight-wall
+    // subset must not silently discard it and return plausible metrics.
+    let modified = JSON.replace(
+        "\"BaseOffset\":0",
+        "\"BaseOffset\":0,\"TopOffset\":0.5",
+    );
+    assert_ne!(modified, JSON, "fixture mutation must take effect");
+    let inspected = inspect_legacy_json(modified.as_bytes()).unwrap();
+    let mut preview_bytes = b"G3-PROJECT/1\\n".to_vec();
+    preview_bytes.extend_from_slice(modified.as_bytes());
+    let preview = inspect_preview(&preview_bytes).unwrap();
+    for envelope in [&inspected, &preview] {
+        assert_eq!(
+            extract_wall_volumes(envelope),
+            Err(guanacaste_io::bim_slice::SliceError::UnsupportedWallFeature)
+        );
+        assert_eq!(
+            extract_wall_surface_areas(envelope),
+            Err(guanacaste_io::bim_slice::SliceError::UnsupportedWallFeature)
+        );
+        assert_eq!(envelope.json, modified.as_bytes());
+    }
+    assert_eq!(JSON.as_bytes(), inspect_legacy_json(JSON.as_bytes()).unwrap().json);
+}
