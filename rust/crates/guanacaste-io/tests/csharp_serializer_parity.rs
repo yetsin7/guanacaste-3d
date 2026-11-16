@@ -587,8 +587,9 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     let mut mixed_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
     // Removed volume: (0.8*2 + 0.6*1)*0.2 = 0.44 m3.
-    // Area: 26.8 - 2*(1.6+0.6) + 0.4*(0.8+2+0.6+1) = 24.16 m2.
-    mixed_lines[0] = "00000000000000000000000000000002, 1.960000000000, 24.160000000000".to_owned();
+    // Area: 26.8 - 2*(1.6+0.6) + 0.2*(2*2+0.8+2*1+2*0.6) = 23.84 m2.
+    // The floor-level door has no bottom reveal; the raised window has four.
+    mixed_lines[0] = "00000000000000000000000000000002, 1.960000000000, 23.840000000000".to_owned();
     assert_eq!(
         String::from_utf8(mixed_result.stdout)
             .unwrap()
