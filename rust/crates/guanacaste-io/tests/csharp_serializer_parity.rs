@@ -490,5 +490,30 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // The C# opening discriminator currently accepts only door (0) and
+    // window (1). Unknown values must fail closed, never be interpreted
+    // as an arbitrary window or silently omitted from wall metrics.
+    let mut unknown_kind: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    unknown_kind["Openings"] = serde_json::json!([{
+        "Id": "00000000-0000-0000-0000-00000000000a",
+        "WallId": "00000000-0000-0000-0000-000000000002",
+        "Kind": 2, "Offset": 1.5, "Width": 1.0, "Sill": 1.0, "Height": 1.0
+    }]);
+    let unknown_kind_path = directory.join("unknown-opening-kind.g3d.json");
+    fs::write(&unknown_kind_path, serde_json::to_vec(&unknown_kind).unwrap()).unwrap();
+    let unknown_kind_result = Command::new(executable)
+        .arg(&unknown_kind_path)
+        .output()
+        .unwrap();
+    assert!(
+        !unknown_kind_result.status.success(),
+        "Rust must reject unknown C# opening kinds"
+    );
+    assert!(
+        unknown_kind_result.stdout.is_empty(),
+        "unknown opening kind must not emit partial wall metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
