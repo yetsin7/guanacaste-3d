@@ -346,9 +346,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     let door_report = String::from_utf8(door_result.stdout).unwrap();
     let mut door_lines: Vec<String> = csharp_report.lines().map(str::to_owned).collect();
-    // A 1 m x 2 m through-opening removes 0.4 m³ and 4 m² of
-    // broad-face area; four reveal faces restore 1.2 m².
-    door_lines[0] = "00000000000000000000000000000002, 2.000000000000, 24.000000000000".to_owned();
+    // A 1 m x 2 m door reaching the floor removes 0.4 m³ and
+    // 4 m² of broad-face area; jambs and lintel restore 0.8 m².
+    // There is no bottom reveal at the floor.
+    door_lines[0] = "00000000000000000000000000000002, 2.000000000000, 23.600000000000".to_owned();
     assert_eq!(
         door_report.trim().replace("\r\n", "\n"),
         door_lines.join("\n")
