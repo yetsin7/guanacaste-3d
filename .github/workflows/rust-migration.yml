@@ -19,8 +19,12 @@ on:
       - 'Directory.Packages.props'
       - '.github/workflows/rust-migration.yml'
       - 'Plan de migración.md'
+permissions:
+  contents: read
+
 jobs:
   rust:
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
