@@ -515,5 +515,40 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // Duplicate hosted-opening identities must not be silently accepted.
+    // Both windows are geometrically disjoint; identity alone is invalid.
+    let mut duplicate_opening: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    duplicate_opening["Openings"] = serde_json::json!([
+        {
+            "Id": "00000000-0000-0000-0000-000000000008",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 1.0, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        },
+        {
+            "Id": "00000000-0000-0000-0000-000000000008",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 3.0, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        }
+    ]);
+    let duplicate_opening_path = directory.join("duplicate-opening-id.g3d.json");
+    fs::write(
+        &duplicate_opening_path,
+        serde_json::to_vec(&duplicate_opening).unwrap(),
+    )
+    .unwrap();
+    let duplicate_opening_result = Command::new(executable)
+        .arg(&duplicate_opening_path)
+        .output()
+        .unwrap();
+    assert!(
+        !duplicate_opening_result.status.success(),
+        "Rust must reject duplicate C# hosted-opening GUIDs"
+    );
+    assert!(
+        duplicate_opening_result.stdout.is_empty(),
+        "duplicate opening GUIDs must not emit partial wall metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
