@@ -458,5 +458,37 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
 
+    // C# WallGeometry requires at least 0.05 m between hosted openings.
+    // Use two otherwise valid windows with a 0.04 m edge-to-edge gap;
+    // Rust must reject the entire copied document without partial output.
+    let mut too_close: serde_json::Value = serde_json::from_slice(&json_bytes).unwrap();
+    too_close["Openings"] = serde_json::json!([
+        {
+            "Id": "00000000-0000-0000-0000-000000000008",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 1.0, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        },
+        {
+            "Id": "00000000-0000-0000-0000-000000000009",
+            "WallId": "00000000-0000-0000-0000-000000000002",
+            "Kind": 1, "Offset": 1.64, "Width": 0.6, "Sill": 1.0, "Height": 1.0
+        }
+    ]);
+    let too_close_path = directory.join("too-close-windows-wall.g3d.json");
+    fs::write(&too_close_path, serde_json::to_vec(&too_close).unwrap()).unwrap();
+    let too_close_result = Command::new(executable)
+        .arg(&too_close_path)
+        .output()
+        .unwrap();
+    assert!(
+        !too_close_result.status.success(),
+        "Rust must reject windows separated by less than 0.05 m"
+    );
+    assert!(
+        too_close_result.stdout.is_empty(),
+        "invalid opening clearance must not emit partial metrics"
+    );
+    assert_eq!(fs::read(&json_path).unwrap(), json_bytes);
+
     fs::remove_dir_all(directory).unwrap();
 }
