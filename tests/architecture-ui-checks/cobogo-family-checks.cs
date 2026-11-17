@@ -59,11 +59,12 @@ internal static partial class HouseFromScratchChecks
             ActiveLevel(Ground);
             var editor = OpenEditor();
             PressEditorButton(editor, "FamilyEditor.LoadIntoProject");
+            for (var wait = 0; wait < 5 && Doc.ComponentFamilies.Count == 0; wait++) { _pump(); System.Threading.Thread.Sleep(100); }
             var before = Doc.StructuralElements.Count(element => element.FamilyId is not null);
             Click(4.2, 9.6);
             Escape();
             var placed = Doc.StructuralElements.Where(element => element.FamilyId is not null).ToList();
-            Expect(placed.Count == before + 1, $"no se colocó la mesa (estado: {Status})");
+            Expect(placed.Count == before + 1, $"no se colocó la mesa (estado: {Status}; fam: {typeof(MainWindow).GetField("_placingFamilyId", Private)!.GetValue(_window)}; fams: {Doc.ComponentFamilies.Count}; antes {before}; editor: {((TextBlock)Field(editor, "_status")).Text})");
             var family = Doc.ComponentFamilies.Single(candidate => candidate.Id == placed[^1].FamilyId);
             return $"«{family.Name}» en ({placed[^1].Start.X:0.0}, {placed[^1].Start.Y:0.0})";
         });

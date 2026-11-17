@@ -64,6 +64,7 @@ public partial class MainWindow
 
     private void OffsetSelectedWall()
     {
+        if (SelectedWallForWallCommand() is null && SelectedPlanElementId() is not null) { StatusText.Text = GetText("Status.OffsetWallsOnly"); return; }
         if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var text = TextPrompt.Ask(this, GetText("Prompt.Offset.Title"), GetText("Prompt.Offset.Label"),
             GetText("Prompt.Accept"), GetText("Prompt.Cancel"), "1");
@@ -74,6 +75,7 @@ public partial class MainWindow
 
     private void ArraySelectedWall()
     {
+        if (SelectedWallForWallCommand() is null && TryArraySelectedElement()) return;
         if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         var text = TextPrompt.Ask(this, GetText("Prompt.Array.Title"), GetText("Prompt.Array.Label"),
             GetText("Prompt.Accept"), GetText("Prompt.Cancel"), "3; 0; 3");
@@ -142,6 +144,7 @@ public partial class MainWindow
 
     private void BeginMirrorPick()
     {
+        if (SelectedWallForWallCommand() is null && TryBeginMirrorSelectedElement()) return;
         if (SelectedWallForWallCommand() is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         BeginWallPick(axis =>
         {

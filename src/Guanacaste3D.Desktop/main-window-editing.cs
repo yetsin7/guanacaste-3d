@@ -42,6 +42,7 @@ public partial class MainWindow
     private void Rotate_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWallId is null && TryRotateComponent()) return;
+        if (_selectedWallId is null && TryRotateSelectedElement()) return;
         if (SelectedWallForWallCommand() is not Guid id)
         {
             StatusText.Text = GetText("Status.SelectWallToRotate");

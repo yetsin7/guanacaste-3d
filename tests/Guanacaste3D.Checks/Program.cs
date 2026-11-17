@@ -656,6 +656,7 @@ ImportedUvChecks.Run(Check);
 FinishTransactionChecks.Run(Check);
 RoofTakeoffChecks.Run(Check);
 MaterialTakeoffChecks.Run(Check);
+ElementTransformChecks.Run(Check);
 ViewDisciplineChecks.Run(Check);
 RoomFaceJoinChecks.Run(Check);
 FamilyAuthoringChecks.Run(Check);

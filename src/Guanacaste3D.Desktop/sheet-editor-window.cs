@@ -191,6 +191,15 @@ public sealed class SheetEditorWindow : Window
     private void AddView_Click(object sender, RoutedEventArgs e)
     {
         if (_views.SelectedValue is not Guid id) return;
+        // A plan, section or elevation is drawn once per sheet, as in the reference application: choosing one that is
+        // already there selects it instead of stacking a second copy on top. Tables and legends may repeat.
+        if (_placements.FirstOrDefault(row => row.ViewId == id) is { } existing &&
+            _session.Document.Views.Any(view => view.Id == id && view.Kind is ProjectViewKind.Plan or ProjectViewKind.Section or
+                ProjectViewKind.Elevation or ProjectViewKind.Model3D))
+        {
+            _placementGrid.SelectedItem = existing;
+            return;
+        }
         _placements.Add(SheetViewportRow.From(new(Guid.NewGuid(), id, 0, 0, 30, 30, Number: (_placements.Count + 1).ToString())));
         Arrange(false);
     }

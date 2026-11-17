@@ -164,6 +164,10 @@
   <sys:String x:Key="Transaction.SetPrecastSettings">Cambiar la configuración de prefabricados</sys:String>
   <sys:String x:Key="Transaction.SetConcreteSettings">Cambiar la configuración del hormigón</sys:String>
   <sys:String x:Key="Transaction.SetCover">Cambiar el recubrimiento de un elemento</sys:String>
+  <sys:String x:Key="Transaction.RotateElements">Girar elemento</sys:String>
+  <sys:String x:Key="Transaction.MirrorElements">Reflejar elemento</sys:String>
+  <sys:String x:Key="Transaction.CopyElements">Copiar elemento</sys:String>
+  <sys:String x:Key="Transaction.ArrayElements">Matriz de elementos</sys:String>
   <sys:String x:Key="Transaction.AddRebar">Colocar barras de refuerzo</sys:String>
   <sys:String x:Key="Transaction.AddRebarPath">Colocar una barra por recorrido</sys:String>
   <sys:String x:Key="Transaction.AddRebarArea">Colocar barras en un área</sys:String>

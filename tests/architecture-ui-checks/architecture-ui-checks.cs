@@ -61,6 +61,8 @@ internal static class ArchitectureUiChecks
             if (Environment.GetEnvironmentVariable("G3D_FRESH") == "structure") HouseFromScratchChecks.RunFreshStructure(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_FRESH") == "stair") HouseFromScratchChecks.RunFreshStair(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_FRESH") == "roof") HouseFromScratchChecks.RunFreshRoof(_window, Check, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_FRESH") == "sheet") HouseFromScratchChecks.RunFreshSheet(_window, Check, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_FRESH") == "edit") HouseFromScratchChecks.RunFreshEdit(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_BUILDING") == "1")
             {
                 HouseFromScratchChecks.RunBuildingFromScratch(_window, Check, Pump);

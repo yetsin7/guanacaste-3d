@@ -115,6 +115,9 @@
   <sys:String x:Key="Error.The concrete settings are invalid.">La configuración del hormigón no es válida.</sys:String>
   <sys:String x:Key="Error.The cover is invalid.">El recubrimiento debe estar entre 1 y 15 cm.</sys:String>
   <sys:String x:Key="Error.The element to reinforce does not exist.">Seleccione primero una viga o un cimiento corrido.</sys:String>
+  <sys:String x:Key="Error.The mirror axis has no length.">El eje de simetría no tiene longitud: elija un muro con largo.</sys:String>
+  <sys:String x:Key="Error.There is nothing to transform.">No hay ningún elemento seleccionado que se pueda girar, reflejar o copiar.</sys:String>
+  <sys:String x:Key="Error.A room turns only by quarter turns.">Una habitación solo gira en cuartos de vuelta (90°, 180°, 270°).</sys:String>
   <sys:String x:Key="Error.The bars are invalid.">Las barras no son válidas: de 1 a 20 por elemento y de 6 a 50 mm de diámetro.</sys:String>
   <sys:String x:Key="Error.The bars do not fit in the member.">Las barras no caben en el elemento con ese recubrimiento.</sys:String>
   <sys:String x:Key="Error.The member is too short for bars.">El elemento es demasiado corto para barras.</sys:String>

@@ -59,6 +59,8 @@ public partial class MainWindow
             CopySelectedOpening(openingId, cut);
             return;
         }
+        if (_selectedWallId is null && !cut && TryCopySelectedElement()) return;
+        if (_selectedWallId is null && cut && SelectedPlanElementId() is not null) { StatusText.Text = GetText("Status.CutWallsOnly"); return; }
         if (_selectedWallId is not Guid id) { StatusText.Text = GetText("Status.SelectWallFirst"); return; }
         try
         {
@@ -89,6 +91,7 @@ public partial class MainWindow
             PasteOpeningClipboard(opening);
             return;
         }
+        if (_wallClipboard is null && TryPasteElementClipboard()) return;
         if (_wallClipboard is not { } clipboard) { StatusText.Text = GetText("Status.NothingToPaste"); return; }
         // On the same level the copy would sit exactly on its source, so it is moved a meter to stay visible.
         var sameLevel = clipboard.Walls.All(wall => wall.LevelId == _activeLevelId);
