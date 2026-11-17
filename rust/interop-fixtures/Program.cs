@@ -70,27 +70,27 @@ foreach (var restored in new[] { fromJson, fromNative })
         return 1;
     }
 }
-// Calculate from the same point inputs used to construct the walls. This
-// prevents an edited fixture from silently retaining obsolete hard-coded
-// reference dimensions. This is still analytic, not production WallGeometry.
-static void PrintWallMetrics(Guid id, Point2 a, Point2 b, double wallThickness, double wallHeight)
+// Use production WallGeometry for net volume; surface area remains an independent
+// analytic cuboid reference until the production mesh-area oracle is integrated.
+// The C# serializer parity test compares this report with Rust on both OSes.
+static void PrintWallMetrics(Wall wall)
 {
-    var dx = b.X - a.X;
-    var dy = b.Y - a.Y;
-    var length = Math.Sqrt(dx * dx + dy * dy);
+    var length = wall.Length;
+    var wallThickness = wall.Thickness;
+    var wallHeight = wall.Height;
     if (!double.IsFinite(length) || length <= 0 ||
         !double.IsFinite(wallThickness) || wallThickness <= 0 ||
         !double.IsFinite(wallHeight) || wallHeight <= 0)
     {
         throw new InvalidOperationException("Fixture wall dimensions must be finite and positive");
     }
-    var volume = length * wallThickness * wallHeight;
+    var volume = WallGeometry.NetVolume(wall, Array.Empty<WallOpening>());
+    if (!double.IsFinite(volume) || volume <= 0)
+        throw new InvalidOperationException("Production C# wall volume must be finite and positive");
     var area = 2 * (length * wallHeight + length * wallThickness + wallHeight * wallThickness);
-    Console.WriteLine(FormattableString.Invariant($"{id:N}, {volume:F12}, {area:F12}"));
+    Console.WriteLine(FormattableString.Invariant($"{wall.Id:N}, {volume:F12}, {area:F12}"));
 }
-PrintWallMetrics(wallId, start, end, thickness, height);
-PrintWallMetrics(diagonalId, diagonalStart, diagonalEnd, thickness, height);
-PrintWallMetrics(reversedId, reversedStart, reversedEnd, thickness, height);
-PrintWallMetrics(variedId, variedStart, variedEnd, variedThickness, variedHeight);
-PrintWallMetrics(translatedId, translatedStart, translatedEnd, thickness, height);
+WallGeometry.Validate(document.Walls, Array.Empty<WallOpening>());
+foreach (var wall in document.Walls)
+    PrintWallMetrics(wall);
 return 0;
