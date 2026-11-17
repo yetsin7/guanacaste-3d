@@ -55,6 +55,10 @@ var fromJson = ProjectFile.DeserializeDocument(json);
 var fromNative = NativeDocumentStore.LoadProject(Path.Combine(directory, "wall.g3d"));
 foreach (var restored in new[] { fromJson, fromNative })
 {
+    // Validate deserialized data with the production BIM and wall validators.
+    // A round-trip must preserve invariants, not only selected scalar fields.
+    restored.Validate();
+    WallGeometry.Validate(restored.Walls, Array.Empty<WallOpening>());
     if (restored.Id != document.Id ||
         restored.SchemaVersion != document.SchemaVersion ||
         restored.Walls.Count != document.Walls.Count ||
