@@ -131,7 +131,15 @@ var door = new WallOpening(
 var window = new WallOpening(
     Guid.Parse("00000000-0000-0000-0000-000000000102"),
     openingHost.Id, OpeningKind.Window, 3, 0.6, 1, 1);
-var openings = new[] { door, window };
+// Every persisted opening must reference a catalog type with identical kind and size.
+// Generate fixture-specific types through the same production rules as the editor.
+var doorType = OpeningTypeRules.FindOrCreate(document.OpeningTypes, door.Kind, door.Width, door.Height, door.Sill);
+var windowType = OpeningTypeRules.FindOrCreate(document.OpeningTypes, window.Kind, window.Width, window.Height, window.Sill);
+var openings = new[]
+{
+    door with { OpeningTypeId = doorType.Id },
+    window with { OpeningTypeId = windowType.Id }
+};
 WallGeometry.Validate(document.Walls, openings);
 var openingVolume = WallGeometry.NetVolume(openingHost, openings);
 const double expectedOpeningVolume = 1.96;
