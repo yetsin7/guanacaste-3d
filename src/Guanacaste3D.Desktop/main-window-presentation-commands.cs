@@ -12,6 +12,12 @@ public partial class MainWindow
             case "Decal":
                 ShowDecalWindow();
                 return true;
+            case "ShowRender":
+                ShowRender_Click(this, new RoutedEventArgs());
+                return true;
+            case "StartRender":
+                StartRender_Click(this, new RoutedEventArgs());
+                return true;
             case "Camera":
                 ViewTabs.SelectedIndex = Model3DTabIndex;
                 ModelSurface.Focus();

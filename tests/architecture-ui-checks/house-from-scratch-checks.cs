@@ -54,6 +54,9 @@ internal static partial class HouseFromScratchChecks
     {
         _window = window;
         _pump = pump;
+        // The real application runs under Dispatcher.Run, which installs this context; the harness pumps by hand, so an
+        // awaited render would otherwise resume on a pool thread and touch controls from the wrong one.
+        System.Threading.SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         if (_initialised) return;
         _initialised = true;
         EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.OpenedEvent, new RoutedEventHandler((sender, _) => _lastMenu = (ContextMenu)sender));

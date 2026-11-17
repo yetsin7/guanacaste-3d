@@ -420,5 +420,33 @@ internal static partial class HouseFromScratchChecks
             Expect(Now() == counts, $"al reabrir cambió: {counts} → {Now()}");
             return counts;
         });
+
+        // ---------------------------------------------------------------- 12. Render inside the program
+        yield return ("12.1 Botón «Ir a Render» de la cinta abre el Render integrado con la casa", () =>
+        {
+            ((TabControl)_window.FindName("ViewTabs")).SelectedIndex = 0;
+            _pump();
+            App("ShowRender");
+            var tabs = (TabControl)_window.FindName("ViewTabs");
+            Expect(tabs.SelectedItem == _window.FindName("RenderTab"), "el botón Ir a Render no abrió la pestaña Render");
+            for (var wait = 0; wait < 40; wait++) { _pump(); System.Threading.Thread.Sleep(100); }
+            SaveWindow($"{Evidence}/12-render-panel.png");
+            return "pestaña Render abierta";
+        });
+        yield return ("12.2 Iniciar render de la casa y esperar la imagen", () =>
+        {
+            ((ComboBox)((FrameworkElement)_window.FindName("RenderPanelControl")).FindName("QualityPicker")).SelectedIndex = 1;
+            // The real application runs under Dispatcher.Run, which installs this context; the harness pumps by hand.
+            System.Threading.SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
+            App("StartRender");
+            var panel = (Guanacaste3D.Desktop.Controls.RenderPanel)_window.FindName("RenderPanelControl");
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var banner = (UIElement)panel.FindName("RenderCompletedBanner");
+            while (clock.Elapsed.TotalSeconds < 120 && banner.Visibility != Visibility.Visible) { _pump(); System.Threading.Thread.Sleep(100); }
+            SaveWindow($"{Evidence}/12-render-final.png");
+            var status = ((TextBlock)panel.FindName("StatusText")).Text;
+            Expect(banner.Visibility == Visibility.Visible, $"el render no terminó en {clock.Elapsed.TotalSeconds:0} s: {status}");
+            return $"render listo en {clock.Elapsed.TotalSeconds:0} s: {status}";
+        });
     }
 }

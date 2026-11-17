@@ -11,6 +11,9 @@
   <sys:String x:Key="RibbonGroup.WallJoins">Uniones</sys:String>
   <sys:String x:Key="RibbonGroup.WallView">Vistas del muro</sys:String>
 
+  <sys:String x:Key="RibbonGroup.RenderGroup">Render</sys:String>
+  <sys:String x:Key="RibbonCommand.ShowRender">Ir a Render</sys:String>
+  <sys:String x:Key="RibbonCommand.StartRender">Iniciar render</sys:String>
   <sys:String x:Key="RibbonCommand.Camera">Cámara</sys:String>
   <sys:String x:Key="RibbonCommand.Walkthrough">Recorrido</sys:String>
   <sys:String x:Key="RibbonCommand.Orbit">Órbita</sys:String>

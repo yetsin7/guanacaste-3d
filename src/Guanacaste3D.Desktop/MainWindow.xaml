@@ -470,7 +470,7 @@
   </DockPanel>
   <!-- The return action sits below the persistent window title bar. -->
   <Button x:Name="RenderReturn3DButton" Content="↩  3D" AutomationProperties.Name="{DynamicResource View.Model3D}"
-          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,40,22,0" MinWidth="102" Height="42"
+          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,92,22,0" MinWidth="102" Height="42"
           Padding="16,8" FontSize="15" FontWeight="SemiBold" Panel.ZIndex="35"
           Background="#142B38" Foreground="#FFFFFF" BorderBrush="#6BC7B9" BorderThickness="1"
           Visibility="Collapsed" Click="RenderReturn3D_Click"

@@ -1042,6 +1042,8 @@
   <sys:String x:Key="Array.StepX">Separación en X</sys:String>
   <sys:String x:Key="Array.StepY">Separación en Y</sys:String>
   <sys:String x:Key="Status.ScaleWallsOnly">Escala solo se aplica a muros: para cambiar un pilar o un mueble edite sus medidas en Propiedades.</sys:String>
+  <sys:String x:Key="Status.RenderOpened">Render abierto: elija el entorno y la cámara, o pulse Renderizar.</sys:String>
+  <sys:String x:Key="Status.RenderStarted">Render iniciado con los ajustes del panel.</sys:String>
   <sys:String x:Key="Status.SelectWallFirst">Seleccione primero un muro.</sys:String>
   <sys:String x:Key="Status.InvalidNumber">Escriba un número válido.</sys:String>
   <sys:String x:Key="Status.PickOtherWall">Elija un muro distinto del que desea reflejar.</sys:String>

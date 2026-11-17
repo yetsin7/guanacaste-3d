@@ -1032,7 +1032,7 @@
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
 
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
-      <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
+      <Border x:Name="RenderTelemetryPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,112,16,0"
               Background="#DD1E293B" BorderBrush="#445B718B" BorderThickness="1" CornerRadius="0" Padding="12,10"
               Visibility="Collapsed" IsHitTestVisible="False">
         <StackPanel Width="267">

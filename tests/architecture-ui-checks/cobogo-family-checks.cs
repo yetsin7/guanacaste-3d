@@ -64,7 +64,7 @@ internal static partial class HouseFromScratchChecks
             Click(4.2, 9.6);
             Escape();
             var placed = Doc.StructuralElements.Where(element => element.FamilyId is not null).ToList();
-            Expect(placed.Count == before + 1, $"no se colocó la mesa (estado: {Status}; fam: {typeof(MainWindow).GetField("_placingFamilyId", Private)!.GetValue(_window)}; fams: {Doc.ComponentFamilies.Count}; antes {before}; editor: {((TextBlock)Field(editor, "_status")).Text})");
+            Expect(placed.Count == before + 1, $"no se colocó la mesa (estado: {Status}; fam: {typeof(MainWindow).GetField("_placingFamilyId", Private)!.GetValue(_window)}; fams: {Doc.ComponentFamilies.Count}; antes {before}; editor: {((TextBlock)Field(editor, "_status")).Text}; ventanas: {Application.Current.Windows.OfType<Window>().Count(window => window.GetType().Name == "FamilyEditorWindow")}; sólidos: {((FamilyDocument)editor.GetType().GetProperty("Family")!.GetValue(editor)!).Operations.Count}; tipos: {((FamilyDocument)editor.GetType().GetProperty("Family")!.GetValue(editor)!).Types.Count}; triángulos: {FamilyGeometry.Tessellate((FamilyDocument)editor.GetType().GetProperty("Family")!.GetValue(editor)!).TriangleCount})");
             var family = Doc.ComponentFamilies.Single(candidate => candidate.Id == placed[^1].FamilyId);
             return $"«{family.Name}» en ({placed[^1].Start.X:0.0}, {placed[^1].Start.Y:0.0})";
         });
@@ -138,11 +138,11 @@ internal static partial class HouseFromScratchChecks
     private static Window OpenEditor()
     {
         KeepOpen.Add("FamilyEditorWindow");
-        var editor = Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.GetType().Name == "FamilyEditorWindow");
+        var editor = Application.Current.Windows.OfType<Window>().Where(window => window.GetType().Name == "FamilyEditorWindow").OrderByDescending(window => ((FamilyDocument)window.GetType().GetProperty("Family")!.GetValue(window)!).Operations.Count).FirstOrDefault();
         if (editor is null)
         {
             App("FamilyEditor");
-            editor = Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.GetType().Name == "FamilyEditorWindow");
+            editor = Application.Current.Windows.OfType<Window>().Where(window => window.GetType().Name == "FamilyEditorWindow").OrderByDescending(window => ((FamilyDocument)window.GetType().GetProperty("Family")!.GetValue(window)!).Operations.Count).FirstOrDefault();
         }
         Expect(editor is not null, "el botón Editor de familias no abrió el editor");
         return editor!;

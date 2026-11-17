@@ -417,6 +417,8 @@ public partial class MainWindow
 
     // ---------------------------------------------------------------- 3D view
 
+    private DocumentSession? _renderFramedSession;
+
     /// <summary>Places the shared camera so the whole model is in view.</summary>
     private void FrameCameraToScene()
     {
@@ -429,8 +431,15 @@ public partial class MainWindow
     /// <summary>Opens the integrated photorealistic render workspace.</summary>
     private void ShowRender_Click(object sender, RoutedEventArgs e)
     {
+        // A model drawn since the camera was last framed is usually outside the view: frame it once per project.
+        if (!ReferenceEquals(_renderFramedSession, _session) && HasModelElements())
+        {
+            _renderFramedSession = _session;
+            FrameCameraToScene();
+        }
         RenderTab.Visibility = Visibility.Visible;
         ViewTabs.SelectedIndex = RenderTabIndex;
+        StatusText.Text = GetText("Status.RenderOpened");
     }
 
     /// <summary>Opens the integrated render panel and starts rendering using its current settings.</summary>
@@ -438,6 +447,7 @@ public partial class MainWindow
     {
         RenderTab.Visibility = Visibility.Visible;
         ViewTabs.SelectedIndex = RenderTabIndex;
+        StatusText.Text = GetText("Status.RenderStarted");
         RenderPanelControl.RequestRender();
     }
 
