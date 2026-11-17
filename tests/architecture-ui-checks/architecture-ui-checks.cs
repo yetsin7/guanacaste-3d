@@ -60,6 +60,7 @@ internal static class ArchitectureUiChecks
             if (Environment.GetEnvironmentVariable("G3D_COBOGO") == "1") HouseFromScratchChecks.RunCobogoHouse(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_FRESH") == "structure") HouseFromScratchChecks.RunFreshStructure(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_FRESH") == "stair") HouseFromScratchChecks.RunFreshStair(_window, Check, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_FRESH") == "roof") HouseFromScratchChecks.RunFreshRoof(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_BUILDING") == "1")
             {
                 HouseFromScratchChecks.RunBuildingFromScratch(_window, Check, Pump);

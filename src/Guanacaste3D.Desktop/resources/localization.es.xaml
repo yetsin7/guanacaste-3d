@@ -819,6 +819,18 @@
   <sys:String x:Key="Field.ConcreteGrade">Resistencia del hormigón</sys:String>
   <sys:String x:Key="Field.UnitWeight">Peso del hormigón (kg/m³)</sys:String>
   <sys:String x:Key="Field.SteelPerM3">Acero por m³ de hormigón (kg)</sys:String>
+  <sys:String x:Key="Rebar.AreaHeading">Barras paralelas dentro de un rectángulo (si hay una losa seleccionada se usa su contorno). Medidas en metros.</sys:String>
+  <sys:String x:Key="Rebar.PathHeading">Barra que sigue un recorrido (un estribo, un gancho): un punto «x y» por línea.</sys:String>
+  <sys:String x:Key="Rebar.Corner1X">Esquina 1, X</sys:String>
+  <sys:String x:Key="Rebar.Corner1Y">Esquina 1, Y</sys:String>
+  <sys:String x:Key="Rebar.Corner2X">Esquina 2, X</sys:String>
+  <sys:String x:Key="Rebar.Corner2Y">Esquina 2, Y</sys:String>
+  <sys:String x:Key="Rebar.Spacing">Separación entre barras</sys:String>
+  <sys:String x:Key="Rebar.Direction">Dirección de las barras</sys:String>
+  <sys:String x:Key="Rebar.AlongX">Paralelas a X</sys:String>
+  <sys:String x:Key="Rebar.AlongY">Paralelas a Y</sys:String>
+  <sys:String x:Key="Rebar.Height">Altura sobre el nivel</sys:String>
+  <sys:String x:Key="Rebar.Points">Puntos del recorrido</sys:String>
   <sys:String x:Key="Rebar.Heading">Barras longitudinales para: {0}</sys:String>
   <sys:String x:Key="Rebar.Count">Cantidad de barras</sys:String>
   <sys:String x:Key="Rebar.Diameter">Diámetro</sys:String>
@@ -1190,6 +1202,8 @@
   <sys:String x:Key="Properties.WallSummary">Elemento: muro&#10;Longitud: {0}&#10;Espesor: {1}&#10;Altura: {2}&#10;Aberturas: {3}&#10;Volumen neto: {4}&#10;Identificador: {5}</sys:String>
   <sys:String x:Key="Properties.RoomSummary">Elemento: habitación&#10;Número: {0}&#10;Nombre: {1}&#10;Área: {2:0.00} m²&#10;Nivel: {3}</sys:String>
   <sys:String x:Key="Properties.FloorSummary">Elemento: suelo&#10;Nombre: {0}&#10;Área: {1:0.00} m²&#10;Espesor: {2:0.00} m&#10;Nivel: {3}</sys:String>
+  <sys:String x:Key="Properties.RoofSummary">Elemento: cubierta&#10;Nombre: {0}&#10;Área: {1:0.00} m²&#10;Espesor: {2:0.00} m&#10;Nivel: {3}</sys:String>
+  <sys:String x:Key="Properties.CeilingSummary">Elemento: cielo&#10;Nombre: {0}&#10;Área: {1:0.00} m²&#10;Espesor: {2:0.00} m&#10;Nivel: {3}</sys:String>
   <sys:String x:Key="Properties.ColumnSummary">Elemento: pilar&#10;Sección: {0:0.00} × {1:0.00} m&#10;Altura: {2:0.00} m&#10;Nivel: {3}</sys:String>
   <sys:String x:Key="Properties.SheetSummary">Elemento: lámina&#10;Número: {0}&#10;Nombre: {1}&#10;Formato: {2}</sys:String>
   <sys:String x:Key="Properties.ViewSummary">Vista: {0}&#10;Tipo: {1}&#10;Orientación: {2}</sys:String>

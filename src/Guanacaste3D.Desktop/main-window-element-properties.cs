@@ -40,7 +40,7 @@ public partial class MainWindow
         if (floor is not null)
         {
             PropertiesText.Text = FormatText(
-                "Properties.FloorSummary", floor.Name, floor.CalculateArea(), floor.Thickness, levelNames[floor.LevelId]);
+                floor.Kind switch { FloorKind.Roof => "Properties.RoofSummary", FloorKind.Ceiling => "Properties.CeilingSummary", _ => "Properties.FloorSummary" }, floor.Name, floor.CalculateArea(), floor.Thickness, levelNames[floor.LevelId]);
             return true;
         }
         var column = _session.Document.Columns.FirstOrDefault(candidate => candidate.Id == _selectedColumnId);

@@ -18,8 +18,8 @@ public partial class MainWindow
         switch (commandId)
         {
             case "Rebar": ReinforceSelectedMember(); return true;
-            case "RebarPath": RunReinforcement("RebarPath", "Prompt.RebarPath", "0 0; 0.3 0; 0.3 0.4; 0 0.4 | 0.01 1", ApplyRebarPath); return true;
-            case "RebarArea": RunReinforcement("RebarArea", "Prompt.RebarArea", "0 0 5 4 0.2 0.012 x 0.05", ApplyRebarArea); return true;
+            case "RebarPath": ReinforceByPath(); return true;
+            case "RebarArea": ReinforceArea(); return true;
             case "FabricSheet": BeginKindTool(StructuralElementKind.FabricSheet); return true;
             case "TransformedFabric": RunReinforcement("TransformedFabric", "Prompt.TransformedFabric", "0 0 30 6 2.4", ApplyTransformedFabric); return true;
             case "CustomFabricSheet": RunReinforcement("CustomFabricSheet", "Prompt.CustomFabricSheet", "0 0 3 1.5 0.15 0.006", ApplyCustomFabric); return true;
@@ -58,6 +58,66 @@ public partial class MainWindow
             StatusText.Text = LocalizedErrors.Translate(exception.Message);
             return false;
         }
+    }
+
+    private static string Number(double value) => value.ToString("0.###", CultureInfo.CurrentCulture);
+
+    private static IReadOnlyList<string> DiameterChoices => RebarDialog.Diameters.Select(item => item.Label).ToList();
+
+    private static double DiameterOf(string label) => RebarDialog.Diameters.First(item => item.Label == label).Diameter;
+
+    /// <summary>Fills a rectangle (the selected slab when there is one) with bars: a form instead of a line of codes.</summary>
+    private void ReinforceArea()
+    {
+        var slab = _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId);
+        var minX = slab?.Boundary.Min(point => point.X) ?? 0;
+        var minY = slab?.Boundary.Min(point => point.Y) ?? 0;
+        var maxX = slab?.Boundary.Max(point => point.X) ?? 5;
+        var maxY = slab?.Boundary.Max(point => point.Y) ?? 4;
+        var answers = FormDialog.Ask(this, GetText("Concrete.RebarArea"), GetText("Rebar.AreaHeading"),
+        [
+            new(GetText("Rebar.Corner1X"), Number(minX)), new(GetText("Rebar.Corner1Y"), Number(minY)),
+            new(GetText("Rebar.Corner2X"), Number(maxX)), new(GetText("Rebar.Corner2Y"), Number(maxY)),
+            new(GetText("Rebar.Spacing"), "0.20"), new(GetText("Rebar.Diameter"), DiameterChoices[1], DiameterChoices),
+            new(GetText("Rebar.Direction"), GetText("Rebar.AlongX"), [GetText("Rebar.AlongX"), GetText("Rebar.AlongY")]),
+            new(GetText("Rebar.Height"), "0.05")
+        ]);
+        if (answers is null) return;
+        try
+        {
+            _session.AddRebarArea(_activeLevelId, new Point2(M([answers[0]], 0), M([answers[1]], 0)), new Point2(M([answers[2]], 0), M([answers[3]], 0)),
+                M([answers[4]], 0), DiameterOf(answers[5]), answers[6] == GetText("Rebar.AlongX"), M([answers[7]], 0));
+            StatusText.Text = GetText("Status.ReinforcementDone");
+            RefreshAll();
+        }
+        catch (FormatException) { StatusText.Text = GetText("Status.MemberValuesInvalid"); }
+        catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
+    }
+
+    /// <summary>A bar that follows a path (a stirrup, a hook): one point per line, then diameter and height.</summary>
+    private void ReinforceByPath()
+    {
+        var answers = FormDialog.Ask(this, GetText("Concrete.RebarPath"), GetText("Rebar.PathHeading"),
+        [
+            new(GetText("Rebar.Points"), "0 0" + Environment.NewLine + "0.3 0" + Environment.NewLine + "0.3 0.4" + Environment.NewLine + "0 0.4", null, true),
+            new(GetText("Rebar.Diameter"), DiameterChoices[0], DiameterChoices), new(GetText("Rebar.Height"), "1")
+        ]);
+        if (answers is null) return;
+        try
+        {
+            var points = new List<Point2>();
+            foreach (var line in answers[0].Split(['\n', '\r', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var pair = line.Split((char)32, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (pair.Length != 2) throw new FormatException();
+                points.Add(new Point2(M(pair, 0), M(pair, 1)));
+            }
+            _session.AddRebarPath(_activeLevelId, points, DiameterOf(answers[1]), M([answers[2]], 0));
+            StatusText.Text = GetText("Status.ReinforcementDone");
+            RefreshAll();
+        }
+        catch (FormatException) { StatusText.Text = GetText("Status.MemberValuesInvalid"); }
+        catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
     }
 
     /// <summary>Asks for the bars of the selected beam or footing in a dialog instead of a line of codes.</summary>

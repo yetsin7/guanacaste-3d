@@ -11,7 +11,7 @@ namespace Guanacaste3D.Desktop;
 /// </summary>
 internal sealed class RebarDialog : Window
 {
-    private static readonly (string Label, double Diameter)[] Diameters =
+    internal static readonly (string Label, double Diameter)[] Diameters =
     [
         ("#3 (9.5 mm)", 0.0095), ("#4 (12 mm)", 0.012), ("#5 (16 mm)", 0.016), ("#6 (19 mm)", 0.019)
     ];

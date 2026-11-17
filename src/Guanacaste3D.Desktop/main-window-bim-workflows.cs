@@ -96,9 +96,10 @@ public partial class MainWindow
             new Point2(maximumX, maximumY),
             new Point2(minimumX, maximumY)
         ];
-        _selectedFloorId = preset is null
+        // The new slab becomes the only selection, so Properties and the 3D temporary dimensions show it, not a wall.
+        SelectExtendedElement(floorId: preset is null
             ? _session.AddFloor(_activeLevelId, boundary, slabThickness, $"{GetText(nameKey)} {index}", kind, elevationOffset)
-            : _session.AddSlabFromPreset(_activeLevelId, boundary, preset, elevationOffset);
+            : _session.AddSlabFromPreset(_activeLevelId, boundary, preset, elevationOffset));
         StatusText.Text = GetText(statusKey);
         RefreshAll();
     }

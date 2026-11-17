@@ -93,6 +93,36 @@ internal static partial class HouseFromScratchChecks
             Expect(Status.Contains("Seleccione", StringComparison.Ordinal), $"el botón no explica qué falta: «{Status}»");
             return Status;
         });
+        yield return ("F6 Barras en un área: losa de 4 × 3 m y formulario con sus esquinas ya puestas", () =>
+        {
+            Escape();
+            Arch(ArchitectureCommand.Floor);
+            PickMenu(0);
+            foreach (var (x, y) in new[] { (7.0, 0.0), (11.0, 0.0), (11.0, 3.0), (7.0, 3.0), (7.0, 0.0) }) Click(x, y);
+            var before = Count(StructuralElementKind.Rebar);
+            ExpectDialog("FormDialog", window =>
+            {
+                var boxes = Descendants<TextBox>(window).ToList();
+                Expect(boxes[0].Text == "7" && boxes[2].Text == "11", "el formulario no toma el contorno de la losa seleccionada");
+                SaveWindow(window, $"{Evidence}/F6-barras-area.png");
+                Descendants<Button>(window).First(button => button.IsDefault)
+                    .RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            });
+            App("RebarArea");
+            var made = Count(StructuralElementKind.Rebar) - before;
+            Expect(made >= 10, $"se crearon {made} barras (estado: {Status})");
+            return $"{made} barras cada 20 cm";
+        });
+        yield return ("F7 Estribo por recorrido con el formulario", () =>
+        {
+            var before = Count(StructuralElementKind.Rebar);
+            ExpectDialog("FormDialog", window => Descendants<Button>(window).First(button => button.IsDefault)
+                .RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)));
+            App("RebarPath");
+            var made = Count(StructuralElementKind.Rebar) - before;
+            Expect(made >= 3, $"el recorrido creó {made} tramos (estado: {Status})");
+            return $"{made} tramos";
+        });
     }
 
     private static void SaveWindow(Window window, string path) => Save((FrameworkElement)window.Content, path);
