@@ -115,6 +115,28 @@ fn csharp_serializers_match_rust_wall_metrics() {
         &csharp_report.lines().collect::<Vec<_>>()[1..]
     );
 
+    // The C# native opening container must reject corruption atomically too.
+    // This extends the existing plain-wall integrity check to catalog-typed
+    // door/window payloads without changing either production fixture.
+    let opening_native_path = directory.join("wall-with-openings.g3d");
+    let opening_native_bytes = fs::read(&opening_native_path).unwrap();
+    let mut damaged_openings = opening_native_bytes.clone();
+    *damaged_openings
+        .last_mut()
+        .expect("nonempty C# opening container") ^= 0x01;
+    let damaged_path = directory.join("corrupt-openings.g3d");
+    fs::write(&damaged_path, damaged_openings).unwrap();
+    let damaged_result = Command::new(executable).arg(&damaged_path).output().unwrap();
+    assert!(
+        !damaged_result.status.success(),
+        "Rust must reject a corrupted native C# door/window fixture"
+    );
+    assert!(
+        damaged_result.stdout.is_empty(),
+        "invalid opening container must not emit partial metrics"
+    );
+    assert_eq!(fs::read(&opening_native_path).unwrap(), opening_native_bytes);
+
     // Compare a real C# production WallGeometry opening-volume oracle with
     // Rust's independently calculated metric from a C#-serialized document.
     // Only a temporary copy is modified; the original fixture is immutable.
