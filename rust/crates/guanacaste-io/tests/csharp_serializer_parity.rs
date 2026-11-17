@@ -137,64 +137,16 @@ fn csharp_serializers_match_rust_wall_metrics() {
     );
     assert_eq!(fs::read(&opening_native_path).unwrap(), opening_native_bytes);
 
-    // Compare a real C# production WallGeometry opening-volume oracle with
-    // Rust's independently calculated metric from a C#-serialized document.
-    // Only a temporary copy is modified; the original fixture is immutable.
+    // Compare the production C# oracle directly with Rust's metrics from the
+    // actual C#-serialized openings, not a second Rust-authored JSON fixture.
     let production_opening_volume: f64 = fs::read_to_string(directory.join("opening-volume.txt"))
         .unwrap()
         .trim()
         .parse()
         .unwrap();
-    let mut opening_document: serde_json::Value =
-        serde_json::from_slice(&fs::read(directory.join("wall.g3d.json")).unwrap()).unwrap();
-    opening_document["Openings"] = serde_json::json!([
-        {
-            "Id": "00000000-0000-0000-0000-000000000101",
-            "WallId": "00000000-0000-0000-0000-000000000002",
-            "Kind": 0,
-            "Offset": 1.0,
-            "Width": 0.8,
-            "Sill": 0.0,
-            "Height": 2.0
-        },
-        {
-            "Id": "00000000-0000-0000-0000-000000000102",
-            "WallId": "00000000-0000-0000-0000-000000000002",
-            "Kind": 1,
-            "Offset": 3.0,
-            "Width": 0.6,
-            "Sill": 1.0,
-            "Height": 1.0
-        }
-    ]);
-    let opening_path = directory.join("production-opening-parity.g3d.json");
-    fs::write(
-        &opening_path,
-        serde_json::to_vec(&opening_document).unwrap(),
-    )
-    .unwrap();
-    let opening_result = Command::new(executable)
-        .arg(&opening_path)
-        .output()
-        .unwrap();
     assert!(
-        opening_result.status.success(),
-        "Rust could not inspect production opening fixture: {}",
-        String::from_utf8_lossy(&opening_result.stderr)
-    );
-    let opening_report = String::from_utf8(opening_result.stdout).unwrap();
-    let rust_volume: f64 = opening_report
-        .lines()
-        .next()
-        .unwrap()
-        .split(", ")
-        .nth(1)
-        .unwrap()
-        .parse()
-        .unwrap();
-    assert!(
-        (rust_volume - production_opening_volume).abs() <= 1e-9,
-        "C# production opening volume {production_opening_volume} differs from Rust {rust_volume}"
+        (serialized_volume - production_opening_volume).abs() <= 1e-9,
+        "C# production opening volume {production_opening_volume} differs from Rust {serialized_volume}"
     );
 
     // A real C# native envelope must reject payload tampering. Mutate a copy only;
