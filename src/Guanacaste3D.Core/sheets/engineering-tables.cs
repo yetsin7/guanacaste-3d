@@ -14,11 +14,13 @@ public static class EngineeringTables
     public static readonly Guid PlumbingScheduleId = Guid.Parse("a7c3e915-2d4b-4f68-b1e0-6c8d2f5a7b14");
     public static readonly Guid SymbolLegendId = Guid.Parse("c2e8f4a1-7b36-4d59-8e12-9a4f6b3c1d07");
     public static readonly Guid BudgetTableId = Guid.Parse("e9b5a3d7-1c48-4e2f-a6b0-3d7f8c2e5a61");
+    public static readonly Guid VentilationTableId = Guid.Parse("5b8e2d94-6a1f-4c37-9d02-8e4a7c1b3f56");
 
     private static readonly (Guid Id, string Label)[] Tables =
     [
         (PanelScheduleId, "PanelSchedule.Title"), (PlumbingScheduleId, "PlumbingSchedule.Title"),
-        (SymbolLegendId, "SymbolLegend.Title"), (BudgetTableId, "BudgetTable.Title")
+        (SymbolLegendId, "SymbolLegend.Title"), (BudgetTableId, "BudgetTable.Title"),
+        (VentilationTableId, "VentilationTable.Title")
     ];
 
     private static readonly (double, double, double) Ink = (0, 0, 0);
@@ -47,6 +49,7 @@ public static class EngineeringTables
         if (viewId == PlumbingScheduleId) return PlumbingSchedule(document, placement);
         if (viewId == SymbolLegendId) return SymbolLegend(placement);
         if (viewId == BudgetTableId) return BudgetTable(document, placement);
+        if (viewId == VentilationTableId) return VentilationTable(document, placement);
         return [];
     }
 
@@ -87,6 +90,22 @@ public static class EngineeringTables
         if (rows.Count == 0) rows.Add((["No hay sistemas: conecte la plomería.", "", "", "", "", "", "", ""], false));
         return Table(placement, ["Sistema", "Tipo", "Origen", "Aparatos", "Unidades", "Tubería principal", "Longitud", "Estado"],
             [0.18, 0.14, 0.14, 0.09, 0.09, 0.14, 0.1, 0.12], rows);
+    }
+
+    private static IReadOnlyList<SheetPrimitive> VentilationTable(BuildingDocument document, SheetViewport placement)
+    {
+        var rows = VentilationAnalysis.Analyze(document)
+            .OrderBy(room => room.Room.Number, StringComparer.CurrentCulture)
+            .Select(room => (new[]
+            {
+                room.Room.Name, N(room.Area, "0.0") + " m²", N(room.Volume, "0.0") + " m³", N(room.AirChangesRequired, "0.#"),
+                N(room.RequiredFlow) + " m³/h", N(room.OpenableArea, "0.00") + " / " + N(room.RequiredOpenableArea, "0.00") + " m²",
+                room.Ducts > 0 ? N(room.DuctFlow) + " m³/h" : "—",
+                room.Status switch { VentilationStatus.Ok => "Cumple", VentilationStatus.Insufficient => "Insuficiente", _ => "Sin ventilación" }
+            }, false)).ToList();
+        if (rows.Count == 0) rows.Add((["No hay habitaciones en el proyecto.", "", "", "", "", "", "", ""], false));
+        return Table(placement, ["Habitación", "Área", "Volumen", "Cambios/h", "Caudal requerido", "Ventanas abribles (hay / mín.)", "Extracción", "Estado"],
+            [0.17, 0.09, 0.1, 0.09, 0.13, 0.18, 0.12, 0.12], rows);
     }
 
     private static string SystemKind(PlumbingSystemKind kind) => kind switch

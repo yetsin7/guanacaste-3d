@@ -311,7 +311,7 @@ internal static partial class HouseFromScratchChecks
                 ("A-101", "Planta baja", [Ground]), ("A-102", "Planta alta", [Upper]), ("A-201", "Alzados", ["Vista Norte"]),
                 ("A-301", "Secciones", ["Sección"]), ("S-101", "Cimentaciones", ["Estructural"]),
                 ("E-101", "Eléctrica", ["Eléctrica", "Cuadro de cargas", "Simbología"]), ("I-101", "Iluminación", ["Iluminación", "Simbología"]),
-                ("H-101", "Hidrosanitaria", ["Hidrosanitaria", "Cuadro hidrosanitario", "Simbología"]), ("M-101", "Ventilación", ["Ventilación"]),
+                ("H-101", "Hidrosanitaria", ["Hidrosanitaria", "Cuadro hidrosanitario", "Simbología"]), ("M-101", "Ventilación", ["Ventilación", "Cuadro de ventilación"]),
                 ("P-001", "Presupuesto", ["Presupuesto de obra"])
             };
             var made = new List<string>();

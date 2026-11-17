@@ -14,7 +14,7 @@ static class EngineeringTableChecks
         var circuit = session.AddCircuit(panel, "Tomas sala");
         session.AssignCircuit(outlet, circuit);
 
-        foreach (var id in new[] { EngineeringTables.PanelScheduleId, EngineeringTables.PlumbingScheduleId, EngineeringTables.SymbolLegendId, EngineeringTables.BudgetTableId })
+        foreach (var id in new[] { EngineeringTables.PanelScheduleId, EngineeringTables.PlumbingScheduleId, EngineeringTables.SymbolLegendId, EngineeringTables.BudgetTableId, EngineeringTables.VentilationTableId })
             check(session.Document.Views.Count(view => view.Id == id) == 1, $"Tables: a new project lists the generated table {id}");
 
         var sheetId = session.AddSheet(SheetPaperSize.A1, "Eléctrica");
@@ -45,6 +45,28 @@ static class EngineeringTableChecks
         var old = session.Document.Clone();
         old.Views.RemoveAll(view => EngineeringTables.IsEngineeringTable(view.Id));
         var reopened = ProjectFile.DeserializeDocument(ProjectFile.SerializeDocument(old));
-        check(reopened.Views.Count(view => EngineeringTables.IsEngineeringTable(view.Id)) == 4, "Tables: an older project receives the tables when it opens");
+        check(reopened.Views.Count(view => EngineeringTables.IsEngineeringTable(view.Id)) == 5, "Tables: an older project receives the tables when it opens");
+
+        // Ventilation: a closed bathroom has none, a small window is not enough, and an extraction duct covers the flow.
+        session.Document.Rooms.Add(new Room(Guid.NewGuid(), level, "1", "Baño", new(0, 0), new(6, 4)));
+        check(VentilationAnalysis.Analyze(session.Document).Single().Status == VentilationStatus.None,
+            "Ventilation: a room with no window and no duct reports no ventilation");
+        var firstWall = session.Document.Walls.First(wall => wall.Start.Y == 0 && wall.End.Y == 0);
+        session.AddOpening(firstWall.Id, OpeningKind.Window, 3, 1.2, 1.0, 1.2);
+        var small = VentilationAnalysis.Analyze(session.Document).Single();
+        check(small.Status == VentilationStatus.Insufficient && small.OpenableArea > 0 && small.OpenableArea < small.RequiredOpenableArea,
+            "Ventilation: a window smaller than one twentieth of the floor area is insufficient");
+        session.Document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), level, StructuralElementKind.Duct, "Ducto", new(3, 2), new(3, 3), 0.4, 0.3, 2.4));
+        var ducted = VentilationAnalysis.Analyze(session.Document).Single();
+        check(ducted.Status == VentilationStatus.Ok && ducted.DuctFlow >= ducted.RequiredFlow && Math.Abs(ducted.AirChangesRequired - 10) < 1e-9,
+            "Ventilation: bathrooms need 10 air changes per hour and a duct of 0.4 × 0.3 m carries them");
+        var ventilationSheet = session.AddSheet(SheetPaperSize.A1, "Ventilación");
+        var ventilation = session.Document.Sheets.Single(candidate => candidate.Id == ventilationSheet);
+        var space = ventilation.Viewports[0];
+        session.UpdateSheet(ventilation with { Viewports = [new(Guid.NewGuid(), EngineeringTables.VentilationTableId, space.X, space.Y, space.Width * 0.9, space.Height * 0.4, 0, "1")] });
+        var ventilationTexts = SheetComposition.Build(session.Document, session.Document.Sheets.Single(candidate => candidate.Id == ventilationSheet), DateTimeOffset.Now)
+            .Viewports.SelectMany(viewport => viewport.Graphics).OfType<SheetText>().Select(text => text.Text).ToList();
+        check(ventilationTexts.Contains("Baño") && ventilationTexts.Contains("Cumple") && ventilationTexts.Contains("Cambios/h"),
+            "Tables: the ventilation table on a sheet lists each room with its required airflow and status");
     }
 }

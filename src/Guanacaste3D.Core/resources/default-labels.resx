@@ -43,4 +43,5 @@
   <data name="PlumbingSchedule.Title" xml:space="preserve"><value>Cuadro hidrosanitario</value></data>
   <data name="SymbolLegend.Title" xml:space="preserve"><value>Simbología</value></data>
   <data name="BudgetTable.Title" xml:space="preserve"><value>Presupuesto de obra</value></data>
+  <data name="VentilationTable.Title" xml:space="preserve"><value>Cuadro de ventilación</value></data>
 </root>
