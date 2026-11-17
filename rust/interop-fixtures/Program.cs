@@ -121,6 +121,26 @@ foreach (var candidate in new[] { document.Walls[2], document.Walls[4] })
         return 1;
     }
 }
+// Exercise the real C# opening-volume implementation independently of the
+// no-opening serialization fixture. Rust has matching door/window mesh tests;
+// full serialized opening parity remains a separate, unfinished milestone.
+var openingHost = document.Walls[0];
+var door = new WallOpening(
+    Guid.Parse("00000000-0000-0000-0000-000000000101"),
+    openingHost.Id, OpeningKind.Door, 1, 0.8, 0, 2);
+var window = new WallOpening(
+    Guid.Parse("00000000-0000-0000-0000-000000000102"),
+    openingHost.Id, OpeningKind.Window, 3, 0.6, 1, 1);
+var openings = new[] { door, window };
+WallGeometry.Validate(document.Walls, openings);
+var openingVolume = WallGeometry.NetVolume(openingHost, openings);
+const double expectedOpeningVolume = 1.96;
+if (!double.IsFinite(openingVolume) ||
+    Math.Abs(openingVolume - expectedOpeningVolume) > 1e-9)
+{
+    Console.Error.WriteLine("Production C# door/window net volume differs from the geometric reference");
+    return 1;
+}
 foreach (var wall in document.Walls)
     PrintWallMetrics(wall);
 return 0;
