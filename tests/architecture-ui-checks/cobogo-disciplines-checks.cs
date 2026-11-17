@@ -362,6 +362,29 @@ internal static partial class HouseFromScratchChecks
             return $"PDF de {pages} páginas";
         });
 
+        yield return ("9.7 Tablas de puertas, ventanas y habitaciones con los botones de Tablas", () =>
+        {
+            var before = Doc.Schedules.Count;
+            var report = new List<string>();
+            ExpectDialog("SchedulesWindow", window =>
+            {
+                var box = (System.Windows.Controls.ComboBox)window.FindName("NewCategoryBox");
+                var grid = (System.Windows.Controls.DataGrid)window.FindName("PreviewGrid");
+                var create = window.GetType().GetMethod("NewSchedule_Click", Private)!;
+                foreach (var category in new[] { ElementCategory.Doors, ElementCategory.Windows, ElementCategory.Rooms })
+                {
+                    box.SelectedValue = category;
+                    create.Invoke(window, [null, new RoutedEventArgs()]);
+                    window.UpdateLayout(); _pump();
+                    report.Add($"{category}: {grid.Items.Count} filas; título «{((System.Windows.Controls.TextBlock)window.FindName("PreviewTitle")).Text}»; campos {Doc.Schedules.Last().Fields.Count}");
+                    Expect(grid.Items.Count > 0, $"la tabla de {category} sale vacía: " + report[^1]);
+                }
+            });
+            App("Schedules");
+            Expect(Doc.Schedules.Count == before + 3, $"se esperaban 3 tablas nuevas y hay {Doc.Schedules.Count - before}");
+            return string.Join(", ", report);
+        });
+
         foreach (var step in CobogoFamilySteps()) yield return step;
 
         // ---------------------------------------------------------------- 10. Budget and file
