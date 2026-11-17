@@ -108,6 +108,19 @@ static void PrintWallMetrics(Wall wall)
     Console.WriteLine(FormattableString.Invariant($"{wall.Id:N}, {volume:F12}, {area:F12}"));
 }
 WallGeometry.Validate(document.Walls, Array.Empty<WallOpening>());
+// Production C# metamorphic oracle: reversing a centreline or translating it
+// by survey-scale coordinates must not change its physical net volume.
+// Rust checks the corresponding five serialized walls independently.
+var diagonalVolume = WallGeometry.NetVolume(document.Walls[1], Array.Empty<WallOpening>());
+foreach (var candidate in new[] { document.Walls[2], document.Walls[4] })
+{
+    var volume = WallGeometry.NetVolume(candidate, Array.Empty<WallOpening>());
+    if (!double.IsFinite(volume) || Math.Abs(volume - diagonalVolume) > 1e-9)
+    {
+        Console.Error.WriteLine("Production C# wall volume changed under reversal or translation");
+        return 1;
+    }
+}
 foreach (var wall in document.Walls)
     PrintWallMetrics(wall);
 return 0;
