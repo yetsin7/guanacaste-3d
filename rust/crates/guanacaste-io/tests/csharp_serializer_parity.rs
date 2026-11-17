@@ -80,6 +80,34 @@ fn csharp_serializers_match_rust_wall_metrics() {
         csharp_report,
         "Rust GUID, volume or area differ from the C# fixture oracle"
     );
+    // Both opening fixtures are emitted by C# production serializers, not
+    // assembled by Rust. Compare both envelopes and preserve their bytes.
+    let mut opening_reports = Vec::new();
+    for filename in ["wall-with-openings.g3d.json", "wall-with-openings.g3d"] {
+        let path = directory.join(filename);
+        let original = fs::read(&path).unwrap();
+        let result = Command::new(executable).arg(&path).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{filename}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(fs::read(&path).unwrap(), original);
+        opening_reports.push(String::from_utf8(result.stdout).unwrap().replace("\\r\\n", "\\n"));
+    }
+    assert_eq!(opening_reports[0], opening_reports[1]);
+    let opening_lines: Vec<_> = opening_reports[0].trim().lines().collect();
+    assert_eq!(opening_lines.len(), 5);
+    let opening_fields: Vec<_> = opening_lines[0].split(", ").collect();
+    assert_eq!(opening_fields.len(), 3);
+    assert_eq!(opening_fields[0], "00000000000000000000000000000002");
+    let serialized_volume: f64 = opening_fields[1].parse().unwrap();
+    assert!((serialized_volume - 1.96).abs() <= 1e-9);
+    // Floor-reaching door has no bottom reveal; window has all four reveals.
+    let serialized_area: f64 = opening_fields[2].parse().unwrap();
+    assert!((serialized_area - 23.84).abs() <= 1e-9);
+    assert_eq!(&opening_lines[1..], &csharp_report.lines().collect::<Vec<_>>()[1..]);
+
     // Compare a real C# production WallGeometry opening-volume oracle with
     // Rust's independently calculated metric from a C#-serialized document.
     // Only a temporary copy is modified; the original fixture is immutable.
