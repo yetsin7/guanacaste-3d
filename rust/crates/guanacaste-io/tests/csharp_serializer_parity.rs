@@ -93,7 +93,11 @@ fn csharp_serializers_match_rust_wall_metrics() {
             String::from_utf8_lossy(&result.stderr)
         );
         assert_eq!(fs::read(&path).unwrap(), original);
-        opening_reports.push(String::from_utf8(result.stdout).unwrap().replace("\\r\\n", "\\n"));
+        opening_reports.push(
+            String::from_utf8(result.stdout)
+                .unwrap()
+                .replace("\r\n", "\n"),
+        );
     }
     assert_eq!(opening_reports[0], opening_reports[1]);
     let opening_lines: Vec<_> = opening_reports[0].trim().lines().collect();
@@ -106,7 +110,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
     // Floor-reaching door has no bottom reveal; window has all four reveals.
     let serialized_area: f64 = opening_fields[2].parse().unwrap();
     assert!((serialized_area - 23.84).abs() <= 1e-9);
-    assert_eq!(&opening_lines[1..], &csharp_report.lines().collect::<Vec<_>>()[1..]);
+    assert_eq!(
+        &opening_lines[1..],
+        &csharp_report.lines().collect::<Vec<_>>()[1..]
+    );
 
     // Compare a real C# production WallGeometry opening-volume oracle with
     // Rust's independently calculated metric from a C#-serialized document.
@@ -139,8 +146,15 @@ fn csharp_serializers_match_rust_wall_metrics() {
         }
     ]);
     let opening_path = directory.join("production-opening-parity.g3d.json");
-    fs::write(&opening_path, serde_json::to_vec(&opening_document).unwrap()).unwrap();
-    let opening_result = Command::new(executable).arg(&opening_path).output().unwrap();
+    fs::write(
+        &opening_path,
+        serde_json::to_vec(&opening_document).unwrap(),
+    )
+    .unwrap();
+    let opening_result = Command::new(executable)
+        .arg(&opening_path)
+        .output()
+        .unwrap();
     assert!(
         opening_result.status.success(),
         "Rust could not inspect production opening fixture: {}",
