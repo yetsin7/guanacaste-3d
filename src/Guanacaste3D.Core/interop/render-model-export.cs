@@ -26,9 +26,15 @@ public static class RenderModelExport
         ArgumentNullException.ThrowIfNull(snapshot);
         var outcome = RenderExportOutcome.Written;
         var document = snapshot;
-        if (ExistingRenderWork(exportPath, snapshot.Id) is var (existing, baseline))
+        // Never replace an existing project unless its sidecar proves it is our own export.
+        // A missing/corrupt link, mismatched token or unrelated document must be preserved.
+        if (File.Exists(exportPath))
         {
-            document = RenderModelUpdate.Merge(baseline, existing, snapshot).Document;
+            var previous = ExistingRenderWork(exportPath, snapshot.Id);
+            if (previous is not { } linked)
+                throw new IOException("The render export destination already exists but is not a verified export of this model. Choose a different destination to preserve the existing project.");
+
+            document = RenderModelUpdate.Merge(linked.Baseline, linked.Existing, snapshot).Document;
             outcome = RenderExportOutcome.MergedWithRenderWork;
         }
         var token = Guid.NewGuid().ToString("N");
@@ -54,7 +60,7 @@ public static class RenderModelExport
         try
         {
             var existing = ProjectFile.Load(exportPath);
-            return existing.Id == projectId && RenderModelUpdate.SyncTokenOf(existing) == link.SyncToken ? (existing, baseline) : null;
+            return existing.Id == projectId && baseline.Id == projectId && RenderModelUpdate.SyncTokenOf(existing) == link.SyncToken ? (existing, baseline) : null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
         {
