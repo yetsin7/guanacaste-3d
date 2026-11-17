@@ -102,6 +102,12 @@ public static class MaterialCatalog
     public const string JointTape = "JOINT_TAPE";
     public const string GlassPartition = "GLASS_PARTITION";
     public const string Paint = "PAINT_GALLON";
+    public const string Sealer = "SEALER_GALLON";
+    public const string Formwork = "FORMWORK_WOOD";
+    public const string Nails = "NAILS_KG";
+    public const string Waterproofing = "ROOF_WATERPROOFING";
+    public const string TimberCladding = "TIMBER_CLADDING";
+    public const string BreezeBlock = "BREEZE_BLOCK";
     public const string Ceramic = "CERAMIC_TILE";
     public const string TileAdhesive = "TILE_ADHESIVE";
     public const string Grout = "GROUT_BAG";
@@ -170,6 +176,24 @@ public static class MaterialCatalog
     public const double FinePlasterSquareMetresPerBag = 4;
     public const double AssumedRepelloThickness = 0.015;
 
+    /// <summary>Formwork boards are reused three times, so a square metre of wood forms three square metres of concrete face.</summary>
+    public const double FormworkReuse = 3;
+
+    /// <summary>A floor slab raised at least this high above its level (meters) is a roof or canopy and is waterproofed.</summary>
+    public const double ExposedSlabHeight = 2.5;
+
+    /// <summary>Nails for forms and bracing, in kilograms for each square metre of concrete face.</summary>
+    public const double NailsPerSquareMetreOfFormwork = 0.12;
+
+    /// <summary>One gallon of acrylic sealer covers this many square metres in one coat.</summary>
+    public const double SquareMetresPerGallonOfSealer = 30;
+
+    /// <summary>A 20 x 20 cm breeze block, laid with 1 cm joints, fills a square metre with this many pieces.</summary>
+    public const double BreezeBlocksPerSquareMetre = 25;
+
+    /// <summary>Joint mortar of a breeze block screen, in cubic metres per square metre.</summary>
+    public const double BreezeBlockMortarPerSquareMetre = 0.004;
+
     private static readonly MaterialDefinition[] All =
     [
         new(Rebar4, MaterialCategory.Foundations, "Varilla corrugada #4 (12 mm)", "varilla 6 m", 0.05, true),
@@ -180,11 +204,15 @@ public static class MaterialCatalog
         new(Rebar3, MaterialCategory.Structure, "Varilla corrugada #3 (9.5 mm)", "varilla 6 m", 0.05, true),
         new(Rebar2, MaterialCategory.Structure, "Varilla #2 (6 mm) para aros", "varilla 6 m", 0.05, true),
         new(TieWire, MaterialCategory.Structure, "Alambre negro de amarre", "kg", 0.0, true),
+        new(Formwork, MaterialCategory.Structure, "Madera para formaleta (tabla y regla, reutilizada 3 veces)", "m²", 0.05, false),
+        new(Nails, MaterialCategory.Structure, "Clavos de 2½ a 4 pulgadas para formaleta y armado", "kg", 0.05, true),
         new(Mesh, MaterialCategory.Structure, "Malla electrosoldada 2.35 × 6 m", "lámina", 0.0, true),
         new(Block12, MaterialCategory.Masonry, "Bloque de concreto 12 × 20 × 40", "u", 0.05, true),
         new(Block15, MaterialCategory.Masonry, "Bloque de concreto 15 × 20 × 40", "u", 0.05, true),
         new(Block20, MaterialCategory.Masonry, "Bloque de concreto 20 × 20 × 40", "u", 0.05, true),
         new(Brick, MaterialCategory.Masonry, "Ladrillo de barro", "u", 0.08, true),
+        new(BreezeBlock, MaterialCategory.Masonry, "Bloque cobogó de concreto 20 × 20 (celosía)", "u", 0.05, true),
+        new(TimberCladding, MaterialCategory.Masonry, "Muro de listones de madera tratada sobre bastidor", "m²", 0.08, false),
         new(GypsumBoard, MaterialCategory.Drywall, "Lámina de yeso 1.22 × 2.44", "lámina", 0.10, true),
         new(Stud, MaterialCategory.Drywall, "Poste metálico 3.05 m", "u", 0.05, true),
         new(Track, MaterialCategory.Drywall, "Canal (riel) metálico 3.05 m", "u", 0.05, true),
@@ -195,6 +223,7 @@ public static class MaterialCatalog
         new(GlassPartition, MaterialCategory.Drywall, "Mampara de vidrio templado con perfilería", "m²", 0.0, false),
         new(FinePlaster, MaterialCategory.Plaster, "Fino (repello fino) premezclado", "saco 40 kg", 0.10, true),
         new(RoofSheet, MaterialCategory.Roofing, "Lámina de techo HG ondulada 3.66 m", "lámina", 0.08, true),
+        new(Waterproofing, MaterialCategory.Roofing, "Impermeabilizante de techo: imprimante y membrana asfáltica", "m²", 0.10, false),
         new(Purlin, MaterialCategory.Roofing, "Perlin (RT) 6 m", "u", 0.05, true),
         new(RoofScrew, MaterialCategory.Roofing, "Tornillo de techo con arandela", "u", 0.10, true),
         new(CeilingBoard, MaterialCategory.Ceilings, "Lámina de cielo (fibrocemento)", "lámina", 0.10, true),
@@ -202,6 +231,7 @@ public static class MaterialCatalog
         new(Ceramic, MaterialCategory.Floors, "Cerámica para piso", "m²", 0.10, false),
         new(TileAdhesive, MaterialCategory.Floors, "Pegamento para cerámica", "saco 20 kg", 0.05, true),
         new(Grout, MaterialCategory.Floors, "Fragua (boquilla)", "saco 2 kg", 0.05, true),
+        new(Sealer, MaterialCategory.Paint, "Sellador acrílico para repello y concreto", "galón", 0.05, true),
         new(Paint, MaterialCategory.Paint, "Pintura látex", "galón", 0.05, true),
         new(Door, MaterialCategory.DoorsAndWindows, "Puerta con marco, colocada", "u", 0.0, true),
         new(Hinge, MaterialCategory.DoorsAndWindows, "Bisagra 3½\"", "u", 0.0, true),
@@ -297,6 +327,9 @@ public static class MaterialTakeoff
             {
                 case FloorKind.Floor:
                     AddFloor(acc, slab, slab.LevelId == lowestLevel, source);
+                    // A slab raised above head height (a roof deck, a canopy, a carport roof) is open to the rain: waterproof it.
+                    if (slab.ElevationOffset >= MaterialCatalog.ExposedSlabHeight)
+                        acc.Add(MaterialCatalog.Waterproofing, slab.CalculateArea(), source);
                     break;
                 case FloorKind.Ceiling:
                     AddCeiling(acc, slab.CalculateArea(), source);
@@ -307,6 +340,9 @@ public static class MaterialTakeoff
                 case FloorKind.Roof:
                     AddConcrete(acc, slab.CalculateArea() * slab.Thickness, source);
                     acc.Add(MaterialCatalog.Mesh, slab.CalculateArea() / MaterialCatalog.MeshSheetArea, source);
+                    AddFormwork(acc, slab.CalculateArea() + Perimeter(slab.Boundary) * slab.Thickness, source);
+                    // A flat concrete roof is waterproofed: primer and asphalt membrane over the whole surface.
+                    acc.Add(MaterialCatalog.Waterproofing, slab.CalculateArea(), source);
                     break;
             }
         }
@@ -316,6 +352,7 @@ public static class MaterialTakeoff
             var source = $"Columna ({Name(levelNames, column.LevelId)})";
             AddConcrete(acc, column.Width * column.Depth * column.Height, source);
             AddFrame(acc, column.Height, 2 * (column.Width + column.Depth), 0.15, source);
+            AddFormwork(acc, 2 * (column.Width + column.Depth) * column.Height, source);
         }
 
         foreach (var element in document.StructuralElements)
@@ -326,14 +363,17 @@ public static class MaterialTakeoff
                 case StructuralElementKind.Beam:
                     AddConcrete(acc, element.Length * element.Width * element.Height, source);
                     AddFrame(acc, element.Length, 2 * (element.Width + element.Height), 0.20, source);
+                    AddFormwork(acc, (element.Width + 2 * element.Height) * element.Length, source);
                     break;
                 case StructuralElementKind.WallFoundation:
                     AddConcrete(acc, element.Length * element.Width * element.Height, source);
                     AddFrame(acc, element.Length, 2 * (element.Width + element.Height), 0.20, source);
+                    AddFormwork(acc, 2 * element.Height * element.Length, source);
                     break;
                 case StructuralElementKind.IsolatedFoundation:
                     var depth = element.Depth > 0 ? element.Depth : element.Width;
                     AddConcrete(acc, element.Width * depth * element.Height, source);
+                    AddFormwork(acc, 2 * (element.Width + depth) * element.Height, source);
                     var barsEachWay = Math.Floor(element.Width / 0.15) + 1;
                     acc.Add(MaterialCatalog.Rebar4, 2 * barsEachWay * Math.Max(element.Width, depth) / MaterialCatalog.BarLength, source);
                     break;
@@ -378,6 +418,11 @@ public static class MaterialTakeoff
                     break;
                 case StructuralElementKind.Railing:
                     acc.Add(MaterialCatalog.Guard, element.Length, source);
+                    break;
+                case StructuralElementKind.CurtainWall when element.Style == ElementStyle.BreezeBlock:
+                    // A breeze block screen (cobogó) is laid like masonry: pieces and joint mortar, not aluminium and glass.
+                    acc.Add(MaterialCatalog.BreezeBlock, element.Length * element.Height * MaterialCatalog.BreezeBlocksPerSquareMetre, source);
+                    AddMortar(acc, element.Length * element.Height * MaterialCatalog.BreezeBlockMortarPerSquareMetre, source);
                     break;
                 case StructuralElementKind.CurtainWall:
                     acc.Add(MaterialCatalog.CurtainWall, element.Length * element.Height, source);
@@ -468,8 +513,14 @@ public static class MaterialTakeoff
             case WallConstruction.Concrete:
                 AddConcrete(acc, area * assembly.CoreThickness, source);
                 AddWallReinforcement(acc, area, source);
+                AddFormwork(acc, area * 2, source);
                 paintFaces = 1;
                 break;
+            case WallConstruction.Wood:
+                // Timber cladding on a stud frame: bought by the square metre, sealed against the weather, never plastered.
+                acc.Add(MaterialCatalog.TimberCladding, area, source);
+                acc.Add(MaterialCatalog.Sealer, area * 2 / MaterialCatalog.SquareMetresPerGallonOfSealer, source);
+                return;
             default:
                 // Plaster (rendered masonry), Block and Stone are all laid as concrete block in Costa Rican practice.
                 AddBlockWall(acc, assembly.CoreThickness, area, source);
@@ -529,6 +580,8 @@ public static class MaterialTakeoff
         var area = slab.CalculateArea();
         AddConcrete(acc, area * slab.Thickness, source);
         acc.Add(MaterialCatalog.Mesh, area / MaterialCatalog.MeshSheetArea, source);
+        // A slab on the ground needs only its edge forms; a suspended one also needs its soffit and the props under it.
+        AddFormwork(acc, Perimeter(slab.Boundary) * slab.Thickness + (onGround ? 0 : area), source);
         if (onGround) acc.Add(MaterialCatalog.BaseGravel, area * 0.10, source);
         if (slab.Finish is FinishKind.Ceramic or FinishKind.Tile)
         {
@@ -575,8 +628,27 @@ public static class MaterialTakeoff
         acc.Add(MaterialCatalog.Sand, volume * MaterialCatalog.MortarSandPerCubicMetre, source);
     }
 
-    private static void AddPaint(Accumulator acc, double area, string source) =>
+    private static void AddPaint(Accumulator acc, double area, string source)
+    {
+        // Sealer first, then the coats of paint.
+        acc.Add(MaterialCatalog.Sealer, area / MaterialCatalog.SquareMetresPerGallonOfSealer, source);
         acc.Add(MaterialCatalog.Paint, area * MaterialCatalog.PaintCoats / MaterialCatalog.SquareMetresPerGallonPerCoat, source);
+    }
+
+    /// <summary>Wood and nails for the forms that hold wet concrete: <paramref name="contactArea"/> is the concrete face they touch.</summary>
+    private static void AddFormwork(Accumulator acc, double contactArea, string source)
+    {
+        if (contactArea <= 0) return;
+        acc.Add(MaterialCatalog.Formwork, contactArea / MaterialCatalog.FormworkReuse, source);
+        acc.Add(MaterialCatalog.Nails, contactArea * MaterialCatalog.NailsPerSquareMetreOfFormwork, source);
+    }
+
+    private static double Perimeter(IReadOnlyList<Point2> boundary)
+    {
+        double total = 0;
+        for (var index = 0; index < boundary.Count; index++) total += boundary[index].DistanceTo(boundary[(index + 1) % boundary.Count]);
+        return total;
+    }
 
     private static string Name(Dictionary<Guid, string> levels, Guid id) => levels.GetValueOrDefault(id, "?");
 

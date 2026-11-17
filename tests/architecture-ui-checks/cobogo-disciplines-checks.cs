@@ -396,6 +396,8 @@ internal static partial class HouseFromScratchChecks
             Expect(trades.Contains(MaterialCategory.Masonry) && trades.Contains(MaterialCategory.Structure) && trades.Contains(MaterialCategory.Drywall) &&
                    trades.Contains(MaterialCategory.DoorsAndWindows) && trades.Contains(MaterialCategory.Foundations),
                 "faltan rubros: " + string.Join(", ", Enum.GetValues<MaterialCategory>().Except(trades)));
+            foreach (var line in budget.Lines.OrderBy(item => item.Takeoff.Material.Category).ThenBy(item => item.Takeoff.Material.Description))
+                Console.WriteLine($"   RUBRO {line.Takeoff.Material.Category,-16} {line.Takeoff.Material.Description,-46} neto {line.Takeoff.NetQuantity,10:0.00} compra {line.Takeoff.PurchaseQuantity,10:0.00} {line.Takeoff.Material.Unit,-5} ₡{line.Total,12:#,0}");
             // Stairs, guards, fixtures and the electrical and ventilation work are bought too, not only the shell.
             Expect(trades.Contains(MaterialCategory.StairsAndGuards) && trades.Contains(MaterialCategory.Electrical) &&
                    trades.Contains(MaterialCategory.Plumbing),
