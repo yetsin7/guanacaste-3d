@@ -184,9 +184,33 @@ public static class ModelAudit
                 Math.Max(right.FirstCorner.Y, right.SecondCorner.Y)) -
                 Math.Max(Math.Min(left.FirstCorner.Y, left.SecondCorner.Y),
                     Math.Min(right.FirstCorner.Y, right.SecondCorner.Y));
-            if (width * height > 0.01 && width > 0 && height > 0)
-                issues.Add(new(ModelAuditCode.OverlappingRooms, left.Id, right.Id, left.LevelId, width * height));
+            if (width <= 0 || height <= 0) continue;
+            // A room with its own outline (an L, a room around a balcony) overlaps another only where both outlines
+            // really cover the same ground, not wherever their bounding rectangles meet.
+            var overlap = left.Boundary is { Count: >= 3 } || right.Boundary is { Count: >= 3 }
+                ? SampledOverlap(left, right, width, height,
+                    Math.Max(Math.Min(left.FirstCorner.X, left.SecondCorner.X), Math.Min(right.FirstCorner.X, right.SecondCorner.X)),
+                    Math.Max(Math.Min(left.FirstCorner.Y, left.SecondCorner.Y), Math.Min(right.FirstCorner.Y, right.SecondCorner.Y)))
+                : width * height;
+            if (overlap > 0.01)
+                issues.Add(new(ModelAuditCode.OverlappingRooms, left.Id, right.Id, left.LevelId, overlap));
         }
+    }
+
+    /// <summary>Area covered by both room outlines inside their common rectangle, measured on a grid of at most 20 000 cells.</summary>
+    private static double SampledOverlap(Room left, Room right, double width, double height, double minX, double minY)
+    {
+        var cell = Math.Max(0.05, Math.Sqrt(width * height / 20000));
+        var columns = Math.Max(1, (int)Math.Floor(width / cell));
+        var rows = Math.Max(1, (int)Math.Floor(height / cell));
+        var covered = 0;
+        for (var column = 0; column < columns; column++)
+        for (var row = 0; row < rows; row++)
+        {
+            var point = new Point2(minX + (column + 0.5) * width / columns, minY + (row + 0.5) * height / rows);
+            if (RoomRegionGeometry.Contains(left, point) && RoomRegionGeometry.Contains(right, point)) covered++;
+        }
+        return covered * (width / columns) * (height / rows);
     }
 
     /// <summary>Checks the remaining vertical wall above each hosted opening.</summary>

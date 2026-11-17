@@ -469,6 +469,19 @@ internal static partial class HouseFromScratchChecks
             var summary = warnings.GroupBy(warning => warning.Code).OrderBy(group => group.Key).Select(group => $"{group.Key}×{group.Count()}").ToList();
             // The design rules must stay clean for doors; anything else is listed so each run shows what is left to design.
             Expect(!warnings.Any(warning => warning.Code == "ObstructedDoor"), "hay puertas obstruidas");
+            string Where(Guid id)
+            {
+                if (Doc.Walls.FirstOrDefault(wall => wall.Id == id) is { } wall) return $"muro ({wall.Start.X:0.##},{wall.Start.Y:0.##})-({wall.End.X:0.##},{wall.End.Y:0.##})";
+                if (Doc.Openings.FirstOrDefault(opening => opening.Id == id) is { } opening)
+                {
+                    var host = Doc.Walls.First(wall => wall.Id == opening.WallId);
+                    return $"{opening.Kind} {opening.Width:0.00} en muro ({host.Start.X:0.##},{host.Start.Y:0.##})-({host.End.X:0.##},{host.End.Y:0.##}) offset {opening.Offset:0.00}";
+                }
+                if (Doc.Rooms.FirstOrDefault(room => room.Id == id) is { } room) return $"habitación «{room.Name}» [{room.FirstCorner.X:0.#},{room.FirstCorner.Y:0.#}]-[{room.SecondCorner.X:0.#},{room.SecondCorner.Y:0.#}]";
+                return id.ToString()[..4];
+            }
+            foreach (var warning in warnings.Where(item => item.Code != "ObstructedDoor"))
+                Console.WriteLine($"   ADVERTENCIA {warning.Code} ({warning.Value:0.000}): {string.Join(" ~ ", warning.ElementIds.Select(Where))}");
             return summary.Count == 0 ? "sin advertencias" : string.Join(", ", summary);
         });
 

@@ -98,8 +98,8 @@ internal static partial class HouseFromScratchChecks
         {
             ActiveLevel(Ground);
             WallsOfType("Reinforced Concrete 300 mm", "3.60",
-                ((0.15, 0.4), (0.15, 12)), ((0, 0.55), (2.0, 0.55)), ((1.85, 0.7), (1.85, 1.5)),
-                ((6.55, 1.5), (6.55, 12)), ((15.05, 5.2), (15.05, 12)));
+                ((0.15, 0.4), (0.15, 11.85)), ((0, 0.55), (2.0, 0.55)), ((1.85, 0.55), (1.85, 1.5)),
+                ((6.55, 1.5), (6.55, 11.85)), ((15.05, 5.2), (15.05, 11.85)));
             return WallSummary(Ground);
         });
         yield return ("1.2 Pórtico de la cochera, 3.10 m", () =>
@@ -140,7 +140,7 @@ internal static partial class HouseFromScratchChecks
         yield return ("2.1 Tabiques de yeso 100 mm", () =>
         {
             WallsOfType("Gypsum Partition 100 mm", "3.00",
-                ((10.8, 5.3), (10.8, 11.75)), ((10.8, 7.8), (14.9, 7.8)), ((12.8, 5.3), (12.8, 7.8)));
+                ((10.8, 5.3), (10.8, 11.85)), ((10.8, 7.8), (14.9, 7.8)), ((12.8, 5.3), (12.8, 7.8)));
             return WallSummary(Ground);
         });
         yield return ("2.2 Puertas interiores", () =>
@@ -272,7 +272,7 @@ internal static partial class HouseFromScratchChecks
         });
         yield return ("3.4 Balcón acristalado tras el cobogó", () =>
         {
-            WallsOfType("Rendered Block 150 mm", "3.00", ((12.875, 0.15), (12.875, 1.6)));
+            WallsOfType("Rendered Block 150 mm", "3.00", ((12.875, 0.075), (12.875, 1.6)));
             var before = Count(StructuralElementKind.CurtainWall);
             Arch(ArchitectureCommand.CurtainSystem);
             Click(12.95, 1.6);
