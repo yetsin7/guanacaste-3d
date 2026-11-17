@@ -37,7 +37,7 @@ public partial class MainWindow
         ViewTabs.SelectionChanged += (_, e) =>
         {
             if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
-            if (ViewTabs.SelectedItem is TabItem selected && !ReferenceEquals(selected, RenderTab)) selected.Visibility = Visibility.Visible;
+            if (ViewTabs.SelectedItem is TabItem selected) selected.Visibility = Visibility.Visible;
         };
         InitializeRenderHandoff();
     }
