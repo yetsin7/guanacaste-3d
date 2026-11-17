@@ -268,7 +268,7 @@ public partial class MainWindow
         if (SnapToWorkPlane(point) is Point2 onPlane) return onPlane;
 
         var grid = SnapGridCheck.IsChecked == true;
-        var guides = ChooseAlignmentGuides(point, PlanAlignment.Find(point, AlignmentCorners(null),
+        var guides = AlignmentGuidesSuppressed() ? [] : ChooseAlignmentGuides(point, PlanAlignment.Find(point, AlignmentCorners(null),
             VisibleWorldBounds(), AlignmentTolerancePixels / _scale));
         if (line && _pendingWallStart is Point2 start && !OrthogonalDrawingActive() &&
             SnapWallDirection(start, point) is Point2 along)

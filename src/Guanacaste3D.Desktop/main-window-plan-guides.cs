@@ -20,9 +20,14 @@ public partial class MainWindow
 
     private List<PlanAlignmentGuide> _alignmentGuides = [];
 
+    /// <summary>Holding Alt releases the pointer from every alignment guide, so a point can be placed freely next to a corner.</summary>
+    private static bool AlignmentGuidesSuppressed() =>
+        (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Alt) != 0;
+
     /// <summary>Recomputes the guides for the raw, unsnapped pointer against the corners on screen.</summary>
     private void UpdateAlignmentGuides(Point2 pointer, Guid? movingId)
     {
+        if (AlignmentGuidesSuppressed()) { _alignmentGuides = []; return; }
         var matches = PlanAlignment.Find(pointer, AlignmentCorners(movingId), VisibleWorldBounds(),
             AlignmentTolerancePixels / _scale);
         _alignmentGuides = [.. ChooseAlignmentGuides(pointer, matches)];
