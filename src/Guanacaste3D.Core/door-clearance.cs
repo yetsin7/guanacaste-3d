@@ -77,7 +77,7 @@ public static class DoorClearance
     }
 
     /// <summary>Whether two convex polygons share area (touching edges do not count), by the separating-axis test.</summary>
-    private static bool Overlap(IReadOnlyList<Point2> a, IReadOnlyList<Point2> b)
+    internal static bool Overlap(IReadOnlyList<Point2> a, IReadOnlyList<Point2> b)
     {
         const double tolerance = 1e-4;
         foreach (var polygon in new[] { a, b })

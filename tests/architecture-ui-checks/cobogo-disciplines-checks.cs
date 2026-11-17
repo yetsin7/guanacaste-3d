@@ -61,7 +61,7 @@ internal static partial class HouseFromScratchChecks
         {
             ActiveLevel(Upper);
             var placed = 0;
-            foreach (var (name, x, y) in new[] { ("Toilet", 7.2, 11.4), ("Bathroom Vanity", 8.2, 11.5), ("Shower Enclosure", 7.3, 7.1) })
+            foreach (var (name, x, y) in new[] { ("Toilet", 7.2, 11.4), ("Bathroom Vanity", 8.2, 11.5), ("Shower Enclosure", 8.2, 8.2) })
             {
                 var before = Doc.StructuralElements.Count;
                 Library(entry => entry == name);
@@ -453,16 +453,23 @@ internal static partial class HouseFromScratchChecks
             return "3 árboles y 4 arbustos";
         });
 
-        yield return ("13.3 Ninguna columna estorba frente a una puerta (muebles y escalera: lista de pendientes)", () =>
+        yield return ("13.3 Nada estorba frente a las puertas (columnas, muebles, sanitarios y escalera)", () =>
         {
             var found = DoorClearance.Analyze(Doc);
             var columns = found.Count(item => Doc.Columns.Any(column => column.Id == item.ObstructionId));
             var names = found.Where(item => Doc.Columns.All(column => column.Id != item.ObstructionId))
                 .Select(item => Doc.StructuralElements.FirstOrDefault(element => element.Id == item.ObstructionId)?.Name ?? "?").Distinct().ToList();
-            // No column may stand in front of a door. Sanitary ware and the stair still do (the wet core opens toward the
-            // carport and needs a redesign); they are listed here and tracked in the master plan as C-37.
-            Expect(columns == 0, $"{columns} columnas frente a puertas");
-            return $"sin columnas frente a puertas; pendientes de rediseño: {string.Join(", ", names)}";
+            Expect(found.Count == 0, $"{found.Count} estorbos frente a puertas ({columns} columnas; otros: {string.Join(", ", names)})");
+            return "todas las puertas tienen su zona libre";
+        });
+
+        yield return ("13.4 Revisar advertencias: estado de diseño de la casa", () =>
+        {
+            var warnings = ModelWarnings.Analyze(Doc);
+            var summary = warnings.GroupBy(warning => warning.Code).OrderBy(group => group.Key).Select(group => $"{group.Key}×{group.Count()}").ToList();
+            // The design rules must stay clean for doors; anything else is listed so each run shows what is left to design.
+            Expect(!warnings.Any(warning => warning.Code == "ObstructedDoor"), "hay puertas obstruidas");
+            return summary.Count == 0 ? "sin advertencias" : string.Join(", ", summary);
         });
 
         // ---------------------------------------------------------------- 12. Render inside the program

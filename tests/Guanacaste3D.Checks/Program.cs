@@ -658,6 +658,7 @@ RoofTakeoffChecks.Run(Check);
 MaterialTakeoffChecks.Run(Check);
 ElementTransformChecks.Run(Check);
 DoorClearanceChecks.Run(Check);
+StairWarningChecks.Run(Check);
 ViewDisciplineChecks.Run(Check);
 RoomFaceJoinChecks.Run(Check);
 FamilyAuthoringChecks.Run(Check);

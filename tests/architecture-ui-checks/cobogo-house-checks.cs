@@ -18,8 +18,19 @@ internal static partial class HouseFromScratchChecks
     public static void RunCobogoHouse(MainWindow window, Action<bool, string> check, Action pump)
     {
         Initialise(window, pump);
-        RunScenario("Cobogó house", "artifacts/interaction-evidence/casa-cobogo", CobogoSteps(), check,
+        RunScenario("Cobogó house", "artifacts/interaction-evidence/casa-cobogo", StopAfter(CobogoSteps()), check,
             "Casa del cobogó desde cero — resultado de la prueba automática");
+    }
+
+    /// <summary>G3D_STOP_AFTER=2.6 ends the scenario after the step whose name starts with it, to debug one phase in seconds.</summary>
+    private static IEnumerable<(string Name, Func<string> Action)> StopAfter(IEnumerable<(string Name, Func<string> Action)> steps)
+    {
+        var stop = Environment.GetEnvironmentVariable("G3D_STOP_AFTER");
+        foreach (var step in steps)
+        {
+            yield return step;
+            if (!string.IsNullOrEmpty(stop) && step.Name.StartsWith(stop + " ", StringComparison.Ordinal)) yield break;
+        }
     }
 
     private const string Ground = "Planta baja";
@@ -135,7 +146,7 @@ internal static partial class HouseFromScratchChecks
         yield return ("2.2 Puertas interiores", () =>
         {
             var before = Doc.Openings.Count(opening => opening.Kind == OpeningKind.Door);
-            foreach (var (x, y) in new[] { (10.8, 9.6), (11.8, 7.8), (13.8, 7.8) })
+            foreach (var (x, y) in new[] { (10.8, 11.25), (11.8, 7.8), (13.8, 7.8) })
             {
                 Arch(ArchitectureCommand.Door);
                 PickMenuIfOpen(0);
@@ -144,6 +155,9 @@ internal static partial class HouseFromScratchChecks
             }
             var placed = Doc.Openings.Count(opening => opening.Kind == OpeningKind.Door) - before;
             Expect(placed == 3, $"se colocaron {placed} de 3 puertas (estado: {Status})");
+            // The door from the hall to the kitchen sits past the stair (which ends at y = 10.8): 0.80 m wide so its swing
+            // zone clears the stair and the wall end.
+            SizeOpening(Doc.Openings.Where(opening => opening.Kind == OpeningKind.Door).Skip(before).First().Id, 0.8, 2.1, 0);
             return "3 puertas";
         });
         yield return ("2.3 Ventanas con tamaño y antepecho (propiedades)", () =>
@@ -207,18 +221,22 @@ internal static partial class HouseFromScratchChecks
             }
             var named = Doc.Rooms.Where(room => room.LevelId == LevelId(Ground)).Select(room => room.Name).ToList();
             var missing = names.Select(item => item.Item1).Except(named).ToList();
-            Expect(missing.Count == 0, $"faltan habitaciones: {string.Join(", ", missing)} (hay: {string.Join(", ", named)})");
+            Expect(missing.Count == 0, $"faltan habitaciones: {string.Join(", ", missing)} (hay: {string.Join(", ", named)}) :: {string.Join(" | ", Doc.Rooms.Where(room => room.LevelId == LevelId(Ground)).Select(room => $"{room.Name} [{room.FirstCorner.X:0.0},{room.FirstCorner.Y:0.0}]-[{room.SecondCorner.X:0.0},{room.SecondCorner.Y:0.0}] pts={room.Boundary?.Count}"))}");
             return string.Join(", ", named);
         });
         yield return ("2.7 Muebles y aparatos sanitarios desde la biblioteca", () =>
         {
             var placed = new List<string>();
-            foreach (var (name, x, y) in new[] { ("Toilet", 11.4, 7.35), ("Pedestal Sink", 12.3, 7.5), ("Washing Machine", 13.4, 7.4),
-                         ("Refrigerator", 11.4, 11.45), ("Kitchen Sink Cabinet", 13.25, 11.45), ("Cooking Range", 14.4, 11.45),
-                         ("Three Seat Sofa", 4.3, 4.4), ("Dining Table 6 Seats", 4.2, 9.6) })
+            // Sanitary ware stands against the side walls of the wet rooms (turned 90° with Space), well away from the door
+            // swings on the north wall: the toilet and washer face across the room, the sink faces west.
+            const double East = Math.PI / 2, West = 3 * Math.PI / 2;
+            foreach (var (name, x, y, turn) in new[] { ("Toilet", 11.2, 6.3, East), ("Pedestal Sink", 12.55, 6.3, West), ("Washing Machine", 14.55, 6.35, West),
+                         ("Refrigerator", 12.2, 11.45, 0.0), ("Kitchen Sink Cabinet", 13.25, 11.45, 0.0), ("Cooking Range", 14.4, 11.45, 0.0),
+                         ("Three Seat Sofa", 4.3, 4.4, 0.0), ("Dining Table 6 Seats", 4.2, 9.6, 0.0) })
             {
                 var before = Doc.StructuralElements.Count;
                 Library(entry => entry == name);
+                FaceRotation(turn);
                 Click(x, y);
                 if (Doc.StructuralElements.Count > before) placed.Add(name);
                 Escape();
@@ -449,6 +467,18 @@ internal static partial class HouseFromScratchChecks
     }
 
     /// <summary>Picks a floor type from the Floor menu and sketches its corners, closing on the first one.</summary>
+    /// <summary>Turns the component about to be placed with Space (90° each press) until it has the given rotation.</summary>
+    private static void FaceRotation(double target)
+    {
+        var field = typeof(MainWindow).GetField("_componentRotation", Private)!;
+        for (var press = 0; press < 4; press++)
+        {
+            var turn = ((double)field.GetValue(_window)! % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            if (Math.Abs(turn - target) < 1e-6) return;
+            Key(System.Windows.Input.Key.Space);
+        }
+    }
+
     private static Guid SketchFloor(string type, params (double X, double Y)[] corners)
     {
         var before = Doc.Floors.Count;

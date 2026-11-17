@@ -81,6 +81,15 @@ public static class ModelWarnings
         foreach (var room in document.Rooms.Where(room => room.Area < TinyRoomArea))
             warnings.Add(new ModelWarning("TinyRoom", WarningSeverity.Info, [room.Id], room.Area));
 
+        // Stairs: the riser, tread and pace checks the element editor already runs, and the opening in the slab above.
+        foreach (var stair in document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Stair))
+        {
+            foreach (var finding in StairGeometry.Check(stair))
+                warnings.Add(new ModelWarning("Stair" + finding.Kind, WarningSeverity.Warning, [stair.Id], finding.Value));
+            if (StairNeedsOpening(document, stair))
+                warnings.Add(new ModelWarning("StairNoOpening", WarningSeverity.Warning, [stair.Id], stair.Height));
+        }
+
         // Nothing stands in front of a door: a column, furniture or stair in the clear zone could not be built that way.
         foreach (var obstruction in DoorClearance.Analyze(document))
             warnings.Add(new ModelWarning("ObstructedDoor", WarningSeverity.Warning, [obstruction.OpeningId, obstruction.ObstructionId], obstruction.RequiredDepth));
@@ -92,6 +101,38 @@ public static class ModelWarnings
 
         return warnings.OrderBy(warning => warning.Severity == WarningSeverity.Warning ? 0 : 1)
             .ThenBy(warning => warning.Code, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// A stair that arrives at a level whose slab is solid over it: nobody could climb it. The level it reaches is the one
+    /// within 15 cm of the top of the stair; the opening is a shaft or slab opening on that level that overlaps the stair.
+    /// </summary>
+    private static bool StairNeedsOpening(BuildingDocument document, StructuralElement stair)
+    {
+        var from = document.Levels.FirstOrDefault(level => level.Id == stair.LevelId);
+        if (from is null || stair.Length < 0.05) return false;
+        var top = from.Elevation + stair.Offset + stair.Height;
+        var upper = document.Levels.FirstOrDefault(level => Math.Abs(level.Elevation - top) < 0.15 && level.Id != from.Id);
+        if (upper is null) return false;
+        var footprint = stair.Footprint;
+        var middle = new Point2((stair.Start.X + stair.End.X) / 2, (stair.Start.Y + stair.End.Y) / 2);
+        var slabOver = document.Floors.Any(floor => floor.LevelId == upper.Id && floor.Kind == FloorKind.Floor && Contains(floor.Boundary, middle));
+        if (!slabOver) return false;
+        // A shaft cuts every slab from its own level upward; an opening cuts only the slab of its own level.
+        return !document.StructuralElements.Any(opening =>
+            (opening.Kind == StructuralElementKind.Opening && opening.LevelId == upper.Id ||
+             opening.Kind == StructuralElementKind.Shaft && document.Levels.Any(level => level.Id == opening.LevelId && level.Elevation <= upper.Elevation + 1e-6)) &&
+            DoorClearance.Overlap(footprint, opening.Footprint));
+    }
+
+    private static bool Contains(IReadOnlyList<Point2> polygon, Point2 point)
+    {
+        var inside = false;
+        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+            if ((polygon[i].Y > point.Y) != (polygon[j].Y > point.Y) &&
+                point.X < (polygon[j].X - polygon[i].X) * (point.Y - polygon[i].Y) / (polygon[j].Y - polygon[i].Y) + polygon[i].X)
+                inside = !inside;
+        return inside;
     }
 
     /// <summary>Two walls with the same ends and thickness hide each other and count twice in every quantity.</summary>
