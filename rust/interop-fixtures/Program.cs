@@ -69,6 +69,19 @@ foreach (var restored in new[] { fromJson, fromNative })
         Console.Error.WriteLine("C# serializer round-trip changed document identity or wall geometry");
         return 1;
     }
+    // Assert geometry survives both production serializers, not just field equality.
+    // This is deliberately calculated through the C# production implementation.
+    foreach (var pair in restored.Walls.Zip(document.Walls))
+    {
+        var restoredVolume = WallGeometry.NetVolume(pair.First, Array.Empty<WallOpening>());
+        var originalVolume = WallGeometry.NetVolume(pair.Second, Array.Empty<WallOpening>());
+        if (!double.IsFinite(restoredVolume) ||
+            Math.Abs(restoredVolume - originalVolume) > 1e-9)
+        {
+            Console.Error.WriteLine("C# serializer round-trip changed production wall volume");
+            return 1;
+        }
+    }
 }
 // Use production WallGeometry for net volume; surface area remains an independent
 // analytic cuboid reference until the production mesh-area oracle is integrated.
