@@ -426,11 +426,20 @@ public partial class MainWindow
     /// <summary>Restores the three-quarter view of the whole model.</summary>
     private void ResetOrbit_Click(object sender, RoutedEventArgs e) => FrameCameraToScene();
 
-    /// <summary>Photorealistic rendering lives in Guanacaste Render: sends the model there.</summary>
-    private void ShowRender_Click(object sender, RoutedEventArgs e) => OpenInGuanacasteRender();
+    /// <summary>Opens the integrated photorealistic render workspace.</summary>
+    private void ShowRender_Click(object sender, RoutedEventArgs e)
+    {
+        RenderTab.Visibility = Visibility.Visible;
+        ViewTabs.SelectedIndex = RenderTabIndex;
+    }
 
-    /// <summary>Photorealistic rendering lives in Guanacaste Render: sends the model there.</summary>
-    private void StartRender_Click(object sender, RoutedEventArgs e) => OpenInGuanacasteRender();
+    /// <summary>Opens the integrated render panel and starts rendering using its current settings.</summary>
+    private void StartRender_Click(object sender, RoutedEventArgs e)
+    {
+        RenderTab.Visibility = Visibility.Visible;
+        ViewTabs.SelectedIndex = RenderTabIndex;
+        RenderPanelControl.RequestRender();
+    }
 
     /// <summary>Keeps the interactive camera aspect in sync with the viewport.</summary>
     private void ModelViewport_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateModelCamera();
