@@ -123,6 +123,7 @@ Estado: **corregido** (con prueba), **abierto**. P1 bloquea la casa; P2 la hace 
 | C-29 | P2 | Ctrl+A y Supr no borraban aparatos eléctricos ni puntos de plomería | corregido: se borran con sus circuitos, enlaces de apagador, sistemas y bomba, en un solo paso de deshacer | `RemoveElements`, `RemoveInstallation` |
 | C-30 | P1 | CI de `main` en rojo desde a84dda4: la prueba de documentación esperaba cabezas de sección de 28 px fijos | corregido (6a139e8) | `desktop-documentation-checks.cs` |
 | C-31 | P2 | Pruebas frágiles en CI: el perfil de muro se probaba en un muro de 4 m a 500 m de la casa (menos de 4 px en pantallas pequeñas) | corregido: se usa el muro más largo de la casa visto de frente | `cobogo-interaction-checks.cs` |
+| C-32 | P1 | Desde un proyecto vacío: la herramienta Pilar se apagaba tras un clic, la viga seleccionada no ofrecía campos en Propiedades y «Armadura» pedía un texto críptico («3 0.012 bottom») | corregido (17/11/2026): Pilar sigue activo hasta Esc; Propiedades edita sección y desfase de vigas, cimientos y ductos; Armadura abre un diálogo (cantidad, diámetro #3–#6, cara). Prueba: `G3D_FRESH=structure`, proyecto nuevo y capturas de ventana completa |
 | C-19 | P2 | Hay dos tipos de cuadro de diálogo de texto (PromptWindow y TextPrompt) con comportamientos distintos | abierto | `PromptWindow.cs`, `text-prompt.cs` |
 
 Brechas anteriores ya corregidas en esta línea de trabajo (ver `MEJORAS.md` sección 6): U-03 eje de Arquitectura,

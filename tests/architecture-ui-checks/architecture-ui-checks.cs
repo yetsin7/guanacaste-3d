@@ -58,6 +58,7 @@ internal static class ArchitectureUiChecks
                 HouseFromScratchChecks.Run(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_RIBBON_INVENTORY") == "1") HouseFromScratchChecks.RunRibbonInventory(_window, Pump);
             if (Environment.GetEnvironmentVariable("G3D_COBOGO") == "1") HouseFromScratchChecks.RunCobogoHouse(_window, Check, Pump);
+            if (Environment.GetEnvironmentVariable("G3D_FRESH") == "structure") HouseFromScratchChecks.RunFreshStructure(_window, Check, Pump);
             if (Environment.GetEnvironmentVariable("G3D_BUILDING") == "1")
             {
                 HouseFromScratchChecks.RunBuildingFromScratch(_window, Check, Pump);

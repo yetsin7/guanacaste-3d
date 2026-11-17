@@ -819,6 +819,13 @@
   <sys:String x:Key="Field.ConcreteGrade">Resistencia del hormigón</sys:String>
   <sys:String x:Key="Field.UnitWeight">Peso del hormigón (kg/m³)</sys:String>
   <sys:String x:Key="Field.SteelPerM3">Acero por m³ de hormigón (kg)</sys:String>
+  <sys:String x:Key="Rebar.Heading">Barras longitudinales para: {0}</sys:String>
+  <sys:String x:Key="Rebar.Count">Cantidad de barras</sys:String>
+  <sys:String x:Key="Rebar.Diameter">Diámetro</sys:String>
+  <sys:String x:Key="Rebar.Face">Cara</sys:String>
+  <sys:String x:Key="Rebar.FaceBottom">Inferior (abajo)</sys:String>
+  <sys:String x:Key="Rebar.FaceTop">Superior (arriba)</sys:String>
+  <sys:String x:Key="Status.RebarSelectHost">Seleccione primero una viga, un cimiento corrido o una cercha para armarla.</sys:String>
   <sys:String x:Key="Prompt.Rebar">Sobre el elemento seleccionado (viga o cimiento): cantidad de barras, diámetro y cara (abajo o arriba):</sys:String>
   <sys:String x:Key="Prompt.RebarPath">Puntos de la barra «x y; x y; x y», luego «|», el diámetro y la altura sobre el nivel:</sys:String>
   <sys:String x:Key="Prompt.RebarArea">Esquina 1 (x y), esquina 2 (x y), separación, diámetro, dirección (x o y) y altura:</sys:String>
@@ -1134,7 +1141,7 @@
   <sys:String x:Key="Status.CeilingCreated">Techo creado desde la altura de los muros activos.</sys:String>
   <sys:String x:Key="Status.RoofCreated">Cubierta creada sobre el remate de los muros activos.</sys:String>
   <sys:String x:Key="Status.ColumnPlace">Pilar: haz clic en la planta para ubicarlo.</sys:String>
-  <sys:String x:Key="Status.ColumnPlaced">Pilar creado en la posición indicada.</sys:String>
+  <sys:String x:Key="Status.ColumnPlaced">Pilar creado. Haga clic para colocar otro o pulse Esc para terminar.</sys:String>
   <sys:String x:Key="Status.SheetCreated">Lámina añadida al conjunto documental.</sys:String>
   <sys:String x:Key="Status.WallTypeApplied">Tipo de muro aplicado.</sys:String>
   <sys:String x:Key="Status.WallTypeUpdated">Tipo de muro y representación gráfica actualizados.</sys:String>

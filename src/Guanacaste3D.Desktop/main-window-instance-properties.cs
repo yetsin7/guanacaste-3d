@@ -27,7 +27,7 @@ public partial class MainWindow
         var column = _session.Document.Columns.FirstOrDefault(item => item.Id == _selectedColumnId);
         var floor = _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId);
         var component = _session.Document.StructuralElements.FirstOrDefault(item => item.Id == _selectedStructuralId &&
-            item.Kind == StructuralElementKind.Component);
+            HasSectionProperties(item.Kind));
         // A wall (not one of its doors or windows) shows its base offset and top constraint, as in the reference palette.
         var wall = _selectedOpeningId is null ? _session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) : null;
         _wallTopPicker = null;
@@ -50,6 +50,7 @@ public partial class MainWindow
         }
         else if (component is not null)
         {
+            // A beam or footing is edited by its section (width, depth) and the offset of its top from the level.
             AddInstanceProperty("Width", component.Width);
             AddInstanceProperty("Height", component.Height);
             AddInstanceProperty("Offset", component.Offset);
@@ -69,6 +70,11 @@ public partial class MainWindow
         more.Click += (_, _) => TryEditSelectedElementType();
         _instancePropertiesEditor.Children.Add(more);
     }
+
+    /// <summary>Elements whose cross section and offset are edited as plain lengths in the palette.</summary>
+    private static bool HasSectionProperties(StructuralElementKind kind) => kind is StructuralElementKind.Component or
+        StructuralElementKind.Beam or StructuralElementKind.WallFoundation or StructuralElementKind.IsolatedFoundation or
+        StructuralElementKind.Duct;
 
     /// <summary>The top constraint of the selected wall: unconnected, or one of the levels above its own.</summary>
     private ComboBox? _wallTopPicker;
@@ -151,7 +157,7 @@ public partial class MainWindow
                      values.TryGetValue("Thickness", out var thickness))
                 _session.UpdateFloor(floor.Id, floor.Name, thickness, values["Elevation"]);
             else if (_session.Document.StructuralElements.FirstOrDefault(item => item.Id == _selectedStructuralId &&
-                         item.Kind == StructuralElementKind.Component) is { } component && values.ContainsKey("Offset"))
+                         HasSectionProperties(item.Kind)) is { } component && values.ContainsKey("Offset"))
                 _session.UpdateStructuralElement(component.Id, component.Name, values["Width"], values["Height"],
                     values["Offset"], component.Style);
             else if (_session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) is { } wall &&

@@ -17,7 +17,7 @@ public partial class MainWindow
     {
         switch (commandId)
         {
-            case "Rebar": RunReinforcement("Rebar", "Prompt.Rebar", "3 0.012 bottom", ApplyRebar); return true;
+            case "Rebar": ReinforceSelectedMember(); return true;
             case "RebarPath": RunReinforcement("RebarPath", "Prompt.RebarPath", "0 0; 0.3 0; 0.3 0.4; 0 0.4 | 0.01 1", ApplyRebarPath); return true;
             case "RebarArea": RunReinforcement("RebarArea", "Prompt.RebarArea", "0 0 5 4 0.2 0.012 x 0.05", ApplyRebarArea); return true;
             case "FabricSheet": BeginKindTool(StructuralElementKind.FabricSheet); return true;
@@ -58,6 +58,25 @@ public partial class MainWindow
             StatusText.Text = LocalizedErrors.Translate(exception.Message);
             return false;
         }
+    }
+
+    /// <summary>Asks for the bars of the selected beam or footing in a dialog instead of a line of codes.</summary>
+    private void ReinforceSelectedMember()
+    {
+        if (_selectedStructuralId is not { } host || _session.Document.StructuralElements.FirstOrDefault(item => item.Id == host) is not { } member ||
+            member.Kind is not (StructuralElementKind.Beam or StructuralElementKind.WallFoundation or StructuralElementKind.Brace or StructuralElementKind.Truss))
+        {
+            StatusText.Text = GetText("Status.RebarSelectHost");
+            return;
+        }
+        if (RebarDialog.Ask(this, member.Name) is not { } bars) return;
+        try
+        {
+            _session.AddMemberRebar(host, bars.Count, bars.Diameter, bars.Top);
+            StatusText.Text = GetText("Status.ReinforcementDone");
+            RefreshAll();
+        }
+        catch (InvalidDataException exception) { StatusText.Text = LocalizedErrors.Translate(exception.Message); }
     }
 
     private static string[] Words(string text) => text.Split([(char)32, ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

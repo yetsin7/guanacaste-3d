@@ -213,8 +213,8 @@ public partial class MainWindow
         SelectExtendedElement(columnId: _columnPreset is { } preset
             ? _session.AddColumnFromPreset(_activeLevelId, point, preset)
             : _session.AddColumn(_activeLevelId, point));
-        _drawingColumn = false;
-        _columnPreset = null;
+        // As in the reference application, the tool stays armed with the same type so a grid of columns is a row of
+        // clicks; Esc (or choosing another tool) ends it.
         StatusText.Text = GetText("Status.ColumnPlaced");
         RefreshAll();
         return true;
