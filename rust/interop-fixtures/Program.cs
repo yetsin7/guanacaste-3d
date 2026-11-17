@@ -168,6 +168,14 @@ foreach (var restored in new[]
     WallGeometry.Validate(restored.Walls, restored.Openings);
     if (restored.Openings.Count != openings.Length ||
         !restored.Openings.Select(o => o.Id).SequenceEqual(openings.Select(o => o.Id)) ||
+        !restored.Openings.Zip(openings).All(pair =>
+            pair.First.WallId == pair.Second.WallId &&
+            pair.First.Kind == pair.Second.Kind &&
+            pair.First.OpeningTypeId == pair.Second.OpeningTypeId &&
+            pair.First.Offset == pair.Second.Offset &&
+            pair.First.Width == pair.Second.Width &&
+            pair.First.Sill == pair.Second.Sill &&
+            pair.First.Height == pair.Second.Height) ||
         Math.Abs(WallGeometry.NetVolume(restored.Walls[0], restored.Openings) - openingVolume) > 1e-9)
     {
         Console.Error.WriteLine("C# opening serialization changed geometry or identities");
