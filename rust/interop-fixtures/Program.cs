@@ -141,6 +141,31 @@ if (!double.IsFinite(openingVolume) ||
     Console.Error.WriteLine("Production C# door/window net volume differs from the geometric reference");
     return 1;
 }
+// Serialize the SAME production C# openings into independent JSON and native
+// fixtures. The original no-opening fixtures remain immutable.
+document.Openings.AddRange(openings);
+document.Validate();
+WallGeometry.Validate(document.Walls, document.Openings);
+var openingJson = ProjectFile.SerializeDocument(document);
+File.WriteAllText(Path.Combine(directory, "wall-with-openings.g3d.json"), openingJson);
+var openingNativePath = Path.Combine(directory, "wall-with-openings.g3d");
+NativeDocumentStore.SaveProject(openingNativePath, document);
+foreach (var restored in new[]
+{
+    ProjectFile.DeserializeDocument(openingJson),
+    NativeDocumentStore.LoadProject(openingNativePath)
+})
+{
+    restored.Validate();
+    WallGeometry.Validate(restored.Walls, restored.Openings);
+    if (restored.Openings.Count != openings.Length ||
+        !restored.Openings.Select(o => o.Id).SequenceEqual(openings.Select(o => o.Id)) ||
+        Math.Abs(WallGeometry.NetVolume(restored.Walls[0], restored.Openings) - openingVolume) > 1e-9)
+    {
+        Console.Error.WriteLine("C# opening serialization changed geometry or identities");
+        return 1;
+    }
+}
 // Publish a machine-readable production C# opening oracle alongside the fixtures.
 // Rust independently reads the C#-serialized base wall with identical openings.
 File.WriteAllText(
