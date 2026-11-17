@@ -136,9 +136,20 @@ internal static class RenderModelUpdateChecks
                   again2.Walls.Any(wall => wall.Id == annex),
                 "Exporting again over a file with render work merges the new model instead of replacing that work");
             File.Delete(RenderModelLinkFile.SidecarPath(exportPath));
-            check(RenderModelExport.Write(exportPath, model.Document.Clone(), modelPath) == RenderExportOutcome.Written &&
-                  ProjectFile.Load(exportPath).StructuralElements.All(element => element.Id != shrub) && File.Exists(exportPath + ".bak"),
-                "Without a model link an export replaces the file and leaves the previous one as a backup");
+            var existingBytes = File.ReadAllBytes(exportPath);
+            var rejected = false;
+            try
+            {
+                RenderModelExport.Write(exportPath, model.Document.Clone(), modelPath);
+            }
+            catch (IOException)
+            {
+                rejected = true;
+            }
+            check(rejected && existingBytes.SequenceEqual(File.ReadAllBytes(exportPath)) &&
+                  !File.Exists(RenderModelLinkFile.SidecarPath(exportPath)) &&
+                  ProjectFile.Load(exportPath).StructuralElements.Any(element => element.Id == shrub),
+                "Without a valid model link an export refuses to overwrite existing render work");
         }
         finally { Directory.Delete(folder, recursive: true); }
     }

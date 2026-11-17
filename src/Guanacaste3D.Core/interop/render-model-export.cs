@@ -3,7 +3,7 @@ namespace Guanacaste3D.Core.Interop;
 /// <summary>What writing a render export did with a file that was already there.</summary>
 public enum RenderExportOutcome
 {
-    /// <summary>A new export was written, or an unrelated file was replaced.</summary>
+    /// <summary>A new export was written. Existing unverified files are never overwritten.</summary>
     Written,
 
     /// <summary>The export already held render work, which was kept while the model was brought up to date.</summary>
@@ -26,9 +26,13 @@ public static class RenderModelExport
         ArgumentNullException.ThrowIfNull(snapshot);
         var outcome = RenderExportOutcome.Written;
         var document = snapshot;
-        if (ExistingRenderWork(exportPath, snapshot.Id) is var (existing, baseline))
+        if (File.Exists(exportPath))
         {
-            document = RenderModelUpdate.Merge(baseline, existing, snapshot).Document;
+            var linked = ExistingRenderWork(exportPath, snapshot.Id);
+            if (linked is not { } verified)
+                throw new IOException("The render export destination already exists but is not a verified export of this model. Choose a different destination to preserve the existing project.");
+
+            document = RenderModelUpdate.Merge(verified.Baseline, verified.Existing, snapshot).Document;
             outcome = RenderExportOutcome.MergedWithRenderWork;
         }
         var token = Guid.NewGuid().ToString("N");
@@ -54,7 +58,7 @@ public static class RenderModelExport
         try
         {
             var existing = ProjectFile.Load(exportPath);
-            return existing.Id == projectId && RenderModelUpdate.SyncTokenOf(existing) == link.SyncToken ? (existing, baseline) : null;
+            return existing.Id == projectId && baseline.Id == projectId && RenderModelUpdate.SyncTokenOf(existing) == link.SyncToken ? (existing, baseline) : null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
         {
