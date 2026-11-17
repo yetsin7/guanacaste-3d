@@ -126,7 +126,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
         .expect("nonempty C# opening container") ^= 0x01;
     let damaged_path = directory.join("corrupt-openings.g3d");
     fs::write(&damaged_path, damaged_openings).unwrap();
-    let damaged_result = Command::new(executable).arg(&damaged_path).output().unwrap();
+    let damaged_result = Command::new(executable)
+        .arg(&damaged_path)
+        .output()
+        .unwrap();
     assert!(
         !damaged_result.status.success(),
         "Rust must reject a corrupted native C# door/window fixture"
@@ -135,7 +138,10 @@ fn csharp_serializers_match_rust_wall_metrics() {
         damaged_result.stdout.is_empty(),
         "invalid opening container must not emit partial metrics"
     );
-    assert_eq!(fs::read(&opening_native_path).unwrap(), opening_native_bytes);
+    assert_eq!(
+        fs::read(&opening_native_path).unwrap(),
+        opening_native_bytes
+    );
 
     // Compare the production C# oracle directly with Rust's metrics from the
     // actual C#-serialized openings, not a second Rust-authored JSON fixture.
