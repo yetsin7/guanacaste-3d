@@ -141,6 +141,11 @@ if (!double.IsFinite(openingVolume) ||
     Console.Error.WriteLine("Production C# door/window net volume differs from the geometric reference");
     return 1;
 }
+// Publish a machine-readable production C# opening oracle alongside the fixtures.
+// Rust independently reads the C#-serialized base wall with identical openings.
+File.WriteAllText(
+    Path.Combine(directory, "opening-volume.txt"),
+    openingVolume.ToString("F12", System.Globalization.CultureInfo.InvariantCulture) + "\n");
 foreach (var wall in document.Walls)
     PrintWallMetrics(wall);
 return 0;
