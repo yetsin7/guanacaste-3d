@@ -116,6 +116,35 @@ mod tests {
     }
 
     #[test]
+    fn accepts_translated_and_reversed_footprints() {
+        let mut outline = points(&[
+            (100_000.0, -200_000.0),
+            (100_004.0, -200_000.0),
+            (100_004.0, -199_999.0),
+            (100_001.0, -199_999.0),
+            (100_001.0, -199_997.0),
+            (100_000.0, -199_997.0),
+        ]);
+        assert_eq!(validate_extrusion_footprint(&outline), Ok(()));
+        outline.reverse();
+        assert_eq!(validate_extrusion_footprint(&outline), Ok(()));
+    }
+
+    #[test]
+    fn rejects_crossing_edges_after_translation() {
+        let bow = points(&[
+            (100_000.0, 200_000.0),
+            (100_003.0, 200_003.0),
+            (100_000.0, 200_004.0),
+            (100_004.0, 200_000.0),
+        ]);
+        assert_eq!(
+            validate_extrusion_footprint(&bow),
+            Err(GeometryError::NoEarFound)
+        );
+    }
+
+    #[test]
     fn rejects_touching_nonadjacent_edges() {
         let touching = points(&[(0.0, 0.0), (4.0, 0.0), (4.0, 3.0), (2.0, 0.0), (0.0, 3.0)]);
         assert_eq!(
