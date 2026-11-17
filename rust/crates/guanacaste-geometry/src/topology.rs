@@ -145,6 +145,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_translated_crossing_edges_in_both_windings() {
+        // Crossing remains invalid under winding reversal, including at site
+        // coordinates far from the local origin.
+        let mut bow = points(&[
+            (100_000.0, 200_000.0),
+            (100_003.0, 200_003.0),
+            (100_000.0, 200_004.0),
+            (100_004.0, 200_000.0),
+        ]);
+        assert_eq!(
+            validate_extrusion_footprint(&bow),
+            Err(GeometryError::NoEarFound)
+        );
+        bow.reverse();
+        assert_eq!(
+            validate_extrusion_footprint(&bow),
+            Err(GeometryError::NoEarFound)
+        );
+    }
+
+    #[test]
     fn rejects_translated_touching_nonadjacent_edges_in_both_windings() {
         // Nonadjacent edge contact must not become valid after a site-coordinate
         // translation or reversal of the BIM footprint winding.
