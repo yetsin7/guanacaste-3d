@@ -18,26 +18,13 @@ public partial class MainWindow
     /// <summary>Set by <see cref="EnterRenderWorkspace"/>: this window is the render host and keeps its Render view.</summary>
     private bool _hostsRenderWorkspace;
 
-    /// <summary>Redirects selections of the built-in Render view; called once from the constructor.</summary>
+    /// <summary>
+    /// The integrated .NET render workspace is again the default for Render tabs and commands.
+    /// Keep the external handoff helpers below for explicit export workflows only.
+    /// </summary>
     private void InitializeRenderHandoff()
     {
-        ViewTabs.SelectionChanged += (_, e) =>
-        {
-            if (!ReferenceEquals(e.OriginalSource, ViewTabs) || App.RenderOnly || _hostsRenderWorkspace || _handingOffRender) return;
-            if (ViewTabs.SelectedIndex != RenderTabIndex) return;
-            _handingOffRender = true;
-            try
-            {
-                RenderTab.Visibility = Visibility.Collapsed;
-                ViewTabs.SelectedIndex = Model3DTabIndex;
-            }
-            finally
-            {
-                _handingOffRender = false;
-            }
-            // After the tab change settles, so the 3D view is the one on screen while the snapshot is written.
-            Dispatcher.BeginInvoke(OpenInGuanacasteRender);
-        };
+        // Intentionally no selection redirect: the Render tab is hosted by this window.
     }
 
     /// <summary>Where the render snapshot of the current model goes: beside the saved model, or in the user's
