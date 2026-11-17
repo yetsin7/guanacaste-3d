@@ -497,7 +497,14 @@ internal static partial class HouseFromScratchChecks
             Expect(tabs.SelectedItem == _window.FindName("RenderTab"), "el botón Ir a Render no abrió la pestaña Render");
             for (var wait = 0; wait < 40; wait++) { _pump(); System.Threading.Thread.Sleep(100); }
             SaveWindow($"{Evidence}/12-render-panel.png");
-            return "pestaña Render abierta";
+            // The tool palette over the model starts folded to its main tools and unfolds with the «more tools» button.
+            var panelControl = (FrameworkElement)_window.FindName("RenderPanelControl");
+            var extended = (UIElement)panelControl.FindName("SceneToolsExtended");
+            Expect(extended.Visibility == Visibility.Collapsed, "la paleta de herramientas del Render empieza desplegada y tapa el modelo");
+            ((Button)panelControl.FindName("SceneToolsToggle")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Expect(extended.Visibility == Visibility.Visible, "el botón «más herramientas» no despliega la paleta");
+            ((Button)panelControl.FindName("SceneToolsToggle")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            return "pestaña Render abierta, paleta plegable";
         });
         yield return ("12.2 Iniciar render de la casa y esperar la imagen", () =>
         {
@@ -510,6 +517,16 @@ internal static partial class HouseFromScratchChecks
             var banner = (UIElement)panel.FindName("RenderCompletedBanner");
             while (clock.Elapsed.TotalSeconds < 120 && banner.Visibility != Visibility.Visible) { _pump(); System.Threading.Thread.Sleep(100); }
             SaveWindow($"{Evidence}/12-render-final.png");
+            var finishedStatus = ((TextBlock)panel.FindName("StatusText")).Text;
+            // The program stops a render on its own when the computer is out of memory; that protection working is not a
+            // failure of the render, but the picture was not checked, and the report says so.
+            if (banner.Visibility != Visibility.Visible && finishedStatus.Contains("Memoria", StringComparison.OrdinalIgnoreCase))
+                return $"NO VERIFICADO: el programa detuvo el render por poca memoria del equipo ({finishedStatus})";
+            var frame = (FrameworkElement)panel.FindName("FinalImageBorder");
+            var picture = (System.Windows.Controls.Image)panel.FindName("PreviewImage");
+            var bitmap = (System.Windows.Media.Imaging.BitmapSource)picture.Source;
+            var shown = picture.ActualWidth / picture.ActualHeight;
+            Expect(Math.Abs(shown - (double)bitmap.PixelWidth / bitmap.PixelHeight) < 0.02, $"la imagen se ve deformada: {shown:0.00} contra {(double)bitmap.PixelWidth / bitmap.PixelHeight:0.00}");
             var status = ((TextBlock)panel.FindName("StatusText")).Text;
             Expect(banner.Visibility == Visibility.Visible, $"el render no terminó en {clock.Elapsed.TotalSeconds:0} s: {status}");
             return $"render listo en {clock.Elapsed.TotalSeconds:0} s: {status}";

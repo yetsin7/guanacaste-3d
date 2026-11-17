@@ -71,6 +71,8 @@ public partial class RenderPanel
         InteractiveViewport.Visibility = interactive ? Visibility.Visible : Visibility.Collapsed;
         FinalImageBorder.Visibility = interactive ? Visibility.Collapsed : Visibility.Visible;
         InteractiveHintCard.Visibility = interactive ? Visibility.Visible : Visibility.Collapsed;
+        // The selection outline belongs to the navigable scene; it must not be drawn over the finished picture.
+        SelectionOverlay.Visibility = interactive ? Visibility.Visible : Visibility.Collapsed;
         if (interactive) UpdateInteractiveCamera();
     }
 }

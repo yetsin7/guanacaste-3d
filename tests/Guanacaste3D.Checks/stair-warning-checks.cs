@@ -15,6 +15,8 @@ static class StairWarningChecks
         var steep = session.AddElementFromPreset(ground, preset, new(1, 1), new(1, 5));
         var codes = ModelWarnings.Analyze(session.Document).Where(warning => warning.ElementIds.Contains(steep)).Select(warning => warning.Code).ToList();
         check(codes.Contains("StairTreadTooShallow"), "Stair warnings: a 4 m run for a 3 m storey has short treads and is reported in Review warnings");
+        var shallow = ModelWarnings.Analyze(session.Document).First(warning => warning.Code == "StairTreadTooShallow" && warning.ElementIds.Contains(steep));
+        check(Math.Abs(shallow.Extra - 18 * 0.28) < 0.01, "Stair warnings: the tread warning says how long the run must be (18 risers x 0.28 m = 5.04 m)");
         check(codes.Contains("StairNoOpening"), "Stair warnings: a stair arriving under a solid slab is reported");
 
         session.AddOpening(upper, StructuralElementKind.Shaft, "Hueco", new(0.4, 1), new(1.6, 5));

@@ -11,7 +11,7 @@ public enum WarningSeverity
 /// A suspicious situation in the model. <see cref="Code"/> names the kind of problem so the interface can describe
 /// it in the user's language; <see cref="Value"/> is a measure that goes with it (a length or an area).
 /// </summary>
-public sealed record ModelWarning(string Code, WarningSeverity Severity, IReadOnlyList<Guid> ElementIds, double Value = 0);
+public sealed record ModelWarning(string Code, WarningSeverity Severity, IReadOnlyList<Guid> ElementIds, double Value = 0, double Extra = 0);
 
 /// <summary>Looks through a project for things that are legal but probably not intended (Revit's "Review Warnings").</summary>
 public static class ModelWarnings
@@ -85,7 +85,9 @@ public static class ModelWarnings
         foreach (var stair in document.StructuralElements.Where(element => element.Kind == StructuralElementKind.Stair))
         {
             foreach (var finding in StairGeometry.Check(stair))
-                warnings.Add(new ModelWarning("Stair" + finding.Kind, WarningSeverity.Warning, [stair.Id], finding.Value));
+                warnings.Add(new ModelWarning("Stair" + finding.Kind, WarningSeverity.Warning, [stair.Id], finding.Value,
+                    // How long the run would have to be for every tread to reach the recommended going.
+                    StairGeometry.RunLengthForTread(stair, StairGeometry.RecommendedMinimumTread)));
             if (StairNeedsOpening(document, stair))
                 warnings.Add(new ModelWarning("StairNoOpening", WarningSeverity.Warning, [stair.Id], stair.Height));
         }

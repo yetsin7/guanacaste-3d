@@ -179,7 +179,7 @@ public partial class MainWindow
             list.Items.Add(new ListBoxItem
             {
                 Content = (warning.Severity == WarningSeverity.Warning ? "⚠ " : "ⓘ ") +
-                          string.Format(CultureInfo.CurrentCulture, GetText("Warning." + warning.Code), warning.Value),
+                          string.Format(CultureInfo.CurrentCulture, GetText("Warning." + warning.Code), warning.Value, warning.Extra),
                 Tag = warning
             });
 

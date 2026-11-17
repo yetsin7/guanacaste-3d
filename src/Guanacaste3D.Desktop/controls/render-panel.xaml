@@ -1025,10 +1025,13 @@
       <!-- A still of the viewport with the active style and filters applied; hidden the moment the camera moves. -->
       <Image x:Name="StyledPreviewImage" Stretch="Fill" IsHitTestVisible="False" Visibility="Collapsed"
              RenderOptions.BitmapScalingMode="HighQuality"/>
-      <Border x:Name="FinalImageBorder" Visibility="Collapsed" Margin="28,24,28,176" Background="#F9FBFD" BorderBrush="#4A6579" BorderThickness="1" CornerRadius="0" Padding="8">
-        <Border.Effect><DropShadowEffect Color="#475569" BlurRadius="24" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
-        <Image x:Name="PreviewImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
-      </Border>
+      <!-- The photo frame hugs the picture whatever its aspect: the Viewbox scales frame and image together. -->
+      <Viewbox x:Name="FinalImageBorder" Visibility="Collapsed" Margin="28,24,28,176" Stretch="Uniform">
+        <Border Background="#F9FBFD" BorderBrush="#4A6579" BorderThickness="1" CornerRadius="0" Padding="8">
+          <Border.Effect><DropShadowEffect Color="#475569" BlurRadius="24" ShadowDepth="4" Opacity="0.22"/></Border.Effect>
+          <Image x:Name="PreviewImage" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality" Focusable="False"/>
+        </Border>
+      </Viewbox>
       <Canvas x:Name="SelectionOverlay" IsHitTestVisible="False" ClipToBounds="True"/>
 
       <!-- Lightweight sampled telemetry. GPU shows renderer usage (zero for the current CPU backend). -->
@@ -1101,8 +1104,10 @@
             <Button Style="{StaticResource SceneToolButton}" Content="&#xE790;" ToolTip="Materiales" Click="SceneMaterials_Click"/>
             <Button Style="{StaticResource SceneToolButton}" Content="&#xE706;" ToolTip="Entorno y luz" Click="SceneEnvironment_Click"/>
             <Button Style="{StaticResource SceneToolButton}" Content="&#xE91B;" ToolTip="Efectos" Click="AddFx_Click"/>
+            <Button x:Name="SceneToolsToggle" Style="{StaticResource SceneToolButton}" Content="&#xE712;" ToolTip="Más herramientas"
+                    AutomationProperties.Name="Más herramientas" Click="SceneToolsToggle_Click"/>
           </StackPanel>
-          <StackPanel Orientation="Horizontal">
+          <StackPanel x:Name="SceneToolsExtended" Orientation="Horizontal" Visibility="Collapsed">
           <Button Style="{StaticResource SceneToolButton}" Width="65" Height="102" FontSize="12" FontFamily="Segoe UI" Background="#28732D" Content="IMPORT" ToolTip="Importar modelo" Tag="import" Click="SceneCommand_Click"/>
           <UniformGrid Rows="2" Columns="3">
             <Button Style="{StaticResource SceneToolButton}" Content="&#xE8B7;" ToolTip="Árboles, plantas y rocas" Click="SceneScatter_Click"/>

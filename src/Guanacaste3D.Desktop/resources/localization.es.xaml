@@ -376,7 +376,7 @@
   <sys:String x:Key="Status.ObstructsDoor">Aviso: este elemento queda frente a una puerta y estorba el paso.</sys:String>
   <sys:String x:Key="Warning.StairRiserTooHigh">Escalera con contrahuellas de {0:0.000} m: demasiado altas (máximo recomendado 0.18 m).</sys:String>
   <sys:String x:Key="Warning.StairRiserTooLow">Escalera con contrahuellas de {0:0.000} m: demasiado bajas.</sys:String>
-  <sys:String x:Key="Warning.StairTreadTooShallow">Escalera con huellas de {0:0.000} m: muy cortas y peligrosas (mínimo recomendado 0.28 m). Alargue la escalera o use un tramo en L o U.</sys:String>
+  <sys:String x:Key="Warning.StairTreadTooShallow">Escalera con huellas de {0:0.000} m: muy cortas y peligrosas (mínimo recomendado 0.28 m). Para este desnivel necesita {1:0.0} m de recorrido en planta, o use un tramo en L o en U.</sys:String>
   <sys:String x:Key="Warning.StairUncomfortablePace">Escalera incómoda: 2 contrahuellas + 1 huella suman {0:0.00} m (lo cómodo es 0.60 a 0.65 m).</sys:String>
   <sys:String x:Key="Warning.StairNoOpening">Escalera de {0:0.00} m que llega a un piso con losa sin hueco: abra el hueco de escalera en esa losa.</sys:String>
   <sys:String x:Key="Warning.ShortWall">Muro muy corto ({0:0.00} m).</sys:String>

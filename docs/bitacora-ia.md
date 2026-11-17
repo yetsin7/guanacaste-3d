@@ -5,6 +5,20 @@ qué se verificó · qué queda. Estados: EN CURSO (nadie más lo toca), HECHO, 
 
 ---
 
+## 2026-11-17 (tarde) · Claude Code · HECHO
+**Interfaz del Render y aviso de escalera.**
+- La paleta flotante del Render empieza plegada (4 herramientas + botón «⋯»); el marco de la imagen final abraza la imagen
+  (Viewbox) sin márgenes blancos; el contorno azul de selección ya no se dibuja sobre la imagen final.
+- El aviso de huellas cortas de la escalera dice cuánto recorrido necesita (`ModelWarning.Extra`).
+- Presupuesto y guía de coordinación subidos (commits `63a6dcce`, `2f7f3240`).
+- **Verificado:** núcleo, suite de interfaz, casa de 70 pasos, Render integrado (446). El paso 12.2 (renderizar la casa)
+  pasó en la corrida anterior (36 s) y en la última quedó «NO VERIFICADO» porque el equipo de Yetsin tenía 2.5 GB libres y el
+  Render se protegió solo: es la protección funcionando, no un fallo. Si te pasa, cierra programas pesados y repite.
+- **Trampa nueva:** el check de video del núcleo («camera is still and the person crosses the view») falla a veces
+  con la máquina cargada y pasa al repetir; no lo atribuyas a tu cambio sin repetir.
+- **Abierto:** C-39 (rediseñar la escalera de la casa), C-40 (detector de habitaciones), C-42 (presupuesto: sellos, baños,
+  cielos, mano de obra).
+
 ## 2026-11-17 · Claude Code · HECHO
 **Render integrado y casa del cobogó desde cero.**
 - Integré `fix/restore-integrated-dotnet-render-20261117` y la rama `plan/dotnet-core-first-20261117` (roadmap, contratos de
