@@ -24,12 +24,15 @@ public partial class MainWindow
         _instancePropertiesEditor.Children.Clear();
         _instancePropertyInputs.Clear();
         _instancePropertyOriginals.Clear();
-        var column = _session.Document.Columns.FirstOrDefault(item => item.Id == _selectedColumnId);
-        var floor = _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId);
+        // The palette edits what its identity text names. An element of the structural family (a stair, a beam) wins over
+        // a column or floor that an earlier selection left behind, so the fields never belong to another element.
+        var structuralSelected = _selectedStructuralId is not null;
+        var column = structuralSelected ? null : _session.Document.Columns.FirstOrDefault(item => item.Id == _selectedColumnId);
+        var floor = structuralSelected ? null : _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId);
         var component = _session.Document.StructuralElements.FirstOrDefault(item => item.Id == _selectedStructuralId &&
             HasSectionProperties(item.Kind));
         // A wall (not one of its doors or windows) shows its base offset and top constraint, as in the reference palette.
-        var wall = _selectedOpeningId is null ? _session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) : null;
+        var wall = _selectedOpeningId is null && !structuralSelected ? _session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) : null;
         _wallTopPicker = null;
         if (column is null && floor is null && component is null && wall is null)
         {
@@ -150,17 +153,18 @@ public partial class MainWindow
         }
         try
         {
-            if (_session.Document.Columns.FirstOrDefault(item => item.Id == _selectedColumnId) is { } column &&
+            var structuralSelected = _selectedStructuralId is not null;
+            if (!structuralSelected && _session.Document.Columns.FirstOrDefault(item => item.Id == _selectedColumnId) is { } column &&
                 values.TryGetValue("Depth", out var depth))
                 _session.UpdateColumn(column.Id, values["Width"], depth, values["Height"], column.Shape);
-            else if (_session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId) is { } floor &&
+            else if (!structuralSelected && _session.Document.Floors.FirstOrDefault(item => item.Id == _selectedFloorId) is { } floor &&
                      values.TryGetValue("Thickness", out var thickness))
                 _session.UpdateFloor(floor.Id, floor.Name, thickness, values["Elevation"]);
             else if (_session.Document.StructuralElements.FirstOrDefault(item => item.Id == _selectedStructuralId &&
                          HasSectionProperties(item.Kind)) is { } component && values.ContainsKey("Offset"))
                 _session.UpdateStructuralElement(component.Id, component.Name, values["Width"], values["Height"],
                     values["Offset"], component.Style);
-            else if (_session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) is { } wall &&
+            else if (!structuralSelected && _session.Document.Walls.FirstOrDefault(item => item.Id == _selectedWallId) is { } wall &&
                      values.TryGetValue("BaseOffset", out var baseOffset))
             {
                 // Read every field before changing anything: each change refreshes this palette and would rebuild the

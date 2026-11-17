@@ -30,7 +30,8 @@ public partial class MainWindow
     /// <summary>Creates an accessible elevation shortcut with separate open and close actions.</summary>
     private FrameworkElement CreateElevationShortcut(ProjectView view)
     {
-        var active = view.Id == _elevationViewId;
+        // Only the elevation actually on screen is highlighted: in a plan no chip is the current view.
+        var active = view.Id == _elevationViewId && ViewTabs.SelectedIndex == ElevationTabIndex;
         var container = new Border
         {
             Background = active ? new SolidColorBrush(Color.FromRgb(229, 240, 252)) : Brushes.White,

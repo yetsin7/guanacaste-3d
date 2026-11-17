@@ -122,6 +122,7 @@ public partial class MainWindow
         if (_orthographicViewsStale && ViewTabs.SelectedIndex is ElevationTabIndex or SectionTabIndex) RenderOrthographicViews();
         if (_sheetStale && ViewTabs.SelectedIndex == SheetTabIndex) RenderSheet();
         if (_scheduleStale && ViewTabs.SelectedIndex == ScheduleTabIndex) RefreshSchedule();
+        RefreshViewShortcuts();
         UpdateDocumentationCaption();
         SynchronizeDocumentationView();
         UpdateRenderWorkspace(ViewTabs.SelectedIndex == RenderTabIndex);
