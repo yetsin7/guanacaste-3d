@@ -6,15 +6,11 @@ using Guanacaste3D.Core.Interop;
 namespace Guanacaste3D.Desktop;
 
 /// <summary>
-/// Rendering belongs to Guanacaste Render. Every way of reaching the old built-in Render view (the view browser, a
-/// ribbon or toolbar command, a shortcut) sends the model there instead: the 3D view stays selected, the model is
-/// written as a render snapshot linked to the saved model, and Guanacaste Render opens it. Guanacaste Render then
-/// follows the saved model by itself, so saving here updates the render without exporting again.
+/// The .NET render workspace is hosted inside Guanacaste 3D. The external handoff remains
+/// available as a separate, explicit workflow, without intercepting the integrated Render tab.
 /// </summary>
 public partial class MainWindow
 {
-    private bool _handingOffRender;
-
     /// <summary>Set by <see cref="EnterRenderWorkspace"/>: this window is the render host and keeps its Render view.</summary>
     private bool _hostsRenderWorkspace;
 
@@ -67,6 +63,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Command handler for buttons that ask for a render.</summary>
-    private void OpenInGuanacasteRender_Click(object sender, RoutedEventArgs e) => OpenInGuanacasteRender();
+    /// <summary>Legacy ribbon handler now opens the integrated render workspace.</summary>
+    private void OpenInGuanacasteRender_Click(object sender, RoutedEventArgs e) => ShowRender_Click(sender, e);
 }
