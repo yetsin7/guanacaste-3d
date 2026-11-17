@@ -49,6 +49,7 @@ internal static partial class WorkspaceChecks
             MaterialChecks();
             ReferenceNavigationChecks();
             ReferenceGraphicsStateChecks();
+            IntegratedRenderWorkspaceChecks();
             Console.WriteLine($"Model workspace checks passed: {_count} assertions.");
             return 0;
         }
@@ -63,6 +64,47 @@ internal static partial class WorkspaceChecks
             SetField("_dirty", false);
             _window.Close();
             application.Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Protects the restored in-process Render workflow from being redirected to the separate application.
+    /// No path tracing is started: this checks workspace routing and view lifecycle only.
+    /// </summary>
+    private static void IntegratedRenderWorkspaceChecks()
+    {
+        UseDocument((session, level) => session.AddWall(level, new(-3, 0), new(3, 0)));
+        var tabs = (TabControl)_window.FindName("ViewTabs");
+        var render = (TabItem)_window.FindName("RenderTab");
+        var panel = _window.FindName("RenderPanelControl");
+        Check(panel is Guanacaste3D.Desktop.Controls.RenderPanel,
+            "The existing .NET render panel remains attached to the desktop application");
+
+        try
+        {
+            Invoke("ShowRender_Click", _window, new RoutedEventArgs());
+            Pump();
+            Check(tabs.SelectedItem == render && render.Visibility == Visibility.Visible,
+                "Render command opens the integrated tab instead of launching an external application");
+
+            tabs.SelectedIndex = 1;
+            Pump();
+            Invoke("OpenInGuanacasteRender_Click", _window, new RoutedEventArgs());
+            Pump();
+            Check(tabs.SelectedItem == render,
+                "Legacy Render ribbon entry also opens the integrated workspace");
+
+            tabs.SelectedIndex = 1;
+            Pump();
+            tabs.SelectedItem = render;
+            Pump();
+            Check(tabs.SelectedItem == render && render.Visibility == Visibility.Visible,
+                "Opening Render through the view browser does not redirect back to 3D");
+        }
+        finally
+        {
+            tabs.SelectedIndex = 1;
+            Pump();
         }
     }
 
