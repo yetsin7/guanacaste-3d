@@ -56,8 +56,9 @@ internal static partial class HouseFromScratchChecks
         });
         yield return ("11.4 Colocar la mesa en el comedor con un clic", () =>
         {
-            ActiveLevel(Ground);
+            // Protect the editor first: changing the level pumps messages, and the window watchdog closes any window not kept.
             var editor = OpenEditor();
+            ActiveLevel(Ground);
             PressEditorButton(editor, "FamilyEditor.LoadIntoProject");
             for (var wait = 0; wait < 5 && Doc.ComponentFamilies.Count == 0; wait++) { _pump(); System.Threading.Thread.Sleep(100); }
             var before = Doc.StructuralElements.Count(element => element.FamilyId is not null);

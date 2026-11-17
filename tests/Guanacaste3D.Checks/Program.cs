@@ -657,6 +657,7 @@ FinishTransactionChecks.Run(Check);
 RoofTakeoffChecks.Run(Check);
 MaterialTakeoffChecks.Run(Check);
 ElementTransformChecks.Run(Check);
+DoorClearanceChecks.Run(Check);
 ViewDisciplineChecks.Run(Check);
 RoomFaceJoinChecks.Run(Check);
 FamilyAuthoringChecks.Run(Check);

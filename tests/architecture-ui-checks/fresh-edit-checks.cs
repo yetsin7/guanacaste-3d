@@ -127,5 +127,23 @@ internal static partial class HouseFromScratchChecks
             Expect(undone == before + 1 && Doc.Columns.Count == before, $"deshacer/rehacer: {before} → {undone} → {Doc.Columns.Count}");
             return "deshacer y rehacer funcionan";
         });
+        yield return ("E9 Columna frente a una puerta: el programa avisa", () =>
+        {
+            Escape();
+            Zoom(40, 4, 6);
+            Arch(ArchitectureCommand.Wall);
+            Click(0, 8);
+            Click(6, 8);
+            Escape();
+            PlaceOpening(ArchitectureCommand.Door, 3, 8, OpeningKind.Door);
+            Arch(ArchitectureCommand.Column);
+            Click(3, 8.7);
+            var warning = Status;
+            Escape();
+            Expect(warning.Contains("puerta", StringComparison.OrdinalIgnoreCase), $"colocar una columna frente a la puerta no avisó: «{warning}»");
+            var list = ModelWarnings.Analyze(Doc);
+            Expect(list.Any(item => item.Code == "ObstructedDoor"), "Revisar advertencias no lista la puerta obstruida");
+            return warning;
+        });
     }
 }

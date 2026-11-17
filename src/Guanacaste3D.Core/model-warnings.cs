@@ -81,6 +81,10 @@ public static class ModelWarnings
         foreach (var room in document.Rooms.Where(room => room.Area < TinyRoomArea))
             warnings.Add(new ModelWarning("TinyRoom", WarningSeverity.Info, [room.Id], room.Area));
 
+        // Nothing stands in front of a door: a column, furniture or stair in the clear zone could not be built that way.
+        foreach (var obstruction in DoorClearance.Analyze(document))
+            warnings.Add(new ModelWarning("ObstructedDoor", WarningSeverity.Warning, [obstruction.OpeningId, obstruction.ObstructionId], obstruction.RequiredDepth));
+
         foreach (var group in document.Columns.GroupBy(column => (column.LevelId, Math.Round(column.Position.X, 3), Math.Round(column.Position.Y, 3)))
                      .Where(group => group.Count() > 1))
             warnings.Add(new ModelWarning("DuplicateColumns", WarningSeverity.Warning, group.Select(column => column.Id).ToArray(), group.Count()));

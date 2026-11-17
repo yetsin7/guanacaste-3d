@@ -421,6 +421,50 @@ internal static partial class HouseFromScratchChecks
             return counts;
         });
 
+        // ---------------------------------------------------------------- 13. Site: lawn, driveway, street and planting
+        yield return ("13.1 Césped, acceso de la cochera, acera y calle con el botón Suelo", () =>
+        {
+            ActiveLevel(Ground);
+            Zoom(14, 6, -9);
+            var before = Doc.Floors.Count;
+            SketchFloor("Lawn 150 mm", (-6, -5.6), (6.4, -5.6), (6.4, -0.4), (0, -0.4), (0, 0.4), (-6, 0.4));
+            SketchFloor("Lawn 150 mm", (15.2, -5.6), (22, -5.6), (22, 12), (15.2, 12));
+            SketchFloor("Concrete Slab 150 mm", (6.4, -5.6), (15.2, -5.6), (15.2, -0.4), (6.4, -0.4));
+            SketchFloor("Concrete Slab 150 mm", (-6, -7.85), (22, -7.85), (22, -5.6), (-6, -5.6));
+            SketchFloor("Asphalt Road 100 mm", (-6, -14), (22, -14), (22, -7.85), (-6, -7.85));
+            Expect(Doc.Floors.Count == before + 5, $"se crearon {Doc.Floors.Count - before} de 5 superficies de terreno (estado: {Status})");
+            SaveWindow($"{Evidence}/13-terreno.png");
+            return "césped, acceso, acera y calle";
+        });
+        yield return ("13.2 Árboles y arbustos desde la biblioteca", () =>
+        {
+            var placed = 0;
+            foreach (var (name, x, y) in new[] { ("Broadleaf Tree 8 m", 3.4, -2.6), ("Broadleaf Tree 8 m", -3.0, -3.5), ("Broadleaf Tree 8 m", 19.0, -3.0),
+                         ("Shrub 1.5 m", 6.2, -4.9), ("Shrub 1.5 m", 6.3, -3.6), ("Shrub 1.5 m", 1.2, -1.0), ("Shrub 1.5 m", -0.6, -0.4) })
+            {
+                var before = Doc.StructuralElements.Count;
+                Library(entry => entry == name);
+                Click(x, y);
+                if (Doc.StructuralElements.Count > before) placed++;
+                Escape();
+            }
+            Expect(placed == 7, $"se colocaron {placed} de 7 plantas");
+            SaveWindow($"{Evidence}/13-plantas.png");
+            return "3 árboles y 4 arbustos";
+        });
+
+        yield return ("13.3 Ninguna columna estorba frente a una puerta (muebles y escalera: lista de pendientes)", () =>
+        {
+            var found = DoorClearance.Analyze(Doc);
+            var columns = found.Count(item => Doc.Columns.Any(column => column.Id == item.ObstructionId));
+            var names = found.Where(item => Doc.Columns.All(column => column.Id != item.ObstructionId))
+                .Select(item => Doc.StructuralElements.FirstOrDefault(element => element.Id == item.ObstructionId)?.Name ?? "?").Distinct().ToList();
+            // No column may stand in front of a door. Sanitary ware and the stair still do (the wet core opens toward the
+            // carport and needs a redesign); they are listed here and tracked in the master plan as C-37.
+            Expect(columns == 0, $"{columns} columnas frente a puertas");
+            return $"sin columnas frente a puertas; pendientes de rediseño: {string.Join(", ", names)}";
+        });
+
         // ---------------------------------------------------------------- 12. Render inside the program
         yield return ("12.1 Botón «Ir a Render» de la cinta abre el Render integrado con la casa", () =>
         {

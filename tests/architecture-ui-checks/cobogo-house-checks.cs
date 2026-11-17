@@ -268,7 +268,7 @@ internal static partial class HouseFromScratchChecks
                 ((0.15, 5.0), (12.8, 5.0)), ((0.15, 6.5), (8.9, 6.5)), ((10.3, 6.5), (15.05, 6.5)),
                 ((6.5, 6.5), (6.5, 11.85)), ((8.9, 6.5), (8.9, 11.85)), ((10.3, 6.5), (10.3, 11.85)));
             var before = Doc.Openings.Count(opening => opening.Kind == OpeningKind.Door);
-            foreach (var (x, y) in new[] { (7.65, 5.0), (3.45, 6.5), (7.65, 6.5), (12.5, 6.5) })
+            foreach (var (x, y) in new[] { (5.6, 5.0), (3.45, 6.5), (7.65, 6.5), (12.5, 6.5) })
             {
                 Arch(ArchitectureCommand.Door);
                 PickMenuIfOpen(0);

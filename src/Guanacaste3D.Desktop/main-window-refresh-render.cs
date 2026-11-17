@@ -29,6 +29,18 @@ public partial class MainWindow
         RenderPlan();
         Render3D();
         RefreshExtendedWorkflows();
+        AppendDoorObstructionNotice();
+    }
+
+    /// <summary>Tells the designer at once when the selected column, furniture or stair stands in front of a door.</summary>
+    private void AppendDoorObstructionNotice()
+    {
+        var id = _selectedColumnId ?? _selectedStructuralId;
+        if (id is null || StatusText is null) return;
+        var notice = GetText("Status.ObstructsDoor");
+        if (StatusText.Text.Contains(notice, StringComparison.Ordinal)) return;
+        if (DoorClearance.Analyze(_session.Document, id).Count > 0)
+            StatusText.Text = (StatusText.Text.Length > 0 ? StatusText.Text + "  " : "") + "⚠ " + notice;
     }
 
     /// <summary>Rebuilds the level selector while preserving the active level.</summary>

@@ -372,6 +372,8 @@
   <sys:String x:Key="Dialog.Warnings.Select">Seleccionar</sys:String>
   <sys:String x:Key="Dialog.Warnings.None">No se encontraron advertencias en el modelo.</sys:String>
   <sys:String x:Key="Dialog.Close">Cerrar</sys:String>
+  <sys:String x:Key="Warning.ObstructedDoor">Algo estorba frente a una puerta: se necesitan {0:0.00} m libres a cada lado para abrirla y pasar. Mueva el elemento o la puerta.</sys:String>
+  <sys:String x:Key="Status.ObstructsDoor">Aviso: este elemento queda frente a una puerta y estorba el paso.</sys:String>
   <sys:String x:Key="Warning.ShortWall">Muro muy corto ({0:0.00} m).</sys:String>
   <sys:String x:Key="Warning.OpeningNearWallEnd">Hueco a solo {0:0.00} m del extremo del muro.</sys:String>
   <sys:String x:Key="Warning.DuplicateWalls">Hay {0:0} muros idénticos uno sobre otro.</sys:String>
