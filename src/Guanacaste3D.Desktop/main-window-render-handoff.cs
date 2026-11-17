@@ -14,15 +14,6 @@ public partial class MainWindow
     /// <summary>Set by <see cref="EnterRenderWorkspace"/>: this window is the render host and keeps its Render view.</summary>
     private bool _hostsRenderWorkspace;
 
-    /// <summary>
-    /// The integrated .NET render workspace is again the default for Render tabs and commands.
-    /// Keep the external handoff helpers below for explicit export workflows only.
-    /// </summary>
-    private void InitializeRenderHandoff()
-    {
-        // Intentionally no selection redirect: the Render tab is hosted by this window.
-    }
-
     /// <summary>Where the render snapshot of the current model goes: beside the saved model, or in the user's
     /// Guanacaste Render folder while the model has never been saved.</summary>
     private string RenderHandoffPath()
