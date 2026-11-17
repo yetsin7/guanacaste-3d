@@ -80,5 +80,21 @@ static class MaterialTakeoffChecks
         var sampleHouse = ConstructionBudget.Build(TwoStoreyHouse.Create(), BudgetSettings.Default);
         check(sampleHouse.Total > 0 && sampleHouse.ByCategory().Count >= 4,
             "Budget: the two-storey sample house prices at least four trades");
+
+        // Stairs, guards, electrical devices and fixtures are bought too: each has its own trade and a price.
+        var fitted = new DocumentSession(BuildingDocument.Create("Fitted"));
+        var floor0 = fitted.Document.Levels.OrderBy(l => l.Elevation).First().Id;
+        fitted.Document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), floor0, StructuralElementKind.Stair, "Escalera", new(0, 0), new(4, 0), 1.2, 3.0, 0));
+        fitted.Document.StructuralElements.Add(new StructuralElement(Guid.NewGuid(), floor0, StructuralElementKind.Railing, "Baranda", new(0, 0), new(5, 0), 0.05, 1.0, 0));
+        fitted.AddElectricalDevice(floor0, ElectricalDeviceKind.Outlet, "Tomacorriente", new(1, 1));
+        fitted.AddPlumbingPoint(floor0, PlumbingPointKind.WaterMeter, "Medidor", new(0, 0));
+        var fittedBudget = ConstructionBudget.Build(fitted.Document, BudgetSettings.Default);
+        check(Near(fittedBudget.Takeoff.Find(MaterialCatalog.Stair)?.NetQuantity ?? 0, 4.8) &&
+              Near(fittedBudget.Takeoff.Find(MaterialCatalog.Guard)?.NetQuantity ?? 0, 5) &&
+              fittedBudget.Takeoff.Find(MaterialCatalog.Outlet)?.NetQuantity == 1 &&
+              fittedBudget.Takeoff.Find(MaterialCatalog.Conductor) is not null &&
+              fittedBudget.Takeoff.Find(MaterialCatalog.NetworkPoint)?.NetQuantity == 1 &&
+              fittedBudget.Lines.All(line => line.Total > 0),
+            "Budget: stairs, guards, electrical devices and plumbing points are counted and priced");
     }
 }

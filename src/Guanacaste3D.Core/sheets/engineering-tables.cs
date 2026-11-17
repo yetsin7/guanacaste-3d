@@ -177,6 +177,10 @@ public static class EngineeringTables
         MaterialCategory.Ceilings => "Cielos",
         MaterialCategory.Floors => "Pisos",
         MaterialCategory.Paint => "Pintura",
+        MaterialCategory.StairsAndGuards => "Escaleras, barandas y cerramientos",
+        MaterialCategory.Electrical => "Instalación eléctrica",
+        MaterialCategory.Plumbing => "Fontanería y sanitarios",
+        MaterialCategory.Ventilation => "Ventilación",
         MaterialCategory.Furnishings => "Mobiliario y equipo",
         _ => "Puertas y ventanas"
     };

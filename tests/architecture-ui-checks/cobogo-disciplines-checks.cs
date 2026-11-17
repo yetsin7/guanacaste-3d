@@ -373,6 +373,10 @@ internal static partial class HouseFromScratchChecks
             Expect(trades.Contains(MaterialCategory.Masonry) && trades.Contains(MaterialCategory.Structure) && trades.Contains(MaterialCategory.Drywall) &&
                    trades.Contains(MaterialCategory.DoorsAndWindows) && trades.Contains(MaterialCategory.Foundations),
                 "faltan rubros: " + string.Join(", ", Enum.GetValues<MaterialCategory>().Except(trades)));
+            // Stairs, guards, fixtures and the electrical and ventilation work are bought too, not only the shell.
+            Expect(trades.Contains(MaterialCategory.StairsAndGuards) && trades.Contains(MaterialCategory.Electrical) &&
+                   trades.Contains(MaterialCategory.Plumbing),
+                "el presupuesto no cuenta escaleras/barandas, instalación eléctrica o sanitarios: " + string.Join(", ", trades));
             // The table, chairs and lamp made in the Family editor are bought too: one line per family, a piece each.
             var furniture = budget.Lines.Where(line => line.Takeoff.Material.Category == MaterialCategory.Furnishings).ToList();
             var pieces = furniture.Sum(line => line.Takeoff.PurchaseQuantity);

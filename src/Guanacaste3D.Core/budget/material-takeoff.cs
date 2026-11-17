@@ -17,6 +17,18 @@ public enum MaterialCategory
     Paint,
     DoorsAndWindows,
 
+    /// <summary>Stairs, ramps, guards, glazed wall systems and rainwater goods: built by the metalworker or the glazier.</summary>
+    StairsAndGuards,
+
+    /// <summary>Receptacles, switches, luminaires, panels and the conductor that joins them.</summary>
+    Electrical,
+
+    /// <summary>Sanitary fixtures, the public-network connections and the pipe that serves them.</summary>
+    Plumbing,
+
+    /// <summary>Air ducts and the ventilation they carry.</summary>
+    Ventilation,
+
     /// <summary>Furniture, fixtures and equipment the person placed from their own families: bought, not built.</summary>
     Furnishings
 }
@@ -102,6 +114,34 @@ public static class MaterialCatalog
     public const string Hinge = "HINGE";
     public const string Lockset = "LOCKSET";
     public const string Window = "WINDOW_AREA";
+    public const string Stair = "STAIR_PLAN_AREA";
+    public const string Ramp = "RAMP_PLAN_AREA";
+    public const string Guard = "GUARD_LENGTH";
+    public const string CurtainWall = "CURTAIN_WALL_AREA";
+    public const string Skylight = "SKYLIGHT_AREA";
+    public const string Gutter = "GUTTER_LENGTH";
+    public const string Downspout = "DOWNSPOUT_LENGTH";
+    public const string Outlet = "ELEC_OUTLET";
+    public const string Switch = "ELEC_SWITCH";
+    public const string Luminaire = "ELEC_LUMINAIRE";
+    public const string Panel = "ELEC_PANEL";
+    public const string MiniSplit = "ELEC_MINISPLIT";
+    public const string Equipment = "ELEC_EQUIPMENT";
+    public const string LifeSafety = "ELEC_LIFE_SAFETY";
+    public const string Conductor = "ELEC_CONDUCTOR";
+    public const string Toilet = "FIXTURE_TOILET";
+    public const string Washbasin = "FIXTURE_BASIN";
+    public const string Bathtub = "FIXTURE_TUB";
+    public const string Shower = "FIXTURE_SHOWER";
+    public const string NetworkPoint = "PLUMB_NETWORK_POINT";
+    public const string Pipe = "PLUMB_PIPE";
+    public const string Duct = "DUCT_LENGTH";
+
+    /// <summary>Metres of conductor (cable and conduit) assumed for each wired device, home run included.</summary>
+    public const double ConductorMetresPerDevice = 7;
+
+    /// <summary>Metres of supply, drain and vent pipe assumed for each sanitary fixture.</summary>
+    public const double PipeMetresPerFixture = 6;
 
     // Yields. Everything is metric; a "bag" of cement is 50 kg.
     public const double BlocksPerSquareMetre = 12.5;
@@ -167,6 +207,28 @@ public static class MaterialCatalog
         new(Hinge, MaterialCategory.DoorsAndWindows, "Bisagra 3½\"", "u", 0.0, true),
         new(Lockset, MaterialCategory.DoorsAndWindows, "Cerradura (llavín)", "u", 0.0, true),
         new(Window, MaterialCategory.DoorsAndWindows, "Ventana de aluminio y vidrio", "m²", 0.0, false),
+        new(Stair, MaterialCategory.StairsAndGuards, "Escalera de concreto con acabado (por m² en planta)", "m²", 0.0, false),
+        new(Ramp, MaterialCategory.StairsAndGuards, "Rampa de concreto con acabado antideslizante (por m² en planta)", "m²", 0.0, false),
+        new(Guard, MaterialCategory.StairsAndGuards, "Baranda metálica con pasamanos", "m", 0.0, false),
+        new(CurtainWall, MaterialCategory.StairsAndGuards, "Muro cortina de aluminio y vidrio", "m²", 0.0, false),
+        new(Skylight, MaterialCategory.StairsAndGuards, "Tragaluz de policarbonato con marco", "m²", 0.0, false),
+        new(Gutter, MaterialCategory.StairsAndGuards, "Canoa de lámina galvanizada", "m", 0.05, false),
+        new(Downspout, MaterialCategory.StairsAndGuards, "Bajante pluvial de PVC", "m", 0.05, false),
+        new(Outlet, MaterialCategory.Electrical, "Tomacorriente doble con placa", "u", 0.0, true),
+        new(Switch, MaterialCategory.Electrical, "Apagador o regulador con placa", "u", 0.0, true),
+        new(Luminaire, MaterialCategory.Electrical, "Luminaria con lámpara LED", "u", 0.0, true),
+        new(Panel, MaterialCategory.Electrical, "Tablero de breakers", "u", 0.0, true),
+        new(MiniSplit, MaterialCategory.Electrical, "Aire acondicionado minisplit instalado", "u", 0.0, true),
+        new(Equipment, MaterialCategory.Electrical, "Equipo eléctrico especial (bomba, inversor, paneles)", "u", 0.0, true),
+        new(LifeSafety, MaterialCategory.Electrical, "Detector, luz de emergencia, rótulo o equipo contra incendio", "u", 0.0, true),
+        new(Conductor, MaterialCategory.Electrical, "Cable THHN y tubería EMT (estimado por dispositivo)", "m", 0.10, false),
+        new(Toilet, MaterialCategory.Plumbing, "Inodoro con accesorios", "u", 0.0, true),
+        new(Washbasin, MaterialCategory.Plumbing, "Lavamanos con grifería", "u", 0.0, true),
+        new(Bathtub, MaterialCategory.Plumbing, "Bañera con grifería", "u", 0.0, true),
+        new(Shower, MaterialCategory.Plumbing, "Ducha con grifería", "u", 0.0, true),
+        new(NetworkPoint, MaterialCategory.Plumbing, "Conexión a red pública, tanque o medidor", "u", 0.0, true),
+        new(Pipe, MaterialCategory.Plumbing, "Tubería PVC de agua, drenaje y ventilación (estimado por aparato)", "m", 0.10, false),
+        new(Duct, MaterialCategory.Ventilation, "Ducto de ventilación de lámina galvanizada", "m", 0.05, false),
     ];
 
     private static readonly Dictionary<string, MaterialDefinition> ByCode = All.ToDictionary(m => m.Code, StringComparer.Ordinal);
@@ -302,6 +364,73 @@ public static class MaterialTakeoff
                 acc.Add(MaterialCatalog.Window, opening.Width * opening.Height, $"Ventana {opening.Width:0.00} × {opening.Height:0.00}");
             }
         }
+
+        foreach (var element in document.StructuralElements)
+        {
+            var source = $"{element.Name} ({Name(levelNames, element.LevelId)})";
+            switch (element.Kind)
+            {
+                case StructuralElementKind.Stair:
+                    acc.Add(MaterialCatalog.Stair, element.Length * element.Width, source);
+                    break;
+                case StructuralElementKind.Ramp:
+                    acc.Add(MaterialCatalog.Ramp, element.Length * element.Width, source);
+                    break;
+                case StructuralElementKind.Railing:
+                    acc.Add(MaterialCatalog.Guard, element.Length, source);
+                    break;
+                case StructuralElementKind.CurtainWall:
+                    acc.Add(MaterialCatalog.CurtainWall, element.Length * element.Height, source);
+                    break;
+                case StructuralElementKind.Skylight:
+                    acc.Add(MaterialCatalog.Skylight, element.Width * (element.Depth > 0 ? element.Depth : element.Width), source);
+                    break;
+                case StructuralElementKind.Gutter:
+                    acc.Add(MaterialCatalog.Gutter, element.Length, source);
+                    break;
+                case StructuralElementKind.Downspout:
+                    acc.Add(MaterialCatalog.Downspout, element.Height, source);
+                    break;
+                case StructuralElementKind.Duct:
+                    acc.Add(MaterialCatalog.Duct, element.Length, source);
+                    break;
+                case StructuralElementKind.Component when element.FamilyId is null:
+                    var fixture = element.ComponentShape switch
+                    {
+                        ResidentialComponentShape.Toilet => MaterialCatalog.Toilet,
+                        ResidentialComponentShape.Vanity => MaterialCatalog.Washbasin,
+                        ResidentialComponentShape.Bathtub => MaterialCatalog.Bathtub,
+                        ResidentialComponentShape.Shower => MaterialCatalog.Shower,
+                        _ => null
+                    };
+                    if (fixture is null) break;
+                    acc.Add(fixture, 1, source);
+                    acc.Add(MaterialCatalog.Pipe, MaterialCatalog.PipeMetresPerFixture, "Tubería de aparatos sanitarios");
+                    break;
+            }
+        }
+
+        foreach (var device in document.ElectricalDevices)
+        {
+            var code = device.Kind switch
+            {
+                ElectricalDeviceKind.Outlet or ElectricalDeviceKind.GfciOutlet or ElectricalDeviceKind.UsbOutlet
+                    or ElectricalDeviceKind.Outlet240 => MaterialCatalog.Outlet,
+                ElectricalDeviceKind.Switch or ElectricalDeviceKind.ThreeWaySwitch or ElectricalDeviceKind.Dimmer => MaterialCatalog.Switch,
+                ElectricalDeviceKind.Panel => MaterialCatalog.Panel,
+                ElectricalDeviceKind.MiniSplit => MaterialCatalog.MiniSplit,
+                ElectricalDeviceKind.WaterPump or ElectricalDeviceKind.SolarArray or ElectricalDeviceKind.Inverter => MaterialCatalog.Equipment,
+                _ when device.IsLuminaire => MaterialCatalog.Luminaire,
+                _ => MaterialCatalog.LifeSafety
+            };
+            var source = $"{device.Name} ({Name(levelNames, device.LevelId)})";
+            acc.Add(code, 1, source);
+            if (!device.IsDirectCurrent && !device.IsFireProtection)
+                acc.Add(MaterialCatalog.Conductor, MaterialCatalog.ConductorMetresPerDevice, "Cableado de dispositivos");
+        }
+
+        foreach (var point in document.PlumbingPoints)
+            acc.Add(MaterialCatalog.NetworkPoint, 1, $"{point.Name} ({Name(levelNames, point.LevelId)})");
 
         // Tie wire: about one kilogram for every ten bars placed.
         var bars = acc.Net(MaterialCatalog.Rebar2) + acc.Net(MaterialCatalog.Rebar3) + acc.Net(MaterialCatalog.Rebar4);
