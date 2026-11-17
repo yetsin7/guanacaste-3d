@@ -39,7 +39,6 @@ public partial class MainWindow
             if (!ReferenceEquals(e.OriginalSource, ViewTabs)) return;
             if (ViewTabs.SelectedItem is TabItem selected) selected.Visibility = Visibility.Visible;
         };
-        InitializeRenderHandoff();
     }
 
     /// <summary>Whether a visual is the given element or one of its descendants.</summary>
