@@ -5,6 +5,17 @@ qué se verificó · qué queda. Estados: EN CURSO (nadie más lo toca), HECHO, 
 
 ---
 
+## 2026-11-17 (noche) · Claude Code · EN CURSO
+**Render con GPU (pedido de Yetsin: que el Render use también la GPU y que el usuario pueda elegir).**
+- Hoy el Render es 100 % CPU (`PathTracer` en C#, ADR-001). La máquina de Yetsin tiene una RTX 4050 (6 GB) y Windows con D3D12.
+- Plan por etapas: (1) opción «Procesador: Automático / CPU / GPU» en la pestaña Calidad, con persistencia y estado real;
+  (2) motor de GPU con ComputeSharp (compute shaders DirectX 12) en un proyecto nuevo `src/Guanacaste3D.Gpu`, consumiendo
+  `RenderScene` y devolviendo la misma imagen lineal al pipeline existente; (3) medición contra CPU y telemetría real de GPU.
+- **Por favor no toques `src/Guanacaste3D.Core/rendering/render-session.cs`, `render-settings.cs`, `bvh.cs` ni la pestaña Calidad
+  de `render-panel.xaml` mientras esta entrada diga EN CURSO.** El resto del render sigue libre.
+- Alcance honesto de la primera versión de GPU: geometría, luz solar y cielo, luces puntuales, materiales PBR básicos y vidrio;
+  los patrones procedurales (césped, concreto…) y las texturas se aproximan por color. La interfaz lo dirá.
+
 ## 2026-11-17 (tarde) · Claude Code · HECHO
 **Interfaz del Render y aviso de escalera.**
 - La paleta flotante del Render empieza plegada (4 herramientas + botón «⋯»); el marco de la imagen final abraza la imagen
