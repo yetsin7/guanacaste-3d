@@ -145,6 +145,28 @@ mod tests {
     }
 
     #[test]
+    fn rejects_translated_touching_nonadjacent_edges_in_both_windings() {
+        // Nonadjacent edge contact must not become valid after a site-coordinate
+        // translation or reversal of the BIM footprint winding.
+        let mut touching = points(&[
+            (100_000.0, -200_000.0),
+            (100_004.0, -200_000.0),
+            (100_004.0, -199_997.0),
+            (100_002.0, -200_000.0),
+            (100_000.0, -199_997.0),
+        ]);
+        assert_eq!(
+            validate_extrusion_footprint(&touching),
+            Err(GeometryError::NoEarFound)
+        );
+        touching.reverse();
+        assert_eq!(
+            validate_extrusion_footprint(&touching),
+            Err(GeometryError::NoEarFound)
+        );
+    }
+
+    #[test]
     fn rejects_touching_nonadjacent_edges() {
         let touching = points(&[(0.0, 0.0), (4.0, 0.0), (4.0, 3.0), (2.0, 0.0), (0.0, 3.0)]);
         assert_eq!(
