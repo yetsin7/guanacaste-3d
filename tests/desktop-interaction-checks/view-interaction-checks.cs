@@ -172,8 +172,14 @@ internal static partial class InteractionChecks
                 LogicalTreeHelper.GetChildren(parent).OfType<object>().SelectMany(child =>
                     child is DependencyObject node ? new[] { child }.Concat(LogicalDescendants(node)) : new[] { child });
             var materialRows = (StackPanel)panel.FindName("MaterialRows");
-            var faceButton = FindButtons(materialRows)
-                .First(button => Equals(button.ToolTip, "Elegir el material con bolas de ejemplo"));
+            // The material rows are added as logical children; searching only realized visuals is
+            // unreliable when the Render sidebar has just switched panels on Windows CI.
+            var faceButton = LogicalDescendants(materialRows).OfType<Button>()
+                .FirstOrDefault(button => Equals(button.ToolTip, "Elegir el material con bolas de ejemplo"));
+            Check(faceButton is not null,
+                "The integrated Render materials panel exposes a material-ball picker");
+            faceButton!.BringIntoView();
+            Pump();
             faceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Pump();
             var gridPopup = LogicalDescendants(materialRows).OfType<System.Windows.Controls.Primitives.Popup>().First(item => item.IsOpen);
