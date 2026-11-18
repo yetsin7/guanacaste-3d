@@ -192,39 +192,39 @@ internal static partial class InteractionChecks
             ProjectFile.Save("artifacts/interaction-evidence/placed-elements.g3d", session.Document);
             Check(ProjectFile.Load("artifacts/interaction-evidence/placed-elements.g3d").Dimensions.Count == 1,
                 "UI-created annotation survives native save and reopen");
-            WallLoopClosingChecks(session);
-            WallEditCommandChecks(session);
-            RotateRibbonChecks(session);
-            PlanLevelSelectionChecks(session);
-            OpeningClipboardChecks(session);
-            ModelDimensionChecks(session);
-            DuplicateComponentRibbonChecks(session);
-            DuplicateColumnRibbonChecks(session);
-            DuplicateStructuralMemberChecks(session);
-            DuplicateFloorRibbonChecks(session);
-            OrthographicLevelEditingChecks(session);
-            RandomizedRibbonChecks(session);
-            PlantingChecks(session);
-            StairToolChecks(session);
-            TexturedModelChecks(session);
-            MiddleClickViewChecks();
-            ElectricalToolChecks(session);
-            PlumbingToolChecks(session);
-            PlanServiceVisibilityChecks(session);
-            CaptureDemoToolTip();
-            PhotoThumbnailCacheChecks();
-            ProjectThumbnailBudgetChecks();
-            IconChecks();
-            RenderJoinScene();
-            Model3DSelectionChecks();
-            RenderPreviewAndImportChecks();
-            RevitProjectChecks();
-            TileViewChecks();
-            CheckAssociatedDocumentStartup();
-            MassPlacementChecks();
-            ScheduleExportChecks();
-            StartupSampleChecks();
-            CobogoHouseChecks();
+            RunTimedCheck("WallLoopClosingChecks", () => WallLoopClosingChecks(session));
+            RunTimedCheck("WallEditCommandChecks", () => WallEditCommandChecks(session));
+            RunTimedCheck("RotateRibbonChecks", () => RotateRibbonChecks(session));
+            RunTimedCheck("PlanLevelSelectionChecks", () => PlanLevelSelectionChecks(session));
+            RunTimedCheck("OpeningClipboardChecks", () => OpeningClipboardChecks(session));
+            RunTimedCheck("ModelDimensionChecks", () => ModelDimensionChecks(session));
+            RunTimedCheck("DuplicateComponentRibbonChecks", () => DuplicateComponentRibbonChecks(session));
+            RunTimedCheck("DuplicateColumnRibbonChecks", () => DuplicateColumnRibbonChecks(session));
+            RunTimedCheck("DuplicateStructuralMemberChecks", () => DuplicateStructuralMemberChecks(session));
+            RunTimedCheck("DuplicateFloorRibbonChecks", () => DuplicateFloorRibbonChecks(session));
+            RunTimedCheck("OrthographicLevelEditingChecks", () => OrthographicLevelEditingChecks(session));
+            RunTimedCheck("RandomizedRibbonChecks", () => RandomizedRibbonChecks(session));
+            RunTimedCheck("PlantingChecks", () => PlantingChecks(session));
+            RunTimedCheck("StairToolChecks", () => StairToolChecks(session));
+            RunTimedCheck("TexturedModelChecks", () => TexturedModelChecks(session));
+            RunTimedCheck("MiddleClickViewChecks", () => MiddleClickViewChecks());
+            RunTimedCheck("ElectricalToolChecks", () => ElectricalToolChecks(session));
+            RunTimedCheck("PlumbingToolChecks", () => PlumbingToolChecks(session));
+            RunTimedCheck("PlanServiceVisibilityChecks", () => PlanServiceVisibilityChecks(session));
+            RunTimedCheck("CaptureDemoToolTip", () => CaptureDemoToolTip());
+            RunTimedCheck("PhotoThumbnailCacheChecks", () => PhotoThumbnailCacheChecks());
+            RunTimedCheck("ProjectThumbnailBudgetChecks", () => ProjectThumbnailBudgetChecks());
+            RunTimedCheck("IconChecks", () => IconChecks());
+            RunTimedCheck("RenderJoinScene", () => RenderJoinScene());
+            RunTimedCheck("Model3DSelectionChecks", () => Model3DSelectionChecks());
+            RunTimedCheck("RenderPreviewAndImportChecks", () => RenderPreviewAndImportChecks());
+            RunTimedCheck("RevitProjectChecks", () => RevitProjectChecks());
+            RunTimedCheck("TileViewChecks", () => TileViewChecks());
+            RunTimedCheck("CheckAssociatedDocumentStartup", () => CheckAssociatedDocumentStartup());
+            RunTimedCheck("MassPlacementChecks", () => MassPlacementChecks());
+            RunTimedCheck("ScheduleExportChecks", () => ScheduleExportChecks());
+            RunTimedCheck("StartupSampleChecks", () => StartupSampleChecks());
+            RunTimedCheck("CobogoHouseChecks", () => CobogoHouseChecks());
             Console.WriteLine("Desktop interaction checks passed.");
             return 0;
         }
@@ -355,6 +355,28 @@ internal static partial class InteractionChecks
 
     /// <summary>Sets selection or teardown state without editing any user document.</summary>
     private static void SetField(string name, object? value) => typeof(MainWindow).GetField(name, PrivateInstance)!.SetValue(_window, value);
+
+    /// <summary>Reports the currently running WPF scenario before a possible CI timeout.</summary>
+    private static void RunTimedCheck(string name, Action check)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Console.WriteLine($"START {name} UTC={DateTimeOffset.UtcNow:O}");
+        Console.Out.Flush();
+        try
+        {
+            check();
+            Console.WriteLine($"PASS {name} duration_ms={clock.ElapsedMilliseconds}");
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine($"FAIL {name} duration_ms={clock.ElapsedMilliseconds}: {exception}");
+            throw;
+        }
+        finally
+        {
+            Console.Out.Flush();
+        }
+    }
 
     private static readonly System.Diagnostics.Stopwatch _checkClock = System.Diagnostics.Stopwatch.StartNew();
 
